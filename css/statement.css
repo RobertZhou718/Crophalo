@@ -1,0 +1,19 @@
+/* Crophalo: the season weather record, on the screen and on paper. Under 520 px each row becomes a block with the column name before each figure. */
+.statement { max-width: 760px; margin: 0 auto; padding: var(--space-16); border-radius: var(--r1); background: var(--card); box-shadow: var(--shadow); font-size: var(--fs-row); }
+.st-brand { font-size: var(--fs-micro); font-weight: var(--fw-bold); letter-spacing: .08em; color: var(--ink2); }
+.statement h2 { font-size: 24px; }
+.st-fixed { margin-top: var(--space-12); padding: var(--space-8) var(--space-12); border: 1px solid var(--ctl); border-radius: var(--r3); font-weight: var(--fw-semi); }
+.st-table { margin-top: var(--space-12); }
+.st-table th[scope=row] { font-weight: var(--fw-semi); color: var(--ink); background: none; font-size: var(--fs-small); }
+.st-notes { margin-top: var(--space-12); font-size: var(--fs-small); color: var(--ink2); }
+.st-drought, .st-mine { margin-top: var(--space-16); }
+.st-drought h3, .st-mine h3 { font-size: var(--fs-headline); }
+.statement footer { margin-top: var(--space-16); font-size: var(--fs-caption); color: var(--ink2); }
+@media (max-width: 519px) {
+  .st-table thead { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); }
+  .st-table, .st-table tbody, .st-table tr, .st-table th, .st-table td { display: block; width: 100%; }
+  .st-table tr { padding: var(--space-8) 0; border-bottom: .5px solid var(--sep); }
+  .st-table td { display: flex; justify-content: space-between; gap: var(--space-12); border: 0; padding: 2px var(--space-12); }
+  .st-table td::before { content: attr(data-label); color: var(--ink2); }
+}
+@media print { .statement { max-width: none; padding: 0; box-shadow: none; border-radius: 0; color: #000; background: #fff; font-size: 10pt; } .st-table tr, .st-drought, .statement header { break-inside: avoid; } .st-table thead { position: static; width: auto; height: auto; clip-path: none; } }
