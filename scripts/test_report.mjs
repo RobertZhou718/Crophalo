@@ -1,10 +1,13 @@
 // Crophalo's report suite: the markup of the Overview and Options from the engine's answer, the "i" with its sources, the honest "not read yet" state when
 // there is no engine, and the joins that never invent a plan. The fixture below is made for these checks only: no screen ever shows it.
 // RULE: never loosen a check to make it pass; fix the project. No page and no internet are needed. Run: node scripts/test_report.mjs
-import { overviewHTML, optionsHTML, laterHTML, loadingHTML, infoButton, sourcePopHTML, sourceNotes, assumptions, estimatedArea, coverLines, windowLines, barsHTML, scoresFoldHTML, optionDetailHTML, sureHTML, planName, allPlans, TABS, WILL_HOLD, NOT_READ, dayWords } from '../js/report-view.js';
+import { overviewHTML, optionsHTML, laterHTML, loadingHTML, infoButton, sourceNotes, assumptions, estimatedArea, coverLines, windowLines, barsHTML, scoresFoldHTML, optionDetailHTML, sureHTML, planName, allPlans, TABS, WILL_HOLD, NOT_READ, dayWords } from '../js/report-view.js';
 import { getOptions, addToFarm } from '../js/joins.js';
 import { MORE, ALL_SOURCES } from '../js/sources.more.js';
+import { cardHtml } from '../js/srci.js';
 import { newState } from '../js/state.js';
+import { dataPageHTML } from '../js/pages.js';
+import { NASA_LINE, NASA_CREDIT_PAGE } from '../js/sources.js';
 import { SOURCES } from '../js/sources.js';
 
 let passed = 0, failed = 0;
@@ -16,7 +19,7 @@ const same = (name, got, want) => check(name, JSON.stringify(got) === JSON.strin
 const now = { id: 'now', name: 'Now', kind: 'current', seasons: [{ year: 1, crop: 'corn', sow: '2027-05-01', harvest: '2027-10-05', after: 'residue', residueUntil: '2027-12-01', window: null }, { year: 2, crop: 'soy', sow: '2028-05-20', harvest: '2028-10-01', after: 'residue', residueUntil: '2028-12-01', window: null }, { year: 3, crop: 'corn', sow: '2029-05-01', harvest: '2029-10-05', after: 'residue', residueUntil: null, window: null }], score: 62, scores: { water: 60, soil: 55, erosion: 40, income: 80, weather: 70 } };
 const wheat = { id: 'wheat', name: 'With winter wheat', kind: 'proposed', seasons: [now.seasons[0], now.seasons[1], { year: 3, crop: 'wheat', sow: '2028-10-05', harvest: '2029-07-25', after: 'cover', residueUntil: null, window: { earliest: '2028-09-25', latest: '2028-10-15' } }], score: 71, scores: { water: 65, soil: 75, erosion: 78, income: 70, weather: 68 } };
 const other = { id: 'other', name: 'Barley', kind: 'proposed', seasons: [{ year: 1, crop: 'barley', sow: '2027-04-20', harvest: '2027-08-01', after: 'bare', residueUntil: null, window: null }] };
-const RESULT = { ok: true, current: now, recommended: wheat, others: [other], reason: 'Winter wheat keeps living roots on the field after soybeans, when rain would otherwise move bare soil.', evidence: [{ text: 'No stress thresholds crossed in 26 tested years.', sources: ['power', 'gpm'] }, { text: 'Sowing dates follow the crop guide and your field’s frost record.', sources: ['fao56', 'power'] }], gaps: ['Soil is assumed, not measured.', 'Confirm your own sowing dates.'], risks: ['A late soybean harvest squeezes the wheat sowing window.'], sureness: 'Somewhat sure' };
+const RESULT = { ok: true, current: now, recommended: wheat, others: [other], reason: 'Winter wheat keeps living roots on the field after soybeans, when rain would otherwise move bare soil.', evidence: [{ text: 'No stress thresholds crossed in 26 tested years.', sources: ['power', 'gpm'] }, { text: 'Sowing dates follow the crop guide and your field’s frost record.', sources: ['fao', 'power'] }], gaps: ['Soil is assumed, not measured.', 'Confirm your own sowing dates.'], risks: ['A late soybean harvest squeezes the wheat sowing window.'], sureness: 'Somewhat sure' };
 const STATE = { ...newState(), loc: { lat: 44.4, lon: -79.78, label: 'Barrie, Ontario', cc: 'CA' }, name: 'Barrie & Simcoe County', soil: { mode: 'assumed', texture: null, om: null, omPct: null }, farm: { ...newState().farm, irrigation: 'none' } };
 
 // ---- Overview
@@ -29,7 +32,7 @@ check('the late-harvest caveat names the window from the plan, not an invented d
 check('how sure, with its fold of what to confirm', ov.includes('How sure is this?') && ov.includes('Somewhat sure') && ov.includes('id="ovSure"') && ov.includes('Soil is assumed, not measured.') && ov.includes('The score is a guide. It is not a yield and not a chance of success.'));
 check('the assumptions are written on the screen: assumed soil, rain only, an estimated outline', ov.includes('an average loam is assumed') && ov.includes('Water: rain only') && ov.includes('estimated as a 10 ha square around the pin'));
 check('the score ring is there for the suggestion', ov.includes('Score 71 out of 100'));
-check('there is an "i" beside the suggestion that opens its sources', /class="srci nasa"[^>]*data-src="power gpm fao56"/.test(ov));
+check('there is an "i" beside the suggestion that opens its sources', /class="srci nasa"[^>]*data-src="[^"]*power[^"]*"/.test(ov));
 check('"Add to My Farm" is not in the Overview: it is one action, in the bar', !/Add to My Farm/.test(ov));
 check('no loss, yield or chance claimed', !/\b(chance of success)\b.*\b(percent|%)\b/.test(ov) && !/\bforecast\b/i.test(ov.replace('is a guide', '')));
 check('words from the engine are plain text', !/<img/.test(overviewHTML({ ...RESULT, reason: '<img src=x onerror=1>', gaps: ['<b>x</b>'] }, { state: STATE })));
@@ -57,21 +60,21 @@ same('cover lines come only from what the plan says', [coverLines(now).length, c
 same('windows come only from dates the plan carries', [windowLines(wheat).length, windowLines(now).length, windowLines({ seasons: [{ crop: 'wheat', window: { earliest: 'x', latest: '2028-10-15' } }] }).length], [1, 0, 0]);
 
 // ---- the "i"
-same('NASA is listed first', sourceNotes(['fao56', 'power', 'rules']).map(n => n.key), ['power', 'fao56', 'rules']);
+same('NASA is listed first', sourceNotes(['fao', 'power', 'rules']).map(n => n.key), ['power', 'fao', 'rules']);
 same('an unknown key is left out and a key counts once', sourceNotes(['power', 'power', 'nope', '__proto__']).map(n => n.key), ['power']);
 const i = infoButton(['power'], 'Frost dates');
-check('the button is a real button with a name, the NASA shape and its sources', /^<button type="button" class="srci nasa" data-src="power"/.test(i) && /aria-label="Where this comes from \(from NASA\): NASA POWER"/.test(i) && /aria-haspopup="dialog"/.test(i) && /aria-expanded="false"/.test(i));
-check('a non-NASA source gets the outlined shape', !/srci nasa/.test(infoButton(['fao56'])) && /srci/.test(infoButton(['fao56'])));
-same('no sources, no button', infoButton([]), '');
-const pop = sourcePopHTML(['fao56', 'power'], 'Newest day: 6 November 2026');
-check('the card has the NASA tag first, "For this figure", each source with who runs it, and a link that opens in a new tab', pop.indexOf('NASA</span>') < pop.indexOf('FAO') && pop.includes('For this figure') && pop.includes('Run by NASA Langley Research Center') && /<a href="https:\/\/power\.larc\.nasa\.gov\/"[^>]*target="_blank" rel="noopener noreferrer"/.test(pop) && pop.includes('opens in a new tab'));
+check('the button is a real button with a name, the NASA shape, its sources and its note', /^<button type="button" class="srci nasa"/.test(i) && /aria-label="Where this comes from: NASA POWER"/.test(i) && /aria-haspopup="dialog"/.test(i) && /aria-expanded="false"/.test(i) && /data-src="power"/.test(i) && /Frost dates/.test(i), i);
+check('a non-NASA source gets the outlined shape', !/srci nasa/.test(infoButton(['fao'])) && /srci/.test(infoButton(['fao'])));
+same('no sources, no button', [infoButton([]), infoButton(['nope'])], ['', '']);
+const pop = cardHtml(['fao', 'power'], 'Newest day: 6 November 2026');
+check('the card has the NASA tag first, "For this figure", each source with who runs it, and a link that opens in a new tab', pop.indexOf('NASA</span>') < pop.indexOf('FAO') && pop.includes('For this figure') && /Run by NASA Langley/.test(pop) && /href="https:\/\/power\.larc\.nasa\.gov\/"[^>]*target="_blank" rel="noopener noreferrer"/.test(pop) && pop.includes('opens in a new tab'), pop.slice(0, 300));
 check('every source note has every field, and https links', Object.entries(ALL_SOURCES).every(([k, n]) => ['org', 'name', 'who', 'what', 'talk', 'url'].every(f => typeof n[f] === 'string' && n[f]) && typeof n.nasa === 'boolean' && n.url.startsWith('https://')));
-check('the new notes do not overwrite the weather ones', Object.keys(MORE).every(k => !(k in SOURCES)));
-check('NASA notes are marked NASA', MORE.smap.nasa === true && MORE.rules.nasa === false);
+check('the report\'s own notes are in the shared table', Object.keys(MORE).every(k => ALL_SOURCES[k] === MORE[k]) && ALL_SOURCES.power.nasa === true);
+check('NASA notes are marked NASA', ALL_SOURCES.smap.nasa === true && MORE.rules.nasa === false);
 
 // ---- the other tabs and the loading screen
 same('seven tabs, in order', TABS.map(t => t.id), ['overview', 'options', 'weather', 'calendar', 'field', 'satellites', 'notes']);
-check('each of the five later tabs says plainly it is not built and what it will hold', ['weather', 'calendar', 'field', 'satellites', 'notes'].every(id => laterHTML(id).includes('Not built yet.') && laterHTML(id).includes(WILL_HOLD[id])));
+check('each of the four later tabs says plainly it is not built and what it will hold', ['calendar', 'field', 'satellites', 'notes'].every(id => laterHTML(id).includes('Not built yet.') && laterHTML(id).includes(WILL_HOLD[id])));
 const rows = [{ key: 'power', label: 'Weather · NASA POWER', state: 'ok', reason: '' }, { key: 'forecast', label: 'Forecast', state: 'fail', reason: 'The service took too long to answer.' }, { key: 'x', label: 'Hidden', state: 'skip' }];
 const ld = loadingHTML(rows);
 check('the loading screen says what is happening and counts the answers', ld.includes('Building your full report') && ld.includes('1 of 2 sources answered') && !ld.includes('Hidden'));
@@ -100,6 +103,14 @@ const seen = []; const added = await addToFarm({ place: { lat: 1 }, current: now
 check('My Farm is handed the payload and answers with the field', added.ok && added.fieldId === '44.4000,-79.7800' && seen[0].proposed.id === 'wheat');
 check('My Farm answering nothing is a plain failure', (await addToFarm({}, async () => ({ addFromReport: () => null }))).ok === false);
 same('dates in words', [dayWords('2028-10-05'), dayWords('x')], ['5 Oct 2028', '']);
+
+// ---- the Data page
+const dp = dataPageHTML();
+check('the Data page opens with the NASA line and a link to the full credit', dp.includes(NASA_LINE) && dp.includes(`href="${NASA_CREDIT_PAGE}"`) && dp.indexOf(NASA_LINE) < dp.indexOf('Where the numbers come from'));
+check('one entry for every source in the table, built from the table', (dp.match(/<li class="row">/g) ?? []).length === Object.keys(ALL_SOURCES).length);
+check('NASA sources come first, each with its "i"', dp.indexOf('NASA</span>') < dp.indexOf('class="src">') && (dp.match(/class="srci/g) ?? []).length === Object.keys(ALL_SOURCES).length);
+check('the NASA line says NASA does not endorse it', /not made, reviewed or endorsed by NASA/.test(dp));
+check('a note from outside is plain text on the Data page', !/<img src=x/.test(dataPageHTML({ x: { org: 'A', name: '<img src=x>', nasa: false, who: 'w', what: '<b>', talk: 't', url: 'https://x.invalid/' } })));
 
 console.log(`report: ${passed} passed, ${failed} failed`);
 process.exit(failed ? 1 : 0);

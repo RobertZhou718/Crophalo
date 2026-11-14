@@ -24,23 +24,12 @@ export const longDate = d => isDay(d) ? `${+d.slice(8)} ${MONTH[+d.slice(5, 7) -
 const fin = v => typeof v === 'number' && Number.isFinite(v);
 const name = id => { try { return cropName(id, true) || String(id); } catch { return String(id); } };
 
-// ---- the "i" button: a tappable, keyboard-reachable button that opens the figure's sources (NASA first). Its popover is built by js/report.js.
+// ---- the "i" button: the shared one (js/srci.js), beside every figure; its card lists the sources, NASA first. This file adds the report's own notes to the table.
+import { srcButton } from './srci.js';
 export function sourceNotes(keys) {
   return [...new Set(Array.isArray(keys) ? keys : [])].filter(k => Object.hasOwn(ALL_SOURCES, k)).map(key => ({ key, ...ALL_SOURCES[key] })).sort((a, b) => Number(b.nasa) - Number(a.nasa));
 }
-export function infoButton(keys, figure = '') {
-  const notes = sourceNotes(keys);
-  if (!notes.length) return '';
-  const nasa = notes.some(n => n.nasa), from = notes.map(n => n.name).join(', ');
-  return `<button type="button" class="srci${nasa ? ' nasa' : ''}" data-src="${esc(notes.map(n => n.key).join(' '))}" data-figure="${esc(figure)}" aria-haspopup="dialog" aria-expanded="false" aria-label="${esc(`Where this comes from${nasa ? ' (from NASA)' : ''}: ${from}`)}"></button>`;
-}
-// The popover's inside for one button's sources: the tags, "For this figure", one block per source, "Visit the source".
-export function sourcePopHTML(keys, figure = '') {
-  const notes = sourceNotes(keys);
-  return `<div class="srcpop-top">${notes.some(n => n.nasa) ? '<span class="src nasa">NASA</span>' : ''}${[...new Set(notes.filter(n => !n.nasa).map(n => n.org))].map(o => `<span class="src">${esc(o)}</span>`).join('')}<button type="button" class="iconbtn srcpop-x" data-close aria-label="Close">×</button></div>
-    ${figure ? `<p class="srcpop-for"><b>For this figure</b> ${esc(figure)}</p>` : ''}
-    ${notes.map(n => `<section class="srcpop-note"><h4>${esc(n.name)}</h4><p>${esc(n.what)}</p><p class="cap">Run by ${esc(n.who)}</p><details class="disc"><summary>More about it</summary><p class="cap">${esc(n.talk)}</p></details><p><a href="${esc(n.url)}" target="_blank" rel="noopener noreferrer">Visit the source<span class="sr"> (opens in a new tab)</span></a></p></section>`).join('')}`;
-}
+export const infoButton = (keys, figure = '') => srcButton(keys, figure);
 
 // ---- the plans
 const crops = plan => (plan?.seasons ?? []).map(s => s.crop);

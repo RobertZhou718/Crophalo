@@ -3,10 +3,13 @@
 // Not pure: it draws into #view-report and listens to the page. Back steps Report → Setup → Home through the app's own history, never between tabs.
 // Checked by scripts/e2e_flow.mjs (the report group: tabs, keys, the panel, the "i", Add to My Farm, Back) and scripts/test_report.mjs (the markup).
 import { esc } from './words.js';
-import { TABS, overviewHTML, optionsHTML, laterHTML, loadingHTML, sourcePopHTML, estimatedArea, planName, allPlans, longDate, NOT_READ } from './report-view.js';
+import { TABS, overviewHTML, optionsHTML, laterHTML, loadingHTML, infoButton, estimatedArea, planName, allPlans, longDate, NOT_READ } from './report-view.js';
 import { loadSpot, freshRows } from './report-load.js';
+import { buildWeather } from './weather-data.js';
+import { weatherHTML, chartZoomHTML } from './weather-view.js';
 import { getOptions, addToFarm } from './joins.js';
 import { toast } from './toast.js';
+import { initSources } from './srci.js';
 import { motionOff } from './motion.js';
 import { currentState } from './wizard.js';
 import { hasRotation, hasSoil } from './steps.js';
@@ -15,7 +18,7 @@ const $ = (sel, root = document) => root.querySelector(sel), $$ = (sel, root = d
 const WORDS = { change: 'Change answers', farm: 'Add to My Farm', farmDone: 'Open in My Farm', title: 'Your field', sources: 'Sources', again: 'Try again', back: 'Back', home: 'Back to the start',
   none: 'There is no report to show yet. Answer the setup questions first.', priorities: 'Your priorities', fine: 'Fine-tune what matters', whatif: 'What if the weather shifts?' };
 const PRIO_NAMES = ['Water fit', 'Soil health', 'Soil wash-off', 'Income', 'Weather safety (drought, heat, frost)'], PRIO_WORDS = ['Not a concern', 'A little', 'Some', 'Important', 'Very important', 'Most important'];
-let seam = { change() {}, home() {}, farmOpened() {}, engine: null, farm: null }, cur = null, run = 0, popFor = null;
+let seam = { change() {}, home() {}, farmOpened() {}, engine: null, farm: null }, cur = null, run = 0;
 const today = () => new Date().toLocaleDateString('en-CA');
 const root = () => $('#reportRoot');
 
@@ -31,7 +34,7 @@ function barHTML() {
   const s = cur.state, ready = cur.result?.ok, line = [s.loc.label || s.name ? s.loc.label : '', longDate(today())].filter(Boolean).join(' · ');
   return `<header class="reportbar" id="reportBar"><div class="rb-in">
     <button type="button" class="btn rb-back" data-act="change"><svg class="ic" aria-hidden="true"><use href="#i-back"/></svg><span>${WORDS.change}</span></button>
-    <div class="rb-title"><h1 id="reportTitle">${esc(s.name || WORDS.title)}</h1><p class="rb-meta">${esc(line)} · <span class="rb-key">${WORDS.sources} <button type="button" class="srci nasa" data-src="power gpm" data-figure="" aria-haspopup="dialog" aria-expanded="false" aria-label="Sources for this report: NASA POWER and GPM"></button></span></p></div>
+    <div class="rb-title"><h1 id="reportTitle">${esc(s.name || WORDS.title)}</h1><p class="rb-meta">${esc(line)} · <span class="rb-key">${WORDS.sources} ${infoButton(['power', 'gpm'], 'Weather and rain for this report')}</span></p></div>
     <div class="rb-act"><button type="button" class="btn primary" data-act="farm" id="rbFarm"${ready ? '' : ' disabled'}><svg class="ic" aria-hidden="true"><use href="#i-cube"/></svg><span>${cur.farm ? WORDS.farmDone : WORDS.farm}</span></button></div></div>
     <p class="rb-note cap" id="farmNote" role="status">${esc(cur.farmNote ?? '')}</p></header>`;
 }
@@ -40,7 +43,7 @@ function tabsHTML() {
 }
 function panelHTML() {
   const id = cur.tab, ctx = { state: cur.state, today: today() };
-  const body = id === 'overview' ? overviewHTML(cur.result, ctx) : id === 'options' ? optionsHTML(cur.result, cur.plan) : laterHTML(id);
+  const body = id === 'overview' ? overviewHTML(cur.result, ctx) : id === 'options' ? optionsHTML(cur.result, cur.plan) : id === 'weather' ? weatherHTML(cur.weather) : laterHTML(id);
   const nextTab = TABS[TABS.findIndex(t => t.id === id) + 1];
   return `<div class="rv-panel" role="tabpanel" id="panel-${id}" aria-labelledby="tab-${id}" tabindex="0">${body}${nextTab ? `<p class="rv-nextrow"><button type="button" class="btn lg" data-tab="${nextTab.id}" data-focus="1">Next: ${esc(nextTab.label)}</button></p>` : ''}</div>`;
 }
@@ -61,9 +64,8 @@ function draw({ focus = false, keepScroll = true } = {}) {
   r.innerHTML = `${barHTML()}<div class="rv-wrap">${tabsHTML()}<div class="rv-grid${prioShown() ? ' has-prio' : ''}">${prioShown() ? prioHTML() : ''}<div class="rv-main">${panelHTML()}</div></div></div>`;
   if (focus) { const h = $('#reportTitle', r); h.tabIndex = -1; h.focus(); }
   if (keepScroll) scrollTo(0, y);
-  closePop();
 }
-const prioShown = () => ['overview', 'options'].includes(cur.tab) && !(cur.state.rotation?.garden);
+const prioShown = () => ['overview', 'options', 'weather'].includes(cur.tab) && !(cur.state.rotation?.garden);
 
 // ---- opening
 export async function openReport(state, { demo = false } = {}) {
@@ -75,6 +77,8 @@ export async function openReport(state, { demo = false } = {}) {
   if (mine !== run) return;
   if (!loaded.ok) { cur.loading = false; cur.failed = loaded.reason; draw(); return; }
   cur.climate = loaded.climate; cur.note = loaded.note;
+  cur.weather = buildWeather({ series: loaded.series, climate: loaded.climate, forecast: loaded.forecast, loc: cur.state.loc });
+  if (cur.weather.ok && loaded.note) cur.weather.note = loaded.note;
   await work();
   if (mine !== run) return;
   await new Promise(r => setTimeout(r, motionOff() ? 0 : 450));   // the screen resolves 450 ms after the last source
@@ -82,8 +86,8 @@ export async function openReport(state, { demo = false } = {}) {
   cur.loading = false; draw({ focus: true, keepScroll: false }); scrollTo(0, 0);
 }
 // Draw a ready answer without loading (the tests and the engine's own demo use it): the state and the engine's result.
-export async function renderResult(state, result, { climate = null } = {}) {
-  run++; cur = { state: structuredClone(state), tab: 'overview', plan: result?.recommended?.id ?? null, rows: [], loading: false, result: result ? { ...result, ok: result.ok !== false } : null, climate, prioOpen: true };
+export async function renderResult(state, result, { climate = null, weather = null } = {}) {
+  run++; cur = { state: structuredClone(state), tab: 'overview', plan: result?.recommended?.id ?? null, rows: [], loading: false, result: result ? { ...result, ok: result.ok !== false } : null, climate, weather, prioOpen: true };
   draw({ focus: true, keepScroll: false });
 }
 // When the report view opens: a report in hand stays; else the wizard's own answers, if they are enough; else the way back.
@@ -93,25 +97,6 @@ export function showReport() {
   const s = currentState();
   if (s.loc && hasRotation(s) && hasSoil(s)) return void openReport(s);
   root().innerHTML = `<div class="rv-wrap"><section class="rv-sec"><h2 id="reportTitle" tabindex="-1">Your report</h2><p>${WORDS.none}</p><p><button type="button" class="btn primary" data-act="home">${WORDS.home}</button></p></section></div>`;
-}
-
-// ---- the "i" popover: one shared card, pinned by a click or Enter, closed by Escape, a second click or leaving it
-function closePop(refocus = false) {
-  const pop = $('#srcPop'); if (!pop || pop.hidden) return;
-  pop.hidden = true; const b = popFor; popFor = null;
-  if (b) { b.setAttribute('aria-expanded', 'false'); if (refocus && b.isConnected) b.focus(); }
-}
-function openPop(button) {
-  let pop = $('#srcPop');
-  if (!pop) { pop = document.createElement('div'); pop.id = 'srcPop'; pop.className = 'srcpop'; pop.setAttribute('role', 'dialog'); pop.setAttribute('aria-label', 'Where this information comes from'); document.body.append(pop); }
-  if (popFor === button) return closePop(true);
-  closePop();
-  pop.innerHTML = sourcePopHTML((button.dataset.src || '').split(' '), button.dataset.figure || '');
-  pop.hidden = false; popFor = button; button.setAttribute('aria-expanded', 'true');
-  const b = button.getBoundingClientRect(), w = Math.min(320, innerWidth - 24), below = b.bottom + 8 + 240 < innerHeight || b.top < 260;
-  pop.style.width = w + 'px'; pop.style.left = Math.max(12, Math.min(innerWidth - w - 12, b.left)) + 'px';
-  pop.style.top = (below ? b.bottom + 8 : Math.max(12, b.top - pop.offsetHeight - 8)) + 'px';
-  $('[data-close]', pop)?.focus();
 }
 
 // ---- the tabs
@@ -127,6 +112,17 @@ function onTabKey(event) {
   event.preventDefault();
   const i = TABS.findIndex(t => t.id === cur.tab), n = TABS.length, to = k === 'home' ? 0 : k === 'end' ? n - 1 : (i + k + n) % n;
   setTab(TABS[to].id);
+}
+
+// ---- a chart opened large: a modal sheet with the chart at full width, how to read it, in words and every number; Escape and the backdrop close it, focus goes back to Enlarge
+let zoomFrom = null;
+function openZoom(button) {
+  const chart = cur?.weather?.charts?.find(c => c.id === button.dataset.zoom); if (!chart) return;
+  let dlg = $('#dlgChart');
+  if (!dlg) { dlg = document.createElement('dialog'); dlg.id = 'dlgChart'; dlg.className = 'sheet chart-sheet'; dlg.setAttribute('aria-labelledby', 'czTitle');
+    dlg.addEventListener('click', e => { if (e.target === dlg || e.target.closest('[data-zoom-close]')) dlg.close(); });
+    dlg.addEventListener('close', () => { if (zoomFrom?.isConnected) zoomFrom.focus(); zoomFrom = null; }); document.body.append(dlg); }
+  dlg.innerHTML = chartZoomHTML(chart); zoomFrom = button; dlg.showModal(); $('[data-zoom-close]', dlg).focus();
 }
 
 // ---- Add to My Farm: one action. It hands the field, both plans and the date to My Farm, which opens on that field.
@@ -145,7 +141,7 @@ async function addFarm() {
 function bind() {
   const r = root();
   r.addEventListener('click', event => {
-    const src = event.target.closest('.srci'); if (src) { event.preventDefault(); return openPop(src); }
+    const zoom = event.target.closest('[data-zoom]'); if (zoom) return openZoom(zoom);
     const t = event.target.closest('[data-act], [data-tab], [data-plan]'); if (!t) return;
     if (t.dataset.tab) return setTab(t.dataset.tab, { focus: true });
     if (t.dataset.plan) { cur.plan = t.dataset.plan; draw(); $(`[data-plan="${CSS.escape(cur.plan)}"]`)?.focus(); toast(`Details below changed to ${planName(allPlans(cur.result).find(p => p.id === cur.plan))}`); return; }
@@ -164,10 +160,7 @@ function bind() {
     else { s[`sc`][t.dataset.sc] = +t.value; t.nextElementSibling.textContent = t.dataset.sc === 'tempC' ? `+${t.value} °C` : `${+t.value > 0 ? '+' : ''}${t.value}%`; }
     clearTimeout(cur.rerun); cur.rerun = setTimeout(async () => { await work(); const f = document.activeElement, id = f?.dataset?.prio ?? f?.dataset?.sc; const main = $('.rv-main'); if (main) main.innerHTML = panelHTML(); void id; }, 120);   // the options re-rank a moment after the slider stops, in place
   });
-  document.addEventListener('keydown', event => { if (event.key === 'Escape' && popFor) { event.stopPropagation(); closePop(true); } });
-  document.addEventListener('click', event => { const pop = $('#srcPop'); if (popFor && pop && !pop.contains(event.target) && !popFor.contains(event.target)) closePop(); else if (pop && event.target.closest('[data-close]') && pop.contains(event.target)) closePop(true); });
-  document.addEventListener('focusin', event => { const pop = $('#srcPop'); if (popFor && pop && !pop.contains(event.target) && !popFor.contains(event.target)) closePop(); });
 }
 // seam: { change(state), home(), farmOpened(result), engine: () => import('./engine.js'), farm: () => import('./farm.js') } (the last two are given by the page start once those files exist)
-export function initReport(next) { seam = { ...seam, ...next }; if (root()) bind(); }
+export function initReport(next) { seam = { ...seam, ...next }; initSources(); if (root()) bind(); }
 export const currentReport = () => cur;
