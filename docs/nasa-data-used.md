@@ -17,8 +17,8 @@ Every figure in Crophalo that comes from outside carries a small "i" button. It 
 
 ### NASA SMAP Level-4 root-zone soil moisture
 
-- **What it is.** How wet the soil is around the roots (the top metre), from a land model that is kept true by measurements from NASA's SMAP satellite. It is given 3-hourly, one value for each square of a 9 km grid.
-- **What Crophalo does with it.** It shows the value for the square that holds the field as a regional reading: the figure, its date, and the square drawn on a small picture round the field. It is one value for the whole square. Crophalo never paints it as a pattern inside the field.
+- **What it is.** How wet the soil is around the roots (the top metre), from a land model that is kept true by measurements from NASA's SMAP satellite. It is given 3-hourly, one value for each cell of a 9 km grid. The grid keeps every cell the same area, so away from the equator a cell is narrower and taller than a square (at Barrie about 7 km wide and 11 km tall).
+- **What Crophalo does with it.** It reads the one cell that holds the field, from the newest file NASA has published (a few days old), and shows it as a regional reading: the figure, its date, and the cell's own outline drawn on a small picture round the field. It is one value for the whole cell. Crophalo never paints it as a pattern inside the field.
 - **Good to know.** NSIDC, which distributes the data, says it is reprocessing a stretch of days in the middle of 2026 and will replace them. A value for those days may change.
 - **Citation.** Reichle, R., De Lannoy, G., Koster, R. D., Crow, W. T., Kimball, J. S., Liu, Q. & Bechtold, M. (2025). SMAP L4 Global 3-hourly 9 km EASE-Grid Surface and Root Zone Soil Moisture Geophysical Data (SPL4SMGP, Version 8). NASA National Snow and Ice Data Center Distributed Active Archive Center. https://doi.org/10.5067/T5RUATAQREF8
 - **More.** https://nsidc.org/data/spl4smgp
@@ -43,5 +43,5 @@ Each of these has its own terms of use. The "i" card for a figure names its sour
 ## What Crophalo does not claim
 
 - Crophalo gives counts, not chances: for example "no stress limit crossed in 26 tested years". It never calls a past record a forecast.
-- A regional reading is one value for a square of land. It is not a measurement inside the field.
+- A regional reading is one value for a whole cell of land, not a measurement inside the field.
 - A figure that could not be read is shown as "not read yet". Crophalo does not fill it in.

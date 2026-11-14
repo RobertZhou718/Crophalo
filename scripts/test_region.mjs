@@ -28,7 +28,7 @@ same('a date that does not exist is no date', [R.dateWords(['2028', '02', '30'].
 
 // ---- a reading rebuilt from known parts
 const GOOD = { label: 'Moisture around the roots', value: 0.31, date: '2026-11-14', km: 9, lat: 44.4, lon: -79.78, source: 'smap' };
-same('a good reading is kept', R.cleanReading(GOOD), { label: 'Moisture around the roots', value: 0.31, date: '2026-11-14', km: 9, lat: 44.4, lon: -79.78, source: 'smap', why: '' });
+same('a good reading is kept', R.cleanReading(GOOD), { label: 'Moisture around the roots', value: 0.31, date: '2026-11-14', km: 9, lat: 44.4, lon: -79.78, source: 'smap', why: '', cell: null });
 for (const bad of [null, 'x', {}, { ...GOOD, lat: undefined }, { ...GOOD, lat: 91 }, { ...GOOD, lon: 'a' }, { ...GOOD, km: 0 }, { ...GOOD, km: 900 }, { ...GOOD, km: 'nine' }])
   same(`not a reading: ${brief(bad)}`, R.cleanReading(bad), null);
 same('a missing value stays null, never zero', [R.cleanReading({ ...GOOD, value: null }).value, R.cleanReading({ ...GOOD, value: undefined }).value, R.cleanReading({ ...GOOD, value: '0.3' }).value, R.cleanReading({ ...GOOD, value: 4 }).value], [null, null, null, null]);
@@ -39,16 +39,32 @@ same('no label gets a plain one', R.cleanReading({ ...GOOD, label: '  ' }).label
 // ---- the card
 const html = R.regionHtml(GOOD);
 check('the card shows the plain label, the value and the date', html.includes('Moisture around the roots') && html.includes('31% water by volume') && html.includes('14 November 2026'));
-check('it says the value is for the whole square and not inside the field', /one figure for the whole square, about 9 km wide\. It is not a reading inside your field/.test(html));
-check('it says what the dashed square and the dot are', html.includes('The dashed square is the area this reading covers. The dot is your field.'));
-check('the picture is described for a screen reader, and decorative to it otherwise', /role="img" aria-label="A picture of the land round your field\. A dashed square about 9 km wide/.test(html) && /<img alt=""/.test(html) && /aria-hidden="true"/.test(html));
-check('the "i" for the source sits beside the label, solid for NASA, with "For this figure" holding the date and the square', /srci nasa/.test(html) && /data-note="Moisture around the roots for the square about 9 km wide round the field, 14 November 2026\. One value for the whole square\."/.test(html), html.slice(0, 600));
+check('it says the value is for the whole area and not inside the field', /one figure for the whole area, a square about 9 km wide\. It is not a reading inside your field/.test(html), html.slice(0, 900));
+check('it says what the dashed outline and the dot are', html.includes('The dashed outline is the area this reading covers. The dot is your field.'));
+check('the picture is described for a screen reader, and decorative to it otherwise', /role="img" aria-label="A picture of the land round your field\. A dashed outline, a square about 9 km wide/.test(html) && /<img alt=""/.test(html) && /aria-hidden="true"/.test(html));
+check('the "i" for the source sits beside the label, solid for NASA, with "For this figure" holding the date and the square', /srci nasa/.test(html) && /data-note="Moisture around the roots for a square about 9 km wide that holds the field, 14 November 2026\. One value for the whole area\."/.test(html), html.slice(0, 600));
 check('nothing is painted inside the field: the only shapes are the dashed square and the dot', (html.match(/<rect /g) || []).length === 1 && (html.match(/<circle /g) || []).length === 1 && !/<path|<polygon|<image|gradient|pattern/i.test(html));
 const none = R.regionHtml({ ...GOOD, value: null });
-check('with no value it says "Not read yet", says Crophalo will not guess, and shows no number', none.includes('Not read yet') && /will not guess one/.test(none) && !/\d+% water/.test(none));
+check('with no value it says "Not read yet", says Crophalo will not guess, and shows no number', none.includes('Not read yet') && /will not guess one/.test(none) && /area that holds your field/.test(none) && !/\d+% water/.test(none));
 check('with no value the "i" still opens the source, but its "For this figure" does not claim a reading', /srci nasa/.test(none) && !/data-note=/.test(none));
 same('nothing at all is drawn for a reading that is not one', R.regionHtml({ nonsense: true }), '');
 check('words with marks in them cannot break the markup', !/<script|<img src=x/i.test(R.regionHtml({ ...GOOD, label: '<img src=x onerror=1>', why: '"><script>' })));
+// ---- with the cell NASA itself gave (the real answer for Barrie on 14 November 2026)
+const CELL = { lat: 44.3537, lon: -79.777, width_km: 7.4, height_km: 10.9, edges: { n: 44.40273, s: 44.30463, e: -79.73029, w: -79.82366 } };
+const vc = R.footprintView(44.4, -79.78, 9, CELL);
+check('the footprint is the cell\'s own box: taller than wide, like the cell is on the ground', vc.footprint.h > vc.footprint.w * 1.3 && vc.footprint.h < vc.footprint.w * 1.6, vc.footprint);
+near('its width and height are the cell\'s over the frame\'s (the frame is 2.2 times the longer side, 10.9 km)', vc.footprint.h * 10.9 * 2.2, 10.9, 0.05);
+check('the frame is centred on the cell, not on the field', Math.abs((vc.bbox.n + vc.bbox.s) / 2 - 44.35368) < 1e-3 && Math.abs((vc.bbox.e + vc.bbox.w) / 2 + 79.77698) < 1e-3, vc.bbox);
+check('the dot is the field itself: inside the box, near its north edge (the pin is at 44.40, the edge at 44.4027)', vc.dot.x > vc.footprint.x && vc.dot.x < vc.footprint.x + vc.footprint.w && vc.dot.y > vc.footprint.y && vc.dot.y < vc.footprint.y + vc.footprint.h && vc.dot.y - vc.footprint.y < 0.08, [vc.dot, vc.footprint]);
+check('every corner of the box and the dot lie inside the picture', [vc.footprint.x, vc.footprint.y, vc.footprint.x + vc.footprint.w, vc.footprint.y + vc.footprint.h, vc.dot.x, vc.dot.y].every(f => f >= 0 && f <= 1));
+for (const bad of [{ n: 1, s: 2, e: 3, w: 2 }, { n: 1, s: 0, e: 1, w: 1 }, { n: 'a', s: 0, e: 1, w: 0 }, { n: 99, s: 0, e: 1, w: 0 }, { n: 10, s: 0, e: 3, w: 0 }, null, {}])
+  check(`edges that are not a box are not used: ${brief(bad)}`, R.cleanEdges(bad) === null);
+same('good edges are kept', R.cleanEdges(CELL.edges), { n: 44.40273, s: 44.30463, w: -79.82366, e: -79.73029 });
+same('a reading with bad edges falls back to the square', R.cleanReading({ ...GOOD, cell: { edges: { n: 1, s: 2, e: 3, w: 2 } } }).cell, null);
+const withCell = R.regionHtml({ ...GOOD, value: 0.1013, cell: CELL });
+check('the card says the area is a box of the cell\'s real size, and not a square', /a box about 7\.4 km wide and 10\.9 km tall/.test(withCell) && !/a square about 9 km/.test(withCell));
+check('the "For this figure" line names the box and the date', /data-note="Moisture around the roots for a box about 7\.4 km wide and 10\.9 km tall that holds the field, 14 November 2026/.test(withCell));
+check('there is still only one dashed outline and one dot', (withCell.match(/<rect /g) || []).length === 1 && (withCell.match(/<circle /g) || []).length === 1);
 const old = ['Tur', 'key'].join('');
 check('the country is never written the English way', !html.includes(old));
 console.log(`${passed} passed, ${failed} failed`);
