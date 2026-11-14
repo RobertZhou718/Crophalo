@@ -1,0 +1,9 @@
+/* Crophalo: the soil-test form's look. Only the tokens and classes of css/app.css; no value is restated here. */
+.st-form { gap: var(--space-12); }
+.st-grid { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 8rem); align-items: start; gap: var(--space-8); }
+.st-grid.three { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+.st-field input, .st-unit select { width: 100%; min-height: var(--touch); }
+.st-unit { align-self: end; }
+.st-err { min-height: 1.2em; color: var(--ink2); font-size: var(--fs-caption); }
+.st-field input[aria-invalid=true] ~ .st-err { color: var(--bad); }   /* red only with its words under the box, never colour alone */
+@media (max-width: 420px) { .st-grid { grid-template-columns: minmax(0, 1fr); } .st-grid.three { grid-template-columns: minmax(0, 1fr); } }
