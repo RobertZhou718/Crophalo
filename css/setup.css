@@ -1,0 +1,101 @@
+/* Crophalo: the setup wizard's look. It only uses the tokens and classes of css/app.css and never restates a token value. */
+#view-setup { padding: 0; }
+.setup { display: grid; grid-template-columns: minmax(340px, 460px) minmax(0, 1fr); align-items: start; gap: var(--space-16); max-width: var(--nav-w); margin: 0 auto; padding: var(--space-16); }
+.panel { min-width: 0; display: flex; flex-direction: column; gap: var(--space-16); padding: var(--space-16) var(--space-16) 0; border-radius: var(--r1); background: var(--card); box-shadow: var(--shadow); }
+.mapcol { min-height: 420px; border-radius: var(--r1); background: var(--map-ph); box-shadow: var(--shadow); position: sticky; top: calc(var(--navh) + var(--space-16)); height: calc(86vh / var(--tz) - var(--navh)); }
+.panel-name { font-size: var(--fs-title2); }
+.panel-place { display: flex; flex-wrap: wrap; align-items: center; gap: 6px var(--space-8); margin-top: var(--space-4); color: var(--ink2); font-size: var(--fs-small); }
+.wh { font-size: 26px; }
+.sub { margin-top: var(--space-8); font-size: var(--fs-headline); }
+.q { margin: var(--space-12) 0 var(--space-8); font-size: var(--fs-row); font-weight: var(--fw-semi); }
+
+/* step bar: one equal tile per step; a done step shows a tick, the current one a ring, steps far ahead are off */
+.wsteps { display: grid; grid-auto-flow: column; grid-auto-columns: 1fr; gap: 6px; margin: 0; padding: 0; list-style: none; }
+.wstep { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 6px; width: 100%; min-height: 64px; padding: 8px 4px; border: 0; border-radius: var(--r2); background: var(--fill2); color: var(--ink2); font-size: 12.5px; font-weight: var(--fw-semi); line-height: 1.2; text-align: center; overflow-wrap: anywhere; cursor: pointer; }
+.wstep:disabled { opacity: .45; cursor: default; }
+.wnum { display: grid; place-items: center; width: 24px; height: 24px; border-radius: 50%; background: var(--fill); font-size: var(--fs-small); font-weight: var(--fw-bold); }
+.wstep.done .wnum { background: var(--good-soft); color: var(--good); }
+.wstep.now { background: var(--accent-soft); color: var(--accent-text); box-shadow: inset 0 0 0 2px var(--accent); }
+.wstep.now .wnum { background: var(--card); color: var(--accent-text); }
+.wnum .ic { width: 14px; height: 14px; }
+@media (max-width: 380px) { .wstep { font-size: 11.5px; } }
+.listen-row { margin: 0; }
+
+.wbody { display: grid; gap: var(--space-12); align-content: start; }
+.tile { min-height: 84px; }
+.tile small { display: block; font-size: var(--fs-caption); font-weight: var(--fw-regular); color: var(--ink2); }
+.tile .pic { width: 40px; height: 40px; }
+.tile:has(input:checked) small { color: inherit; }
+.tiles3 { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 10px; }
+.tiles4 { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 10px; }
+.tiles3.big .tile { min-height: 96px; }
+@media (max-width: 420px) { .tile small { display: none; } .tiles4 { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+@media (max-width: 360px) { .tiles3 { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+.soilcard { display: grid; gap: 4px; padding: var(--space-12); border-radius: var(--r2); background: var(--card2); box-shadow: inset 0 0 0 .5px var(--sep); }
+
+.wheel { padding: var(--space-12); border-radius: var(--r2); background: var(--card2); box-shadow: inset 0 0 0 .5px var(--sep); text-align: center; }
+.wheel-name { font-size: var(--fs-headline); font-weight: var(--fw-semi); }
+.rcards { display: grid; gap: 8px; }
+.rcard { align-items: flex-start; text-align: left; min-height: 56px; }
+.rcard.own { align-items: flex-start; }
+.rcard small { font-weight: var(--fw-regular); color: var(--ink2); }
+.rc-row .croprow { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 6px; }
+.croprow-crop { display: inline-flex; align-items: center; gap: 4px; font-size: var(--fs-row); }
+.croprow .pic, .chipc .pic { width: 28px; height: 28px; }
+.croprow-next { color: var(--ink2); }
+.chipsc { display: flex; flex-wrap: wrap; gap: 8px; }
+.chipc { flex-direction: row; gap: 6px; padding: 6px 12px; min-height: var(--touch); }
+.years { display: grid; gap: 8px; }
+.year { display: grid; grid-template-columns: auto minmax(0, 1fr) auto; align-items: center; gap: 8px; }
+.year-n { font-size: var(--fs-row); font-weight: var(--fw-semi); min-width: 52px; }
+.year select { min-height: var(--touch); }
+
+.fold-card { border-radius: var(--r2); background: var(--card2); box-shadow: inset 0 0 0 .5px var(--sep); }
+.fold-card > summary { display: flex; align-items: center; gap: var(--space-12); min-height: 52px; padding: 10px 14px; font-weight: var(--fw-semi); list-style: none; cursor: pointer; }
+.fold-card > summary::-webkit-details-marker { display: none; }
+.fold-card > summary::after { content: ""; margin-left: auto; width: 16px; height: 16px; background: var(--ink2); clip-path: polygon(29% 31.6%, 50% 52.7%, 71% 31.6%, 79% 39.6%, 50% 68.6%, 21% 39.6%); transition: transform .2s var(--ease); }
+.fold-card[open] > summary::after { transform: rotate(180deg); }
+.fold-card > summary:focus-visible { outline: 2px solid var(--accent); outline-offset: -2px; }
+.fold-card .fold-b { display: grid; gap: var(--space-8); padding: 2px 14px 14px; font-size: var(--fs-row); }
+.coords { display: flex; align-items: end; gap: var(--space-8); }
+.coords .field { flex: 1 1 auto; } .coords input { min-height: var(--touch); }
+.plinks { margin: 0; padding-left: 1.2em; }
+
+/* the sticky bar: Back and Next, 50 px tall, the note under them; it bleeds to the panel edges */
+.cta { position: sticky; bottom: 0; z-index: var(--z-bar); display: grid; grid-template-columns: auto 1fr; gap: var(--space-8); margin: 0 calc(-1 * var(--space-16)); padding: var(--space-12) var(--space-16) calc(var(--space-12) + env(safe-area-inset-bottom, 0px)); background: var(--card); box-shadow: 0 -.5px 0 var(--sep), 0 -8px 20px rgba(0,0,0,.05); border-radius: 0 0 var(--r1) var(--r1); }
+.cta .btn.lg { min-height: 50px; height: auto; }
+.cta-note { grid-column: 1 / -1; min-height: 1.2em; margin: 0; text-align: center; }
+@media (max-height: 560px) { .cta { position: static; } }
+
+@media (max-width: 860px) {
+  .setup { grid-template-columns: minmax(0, 1fr); padding: var(--space-8); }
+  .mapcol { position: static; order: -1; height: 22vh; min-height: 140px; }
+  .panel { padding: var(--space-12) var(--space-12) 0; } .cta { margin: 0 calc(-1 * var(--space-12)); padding-left: var(--space-12); padding-right: var(--space-12); }
+}
+@media (forced-colors: active) { .panel, .fold-card, .soilcard, .wheel { border: 1px solid CanvasText; } .wstep.now { outline: 2px solid Highlight; } }
+
+/* the short road for a demo region: one tap to the report */
+.road { display: grid; gap: var(--space-12); padding: var(--space-16); border-radius: var(--r2); background: var(--accent-soft); box-shadow: inset 0 0 0 1px var(--accent); }
+.road .btn { width: 100%; }
+
+/* the crop chooser: a button for the chosen crop, a panel under it */
+.year { position: relative; }
+.pk-btn { display: flex; align-items: center; gap: var(--space-8); min-width: 0; min-height: var(--touch); padding: 4px 10px; border: 0; border-radius: var(--r3); background: var(--card); color: var(--ink); box-shadow: inset 0 0 0 1px var(--ctl); font-size: var(--fs-field); text-align: left; cursor: pointer; }
+.pk-btn .pic { width: 28px; height: 28px; flex: none; }
+.pk-name { flex: 1 1 auto; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.pk-btn[aria-expanded=true] { box-shadow: inset 0 0 0 2px var(--accent); }
+.pk-panel { position: absolute; left: 0; right: 0; top: calc(100% + 6px); z-index: var(--z-pop); display: grid; gap: var(--space-8); max-height: min(560px, 70vh); padding: var(--space-8); border-radius: var(--r1); background: var(--card); box-shadow: var(--shadow-lg); overflow: hidden; animation: drop .16s var(--ease) both; }
+.pk-search { width: 100%; min-height: var(--touch); }
+.pk-tabs { display: flex; gap: 6px; overflow-x: auto; padding-bottom: 2px; }
+.pk-tabs .chip { flex: none; }
+.pk-list { margin: 0; padding: 0; list-style: none; overflow-y: auto; overscroll-behavior: contain; min-height: 0; }
+.pk-row { display: flex; align-items: center; gap: var(--space-12); width: 100%; min-height: var(--touch); padding: 4px var(--space-12); border: 0; border-radius: var(--r2); background: none; color: var(--ink); font-size: var(--fs-row); text-align: left; cursor: pointer; }
+.pk-row .pic { width: 28px; height: 28px; flex: none; }
+.pk-row[aria-current=true] { background: var(--accent-soft); color: var(--accent-text); font-weight: var(--fw-semi); }
+.pk-none { padding: var(--space-12); }
+@media (hover: hover) and (pointer: fine) { .pk-row:hover:not([aria-current=true]) { background: var(--fill2); } }
+@media (max-width: 420px) { .pk-panel { position: fixed; left: var(--space-8); right: var(--space-8); top: auto; bottom: var(--space-8); max-height: 75vh; } }
+
+/* a parcel link is a list row on a phone: 44 px to hit */
+.plinks { list-style: none; padding: 0; display: grid; gap: 2px; }
+.plinks a { display: flex; align-items: center; min-height: var(--touch); }
