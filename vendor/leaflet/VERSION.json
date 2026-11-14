@@ -1,0 +1,63 @@
+{
+ "library": "leaflet",
+ "version": "1.9.4",
+ "packages": [
+  {
+   "name": "leaflet",
+   "version": "1.9.4",
+   "licence": "BSD-2-Clause",
+   "source": "https://registry.npmjs.org/leaflet/-/leaflet-1.9.4.tgz",
+   "integrity": "sha512-nxS1ynzJOmOlHp+iL3FyWqK89GtNL8U8rvlMOsQdTTssxZwCXh8N2NB3GDQOL+YR3XnWyZAxwQixURb+FA74PA==",
+   "files": [
+    {
+     "path": "leaflet.js",
+     "from": "dist/leaflet.js",
+     "bytes": 147552,
+     "sha512": "sha512-BwHfrr4c9kmRkLw6iXFdzcdWV/PGkVgiIyIWLLlTSXzWQzxuSg4DiQUCpauz/EWjgk5TYQqX/kvn9pG1NpYfqg=="
+    },
+    {
+     "path": "leaflet.css",
+     "from": "dist/leaflet.css",
+     "bytes": 14806,
+     "sha512": "sha512-Zcn6bjR/8RZbLEpLIeOwNtzREBAJnUKESxces60Mpoj+2okopSAcSUIUOseddDm0cxnGQzxIR7vJgsLZbdLE3w=="
+    },
+    {
+     "path": "images/layers.png",
+     "from": "dist/images/layers.png",
+     "bytes": 696,
+     "sha512": "sha512-fiNQ+p+Hucnpme6aZE4p8sasWTEKZ+NHfMYFFB6iAKLnBchibbVjonNfzQ1oDvrUrHyUhMZ21mX2mXerZ75SlA=="
+    },
+    {
+     "path": "images/layers-2x.png",
+     "from": "dist/images/layers-2x.png",
+     "bytes": 1259,
+     "sha512": "sha512-hNAodifp1Ry/svijkD1I40XLbWRVgcmPlAHS1flHXTRfJfiB0vYr0CvmvTj5+fsDaZoFdJLj9ebqc0p8ivo3YQ=="
+    },
+    {
+     "path": "images/marker-icon.png",
+     "from": "dist/images/marker-icon.png",
+     "bytes": 1466,
+     "sha512": "sha512-yPlkcjmYXJ64J3Qezl0UOLFOcb0tv2CGxrh/VS4DLkMYVxTNS3NqmlN0arcwqIFT3DQhf1hNX9J3mDhVJSgGXg=="
+    },
+    {
+     "path": "images/marker-icon-2x.png",
+     "from": "dist/images/marker-icon-2x.png",
+     "bytes": 2464,
+     "sha512": "sha512-42CPcqEvbm4mZG4S0XZoeUvk8DVDB9CkduQiBtCobs7PXxnXvLo1VinsHnKoHlBE2tewpQ/DrHxrfpwoObrTeg=="
+    },
+    {
+     "path": "images/marker-shadow.png",
+     "from": "dist/images/marker-shadow.png",
+     "bytes": 618,
+     "sha512": "sha512-X1pHFYbKAjHrz3ZFNrzAlr2V0U7Mu6x7Jm6iOwvL3odWugyVNshfWaxrGxpya5Pp3WVagBIAMb2lduq3w8y27g=="
+    },
+    {
+     "path": "LICENSE",
+     "from": "LICENSE",
+     "bytes": 1395,
+     "sha512": "sha512-G3N/mOg+bPJcU0CVvrABZQ91nP8TuJt2H2rMC25Ek0ytQss50qHZRE3Rxe+0acZj7H4QXCPRtepcYwd9cN8PDQ=="
+    }
+   ]
+  }
+ ]
+}

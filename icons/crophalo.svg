@@ -1,0 +1,9 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 256 256" width="256" height="256" role="img" aria-label="Crophalo">
+  <rect width="256" height="256" fill="#fff"/>
+  <g transform="translate(128 128) scale(.72) rotate(45) translate(-128 -128)">
+    <rect x="48.3" y="48" width="23.7" height="160" rx="6.8" fill="#174B3B"/>
+    <rect x="80.3" y="48" width="23.7" height="160" rx="6.8" fill="#174B3B"/>
+    <rect x="116.5" y="48" width="91.6" height="70" rx="8.5" fill="#3E8B65"/>
+    <rect x="116.5" y="130" width="91.6" height="78" rx="8.5" fill="#CADB74"/>
+  </g>
+</svg>

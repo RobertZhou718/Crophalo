@@ -1,0 +1,103 @@
+<!doctype html>
+<!-- Crophalo: the one page of the app. The top bar, six views (only one shows at a time), the saved-fields sheet and the toast.
+     Every look comes from css/app.css; every behaviour from js/app.js. Nothing here is loaded from an outside address.
+     Checked by scripts/e2e.mjs (the shell: one heading per view, the Menu, Back, focus, the fit at 320 px with the largest text). -->
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Crophalo · Rotation planning with NASA data</title>
+<meta name="description" content="Crophalo helps farmers explore crop-rotation options using NASA Earth observations, local soil information and their own priorities.">
+<meta name="color-scheme" content="light">
+<meta property="og:type" content="website">
+<meta property="og:site_name" content="Crophalo">
+<meta property="og:title" content="Crophalo · Rotation planning with NASA data">
+<meta property="og:description" content="Pick a field on the map and see which crops and rotations suit it, from NASA weather, soil and satellite data. Free, no account.">
+<meta property="og:image" content="icons/crophalo-512.png">
+<meta name="twitter:card" content="summary">
+<meta name="twitter:title" content="Crophalo · Rotation planning with NASA data">
+<meta name="twitter:description" content="Pick a field on the map and see which crops and rotations suit it, from NASA weather, soil and satellite data. Free, no account.">
+<meta name="twitter:image" content="icons/crophalo-512.png">
+<meta name="theme-color" content="#f2f2f4">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 256 256'%3E%3Cg transform='rotate(45 128 128)'%3E%3Crect x='48.3' y='48' width='23.7' height='160' rx='6.8' fill='%23174B3B'/%3E%3Crect x='80.3' y='48' width='23.7' height='160' rx='6.8' fill='%23174B3B'/%3E%3Crect x='116.5' y='48' width='91.6' height='70' rx='8.5' fill='%233E8B65'/%3E%3Crect x='116.5' y='130' width='91.6' height='78' rx='8.5' fill='%23CADB74'/%3E%3C/g%3E%3C/svg%3E">
+<link rel="manifest" href="manifest.json">
+<link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
+<link rel="preconnect" href="https://power.larc.nasa.gov" crossorigin>
+<link rel="preconnect" href="https://api.open-meteo.com" crossorigin>
+<link rel="preconnect" href="https://server.arcgisonline.com">
+<link rel="stylesheet" href="vendor/leaflet/leaflet.css">
+<link rel="stylesheet" href="css/app.css">
+<link rel="modulepreload" href="js/app.js">
+<link rel="modulepreload" href="js/settings.js">
+<link rel="modulepreload" href="js/words.js">
+</head>
+<body>
+<svg class="sr" width="0" height="0" aria-hidden="true" focusable="false">
+  <symbol id="logo" viewBox="0 0 256 256"><g transform="rotate(45 128 128)"><rect x="48.3" y="48" width="23.7" height="160" rx="6.8" style="fill:var(--logo-deep)"/><rect x="80.3" y="48" width="23.7" height="160" rx="6.8" style="fill:var(--logo-deep)"/><rect x="116.5" y="48" width="91.6" height="70" rx="8.5" style="fill:var(--logo-mid)"/><rect x="116.5" y="130" width="91.6" height="78" rx="8.5" style="fill:var(--logo-lime)"/></g></symbol>
+  <symbol id="i-cube" viewBox="0 0 24 24"><path d="M12 3 4 7v10l8 4 8-4V7zM4 7l8 4 8-4M12 11v10"/></symbol>
+  <symbol id="i-bookmark" viewBox="0 0 24 24"><path d="M7 4h10a1 1 0 0 1 1 1v15l-6-4-6 4V5a1 1 0 0 1 1-1z"/></symbol>
+  <symbol id="i-menu" viewBox="0 0 24 24"><path d="M4 7h16M4 12h16M4 17h16"/></symbol>
+  <symbol id="i-data" viewBox="0 0 24 24"><ellipse cx="12" cy="6.5" rx="7" ry="2.5"/><path d="M5 6.5v11c0 1.4 3.1 2.5 7 2.5s7-1.1 7-2.5v-11M5 12c0 1.4 3.1 2.5 7 2.5s7-1.1 7-2.5"/></symbol>
+  <symbol id="i-eye" viewBox="0 0 24 24"><path d="M2.5 12S6 5.5 12 5.5 21.5 12 21.5 12 18 18.5 12 18.5 2.5 12 2.5 12z"/><circle cx="12" cy="12" r="2.8"/></symbol>
+  <symbol id="i-shield" viewBox="0 0 24 24"><path d="M12 3l7 3v5.5c0 4.4-3 7.7-7 9.5-4-1.8-7-5.1-7-9.5V6zM12 8.5v4M12 15.7v.1"/></symbol>
+  <symbol id="i-gear" viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M12 3v2.5M12 18.5V21M3 12h2.5M18.5 12H21M5.6 5.6l1.8 1.8M16.6 16.6l1.8 1.8M5.6 18.4l1.8-1.8M16.6 7.4l1.8-1.8"/></symbol>
+</svg>
+
+<a class="skip" href="#main">Skip to content</a>
+<header class="nav">
+  <div class="nav-in">
+    <a class="brand" href="./"><svg class="brand-mark" aria-hidden="true"><use href="#logo"/></svg><span class="brand-name">Crophalo</span></a>
+    <nav class="nav-links" aria-label="Main">
+      <button type="button" class="tbtn" id="navFarm"><svg class="ic" aria-hidden="true"><use href="#i-cube"/></svg><span class="t">My farm</span></button>
+      <button type="button" class="tbtn" id="navSaved" aria-haspopup="dialog" aria-label="Saved fields"><svg class="ic" aria-hidden="true"><use href="#i-bookmark"/></svg><span class="t">Saved</span><span class="count" id="savedCount"></span></button>
+      <button type="button" class="tbtn nav-menu-btn" id="navMenuBtn" aria-expanded="false" aria-controls="navMenu"><svg class="ic" aria-hidden="true"><use href="#i-menu"/></svg><span class="t">Menu</span><i class="chev" aria-hidden="true"></i></button>
+      <div class="nav-menu" id="navMenu">
+        <a class="tbtn" href="#data" title="Data: where the numbers come from"><svg class="ic" aria-hidden="true"><use href="#i-data"/></svg><span class="t">Data</span></a>
+        <a class="tbtn" href="#privacy"><svg class="ic" aria-hidden="true"><use href="#i-eye"/></svg><span class="t">Privacy</span></a>
+        <a class="tbtn" href="#limits" title="Limitations: what Crophalo cannot do"><svg class="ic" aria-hidden="true"><use href="#i-shield"/></svg><span class="t">Limitations</span></a>
+        <a class="tbtn" href="#settings"><svg class="ic" aria-hidden="true"><use href="#i-gear"/></svg><span class="t">Settings</span></a>
+      </div>
+    </nav>
+  </div>
+  <div class="offline-bar" id="offlineBar" role="status" hidden></div>
+</header>
+
+<main id="main">
+  <section class="view" id="view-home">
+    <div class="hero">
+      <p class="eyebrow">Built with NASA Earth observations</p>
+      <h1 class="hero-h1">Know your field<br>before you plant.</h1>
+      <p class="lede">Find your field. Say what you grow. See what could grow better, from NASA weather since 2001 and fresh satellite pictures.</p>
+    </div>
+    <div class="wrap"><p class="foot">Crophalo · NASA Space Apps 2026 · A guide, not advice. You decide.</p></div>
+  </section>
+  <section class="view" id="view-setup" hidden><div class="wrap"><div class="sec"><h1>Farm setup</h1></div></div></section>
+  <section class="view" id="view-info" hidden><div class="wrap"><div class="sec"><h1 id="infoTitle"></h1></div></div></section>
+  <section class="view" id="view-admin" hidden><div class="wrap"><div class="sec"><h1>Admin</h1></div></div></section>
+  <section class="view" id="view-report" hidden><div class="wrap"><div class="sec"><h1>Your report</h1></div></div></section>
+  <section class="view" id="view-farm" hidden><div class="wrap"><div class="sec"><h1>My farm</h1></div></div></section>
+</main>
+
+<dialog class="sheet" id="dlgSaved" aria-labelledby="dlgSavedTitle">
+  <div class="sheet-head"><h2 id="dlgSavedTitle">Saved fields</h2><button type="button" class="btn" id="dlgSavedDone">Done</button></div>
+  <div class="sheet-body" id="savedList"><p>Nothing saved yet. Open a report and choose Save to keep a field here. Saved fields live only in this browser.</p></div>
+</dialog>
+
+<div id="toast" class="toast" role="status"></div>
+
+<script src="vendor/leaflet/leaflet.js"></script>
+<script>
+// A file of the app did not arrive: say so and stop honestly, never run half an old release with half a new one.
+addEventListener('error', function (event) {
+  var from = event.target;
+  if (!from || from.tagName !== 'SCRIPT' || from.type !== 'module') return;
+  var bar = document.getElementById('offlineBar');
+  bar.textContent = 'Crophalo could not load all of its files. Check the internet connection, then reload the page.';
+  bar.hidden = false;
+}, true);
+</script>
+<!-- js/backup.js (the saved-data mirror) goes here, before app.js, so it sees every change the app makes to saved data -->
+<script type="module" src="js/app.js"></script>
+<noscript><p class="offline-bar">Crophalo needs JavaScript to draw the map and work out your crops. Please turn it on in your browser settings.</p></noscript>
+</body>
+</html>

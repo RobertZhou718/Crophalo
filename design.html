@@ -1,0 +1,418 @@
+<!doctype html>
+<!-- Crophalo design system: the living page. Every token, control and card here is drawn by css/app.css itself,
+     so this page cannot differ from the app. The words in the samples are labels only; no figure here is field data.
+     Checked by: the fit sweep (320 px with the largest text) and the tokens check against design/crophalo.tokens.json. -->
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Design system · Crophalo</title>
+<meta name="description" content="The look of Crophalo: colours, type, controls, cards and motion, drawn by the app's own stylesheet.">
+<meta name="color-scheme" content="light">
+<meta name="theme-color" content="#f2f2f4">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 256 256'%3E%3Cg transform='rotate(45 128 128)'%3E%3Crect x='48.3' y='48' width='23.7' height='160' rx='6.8' fill='%23174B3B'/%3E%3Crect x='80.3' y='48' width='23.7' height='160' rx='6.8' fill='%23174B3B'/%3E%3Crect x='116.5' y='48' width='91.6' height='70' rx='8.5' fill='%233E8B65'/%3E%3Crect x='116.5' y='130' width='91.6' height='78' rx='8.5' fill='%23CADB74'/%3E%3C/g%3E%3C/svg%3E">
+<link rel="stylesheet" href="css/app.css">
+<style>
+/* page-only scaffolding for the samples; every colour, corner and size still comes from the tokens */
+.ds-top { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: var(--space-8) var(--space-16); padding-top: var(--space-24); }
+.ds-try { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(240px, 100%), 1fr)); gap: var(--space-16); margin-top: var(--space-24); }
+.ds-try .field > span { color: var(--ink2); }
+.ds-sw { overflow: hidden; }
+.ds-sw i { display: block; height: 64px; box-shadow: inset 0 -.5px 0 var(--sep); }
+.ds-sw div { padding: var(--space-8) var(--space-12) 10px; }
+.ds-sw b { display: block; font-size: var(--fs-small); }
+.ds-sw code { display: block; font-size: 11.5px; color: var(--ink2); }
+.ds-spec { display: grid; grid-template-columns: minmax(0, 150px) minmax(0, 1fr); align-items: baseline; gap: var(--space-4) var(--space-16); padding: var(--space-12) 0; }
+.ds-spec + .ds-spec { border-top: .5px solid var(--sep); }
+.ds-spec > span { font-size: 12px; color: var(--ink2); }
+@media (max-width: 600px) { .ds-spec { grid-template-columns: minmax(0, 1fr); } }
+.ds-box { display: grid; place-items: center; min-height: 64px; padding: var(--space-8); background: var(--card); font-size: 12px; color: var(--ink2); text-align: center; }
+.card.pad > h3 + .ds-box { margin-top: var(--space-12); }
+.ds-bar { height: 12px; border-radius: 3px; background: var(--accent); }
+.ds-h { margin: var(--space-24) 0 var(--space-12); }
+.ds-stack { display: grid; grid-template-columns: minmax(0, 1fr); gap: var(--space-16); }
+.ds-two { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(300px, 100%), 1fr)); gap: var(--space-16); align-items: start; }
+.ds-chrome .nav { position: static; z-index: auto; border-radius: var(--r1) var(--r1) 0 0; }
+@media (max-width: 600px) {   /* edge to edge on a phone, so the sample bar is as wide as the real one; the section keeps the gutter as padding, so nothing overflows its box */
+  .ds-edge { margin-inline: calc(-1 * var(--gutter)); padding-inline: var(--gutter); }
+  .ds-edge > .ds-chrome { margin-inline: calc(-1 * var(--gutter)); border-radius: 0; }
+  .ds-chrome .nav { border-radius: 0; }
+}
+.ds-toast-still { position: static; opacity: 1; visibility: visible; margin: 0; }
+.ds-dark { display: flex; flex-wrap: wrap; gap: var(--space-12); padding: var(--space-16); border-radius: var(--r2); background: var(--map-ph); }
+.ds-logo { display: flex; flex-wrap: wrap; align-items: center; gap: var(--space-24); }
+.ds-word { font-size: 28px; font-weight: var(--fw-bold); letter-spacing: var(--ls-head); }
+</style>
+</head>
+<body>
+<svg class="sr" width="0" height="0" aria-hidden="true" focusable="false">
+  <symbol id="logo" viewBox="0 0 256 256"><g transform="rotate(45 128 128)"><rect x="48.3" y="48" width="23.7" height="160" rx="6.8" style="fill:var(--logo-deep)"/><rect x="80.3" y="48" width="23.7" height="160" rx="6.8" style="fill:var(--logo-deep)"/><rect x="116.5" y="48" width="91.6" height="70" rx="8.5" style="fill:var(--logo-mid)"/><rect x="116.5" y="130" width="91.6" height="78" rx="8.5" style="fill:var(--logo-lime)"/></g></symbol>
+  <symbol id="i-cube" viewBox="0 0 24 24"><path d="M12 3 4 7v10l8 4 8-4V7zM4 7l8 4 8-4M12 11v10"/></symbol>
+  <symbol id="i-bookmark" viewBox="0 0 24 24"><path d="M7 4h10a1 1 0 0 1 1 1v15l-6-4-6 4V5a1 1 0 0 1 1-1z"/></symbol>
+  <symbol id="i-menu" viewBox="0 0 24 24"><path d="M4 7h16M4 12h16M4 17h16"/></symbol>
+  <symbol id="i-data" viewBox="0 0 24 24"><ellipse cx="12" cy="6.5" rx="7" ry="2.5"/><path d="M5 6.5v11c0 1.4 3.1 2.5 7 2.5s7-1.1 7-2.5v-11M5 12c0 1.4 3.1 2.5 7 2.5s7-1.1 7-2.5"/></symbol>
+  <symbol id="i-eye" viewBox="0 0 24 24"><path d="M2.5 12S6 5.5 12 5.5 21.5 12 21.5 12 18 18.5 12 18.5 2.5 12 2.5 12z"/><circle cx="12" cy="12" r="2.8"/></symbol>
+  <symbol id="i-shield" viewBox="0 0 24 24"><path d="M12 3l7 3v5.5c0 4.4-3 7.7-7 9.5-4-1.8-7-5.1-7-9.5V6zM12 8.5v4M12 15.7v.1"/></symbol>
+  <symbol id="i-gear" viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M12 3v2.5M12 18.5V21M3 12h2.5M18.5 12H21M5.6 5.6l1.8 1.8M16.6 16.6l1.8 1.8M5.6 18.4l1.8-1.8M16.6 7.4l1.8-1.8"/></symbol>
+  <symbol id="i-speaker" viewBox="0 0 24 24"><path d="M4 9.5v5h3.5L12 18V6L7.5 9.5zM15.5 9a4 4 0 0 1 0 6M18 6.5a7.5 7.5 0 0 1 0 11"/></symbol>
+  <symbol id="i-mic" viewBox="0 0 24 24"><rect x="9.5" y="3.5" width="5" height="10" rx="2.5"/><path d="M6.5 11a5.5 5.5 0 0 0 11 0M12 16.5V20M9 20h6"/></symbol>
+  <symbol id="i-pin" viewBox="0 0 24 24"><path d="M12 21s6.5-6.2 6.5-11a6.5 6.5 0 0 0-13 0c0 4.8 6.5 11 6.5 11z"/><circle cx="12" cy="10" r="2.3"/></symbol>
+  <symbol id="i-map" viewBox="0 0 24 24"><path d="M3.5 6.5 9 4l6 2.5L20.5 4v13.5L15 20l-6-2.5L3.5 20zM9 4v13.5M15 6.5V20"/></symbol>
+  <symbol id="i-search" viewBox="0 0 24 24"><circle cx="10.5" cy="10.5" r="6"/><path d="m15 15 5 5"/></symbol>
+  <symbol id="i-drop" viewBox="0 0 24 24"><path d="M12 3.5s6 6.3 6 10.5a6 6 0 0 1-12 0c0-4.2 6-10.5 6-10.5z"/></symbol>
+  <symbol id="i-leaf" viewBox="0 0 24 24"><path d="M5 19c0-8 5-13 14-14 0 9-5 14-14 14zM5 19l9-9"/></symbol>
+  <symbol id="i-scale" viewBox="0 0 24 24"><path d="M12 4v16M8 20h8M5 7h14M5 7l-2.3 6h4.6zM19 7l-2.3 6h4.6z"/></symbol>
+  <symbol id="i-layers" viewBox="0 0 24 24"><path d="m12 4 8 4-8 4-8-4zM4 12l8 4 8-4M4 16l8 4 8-4"/></symbol>
+</svg>
+
+<a class="skip" href="#main">Skip to content</a>
+<header class="nav">
+  <div class="nav-in">
+    <a class="brand" href="./" aria-label="Crophalo, open the app"><svg class="brand-mark" aria-hidden="true"><use href="#logo"/></svg><span class="brand-name">Crophalo</span></a>
+    <nav class="nav-links" aria-label="This page"><a class="tbtn" href="design.html" aria-current="page">Design system</a></nav>
+  </div>
+</header>
+
+<main id="main" class="wrap">
+  <div class="ds-top">
+    <span class="chip ok">Light mode only · one blue</span>
+    <p class="small"><a href="design/crophalo.tokens.json">Tokens (JSON)</a> &nbsp;·&nbsp; <a href="./">Open the app</a></p>
+  </div>
+  <h1 class="ds-h">Crophalo design system</h1>
+  <p class="lede">Every colour, control and card on this page is drawn by the app's own stylesheet, so it always matches the app. The words in the samples are labels only. No figure here is field data.</p>
+  <noscript><p class="inset" style="margin-top:16px">Turn on JavaScript to see the live token values and to try the samples.</p></noscript>
+
+  <div class="ds-try" aria-label="Try the settings">
+    <div class="field"><span id="tryText">Text size</span><div class="seg" role="group" aria-labelledby="tryText" data-set="text"><button type="button" aria-pressed="true" data-val="">Default</button><button type="button" aria-pressed="false" data-val="large">Larger</button><button type="button" aria-pressed="false" data-val="xlarge">Largest</button></div></div>
+    <div class="field"><span id="tryMotion">Motion</span><div class="seg" role="group" aria-labelledby="tryMotion" data-set="motion"><button type="button" aria-pressed="true" data-val="">Follow my device</button><button type="button" aria-pressed="false" data-val="reduce">Always still</button></div></div>
+    <div class="field"><span id="tryContrast">Contrast</span><div class="seg" role="group" aria-labelledby="tryContrast" data-set="contrast"><button type="button" aria-pressed="true" data-val="">Standard</button><button type="button" aria-pressed="false" data-val="high">High</button></div></div>
+    <div class="field"><span id="tryLinks">Links</span><div class="seg" role="group" aria-labelledby="tryLinks" data-set="links"><button type="button" aria-pressed="true" data-val="">Standard</button><button type="button" aria-pressed="false" data-val="underline">Always underlined</button></div></div>
+  </div>
+
+  <section class="sec" aria-labelledby="hColour">
+    <h2 id="hColour">Colour</h2>
+    <p class="lead">Bright and easy to read outdoors. Blue means "press this" or "this is chosen". Green means good and nothing else. The values below are read from the stylesheet as you look.</p>
+    <div class="grid ds-h" id="swatches" style="--min:150px;--gap:12px"></div>
+    <h3 class="ds-h">Contrast, worked out from the live colours</h3>
+    <div class="card tbl"><table>
+      <thead><tr><th scope="col">Pair</th><th scope="col">Needs</th><th scope="col">Has</th></tr></thead>
+      <tbody id="contrast">
+        <tr data-fg="--ink" data-on="--bg" data-need="4.5"><td>Main text on the page</td></tr>
+        <tr data-fg="--ink2" data-on="--bg" data-need="4.5"><td>Second text on the page</td></tr>
+        <tr data-fg="--ink2" data-on="--fill,--bg" data-need="4.5"><td>Second text on a grey chip or tab, on the page</td></tr>
+        <tr data-fg="--link" data-on="--bg" data-need="4.5"><td>Link on the page</td></tr>
+        <tr data-fg="--accent-ink" data-on="--accent" data-need="4.5"><td>White words on the blue</td></tr>
+        <tr data-fg="--accent-text" data-on="--accent-soft,--card" data-need="4.5"><td>Blue words on the blue tint</td></tr>
+        <tr data-fg="--good" data-on="--good-soft,--card" data-need="4.5"><td>Good tag</td></tr>
+        <tr data-fg="--warn" data-on="--warn-soft,--card" data-need="4.5"><td>Watch tag</td></tr>
+        <tr data-fg="--bad" data-on="--bad-soft,--card" data-need="4.5"><td>Risk tag</td></tr>
+        <tr data-fg="--offline-ink" data-on="--offline" data-need="4.5"><td>Offline bar</td></tr>
+        <tr data-fg="--ink2" data-on="--bar-glass,#000" data-need="4.5"><td>Top-bar words over a black photo (worst case)</td></tr>
+        <tr data-fg="--ctl" data-on="--bg" data-need="3"><td>Edge of a field or switch on the page</td></tr>
+        <tr data-fg="--accent" data-on="--bg" data-need="3"><td>Focus ring and selected ring on the page</td></tr>
+        <tr data-fg="--watch" data-on="--bg" data-need="3"><td>Watch ring on the page</td></tr>
+        <tr data-fg="--c-lo" data-on="--card" data-need="3"><td>Faintest chart mark on a card</td></tr>
+      </tbody>
+    </table></div>
+  </section>
+
+  <section class="sec" aria-labelledby="hType">
+    <h2 id="hType">Type</h2>
+    <p class="lead">The device's own font. Figures use digits of equal width, so columns line up.</p>
+    <div class="card pad ds-h">
+      <div class="ds-spec"><span>Hero · 64 / 700</span><p class="hero-h1">Know your field</p></div>
+      <div class="ds-spec"><span>Title 1 · 40 / 700</span><p style="font:var(--fw-bold) clamp(var(--fs-title1-min),4.4vw,var(--fs-title1))/var(--lh-title) var(--font);letter-spacing:var(--ls-title)">Page title</p></div>
+      <div class="ds-spec"><span>Title 2 · 24 / 600</span><p style="font:var(--fw-semi) var(--fs-title2)/1.2 var(--font);letter-spacing:var(--ls-head)">Section heading</p></div>
+      <div class="ds-spec"><span>Headline · 17 / 600</span><p style="font:var(--fw-semi) var(--fs-headline)/1.25 var(--font);letter-spacing:var(--ls-head)">Card heading</p></div>
+      <div class="ds-spec"><span>Body · 15 / 400</span><p>Short sentences in everyday words. One idea in each.</p></div>
+      <div class="ds-spec"><span>Small · 13</span><p class="small">Small text for helper lines.</p></div>
+      <div class="ds-spec"><span>Caption · 12.5</span><p class="cap">A caption under a picture or a chart.</p></div>
+      <div class="ds-spec"><span>Number · 30 / 700</span><p class="fig">0123456789 <small>unit</small></p></div>
+    </div>
+    <h3 class="ds-h">Sizes, weights and spacing of letters</h3>
+    <div class="card tbl"><table><thead><tr><th scope="col">Token</th><th scope="col">Value</th></tr></thead><tbody data-tokens="--fs-,--fw-,--ls-,--lh-,--font,--mono"></tbody></table></div>
+  </section>
+
+  <section class="sec" aria-labelledby="hShape">
+    <h2 id="hShape">Corners, shadows, space and sizes</h2>
+    <p class="lead">Rounded rectangles, never pills. A tag whose words can wrap gets a small corner. Cards have a hairline ring and a faint shadow, no border and no coloured top bar.</p>
+    <div class="grid ds-h" id="corners" style="--min:130px;--gap:12px"></div>
+    <div class="grid ds-h" id="shadows" style="--min:200px;--gap:20px"></div>
+    <div class="ds-two ds-h">
+      <div class="card tbl"><table><thead><tr><th scope="col">Space</th><th scope="col">Value</th><th scope="col">Looks like</th></tr></thead><tbody id="spaces"></tbody></table></div>
+      <div class="card tbl"><table><thead><tr><th scope="col">Size and layout</th><th scope="col">Value</th></tr></thead><tbody data-tokens="--ctl-,--tb,--seg-h,--field-h,--range-h,--chip-h,--choice-h,--row,--icon,--touch,--gutter,--wrap,--nav-w,--info-w,--hero-w,--lede-w,--lead-w,--search-w,--bigbtns-w,--sheet-w,--menu-w,--navh,--rbh,--scroll-pad,--tz,--z-"></tbody></table></div>
+    </div>
+    <p class="cap ds-h">On a touch screen, and on any screen up to 600 px wide, every control grows to at least 44 px. The table shows the sizes in use on this screen now.</p>
+  </section>
+
+  <section class="sec ds-edge" aria-labelledby="hChrome">
+    <h2 id="hChrome">Page chrome</h2>
+    <p class="lead">The top bar stays at the top. Below 1,180 px the four page links move under one Menu button. The yellow bar shows when there is no internet.</p>
+    <div class="card ds-chrome ds-h">
+      <header class="nav">
+        <div class="nav-in">
+          <a class="brand" href="#hChrome"><svg class="brand-mark" aria-hidden="true"><use href="#logo"/></svg><span class="brand-name">Crophalo</span></a>
+          <nav class="nav-links" aria-label="Sample of the app's top bar">
+            <button type="button" class="tbtn" aria-current="page"><svg class="ic" aria-hidden="true"><use href="#i-cube"/></svg><span class="t">My farm</span></button>
+            <button type="button" class="tbtn"><svg class="ic" aria-hidden="true"><use href="#i-bookmark"/></svg><span class="t">Saved</span><span class="count" aria-label="1 saved field">1</span></button>
+            <button type="button" class="tbtn nav-menu-btn" id="demoMenuBtn" aria-expanded="false" aria-controls="demoMenu"><svg class="ic" aria-hidden="true"><use href="#i-menu"/></svg><span class="t">Menu</span><i class="chev" aria-hidden="true"></i></button>
+            <div class="nav-menu" id="demoMenu">
+              <a class="tbtn" href="#hChrome"><svg class="ic" aria-hidden="true"><use href="#i-data"/></svg><span class="t">Data</span></a>
+              <a class="tbtn" href="#hChrome"><svg class="ic" aria-hidden="true"><use href="#i-eye"/></svg><span class="t">Privacy</span></a>
+              <a class="tbtn" href="#hChrome"><svg class="ic" aria-hidden="true"><use href="#i-shield"/></svg><span class="t">Limitations</span></a>
+              <a class="tbtn" href="#hChrome"><svg class="ic" aria-hidden="true"><use href="#i-gear"/></svg><span class="t">Settings</span></a>
+            </div>
+          </nav>
+        </div>
+        <div class="offline-bar">You are offline. Saved fields open, but a new report needs an internet connection.</div>
+      </header>
+      <div class="card-b" style="min-height:120px"><p>The sample bar above is the real one, held still inside this card. Narrow the window to see the Menu button.</p></div>
+    </div>
+    <div class="ds-two ds-h">
+      <div class="card pad">
+        <h3>Toast and sheet</h3>
+        <div class="btnrow"><button type="button" class="btn" id="demoToastBtn">Show a toast</button><button type="button" class="btn" id="demoSheetBtn" aria-haspopup="dialog">Open a sheet</button></div>
+        <div class="toast ds-toast-still"><span>Saved to this device</span><button type="button" class="btn sm">Undo</button></div>
+      </div>
+      <div class="card pad">
+        <h3>Footer line</h3>
+        <p class="foot" style="margin-top:12px">Crophalo · A guide, not advice. You decide.</p>
+        <p class="cap" style="margin-top:12px">The skip link shows when you press Tab at the top of the page.</p>
+      </div>
+    </div>
+  </section>
+
+  <section class="sec" aria-labelledby="hControls">
+    <h2 id="hControls">Controls</h2>
+    <p class="lead">A control changes shade when you point at it or press it. It never moves, grows or shrinks. A chosen control is blue. Delete is red.</p>
+    <div class="ds-stack ds-h">
+      <div class="card pad">
+        <h3>Buttons</h3>
+        <div class="btnrow">
+          <button type="button" class="btn primary">Main action</button><button type="button" class="btn">Standard</button><button type="button" class="btn ghost">Ghost</button>
+          <button type="button" class="btn sm">Small</button><button type="button" class="btn lg primary">Large</button><button type="button" class="btn" disabled>Disabled</button>
+          <button type="button" class="btn danger">Delete</button><button type="button" class="btn danger armed">Delete for good</button>
+          <button type="button" class="link">A text button</button>
+        </div>
+        <div class="btnrow">
+          <button type="button" class="listen"><svg class="ic" aria-hidden="true"><use href="#i-speaker"/></svg>Listen</button>
+          <button type="button" class="listen talking" aria-pressed="true"><svg class="ic" aria-hidden="true"><use href="#i-speaker"/></svg>Stop</button>
+          <button type="button" class="mic" aria-label="Say it"><svg class="ic" aria-hidden="true"><use href="#i-mic"/></svg></button>
+          <button type="button" class="mic hearing" aria-pressed="true" aria-label="Listening. Press to stop"><svg class="ic" aria-hidden="true"><use href="#i-mic"/></svg></button>
+          <button type="button" class="iconbtn" aria-label="Search"><svg class="ic" aria-hidden="true"><use href="#i-search"/></svg></button>
+          <button type="button" class="tbtn"><svg class="ic" aria-hidden="true"><use href="#i-layers"/></svg>Toolbar</button>
+          <button type="button" class="tbtn on" aria-pressed="true">On</button>
+          <button type="button" class="tbtn" aria-expanded="true">Open <i class="chev" aria-hidden="true"></i></button>
+        </div>
+        <div class="ds-dark"><button type="button" class="mapbtn"><svg class="ic" aria-hidden="true"><use href="#i-pin"/></svg>Places <i class="chev" aria-hidden="true"></i></button><button type="button" class="mapbtn" aria-expanded="true"><svg class="ic" aria-hidden="true"><use href="#i-layers"/></svg>Layers <i class="chev" aria-hidden="true"></i></button></div>
+        <div class="grid ds-h" style="--min:220px;--gap:12px;max-width:var(--bigbtns-w)">
+          <button type="button" class="bigbtn primary"><svg class="ic" aria-hidden="true"><use href="#i-pin"/></svg><span><b>I am at my field</b><small>Use where I am now</small></span></button>
+          <button type="button" class="bigbtn"><svg class="ic" aria-hidden="true"><use href="#i-map"/></svg><span><b>Find it on the map</b><small>Tap your field</small></span></button>
+        </div>
+      </div>
+
+      <div class="card pad">
+        <h3>Chips, tags and marks</h3>
+        <div class="chips ds-h">
+          <span class="chip">Neutral</span><span class="chip ok">Good</span><span class="chip warn">Watch</span><span class="chip bad">Risk</span>
+          <button type="button" class="chip" aria-pressed="false">Tap to choose</button><button type="button" class="chip on" aria-pressed="true">Chosen</button>
+          <span class="chip" style="max-width:150px">A chip whose words wrap keeps small corners</span>
+        </div>
+        <div class="chips ds-h">
+          <span class="src nasa">NASA</span><span class="src">Open-Meteo</span><span class="src model">Model</span>
+          <span class="st-badge good"><i class="mark good" aria-hidden="true"></i>Good</span><span class="st-badge watch"><i class="mark watch" aria-hidden="true"></i>Watch</span>
+          <span class="st-badge risk"><i class="mark risk" aria-hidden="true"></i>Risk</span><span class="st-badge check"><i class="mark unclear" aria-hidden="true"></i>Check</span>
+          <span class="count">3</span><span class="count soft">12</span>
+        </div>
+        <div class="chips ds-h">
+          <span><i class="dot good" aria-hidden="true"></i> Ready</span><span><i class="dot warn" aria-hidden="true"></i> Needs a look</span><span><i class="dot busy" aria-hidden="true"></i> Still coming</span>
+        </div>
+        <p class="ds-h">Where a figure comes from:
+          <button type="button" class="srci nasa" aria-label="Where this comes from: NASA" aria-expanded="false"></button> from NASA,
+          <button type="button" class="srci" aria-label="Where this comes from" aria-expanded="false"></button> from another source,
+          <button type="button" class="srci" aria-label="Where this comes from" aria-expanded="true"></button> while its card is open.
+          The two are the same shape and size.</p>
+      </div>
+
+      <div class="ds-two">
+        <div class="card pad ds-stack">
+          <h3>Choosing</h3>
+          <div class="field"><span id="segA">Segment</span><div class="seg" role="group" aria-labelledby="segA"><button type="button" aria-pressed="true">Rain only</button><button type="button" aria-pressed="false">Some watering</button><button type="button" aria-pressed="false">Full watering</button></div></div>
+          <div class="field"><span id="segB">Segment with a sliding thumb</span><div class="seg slide" role="group" aria-labelledby="segB"><button type="button" aria-pressed="true">Day</button><button type="button" aria-pressed="false">Week</button><button type="button" aria-pressed="false">Year</button></div></div>
+          <label class="swrow"><span>Switch<small>A helper line under the label</small></span><input type="checkbox" role="switch" class="sr" checked><i class="sw" aria-hidden="true"></i></label>
+          <label class="swrow"><span>Switch, off</span><input type="checkbox" role="switch" class="sr"><i class="sw" aria-hidden="true"></i></label>
+          <label class="cbrow"><input type="checkbox" class="sr" checked><i class="cbx" aria-hidden="true"></i><span>Checkbox, ticked</span></label>
+          <label class="cbrow"><input type="checkbox" class="sr"><i class="cbx" aria-hidden="true"></i><span>Checkbox</span></label>
+          <label class="field"><span>Slider</span><input type="range" min="0" max="100" value="40"></label>
+        </div>
+        <div class="card pad ds-stack">
+          <h3>Typing and picking</h3>
+          <label class="field"><span>Select</span><select><option>Rain only</option><option>Some watering</option><option>Full watering</option></select></label>
+          <label class="field"><span>Text field</span><input type="text" placeholder="Field name"><small>A helper line under the field.</small></label>
+          <label class="field"><span>Text field with a mistake</span><input type="text" value="not a place" aria-invalid="true"></label>
+          <label class="field"><span>Longer text</span><textarea placeholder="What did you notice?"></textarea></label>
+          <form class="search" role="search" onsubmit="return false"><svg class="ic" aria-hidden="true" style="color:var(--ink2);width:18px;height:18px"><use href="#i-search"/></svg><input type="search" aria-label="Find a place" placeholder="Town or place"><button type="button" class="mic" aria-label="Say the name of a place"><svg class="ic" aria-hidden="true"><use href="#i-mic"/></svg></button><button type="submit" class="btn primary" style="min-height:var(--touch)">Search</button></form>
+        </div>
+      </div>
+
+      <div class="ds-two">
+        <div class="card pad ds-stack">
+          <h3>Radio cards</h3>
+          <div class="choices" role="radiogroup" aria-label="What matters most">
+            <label class="choice"><input type="radio" name="demoChoice" class="sr" checked><svg class="ic" aria-hidden="true"><use href="#i-scale"/></svg>Balanced</label>
+            <label class="choice"><input type="radio" name="demoChoice" class="sr"><svg class="ic" aria-hidden="true"><use href="#i-drop"/></svg>Save water</label>
+            <label class="choice"><input type="radio" name="demoChoice" class="sr"><svg class="ic" aria-hidden="true"><use href="#i-leaf"/></svg>Build soil</label>
+          </div>
+          <h3>Rows you can tick</h3>
+          <div><label class="lrow"><input type="checkbox" class="sr" checked><span>Plant greenness</span></label><label class="lrow"><input type="checkbox" class="sr"><span>Land temperature</span></label></div>
+        </div>
+        <div class="card pad ds-stack">
+          <h3>Tabs</h3>
+          <div class="tabs" role="tablist" aria-label="Sample tabs">
+            <button type="button" class="tab" role="tab" aria-selected="true" id="demoTab1" aria-controls="demoPanel">Units</button>
+            <button type="button" class="tab" role="tab" aria-selected="false" id="demoTab2" aria-controls="demoPanel" tabindex="-1">Accessibility</button>
+            <button type="button" class="tab" role="tab" aria-selected="false" id="demoTab3" aria-controls="demoPanel" tabindex="-1">Saved on this device</button>
+          </div>
+          <div class="inset" role="tabpanel" id="demoPanel" aria-labelledby="demoTab1" tabindex="0">The chosen tab is white with a blue ring and blue words. Arrow keys move between tabs.</div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section class="sec" aria-labelledby="hCards">
+    <h2 id="hCards">Cards and lists</h2>
+    <p class="lead">White cards on a pale grey page. Cards in a row share one height. A chosen card gets a blue ring.</p>
+    <div class="grid ds-h">
+      <div class="card"><div class="card-b"><h3>Plain card</h3><p>Holds one thing. Its edge is a hairline ring, not a border.</p></div></div>
+      <button type="button" class="card act"><span class="card-b" style="display:block"><b style="font-size:18px">Card you can press</b><span class="small" style="display:block;margin-top:6px;color:var(--ink2)">Point at it: the shadow deepens. It does not lift.</span></span></button>
+      <div class="card on"><div class="card-b"><h3>Chosen card</h3><p>A blue ring, only while it is chosen.</p><div class="chips" style="margin-top:10px"><span class="chip">Türkiye</span><span class="chip">Corn → Soybeans</span></div></div></div>
+      <div class="card pad"><h3>Card with a box inside</h3><div class="inset" style="margin-top:12px">An inset box for a side note.</div></div>
+    </div>
+    <div class="ds-two ds-h">
+      <div class="grp">
+        <p class="grp-cap">Grouped list</p>
+        <ul class="gl">
+          <li class="row"><span>A row</span><span class="v">Its value</span></li>
+          <li class="row"><span>A row with a long label that wraps onto a second line when the screen is narrow</span><span class="v">Its value</span></li>
+          <li class="row"><label class="swrow"><span>A row with a switch<small>Helper line</small></span><input type="checkbox" role="switch" class="sr"><i class="sw" aria-hidden="true"></i></label></li>
+        </ul>
+        <p class="grp-foot">A footer line under the list.</p>
+      </div>
+      <div class="ds-stack">
+        <div class="folds">
+          <details class="fold" open><summary><svg class="ic" aria-hidden="true"><use href="#i-drop"/></svg><span class="t">A fold that is open</span><span class="count soft">2</span></summary><div class="fold-b">Long explanations go behind a fold. Anything that opens has one chevron, and it turns.</div></details>
+          <details class="fold"><summary><svg class="ic" aria-hidden="true"><use href="#i-leaf"/></svg><span class="t">A fold that is shut</span><span class="count soft">5</span></summary><div class="fold-b">More words.</div></details>
+        </div>
+        <details class="disc"><summary>A small fold inside text</summary><p class="small">Its marker points right, then down.</p></details>
+      </div>
+    </div>
+  </section>
+
+  <section class="sec" aria-labelledby="hLoading">
+    <h2 id="hLoading">Loading</h2>
+    <p class="lead">Grey shapes stand where the real content will be, so nothing jumps when it arrives.</p>
+    <div class="grid ds-h" aria-busy="true" aria-label="Sample of loading shapes">
+      <div class="sk-card"><span class="sk title"></span><span class="sk num"></span><span class="sk"></span><span class="sk" style="width:80%"></span></div>
+      <div class="sk-card"><span class="sk ring"></span><span class="sk title"></span><span class="sk"></span></div>
+      <div class="sk-card"><span class="sk h1"></span><div class="chips"><span class="sk pill"></span><span class="sk pill"></span><span class="sk ico"></span></div><span class="sk"></span></div>
+    </div>
+  </section>
+
+  <section class="sec" aria-labelledby="hMotion">
+    <h2 id="hMotion">Motion</h2>
+    <p class="lead">Calm: fades, short slides and colour changes. Nothing bounces, springs or grows past its size. Each piece plays once. Choose "Always still" at the top of this page and every sample stops.</p>
+    <div class="grid ds-h" style="--min:220px">
+      <div class="card pad"><h3>Fade</h3><div class="ds-box inset fade-in" data-replay>Appears in 160 ms</div><div class="btnrow"><button type="button" class="btn sm" data-replay-btn>Play again</button></div></div>
+      <div class="card pad"><h3>Rise</h3><div class="ds-box inset rise" data-replay>Slides up 12 px</div><div class="btnrow"><button type="button" class="btn sm" data-replay-btn>Play again</button></div></div>
+      <div class="card pad"><h3>Changed field</h3><div class="ds-box inset flash" data-replay>Glows green once</div><div class="btnrow"><button type="button" class="btn sm" data-replay-btn>Play again</button></div></div>
+      <div class="card pad"><h3>Waiting</h3><div class="ds-box inset"><span><i class="dot busy" aria-hidden="true"></i> Turns while a source answers</span></div><div class="btnrow"><span class="cap">Stands still under "Always still".</span></div></div>
+    </div>
+    <h3 class="ds-h">Curves and times</h3>
+    <div class="card tbl"><table><thead><tr><th scope="col">Token</th><th scope="col">Value</th></tr></thead><tbody data-tokens="--ease,--spring,--t-"></tbody></table></div>
+    <p class="cap ds-h">"spring" is only another name for the one smooth curve, so an old rule that asks for it can never overshoot.</p>
+  </section>
+
+  <section class="sec" aria-labelledby="hLogo">
+    <h2 id="hLogo">Logo</h2>
+    <p class="lead">Two furrows above, two fields below, as one tilted square. Flat, no gradient.</p>
+    <div class="card pad ds-logo ds-h">
+      <svg width="112" height="112" role="img" aria-label="Crophalo logo, large"><use href="#logo"/></svg>
+      <svg width="64" height="64" role="img" aria-label="Crophalo logo, medium"><use href="#logo"/></svg>
+      <svg width="32" height="32" role="img" aria-label="Crophalo logo, small"><use href="#logo"/></svg>
+      <span class="ds-word">Crophalo</span>
+    </div>
+  </section>
+
+  <p class="foot">Crophalo design system · drawn by css/app.css</p>
+</main>
+
+<dialog class="sheet" id="demoSheet" aria-labelledby="demoSheetH">
+  <div class="sheet-head"><h2 id="demoSheetH">A sheet</h2><button type="button" class="btn" id="demoSheetDone">Done</button></div>
+  <div class="sheet-body"><p>A sheet is one white card over a dimmed page. Escape, Done or a tap outside closes it.</p><div class="btnrow"><button type="button" class="btn primary">Open</button><button type="button" class="btn ghost danger">Delete</button></div></div>
+</dialog>
+<div class="toast" id="toast" role="status"></div>
+
+<script type="module">
+// The design page's script: reads the tokens out of the stylesheet and runs the samples. No data, no network, nothing saved.
+// Pure: over, lum, ratio. Checked by: the tokens check and the fit sweep.
+const $ = (s, r = document) => r.querySelector(s), $$ = (s, r = document) => [...r.querySelectorAll(s)];
+const el = (tag, cls, text) => { const n = document.createElement(tag); if (cls) n.className = cls; if (text != null) n.textContent = text; return n; };
+const live = getComputedStyle(document.documentElement), val = name => live.getPropertyValue(name).trim().replace(/,(?! )/g, ", ");   // a space after each comma, so long values wrap between parts
+const rootRule = [...document.styleSheets[0].cssRules].find(r => r.selectorText === ':root');   // the first :root block is the token list
+const NAMES = [...rootRule.style].filter(n => n.startsWith('--'));
+const isColour = v => /^(#|rgba?\()/.test(v);
+const live1 = (node, name) => { node.dataset.v = name; node.textContent = val(name); return node; }, refresh = () => $$('[data-v]').forEach(n => n.textContent = val(n.dataset.v));   // values follow the settings
+
+// ---- tokens drawn from the stylesheet ----
+for (const n of NAMES.filter(n => isColour(val(n)))) {
+  const c = el('div', 'card ds-sw'), sw = el('i'), b = el('div'); sw.style.background = `var(${n})`;
+  b.append(el('b', '', n.slice(2)), live1(el('code'), n)); c.append(sw, b); $('#swatches').append(c);
+}
+for (const n of NAMES.filter(n => /^--r\d|^--r-/.test(n))) { const b = el('div', 'ds-box', `${n} · ${val(n)}`); b.style.cssText = `border-radius:var(${n});box-shadow:var(--shadow)`; $('#corners').append(b); }
+for (const n of NAMES.filter(n => n.startsWith('--shadow'))) { const b = el('div', 'ds-box', n); b.style.cssText = `border-radius:var(--r1);box-shadow:var(${n})`; $('#shadows').append(b); }
+for (const n of NAMES.filter(n => n.startsWith('--space-'))) { const tr = el('tr'), bar = el('div', 'ds-bar'), td = el('td'); bar.style.width = `var(${n})`; td.append(bar); tr.append(el('td', 'mono', n), live1(el('td', 'num'), n), td); $('#spaces').append(tr); }
+for (const body of $$('[data-tokens]')) for (const p of body.dataset.tokens.split(',')) for (const n of NAMES.filter(n => n.startsWith(p))) { const tr = el('tr'); tr.append(el('td', 'mono', n), live1(el('td'), n)); body.append(tr); }
+
+// ---- contrast from the live colours ----
+const rgba = s => { const probe = el('i'); probe.style.color = s.startsWith('--') ? `var(${s})` : s; document.body.append(probe); const m = getComputedStyle(probe).color.match(/[\d.]+/g).map(Number); probe.remove(); return [m[0], m[1], m[2], m[3] ?? 1]; };
+const over = (fg, bg) => [0, 1, 2].map(i => fg[i] * fg[3] + bg[i] * (1 - fg[3])).concat(1);
+const lum = c => { const [r, g, b] = c.slice(0, 3).map(v => (v /= 255) <= .04045 ? v / 12.92 : ((v + .055) / 1.055) ** 2.4); return .2126 * r + .7152 * g + .0722 * b; };
+const ratio = (a, b) => { const [x, y] = [lum(a), lum(b)].sort((p, q) => q - p); return (x + .05) / (y + .05); };
+const drawContrast = () => { for (const tr of $$('#contrast tr')) {
+  const bg = tr.dataset.on.split(',').map(rgba).reduceRight((under, layer) => over(layer, under)), r = ratio(over(rgba(tr.dataset.fg), bg), bg), ok = r >= +tr.dataset.need;
+  $$('td:not(:first-child)', tr).forEach(td => td.remove());
+  const has = el('td', 'num'); has.append(el('span', ok ? 'st-badge good' : 'st-badge risk', `${r.toFixed(2)}:1 ${ok ? 'passes' : 'fails'}`)); tr.append(el('td', 'num', `${tr.dataset.need}:1`), has);
+} };
+drawContrast();
+
+// ---- samples ----
+const slide = seg => { const b = $('[aria-pressed=true]', seg); seg.style.setProperty('--x', b.offsetLeft + 'px'); seg.style.setProperty('--w', b.offsetWidth + 'px'); };
+document.addEventListener('click', e => {
+  const b = e.target.closest('.seg button'); if (!b) return; const seg = b.parentElement;
+  $$('button', seg).forEach(x => x.setAttribute('aria-pressed', x === b));
+  if (seg.dataset.set) { b.dataset.val ? document.documentElement.setAttribute('data-' + seg.dataset.set, b.dataset.val) : document.documentElement.removeAttribute('data-' + seg.dataset.set); refresh(); drawContrast(); }
+  $$('.seg.slide').forEach(slide);
+});
+$$('.seg.slide').forEach(slide); addEventListener('resize', () => $$('.seg.slide').forEach(slide));
+const fill = r => r.style.setProperty('--p', (r.value - r.min) / (r.max - r.min) * 100 + '%');
+$$('input[type=range]').forEach(r => { fill(r); r.addEventListener('input', () => fill(r)); });
+$$('.srci').forEach(b => b.addEventListener('click', () => b.setAttribute('aria-expanded', b.getAttribute('aria-expanded') !== 'true')));
+
+const menuBtn = $('#demoMenuBtn'), setMenu = open => menuBtn.setAttribute('aria-expanded', open);
+menuBtn.addEventListener('click', () => { const open = menuBtn.getAttribute('aria-expanded') !== 'true'; setMenu(open); if (open) $('#demoMenu a').focus(); });   // the same button twice closes it
+document.addEventListener('keydown', e => { if (e.key === 'Escape' && menuBtn.getAttribute('aria-expanded') === 'true') { setMenu(false); menuBtn.focus(); } });
+document.addEventListener('click', e => { if (!e.target.closest('#demoMenuBtn, #demoMenu')) setMenu(false); });
+
+const sheet = $('#demoSheet'), toast = $('#toast'); let toastTimer;
+$('#demoSheetBtn').addEventListener('click', () => sheet.showModal()); $('#demoSheetDone').addEventListener('click', () => sheet.close());
+sheet.addEventListener('click', e => { if (e.target === sheet) sheet.close(); });   // a tap on the dimmed page
+$('#demoToastBtn').addEventListener('click', () => { toast.textContent = 'This is a toast. It leaves by itself.'; toast.classList.add('show'); clearTimeout(toastTimer); toastTimer = setTimeout(() => toast.classList.remove('show'), 4000); });
+
+const tabs = $$('[role=tab]'), pick = t => { tabs.forEach(x => { x.setAttribute('aria-selected', x === t); x.tabIndex = x === t ? 0 : -1; }); $('#demoPanel').setAttribute('aria-labelledby', t.id); t.focus(); };
+tabs.forEach((t, i) => { t.addEventListener('click', () => pick(t)); t.addEventListener('keydown', e => {
+  const to = { ArrowRight: i + 1, ArrowLeft: i - 1, Home: 0, End: tabs.length - 1 }[e.key]; if (to == null) return; e.preventDefault(); pick(tabs[(to + tabs.length) % tabs.length]); }); });
+
+for (const b of $$('[data-replay-btn]')) b.addEventListener('click', () => { const box = $('[data-replay]', b.closest('.card')), cls = box.className; box.className = 'ds-box inset'; void box.offsetWidth; box.className = cls; });   // one press, one play
+</script>
+</body>
+</html>

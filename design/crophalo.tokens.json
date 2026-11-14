@@ -1,0 +1,1518 @@
+{
+  "$description": "Crophalo design tokens. Every value here is the value in the first :root block of css/app.css. Light mode only. One blue for every action and selected state.",
+  "color": {
+    "surface": {
+      "bg": {
+        "$type": "color",
+        "$value": "#f2f2f4",
+        "$description": "Page background; also the theme colour of the installed app.",
+        "$extensions": {
+          "css": "--bg"
+        }
+      },
+      "card": {
+        "$type": "color",
+        "$value": "#ffffff",
+        "$description": "Face of every card and control.",
+        "$extensions": {
+          "css": "--card"
+        }
+      },
+      "card2": {
+        "$type": "color",
+        "$value": "#f9f9fb",
+        "$description": "Second surface: table heads, inset boxes, hover.",
+        "$extensions": {
+          "css": "--card2"
+        }
+      },
+      "bar": {
+        "$type": "color",
+        "$value": "#f6f6f8",
+        "$description": "Solid colour of the top bars.",
+        "$extensions": {
+          "css": "--bar"
+        }
+      },
+      "bar-glass": {
+        "$type": "color",
+        "$value": "#f6f6f8e6",
+        "$description": "The top bar as glass. Almost opaque, so its words keep 4.5:1 even over a dark photo.",
+        "$extensions": {
+          "css": "--bar-glass"
+        }
+      },
+      "glass": {
+        "$type": "color",
+        "$value": "#f6f6f8b8",
+        "$description": "Glass for map buttons, with a 20 px blur behind.",
+        "$extensions": {
+          "css": "--glass"
+        }
+      },
+      "toast": {
+        "$type": "color",
+        "$value": "#28282beb",
+        "$description": "Toast background; its words are white.",
+        "$extensions": {
+          "css": "--toast"
+        }
+      },
+      "offline": {
+        "$type": "color",
+        "$value": "#fff4d6",
+        "$description": "Background of the offline bar.",
+        "$extensions": {
+          "css": "--offline"
+        }
+      },
+      "backdrop": {
+        "$type": "color",
+        "$value": "#00000052",
+        "$description": "Dim layer behind a sheet, blurred 4 px.",
+        "$extensions": {
+          "css": "--backdrop"
+        }
+      },
+      "backdrop-welcome": {
+        "$type": "color",
+        "$value": "#14182075",
+        "$description": "Dim layer behind the welcome sheet, blurred 10 px.",
+        "$extensions": {
+          "css": "--backdrop-welcome"
+        }
+      },
+      "map-placeholder": {
+        "$type": "color",
+        "$value": "#1f2a24",
+        "$description": "Shown where a map or satellite picture has not arrived yet.",
+        "$extensions": {
+          "css": "--map-ph"
+        }
+      }
+    },
+    "fill": {
+      "fill": {
+        "$type": "color",
+        "$value": "#7878801f",
+        "$description": "Neutral fill: segment track, chips, tabs, skeletons.",
+        "$extensions": {
+          "css": "--fill"
+        }
+      },
+      "fill2": {
+        "$type": "color",
+        "$value": "#78788012",
+        "$description": "Lighter fill: hover rows, icon buttons, calendar cells.",
+        "$extensions": {
+          "css": "--fill2"
+        }
+      },
+      "seg-thumb": {
+        "$type": "color",
+        "$value": "#ffffff",
+        "$description": "The white thumb of the segmented control.",
+        "$extensions": {
+          "css": "--seg-thumb"
+        }
+      },
+      "cell": {
+        "$type": "color",
+        "$value": "#e7e9ee",
+        "$description": "Empty cell in a chart or calendar.",
+        "$extensions": {
+          "css": "--cell"
+        }
+      }
+    },
+    "text": {
+      "ink": {
+        "$type": "color",
+        "$value": "#1d1d1f",
+        "$description": "Main text.",
+        "$extensions": {
+          "css": "--ink"
+        }
+      },
+      "ink2": {
+        "$type": "color",
+        "$value": "#3c3c43cc",
+        "$description": "Second text: captions, helper lines, quiet labels (at least 4.5:1).",
+        "$extensions": {
+          "css": "--ink2"
+        }
+      },
+      "ink3": {
+        "$type": "color",
+        "$value": "#3c3c4373",
+        "$description": "Third level. About 2.4:1, so never used for words.",
+        "$extensions": {
+          "css": "--ink3"
+        }
+      },
+      "accent-ink": {
+        "$type": "color",
+        "$value": "#ffffff",
+        "$description": "Words on the blue.",
+        "$extensions": {
+          "css": "--accent-ink"
+        }
+      },
+      "link": {
+        "$type": "color",
+        "$value": "#0959c4",
+        "$description": "Text links and the outlined \"i\".",
+        "$extensions": {
+          "css": "--link"
+        }
+      },
+      "offline-ink": {
+        "$type": "color",
+        "$value": "#5a4300",
+        "$description": "Words on the offline bar.",
+        "$extensions": {
+          "css": "--offline-ink"
+        }
+      }
+    },
+    "separator": {
+      "sep": {
+        "$type": "color",
+        "$value": "#3c3c4329",
+        "$description": "Hairlines and the half-pixel ring around cards.",
+        "$extensions": {
+          "css": "--sep"
+        }
+      },
+      "sep2": {
+        "$type": "color",
+        "$value": "#3c3c4317",
+        "$description": "Lighter line between rows of a list.",
+        "$extensions": {
+          "css": "--sep2"
+        }
+      },
+      "offline-line": {
+        "$type": "color",
+        "$value": "#e6cf8a",
+        "$description": "Bottom line of the offline bar.",
+        "$extensions": {
+          "css": "--offline-line"
+        }
+      }
+    },
+    "control": {
+      "ctl": {
+        "$type": "color",
+        "$value": "#8a8a8e",
+        "$description": "Edge of a field, switch track and slider track (at least 3:1 on white and on the page).",
+        "$extensions": {
+          "css": "--ctl"
+        }
+      }
+    },
+    "accent": {
+      "accent": {
+        "$type": "color",
+        "$value": "#0a63d8",
+        "$description": "The one blue: main buttons, selected rings, switch on, slider fill, count badge.",
+        "$extensions": {
+          "css": "--accent"
+        }
+      },
+      "accent-soft": {
+        "$type": "color",
+        "$value": "#0a63d81f",
+        "$description": "Soft blue tint behind a chosen thing.",
+        "$extensions": {
+          "css": "--accent-soft"
+        }
+      },
+      "accent-text": {
+        "$type": "color",
+        "$value": "#0959c4",
+        "$description": "Accent for text on tinted backgrounds (passes 4.5:1).",
+        "$extensions": {
+          "css": "--accent-text"
+        }
+      },
+      "src-tint": {
+        "$type": "color",
+        "$value": "#0959c421",
+        "$description": "Tint behind a source tag.",
+        "$extensions": {
+          "css": "--src-tint"
+        }
+      },
+      "focus-soft": {
+        "$type": "color",
+        "$value": "#0a63d82e",
+        "$description": "Soft halo around a focused field and a held slider thumb.",
+        "$extensions": {
+          "css": "--focus-soft"
+        }
+      }
+    },
+    "selection": {
+      "sel": {
+        "$type": "color",
+        "$value": "{color.accent.accent}",
+        "$description": "Focus ring and selected option. The same blue as the accent.",
+        "$extensions": {
+          "css": "--sel"
+        }
+      }
+    },
+    "status": {
+      "good": {
+        "$type": "color",
+        "$value": "#1b7532",
+        "$description": "The Good status, and only that.",
+        "$extensions": {
+          "css": "--good"
+        }
+      },
+      "good-soft": {
+        "$type": "color",
+        "$value": "#248a3d21",
+        "$description": "Tint behind a Good tag.",
+        "$extensions": {
+          "css": "--good-soft"
+        }
+      },
+      "warn": {
+        "$type": "color",
+        "$value": "#8f5100",
+        "$description": "Watch words and risks (brown-orange).",
+        "$extensions": {
+          "css": "--warn"
+        }
+      },
+      "warn-soft": {
+        "$type": "color",
+        "$value": "#ff9f0a26",
+        "$description": "Tint behind a Watch tag.",
+        "$extensions": {
+          "css": "--warn-soft"
+        }
+      },
+      "bad": {
+        "$type": "color",
+        "$value": "#d70015",
+        "$description": "Risk, errors, the Delete word.",
+        "$extensions": {
+          "css": "--bad"
+        }
+      },
+      "bad-soft": {
+        "$type": "color",
+        "$value": "#ff3b301a",
+        "$description": "Tint behind a Risk tag.",
+        "$extensions": {
+          "css": "--bad-soft"
+        }
+      },
+      "watch": {
+        "$type": "color",
+        "$value": "#a86f00",
+        "$description": "The one amber for Watch marks: ring, bar, dot (at least 3:1; not for words).",
+        "$extensions": {
+          "css": "--watch"
+        }
+      },
+      "delete": {
+        "$type": "color",
+        "$value": "#b3001a",
+        "$description": "Face of an armed Delete button; its word is white.",
+        "$extensions": {
+          "css": "--delete"
+        }
+      }
+    },
+    "chart": {
+      "rain": {
+        "$type": "color",
+        "$value": "#2a77d4",
+        "$description": "Chart mark: rain.",
+        "$extensions": {
+          "css": "--c-rain"
+        }
+      },
+      "et": {
+        "$type": "color",
+        "$value": "#0e8a74",
+        "$description": "Chart mark: water lost to the air.",
+        "$extensions": {
+          "css": "--c-et"
+        }
+      },
+      "hi": {
+        "$type": "color",
+        "$value": "#c4620a",
+        "$description": "Chart mark: daily highs.",
+        "$extensions": {
+          "css": "--c-hi"
+        }
+      },
+      "lo": {
+        "$type": "color",
+        "$value": "#5b86d6",
+        "$description": "Chart mark: nightly lows.",
+        "$extensions": {
+          "css": "--c-lo"
+        }
+      },
+      "green": {
+        "$type": "color",
+        "$value": "#2a8a44",
+        "$description": "Chart mark: plant greenness.",
+        "$extensions": {
+          "css": "--c-g"
+        }
+      },
+      "dry": {
+        "$type": "color",
+        "$value": "#b7782f",
+        "$description": "Chart mark: dry.",
+        "$extensions": {
+          "css": "--c-dry"
+        }
+      },
+      "wet": {
+        "$type": "color",
+        "$value": "#2670cc",
+        "$description": "Chart mark: wet.",
+        "$extensions": {
+          "css": "--c-wet"
+        }
+      },
+      "cover-part": {
+        "$type": "color",
+        "$value": "#9a7d1a",
+        "$description": "Ground partly covered.",
+        "$extensions": {
+          "css": "--part"
+        }
+      },
+      "cover-bare": {
+        "$type": "color",
+        "$value": "#b08060",
+        "$description": "Bare soil; always drawn with a white hatch as well.",
+        "$extensions": {
+          "css": "--bare"
+        }
+      }
+    },
+    "field": {
+      "soil": {
+        "$type": "color",
+        "$value": "#cbbf9f",
+        "$description": "Earth in the field pictures.",
+        "$extensions": {
+          "css": "--soil"
+        }
+      },
+      "sun": {
+        "$type": "color",
+        "$value": "#9a5b00",
+        "$description": "Sun words and lines. Amber is for the sun only.",
+        "$extensions": {
+          "css": "--sun"
+        }
+      },
+      "sun-fill": {
+        "$type": "color",
+        "$value": "#ffc233",
+        "$description": "Sun fill.",
+        "$extensions": {
+          "css": "--sun-fill"
+        }
+      },
+      "shade": {
+        "$type": "color",
+        "$value": "#0b2545",
+        "$description": "Shade: navy, always with a hatch, never colour alone.",
+        "$extensions": {
+          "css": "--shade"
+        }
+      }
+    },
+    "logo": {
+      "deep": {
+        "$type": "color",
+        "$value": "#174b3b",
+        "$description": "Logo: the two furrow bars.",
+        "$extensions": {
+          "css": "--logo-deep"
+        }
+      },
+      "mid": {
+        "$type": "color",
+        "$value": "#3e8b65",
+        "$description": "Logo: the right field.",
+        "$extensions": {
+          "css": "--logo-mid"
+        }
+      },
+      "lime": {
+        "$type": "color",
+        "$value": "#cadb74",
+        "$description": "Logo: the bottom field.",
+        "$extensions": {
+          "css": "--logo-lime"
+        }
+      }
+    }
+  },
+  "shadow": {
+    "card": {
+      "$type": "shadow",
+      "$value": [
+        {
+          "color": "{color.separator.sep}",
+          "offsetX": "0px",
+          "offsetY": "0px",
+          "blur": "0px",
+          "spread": "0.5px"
+        },
+        {
+          "color": "#0000000a",
+          "offsetX": "0px",
+          "offsetY": "1px",
+          "blur": "2px",
+          "spread": "0px"
+        }
+      ],
+      "$description": "Card: a hairline ring and a whisper of shadow.",
+      "$extensions": {
+        "css": "--shadow"
+      }
+    },
+    "large": {
+      "$type": "shadow",
+      "$value": [
+        {
+          "color": "{color.separator.sep}",
+          "offsetX": "0px",
+          "offsetY": "0px",
+          "blur": "0px",
+          "spread": "0.5px"
+        },
+        {
+          "color": "#00000024",
+          "offsetX": "0px",
+          "offsetY": "10px",
+          "blur": "40px",
+          "spread": "0px"
+        },
+        {
+          "color": "#0000000f",
+          "offsetX": "0px",
+          "offsetY": "2px",
+          "blur": "8px",
+          "spread": "0px"
+        }
+      ],
+      "$description": "Hover on acting cards, pop-overs, sheets.",
+      "$extensions": {
+        "css": "--shadow-lg"
+      }
+    },
+    "control": {
+      "$type": "shadow",
+      "$value": [
+        {
+          "color": "{color.separator.sep}",
+          "offsetX": "0px",
+          "offsetY": "0px",
+          "blur": "0px",
+          "spread": "0.5px"
+        },
+        {
+          "color": "#0000001a",
+          "offsetX": "0px",
+          "offsetY": "0.5px",
+          "blur": "1.5px",
+          "spread": "0px"
+        }
+      ],
+      "$description": "Buttons.",
+      "$extensions": {
+        "css": "--shadow-ctl"
+      }
+    },
+    "primary": {
+      "$type": "shadow",
+      "$value": {
+        "color": "#0000002e",
+        "offsetX": "0px",
+        "offsetY": "0.5px",
+        "blur": "1.5px",
+        "spread": "0px"
+      },
+      "$description": "The blue main button.",
+      "$extensions": {
+        "css": "--shadow-primary"
+      }
+    },
+    "map": {
+      "$type": "shadow",
+      "$value": {
+        "color": "#00000047",
+        "offsetX": "0px",
+        "offsetY": "2px",
+        "blur": "10px",
+        "spread": "0px"
+      },
+      "$description": "Glass buttons over the map.",
+      "$extensions": {
+        "css": "--shadow-map"
+      }
+    }
+  },
+  "radius": {
+    "r1": {
+      "$type": "dimension",
+      "$value": "14px",
+      "$description": "Cards, sheets, tiles.",
+      "$extensions": {
+        "css": "--r1"
+      }
+    },
+    "r2": {
+      "$type": "dimension",
+      "$value": "10px",
+      "$description": "Grouped lists, choices, large buttons, large blue surfaces.",
+      "$extensions": {
+        "css": "--r2"
+      }
+    },
+    "r3": {
+      "$type": "dimension",
+      "$value": "7px",
+      "$description": "Buttons, fields, selects.",
+      "$extensions": {
+        "css": "--r3"
+      }
+    },
+    "segment": {
+      "$type": "dimension",
+      "$value": "9px",
+      "$description": "Track of the segmented control.",
+      "$extensions": {
+        "css": "--r-seg"
+      }
+    },
+    "chip": {
+      "$type": "dimension",
+      "$value": "6px",
+      "$description": "Chips and status tags. Small, because their words can wrap.",
+      "$extensions": {
+        "css": "--r-chip"
+      }
+    },
+    "tag": {
+      "$type": "dimension",
+      "$value": "4px",
+      "$description": "Source tags.",
+      "$extensions": {
+        "css": "--r-tag"
+      }
+    }
+  },
+  "font": {
+    "family": {
+      "text": {
+        "$type": "fontFamily",
+        "$value": [
+          "-apple-system",
+          "BlinkMacSystemFont",
+          "SF Pro Text",
+          "SF Pro Display",
+          "Inter",
+          "system-ui",
+          "Segoe UI",
+          "Roboto",
+          "Helvetica Neue",
+          "Arial",
+          "sans-serif"
+        ],
+        "$description": "The system font first, then Inter.",
+        "$extensions": {
+          "css": "--font"
+        }
+      },
+      "mono": {
+        "$type": "fontFamily",
+        "$value": [
+          "ui-monospace",
+          "SFMono-Regular",
+          "Menlo",
+          "monospace"
+        ],
+        "$description": "Code and token names.",
+        "$extensions": {
+          "css": "--mono"
+        }
+      }
+    },
+    "size": {
+      "hero-min": {
+        "$type": "dimension",
+        "$value": "38px",
+        "$description": "Home headline on the narrowest screen.",
+        "$extensions": {
+          "css": "--fs-hero-min"
+        }
+      },
+      "hero": {
+        "$type": "dimension",
+        "$value": "64px",
+        "$description": "Home headline at full width.",
+        "$extensions": {
+          "css": "--fs-hero"
+        }
+      },
+      "lede-min": {
+        "$type": "dimension",
+        "$value": "17px",
+        "$description": "Line under the home headline, narrow.",
+        "$extensions": {
+          "css": "--fs-lede-min"
+        }
+      },
+      "lede": {
+        "$type": "dimension",
+        "$value": "20px",
+        "$description": "Line under the home headline, wide.",
+        "$extensions": {
+          "css": "--fs-lede"
+        }
+      },
+      "title1-min": {
+        "$type": "dimension",
+        "$value": "28px",
+        "$description": "Page and report title, narrow.",
+        "$extensions": {
+          "css": "--fs-title1-min"
+        }
+      },
+      "title1": {
+        "$type": "dimension",
+        "$value": "40px",
+        "$description": "Page and report title, wide.",
+        "$extensions": {
+          "css": "--fs-title1"
+        }
+      },
+      "title2": {
+        "$type": "dimension",
+        "$value": "24px",
+        "$description": "Section heading.",
+        "$extensions": {
+          "css": "--fs-title2"
+        }
+      },
+      "headline": {
+        "$type": "dimension",
+        "$value": "17px",
+        "$description": "Card heading, big-button title.",
+        "$extensions": {
+          "css": "--fs-headline"
+        }
+      },
+      "body": {
+        "$type": "dimension",
+        "$value": "15px",
+        "$description": "Body text.",
+        "$extensions": {
+          "css": "--fs-body"
+        }
+      },
+      "row": {
+        "$type": "dimension",
+        "$value": "14px",
+        "$description": "Rows and lists.",
+        "$extensions": {
+          "css": "--fs-row"
+        }
+      },
+      "small": {
+        "$type": "dimension",
+        "$value": "13px",
+        "$description": "Small text.",
+        "$extensions": {
+          "css": "--fs-small"
+        }
+      },
+      "caption": {
+        "$type": "dimension",
+        "$value": "12.5px",
+        "$description": "Captions.",
+        "$extensions": {
+          "css": "--fs-caption"
+        }
+      },
+      "micro": {
+        "$type": "dimension",
+        "$value": "11.5px",
+        "$description": "Tags and the smallest labels.",
+        "$extensions": {
+          "css": "--fs-micro"
+        }
+      },
+      "number": {
+        "$type": "dimension",
+        "$value": "30px",
+        "$description": "Big figures, with tabular digits.",
+        "$extensions": {
+          "css": "--fs-number"
+        }
+      },
+      "button": {
+        "$type": "dimension",
+        "$value": "13.5px",
+        "$description": "Button label.",
+        "$extensions": {
+          "css": "--fs-btn"
+        }
+      },
+      "button-large": {
+        "$type": "dimension",
+        "$value": "16px",
+        "$description": "Large button label.",
+        "$extensions": {
+          "css": "--fs-btn-lg"
+        }
+      },
+      "toolbar": {
+        "$type": "dimension",
+        "$value": "13px",
+        "$description": "Top-bar button label.",
+        "$extensions": {
+          "css": "--fs-toolbar"
+        }
+      },
+      "chip": {
+        "$type": "dimension",
+        "$value": "12px",
+        "$description": "Chip label.",
+        "$extensions": {
+          "css": "--fs-chip"
+        }
+      },
+      "segment": {
+        "$type": "dimension",
+        "$value": "12.5px",
+        "$description": "Segment label.",
+        "$extensions": {
+          "css": "--fs-seg"
+        }
+      },
+      "tab": {
+        "$type": "dimension",
+        "$value": "14.5px",
+        "$description": "Tab label.",
+        "$extensions": {
+          "css": "--fs-tab"
+        }
+      },
+      "brand": {
+        "$type": "dimension",
+        "$value": "16px",
+        "$description": "The name beside the logo.",
+        "$extensions": {
+          "css": "--fs-brand"
+        }
+      },
+      "field": {
+        "$type": "dimension",
+        "$value": "13.5px",
+        "$description": "Text in a field; 16 px on touch screens so phones do not zoom in.",
+        "$extensions": {
+          "css": "--fs-field"
+        }
+      }
+    },
+    "weight": {
+      "regular": {
+        "$type": "fontWeight",
+        "$value": 400,
+        "$description": "Body.",
+        "$extensions": {
+          "css": "--fw-regular"
+        }
+      },
+      "medium": {
+        "$type": "fontWeight",
+        "$value": 500,
+        "$description": "Controls.",
+        "$extensions": {
+          "css": "--fw-medium"
+        }
+      },
+      "semibold": {
+        "$type": "fontWeight",
+        "$value": 600,
+        "$description": "Headings and chosen labels.",
+        "$extensions": {
+          "css": "--fw-semi"
+        }
+      },
+      "brand": {
+        "$type": "fontWeight",
+        "$value": 650,
+        "$description": "Brand name and big-button titles.",
+        "$extensions": {
+          "css": "--fw-brand"
+        }
+      },
+      "bold": {
+        "$type": "fontWeight",
+        "$value": 700,
+        "$description": "Titles and figures.",
+        "$extensions": {
+          "css": "--fw-bold"
+        }
+      }
+    },
+    "tracking": {
+      "body": {
+        "$type": "dimension",
+        "$value": "-0.008em",
+        "$description": "Letter spacing of body text.",
+        "$extensions": {
+          "css": "--ls-body"
+        }
+      },
+      "heading": {
+        "$type": "dimension",
+        "$value": "-0.02em",
+        "$description": "Letter spacing of headings.",
+        "$extensions": {
+          "css": "--ls-head"
+        }
+      },
+      "title": {
+        "$type": "dimension",
+        "$value": "-0.03em",
+        "$description": "Letter spacing of titles and figures.",
+        "$extensions": {
+          "css": "--ls-title"
+        }
+      },
+      "hero": {
+        "$type": "dimension",
+        "$value": "-0.034em",
+        "$description": "Letter spacing of the home headline.",
+        "$extensions": {
+          "css": "--ls-hero"
+        }
+      }
+    },
+    "leading": {
+      "body": {
+        "$type": "number",
+        "$value": 1.47,
+        "$description": "Line height of body text.",
+        "$extensions": {
+          "css": "--lh-body"
+        }
+      },
+      "title": {
+        "$type": "number",
+        "$value": 1.1,
+        "$description": "Line height of titles.",
+        "$extensions": {
+          "css": "--lh-title"
+        }
+      },
+      "hero": {
+        "$type": "number",
+        "$value": 1.05,
+        "$description": "Line height of the home headline.",
+        "$extensions": {
+          "css": "--lh-hero"
+        }
+      }
+    }
+  },
+  "space": {
+    "4": {
+      "$type": "dimension",
+      "$value": "4px",
+      "$extensions": {
+        "css": "--space-4"
+      }
+    },
+    "8": {
+      "$type": "dimension",
+      "$value": "8px",
+      "$extensions": {
+        "css": "--space-8"
+      }
+    },
+    "12": {
+      "$type": "dimension",
+      "$value": "12px",
+      "$description": "Between a row of buttons and the words beside it.",
+      "$extensions": {
+        "css": "--space-12"
+      }
+    },
+    "16": {
+      "$type": "dimension",
+      "$value": "16px",
+      "$description": "Inside a card or sheet; above and below a row of buttons.",
+      "$extensions": {
+        "css": "--space-16"
+      }
+    },
+    "20": {
+      "$type": "dimension",
+      "$value": "20px",
+      "$extensions": {
+        "css": "--space-20"
+      }
+    },
+    "24": {
+      "$type": "dimension",
+      "$value": "24px",
+      "$extensions": {
+        "css": "--space-24"
+      }
+    },
+    "32": {
+      "$type": "dimension",
+      "$value": "32px",
+      "$extensions": {
+        "css": "--space-32"
+      }
+    },
+    "48": {
+      "$type": "dimension",
+      "$value": "48px",
+      "$description": "Between sections.",
+      "$extensions": {
+        "css": "--space-48"
+      }
+    },
+    "$description": "Steps of the spacing scale, in px."
+  },
+  "layout": {
+    "gutter": {
+      "$type": "dimension",
+      "$value": "20px",
+      "$description": "Side margin of the page at every width.",
+      "$extensions": {
+        "css": "--gutter"
+      }
+    },
+    "wrap": {
+      "$type": "dimension",
+      "$value": "1180px",
+      "$description": "Widest page content.",
+      "$extensions": {
+        "css": "--wrap"
+      }
+    },
+    "nav": {
+      "$type": "dimension",
+      "$value": "1240px",
+      "$description": "Widest top-bar content.",
+      "$extensions": {
+        "css": "--nav-w"
+      }
+    },
+    "info": {
+      "$type": "dimension",
+      "$value": "1100px",
+      "$description": "Widest info page.",
+      "$extensions": {
+        "css": "--info-w"
+      }
+    },
+    "hero": {
+      "$type": "dimension",
+      "$value": "900px",
+      "$description": "Widest home hero.",
+      "$extensions": {
+        "css": "--hero-w"
+      }
+    },
+    "lede": {
+      "$type": "dimension",
+      "$value": "600px",
+      "$description": "Widest line under the home headline.",
+      "$extensions": {
+        "css": "--lede-w"
+      }
+    },
+    "lead": {
+      "$type": "dimension",
+      "$value": "720px",
+      "$description": "Widest lead line under a heading.",
+      "$extensions": {
+        "css": "--lead-w"
+      }
+    },
+    "search": {
+      "$type": "dimension",
+      "$value": "640px",
+      "$description": "Widest home search.",
+      "$extensions": {
+        "css": "--search-w"
+      }
+    },
+    "big-buttons": {
+      "$type": "dimension",
+      "$value": "620px",
+      "$description": "Widest pair of big home buttons.",
+      "$extensions": {
+        "css": "--bigbtns-w"
+      }
+    },
+    "sheet": {
+      "$type": "dimension",
+      "$value": "660px",
+      "$description": "Widest sheet.",
+      "$extensions": {
+        "css": "--sheet-w"
+      }
+    },
+    "menu": {
+      "$type": "dimension",
+      "$value": "230px",
+      "$description": "Width of the Menu list on narrow screens.",
+      "$extensions": {
+        "css": "--menu-w"
+      }
+    },
+    "navh": {
+      "$type": "dimension",
+      "$value": "52px",
+      "$description": "Height of the top bar. Script writes the measured height over this.",
+      "$extensions": {
+        "css": "--navh"
+      }
+    },
+    "rbh": {
+      "$type": "dimension",
+      "$value": "50px",
+      "$description": "Height of the report bar. Script writes the measured height over this.",
+      "$extensions": {
+        "css": "--rbh"
+      }
+    },
+    "scroll-pad": {
+      "$type": "dimension",
+      "$value": "120px",
+      "$description": "Room kept above a focused control, so the sticky bars never cover it.",
+      "$extensions": {
+        "css": "--scroll-pad"
+      }
+    }
+  },
+  "size": {
+    "control-small": {
+      "$type": "dimension",
+      "$value": "26px",
+      "$description": "Small button. 44 px on touch and narrow screens.",
+      "$extensions": {
+        "css": "--ctl-sm"
+      }
+    },
+    "control": {
+      "$type": "dimension",
+      "$value": "30px",
+      "$description": "Button. 44 px on touch and narrow screens.",
+      "$extensions": {
+        "css": "--ctl-md"
+      }
+    },
+    "control-large": {
+      "$type": "dimension",
+      "$value": "44px",
+      "$description": "Large button.",
+      "$extensions": {
+        "css": "--ctl-lg"
+      }
+    },
+    "toolbar-button": {
+      "$type": "dimension",
+      "$value": "34px",
+      "$description": "Top-bar button. 44 px on touch and narrow screens.",
+      "$extensions": {
+        "css": "--tb"
+      }
+    },
+    "segment": {
+      "$type": "dimension",
+      "$value": "24px",
+      "$description": "Segment button. 44 px on touch and narrow screens.",
+      "$extensions": {
+        "css": "--seg-h"
+      }
+    },
+    "field": {
+      "$type": "dimension",
+      "$value": "28px",
+      "$description": "Select and text field. 44 px on touch and narrow screens.",
+      "$extensions": {
+        "css": "--field-h"
+      }
+    },
+    "range": {
+      "$type": "dimension",
+      "$value": "22px",
+      "$description": "Slider. 44 px on touch and narrow screens.",
+      "$extensions": {
+        "css": "--range-h"
+      }
+    },
+    "chip": {
+      "$type": "dimension",
+      "$value": "22px",
+      "$description": "A chip that is a button. 44 px on touch and narrow screens.",
+      "$extensions": {
+        "css": "--chip-h"
+      }
+    },
+    "choice": {
+      "$type": "dimension",
+      "$value": "56px",
+      "$description": "Radio card. 72 px on touch and narrow screens.",
+      "$extensions": {
+        "css": "--choice-h"
+      }
+    },
+    "row": {
+      "$type": "dimension",
+      "$value": "40px",
+      "$description": "List row.",
+      "$extensions": {
+        "css": "--row"
+      }
+    },
+    "icon": {
+      "$type": "dimension",
+      "$value": "16px",
+      "$description": "Icon in a line of text.",
+      "$extensions": {
+        "css": "--icon"
+      }
+    },
+    "touch-target": {
+      "$type": "dimension",
+      "$value": "44px",
+      "$description": "Smallest thing a finger must hit.",
+      "$extensions": {
+        "css": "--touch"
+      }
+    },
+    "text-zoom": {
+      "$type": "number",
+      "$value": 1,
+      "$description": "Text size as a zoom of the whole page: Default 1, Larger 1.15, Largest 1.3.",
+      "$extensions": {
+        "css": "--tz"
+      }
+    }
+  },
+  "z": {
+    "tabs": {
+      "$type": "number",
+      "$value": 30,
+      "$description": "Chapter tabs and the new-data bar.",
+      "$extensions": {
+        "css": "--z-tabs"
+      }
+    },
+    "bar": {
+      "$type": "number",
+      "$value": 40,
+      "$description": "Report bar and page heads.",
+      "$extensions": {
+        "css": "--z-bar"
+      }
+    },
+    "nav": {
+      "$type": "number",
+      "$value": 50,
+      "$description": "Top bar.",
+      "$extensions": {
+        "css": "--z-nav"
+      }
+    },
+    "menu": {
+      "$type": "number",
+      "$value": 60,
+      "$description": "Menus and the legend.",
+      "$extensions": {
+        "css": "--z-menu"
+      }
+    },
+    "rail": {
+      "$type": "number",
+      "$value": 70,
+      "$description": "Reading rail.",
+      "$extensions": {
+        "css": "--z-rail"
+      }
+    },
+    "map-full": {
+      "$type": "number",
+      "$value": 90,
+      "$description": "Full-screen map.",
+      "$extensions": {
+        "css": "--z-mapfull"
+      }
+    },
+    "skip": {
+      "$type": "number",
+      "$value": 99,
+      "$description": "Skip link.",
+      "$extensions": {
+        "css": "--z-skip"
+      }
+    },
+    "toast": {
+      "$type": "number",
+      "$value": 200,
+      "$description": "Toast.",
+      "$extensions": {
+        "css": "--z-toast"
+      }
+    },
+    "nav-menu": {
+      "$type": "number",
+      "$value": 300,
+      "$description": "The Menu list of the top bar.",
+      "$extensions": {
+        "css": "--z-navmenu"
+      }
+    },
+    "source-card": {
+      "$type": "number",
+      "$value": 3000,
+      "$description": "Source card.",
+      "$extensions": {
+        "css": "--z-pop"
+      }
+    },
+    "picker": {
+      "$type": "number",
+      "$value": 3500,
+      "$description": "Crop chooser.",
+      "$extensions": {
+        "css": "--z-picker"
+      }
+    },
+    "$description": "What sits above what."
+  },
+  "motion": {
+    "easing": {
+      "standard": {
+        "$type": "cubicBezier",
+        "$value": [
+          0.2,
+          0.8,
+          0.2,
+          1
+        ],
+        "$description": "The only curve for motion. It never passes its end.",
+        "$extensions": {
+          "css": "--ease"
+        }
+      },
+      "spring": {
+        "$type": "cubicBezier",
+        "$value": "{motion.easing.standard}",
+        "$description": "Another name for the standard curve. It never overshoots.",
+        "$extensions": {
+          "css": "--spring"
+        }
+      }
+    },
+    "duration": {
+      "press": {
+        "$type": "duration",
+        "$value": "90ms",
+        "$extensions": {
+          "css": "--t-press"
+        }
+      },
+      "fast": {
+        "$type": "duration",
+        "$value": "150ms",
+        "$extensions": {
+          "css": "--t-fast"
+        }
+      },
+      "label": {
+        "$type": "duration",
+        "$value": "240ms",
+        "$extensions": {
+          "css": "--t-label"
+        }
+      },
+      "base": {
+        "$type": "duration",
+        "$value": "420ms",
+        "$extensions": {
+          "css": "--t-base"
+        }
+      },
+      "slow": {
+        "$type": "duration",
+        "$value": "600ms",
+        "$extensions": {
+          "css": "--t-slow"
+        }
+      }
+    },
+    "$description": "Calm: fades and slides of 10 to 14 px only, no bounce. Everything stops under Reduce motion."
+  },
+  "typography": {
+    "hero": {
+      "$type": "typography",
+      "$value": {
+        "fontFamily": "{font.family.text}",
+        "fontSize": "{font.size.hero}",
+        "fontWeight": "{font.weight.bold}",
+        "letterSpacing": "{font.tracking.hero}",
+        "lineHeight": "{font.leading.hero}"
+      }
+    },
+    "title1": {
+      "$type": "typography",
+      "$value": {
+        "fontFamily": "{font.family.text}",
+        "fontSize": "{font.size.title1}",
+        "fontWeight": "{font.weight.bold}",
+        "letterSpacing": "{font.tracking.title}",
+        "lineHeight": "{font.leading.title}"
+      }
+    },
+    "title2": {
+      "$type": "typography",
+      "$value": {
+        "fontFamily": "{font.family.text}",
+        "fontSize": "{font.size.title2}",
+        "fontWeight": "{font.weight.semibold}",
+        "letterSpacing": "{font.tracking.heading}",
+        "lineHeight": "{font.leading.title}"
+      }
+    },
+    "headline": {
+      "$type": "typography",
+      "$value": {
+        "fontFamily": "{font.family.text}",
+        "fontSize": "{font.size.headline}",
+        "fontWeight": "{font.weight.semibold}",
+        "letterSpacing": "{font.tracking.heading}",
+        "lineHeight": "{font.leading.body}"
+      }
+    },
+    "body": {
+      "$type": "typography",
+      "$value": {
+        "fontFamily": "{font.family.text}",
+        "fontSize": "{font.size.body}",
+        "fontWeight": "{font.weight.regular}",
+        "letterSpacing": "{font.tracking.body}",
+        "lineHeight": "{font.leading.body}"
+      }
+    },
+    "caption": {
+      "$type": "typography",
+      "$value": {
+        "fontFamily": "{font.family.text}",
+        "fontSize": "{font.size.caption}",
+        "fontWeight": "{font.weight.regular}",
+        "letterSpacing": "{font.tracking.body}",
+        "lineHeight": "{font.leading.body}"
+      }
+    },
+    "number": {
+      "$type": "typography",
+      "$value": {
+        "fontFamily": "{font.family.text}",
+        "fontSize": "{font.size.number}",
+        "fontWeight": "{font.weight.bold}",
+        "letterSpacing": "{font.tracking.title}",
+        "lineHeight": "{font.leading.title}"
+      }
+    },
+    "button": {
+      "$type": "typography",
+      "$value": {
+        "fontFamily": "{font.family.text}",
+        "fontSize": "{font.size.button}",
+        "fontWeight": "{font.weight.medium}",
+        "letterSpacing": "{font.tracking.body}",
+        "lineHeight": "{font.leading.body}"
+      }
+    },
+    "button-large": {
+      "$type": "typography",
+      "$value": {
+        "fontFamily": "{font.family.text}",
+        "fontSize": "{font.size.button-large}",
+        "fontWeight": "{font.weight.semibold}",
+        "letterSpacing": "{font.tracking.body}",
+        "lineHeight": "{font.leading.body}"
+      }
+    },
+    "toolbar": {
+      "$type": "typography",
+      "$value": {
+        "fontFamily": "{font.family.text}",
+        "fontSize": "{font.size.toolbar}",
+        "fontWeight": "{font.weight.medium}",
+        "letterSpacing": "{font.tracking.body}",
+        "lineHeight": "{font.leading.body}"
+      }
+    },
+    "chip": {
+      "$type": "typography",
+      "$value": {
+        "fontFamily": "{font.family.text}",
+        "fontSize": "{font.size.chip}",
+        "fontWeight": "{font.weight.medium}",
+        "letterSpacing": "{font.tracking.body}",
+        "lineHeight": "{font.leading.body}"
+      }
+    },
+    "segment": {
+      "$type": "typography",
+      "$value": {
+        "fontFamily": "{font.family.text}",
+        "fontSize": "{font.size.segment}",
+        "fontWeight": "{font.weight.medium}",
+        "letterSpacing": "{font.tracking.body}",
+        "lineHeight": "{font.leading.body}"
+      }
+    },
+    "tab": {
+      "$type": "typography",
+      "$value": {
+        "fontFamily": "{font.family.text}",
+        "fontSize": "{font.size.tab}",
+        "fontWeight": "{font.weight.semibold}",
+        "letterSpacing": "{font.tracking.body}",
+        "lineHeight": "{font.leading.body}"
+      }
+    },
+    "brand": {
+      "$type": "typography",
+      "$value": {
+        "fontFamily": "{font.family.text}",
+        "fontSize": "{font.size.brand}",
+        "fontWeight": "{font.weight.brand}",
+        "letterSpacing": "{font.tracking.heading}",
+        "lineHeight": "{font.leading.body}"
+      }
+    }
+  }
+}

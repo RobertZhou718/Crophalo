@@ -1,0 +1,48 @@
+{
+ "library": "three",
+ "version": "0.160.0",
+ "packages": [
+  {
+   "name": "three",
+   "version": "0.160.0",
+   "licence": "MIT",
+   "source": "https://registry.npmjs.org/three/-/three-0.160.0.tgz",
+   "integrity": "sha512-DLU8lc0zNIPkM7rH5/e1Ks1Z8tWCGRq6g8mPowdDJpw1CFBJMU7UoJjC6PefXW7z//SSl0b2+GCw14LB+uDhng==",
+   "files": [
+    {
+     "path": "three.module.js",
+     "from": "build/three.module.js",
+     "bytes": 1272972,
+     "sha512": "sha512-D/H4UbEHZ2kTQjnKyESexnqZYe5+0SWtiD/Fu90+aMffVFZa1XcZ/4wvuQMPScpk5PeDD/0V64JWNN1bpyyFVQ=="
+    },
+    {
+     "path": "addons/controls/OrbitControls.js",
+     "from": "examples/jsm/controls/OrbitControls.js",
+     "bytes": 29884,
+     "sha512": "sha512-x27s3we7pgX9olIaoe3T+KxjqElxO2V7TGypSaqqD+6XPCIiOQpMUiuFYfHU6qZs7V7sSaP63537PR66umNEhg==",
+     "changed": "import 'three' now reads '../../three.module.js'"
+    },
+    {
+     "path": "addons/loaders/GLTFLoader.js",
+     "from": "examples/jsm/loaders/GLTFLoader.js",
+     "bytes": 108538,
+     "sha512": "sha512-YJSM/xRwihnDnEGl2bROJhc2eDjWFcW7OWsd+jfHiLXZ0Wgm7P+OSDAJ6fXqpQBiQz7a2QvhTWpixdyUPlvd5g==",
+     "changed": "import 'three' now reads '../../three.module.js'"
+    },
+    {
+     "path": "addons/utils/BufferGeometryUtils.js",
+     "from": "examples/jsm/utils/BufferGeometryUtils.js",
+     "bytes": 31922,
+     "sha512": "sha512-wscTe1dFPXi0RzvZah4L1lBkq+08lgkSDjP4x4Wj9gjhc8PGPrynpcmTYtloIz0sNEqS2/bS1CjIEo21u3LMnQ==",
+     "changed": "import 'three' now reads '../../three.module.js'"
+    },
+    {
+     "path": "LICENSE",
+     "from": "LICENSE",
+     "bytes": 1081,
+     "sha512": "sha512-NCqVllQhs562RHv3/6Y4+7RiEfuz/ORf7a2TTxKutGKjLAjpPf3qXAwTSuA71AqNMH+mjYqmjHQwsucvfHGAQQ=="
+    }
+   ]
+  }
+ ]
+}

@@ -1,0 +1,14 @@
+{
+  "name": "Crophalo: crop rotation with NASA data",
+  "short_name": "Crophalo",
+  "description": "Compare crop rotations for your field using NASA Earth observations, your soil and what matters to you.",
+  "start_url": "./",
+  "scope": "./",
+  "display": "standalone",
+  "background_color": "#f2f2f4",
+  "theme_color": "#f2f2f4",
+  "icons": [
+    { "src": "icons/crophalo-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any maskable" },
+    { "src": "icons/crophalo-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any maskable" }
+  ]
+}
