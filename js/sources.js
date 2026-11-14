@@ -40,7 +40,7 @@ export const SOURCES = {
   smap: { org: 'NASA', name: 'NASA SMAP root-zone soil moisture', nasa: true,
     who: 'NASA Goddard Space Flight Center, from the SMAP satellite; shared through the National Snow and Ice Data Center',
     what: 'How wet the soil is around the roots (the top metre), worked out by a land model that is kept true by the SMAP satellite\u2019s measurements, for a square about 9 km wide.',
-    talk: 'SMAP is a NASA satellite that has measured the water in the top of the soil since 2015. Its Level-4 product feeds those measurements into a land model, which fills in the deeper soil down to about one metre, where roots drink. The answer is one value for each square of about 9 km, so it tells you how wet the whole area around your field is, not what is inside your field. It arrives about two to three days after the day it describes.',
+    talk: 'SMAP is a NASA satellite that has measured the water in the top of the soil since 2015. Its Level-4 product feeds those measurements into a land model, which fills in the deeper soil down to about one metre, where roots drink. The answer is one value for each square of about 9 km, so it tells you how wet the whole area around your field is, not what is inside your field. It arrives a few days after the day it describes, and NASA sometimes reprocesses a stretch of days and replaces the first values.',
     url: 'https://nsidc.org/data/spl4smgp' },
   gibs: { org: 'NASA', name: 'NASA GIBS satellite images', nasa: true,
     who: 'NASA Earth Science Data and Information System (ESDIS), Global Imagery Browse Services',
@@ -58,8 +58,8 @@ export const SOURCES = {
     talk: 'FAOSTAT collects the figures countries report each year. Crophalo uses them to show what farmers in your country grow and to leave out crops nobody grows there.',
     url: 'https://www.fao.org/faostat/' },
   mapspam: { org: 'IFPRI', name: 'MapSPAM crop map', nasa: false,
-    who: 'The International Food Policy Research Institute (IFPRI), with partners',
-    what: 'A world map of where 46 crops are grown, on a grid of about 9 km, for the year 2020.',
+    who: 'The International Food Policy Research Institute (IFPRI)',
+    what: 'A world map of where crops are grown, on a grid of 5 arc-minutes (about 9 km at the equator), for the year 2020.',
     talk: 'MapSPAM splits each country\u2019s crop statistics into the squares where that crop can grow, using soil, climate and satellite land cover. It is a model\u2019s best estimate of where crops are, not a count of fields.',
     url: 'https://www.mapspam.info/' },
   esri: { org: 'Esri', name: 'Esri World Imagery', nasa: false,
@@ -78,3 +78,7 @@ export const sourceNote = key => (own(SOURCES, key) ? SOURCES[key] : null);
 // The notes for one figure, NASA first, each key once; a key nobody wrote a note for is left out.
 export const sourceNotes = keys => [...new Set(keys)].filter(key => own(SOURCES, key)).map(key => ({ key, ...SOURCES[key] })).sort((a, b) => b.nasa - a.nasa);
 export const anyNasa = keys => keys.some(key => own(SOURCES, key) && SOURCES[key].nasa);   // which of the two "i" shapes the figure gets
+
+// The one line for the Data page (and the foot of the submission page): which NASA data Crophalo uses and that NASA does not stand behind it. The full credit is in docs/nasa-data-used.md.
+export const NASA_LINE = 'Crophalo uses NASA data (NASA POWER daily weather and NASA SMAP soil moisture). It is not made, reviewed or endorsed by NASA.';
+export const NASA_CREDIT_PAGE = 'docs/nasa-data-used.md';

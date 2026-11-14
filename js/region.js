@@ -1,0 +1,69 @@
+// Crophalo's regional reading: a value that a satellite or model gives for a whole square of land (soil moisture about 9 km wide, for example), shown as one value
+// with its footprint drawn on a small picture round the field and its date. Never a pattern painted inside the field: the square is the unit of the reading.
+// Pure: footprintView(), valueWords(), dateWords(), cleanReading(), regionHtml(). wireRegion() only attaches the picture's fallback.
+// Checked by scripts/test_region.mjs (the footprint maths, the words, a missing value stays "not read yet", hostile input) and scripts/e2e_map.mjs (fit and axe at five widths).
+import { srcButton } from './srci.js';
+
+const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[c]);
+const KM_PER_DEG = 111.195, MONTHS = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
+const PICTURE = 360, SHOWS = 2.2;   // the picture shows a square 2.2 times as wide as the footprint, so the footprint sits well inside it with land round it
+
+// The picture's frame and the footprint inside it, for a field at lat, lon and a reading about km wide. Fractions of the picture: 0 to 1, from its top left.
+export function footprintView(lat, lon, km) {
+  const half = km * SHOWS / 2, dLat = half / KM_PER_DEG, dLon = half / (KM_PER_DEG * Math.max(0.05, Math.cos(lat * Math.PI / 180)));
+  const n = Math.min(85, lat + dLat), s = Math.max(-85, lat - dLat), w = lon - dLon, e = lon + dLon;
+  const f = 1 / SHOWS, box = { x: (1 - f) / 2, y: (1 - f) / 2, w: f, h: f };   // the footprint is the middle of the frame (the frame is square on the ground)
+  return { bbox: { n, s, e, w }, footprint: box, dot: { x: 0.5, y: 0.5 } };
+}
+
+// The satellite picture of the frame: 360 by 360 px, from Esri World Imagery (the same service as the map under the field).
+export function pictureUrl(view) {
+  const { n, s, e, w } = view.bbox, f = v => v.toFixed(4);
+  return `https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/export?bbox=${f(w)},${f(s)},${f(e)},${f(n)}&bboxSR=4326&imageSR=3857&size=${PICTURE},${PICTURE}&format=jpg&f=image`;
+}
+
+// A water share (0 to 1 of the soil's volume) as a farmer reads it: "31% water by volume".
+export function valueWords(value) {
+  return typeof value === 'number' && Number.isFinite(value) && value >= 0 && value <= 1 ? `${Math.round(value * 100)}% water by volume` : '';
+}
+// "2026-11-14" as "14 November 2026"; '' when it is not a real date.
+export function dateWords(iso) {
+  const m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(String(iso ?? '')); if (!m) return '';
+  const y = +m[1], mo = +m[2], d = +m[3], real = new Date(Date.UTC(y, mo - 1, d));
+  return real.getUTCFullYear() === y && real.getUTCMonth() === mo - 1 && real.getUTCDate() === d ? `${d} ${MONTHS[mo - 1]} ${y}` : '';
+}
+
+// A reading rebuilt from known parts only: the label, a value between 0 and 1 or null, a real date or '', a square between 1 and 500 km, a place on Earth, a source key.
+export function cleanReading(raw) {
+  const given = raw && typeof raw === 'object' ? raw : {}, lat = Number(given.lat), lon = Number(given.lon), km = Number(given.km);
+  if (given.lat == null || given.lon == null || !Number.isFinite(lat) || !Number.isFinite(lon) || Math.abs(lat) > 90 || Math.abs(lon) > 180) return null;
+  if (!Number.isFinite(km) || km < 1 || km > 500) return null;
+  const value = typeof given.value === 'number' && Number.isFinite(given.value) && given.value >= 0 && given.value <= 1 ? given.value : null;
+  const text = (v, most) => (typeof v === 'string' ? v.trim().slice(0, most) : '');
+  return { label: text(given.label, 60) || 'Regional reading', value, date: dateWords(given.date) ? given.date : '', km, lat, lon, source: /^[a-z0-9]{2,20}$/.test(String(given.source)) ? given.source : '', why: text(given.why, 200) };
+}
+
+// The whole card. With no value it says so plainly and shows the square all the same, so the farmer sees what will be read.
+export function regionHtml(raw) {
+  const r = cleanReading(raw); if (!r) return '';
+  const v = footprintView(r.lat, r.lon, r.km), words = valueWords(r.value), when = dateWords(r.date);
+  const rect = v.footprint, pct = n => `${(n * 100).toFixed(2)}%`, km = r.km === Math.round(r.km) ? r.km : r.km.toFixed(1);
+  const alt = `A picture of the land round your field. A dashed square about ${km} km wide shows the area this reading covers, and a dot marks your field.`;
+  const forFigure = r.value == null ? '' : `${r.label} for the square about ${km} km wide round the field${when ? `, ${when}` : ''}. One value for the whole square.`;
+  return `<figure class="region" data-region>
+    <div class="region-pic" role="img" aria-label="${esc(alt)}"><img alt="" width="${PICTURE}" height="${PICTURE}" loading="lazy" decoding="async" data-src="${esc(pictureUrl(v))}">
+      <svg viewBox="0 0 100 100" preserveAspectRatio="none" aria-hidden="true" focusable="false"><rect x="${pct(rect.x).slice(0, -1)}" y="${pct(rect.y).slice(0, -1)}" width="${pct(rect.w).slice(0, -1)}" height="${pct(rect.h).slice(0, -1)}" class="region-box"/><circle cx="50" cy="50" r="2.2" class="region-dot"/></svg></div>
+    <figcaption class="region-text"><span class="region-label">${esc(r.label)} ${r.source ? srcButton(r.source, forFigure) : ''}</span>
+      <span class="region-value">${words ? esc(words) : 'Not read yet'}</span>
+      <span class="cap">${words ? `${when ? `${esc(when)}. ` : ''}A regional value: one figure for the whole square, about ${km} km wide. It is not a reading inside your field.` : `Crophalo has no reading for the square round your field, so it shows none. It will not guess one.`}</span>
+      ${r.why ? `<span class="small">${esc(r.why)}</span>` : ''}
+      <span class="cap">The dashed square is the area this reading covers. The dot is your field.</span></figcaption></figure>`;
+}
+
+// Put the picture in once the card is on the page; a picture that does not arrive leaves the calm dark box, never a broken-picture mark.
+export function wireRegion(root = document) {
+  for (const img of root.querySelectorAll('.region-pic img[data-src]')) {
+    img.addEventListener('error', () => { img.removeAttribute('src'); img.classList.add('gone'); }, { once: true });
+    img.src = img.dataset.src; img.removeAttribute('data-src');
+  }
+}

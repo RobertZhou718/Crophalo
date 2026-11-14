@@ -1,0 +1,12 @@
+/* Crophalo's regional reading: the satellite picture round the field with the reading's square drawn on it, and the value beside it. Only tokens of css/app.css are used here. */
+.region { display: flex; flex-wrap: wrap; align-items: flex-start; gap: var(--space-16); margin: 0; padding: var(--space-16); border-radius: var(--r1); background: var(--card); box-shadow: var(--shadow); }
+.region-pic { position: relative; flex: 0 0 auto; width: min(220px, 100%); aspect-ratio: 1; border-radius: var(--r2); background: var(--map-ph); overflow: hidden; }
+.region-pic img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; }
+.region-pic img.gone { display: none; }
+.region-pic svg { position: absolute; inset: 0; width: 100%; height: 100%; }
+.region-box { fill: rgba(255,255,255,.12); stroke: #fff; stroke-width: 1.2; stroke-dasharray: 3 2.2; vector-effect: non-scaling-stroke; filter: drop-shadow(0 0 1px rgba(0,0,0,.7)); }
+.region-dot { fill: var(--accent); stroke: #fff; stroke-width: 1.2; vector-effect: non-scaling-stroke; }
+.region-text { display: grid; flex: 1 1 200px; min-width: 0; gap: var(--space-4); align-content: start; }
+.region-label { display: flex; align-items: center; flex-wrap: wrap; gap: 4px; font-size: var(--fs-small); font-weight: var(--fw-semi); color: var(--ink2); }
+.region-value { font-size: var(--fs-number); font-weight: var(--fw-bold); letter-spacing: var(--ls-title); line-height: var(--lh-title); overflow-wrap: anywhere; }
+@media print { .region-box { stroke: #000; } }
