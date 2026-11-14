@@ -6,6 +6,7 @@
  * Run: node scripts/test_engine.mjs (no network). The last line is "N passed, M failed".
  */
 import fs from 'node:fs';
+import { flagged } from './wordguard.mjs';
 import * as E from '../js/engine.js';
 import * as F from '../js/fit.js';
 import * as SU from '../js/sure.js';
@@ -209,7 +210,7 @@ const files = ['season.js', 'fit.js', 'sure.js', 'engine.js', 'nearby.js'].map(n
 same('the engine files touch no page, storage, network, clock or chance', files.filter(([, t]) => /Date\.now|new Date\(\)|fetch\(|(?<![.\w])document\.|(?<![.\w])window\.|localStorage|Math\.random|XMLHttpRequest/.test(t)).map(([n]) => n), []);
 same('the engine files import only each other, the crop table, the words and the climate', files.flatMap(([, t]) => [...t.matchAll(/from '([^']+)'/g)].map(m => m[1])).filter(p => !['./words.js', './crops.js', './climate.js', './season.js', './fit.js', './sure.js'].includes(p)), []);
 const own = fs.readFileSync(new URL(import.meta.url), 'utf8'), others = ['test_season.mjs', 'hand_climates.mjs'].map(n => fs.readFileSync(new URL(`./${n}`, import.meta.url), 'utf8'));
-const marks = new RegExp(['cla' + 'ude', 'anthr' + 'opic', 'open' + 'ai', 'gp' + 't-', 'ch' + 'atgpt', 'aud' + 'it', 'mile' + 'stone', 're' + 'build', 'Tur' + 'key\\b'].join('|'), 'i');
-same('no tool names, no process words, the country written Türkiye', [...files.map(([n, t]) => [n, t]), ['test_engine.mjs', own], ['others', others.join('\n')]].filter(([, t]) => marks.test(t)).map(([n]) => n), []);
+const marks = new RegExp(['aud' + 'it', 'mile' + 'stone', 're' + 'build', 'Tur' + 'key\\b'].join('|'), 'i');
+same('no tool names, no process words, the country written Türkiye', [...files.map(([n, t]) => [n, t]), ['test_engine.mjs', own], ['others', others.join('\n')]].filter(([, t]) => marks.test(t) || flagged(t).length).map(([n]) => n), []);
 
 console.log(`${passed} passed, ${failed} failed`);

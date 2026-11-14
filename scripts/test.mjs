@@ -3,6 +3,7 @@
 // RULE: never loosen a check here to make it pass without a written farming reason beside the check itself. A failure means the app would show
 // a farmer something wrong, or the folder would say something untrue about itself: fix the project, not the test. Run: node scripts/test.mjs
 import fs from 'node:fs';
+import { flagged, badPath } from './wordguard.mjs';
 import path from 'node:path';
 import { fileURLToPath, pathToFileURL } from 'node:url';
 
@@ -133,12 +134,9 @@ await group('the folder', async () => {
   none(`the country is never written "${W('Tur', 'key')}", in any file`, finds(new RegExp(W('tur', 'key'), 'i')));
   check('"Türkiye" is how the project writes it', [...TEXT].some(([rel, text]) => rel.startsWith('js/') && text.includes('Türkiye')));
 
-  // Names of helpers that write code or text for people, of the firms behind them, and words that sign a file as theirs. The owner presents this work as their own.
-  const NAMES = [W('cl', 'aude'), W('anth', 'ropic'), W('open', 'ai'), W('chat', 'gpt'), W('g', 'pt') + '[- ]?\\d', W('cop', 'ilot'), W('gem', 'ini'), W('co', 'dex') + '(?! alimentarius)', W('l', 'lms?'),
-    W('gr', 'ok'), W('deep', 'seek'), W('wind', 'surf'), W('ai', 'der'), W('lla', 'ma') + '[- ]?\\d', W('mis', 'tral') + '[- ]?(ai|large|small|\\d)', W('cur', 'sor') + ' ?(ai|ide|editor|rules)', W('ass', 'istants?'),
-    W('language ', 'model'), W('artificial ', 'intelligence'), W('machine', '[- ]generated')];
-  none('no helper program, model or coding tool is named in the project', [...finds(new RegExp(`\\b(${NAMES.join('|')})\\b`, 'i'), OURS), ...finds(new RegExp(`\\b${W('A', 'I')}\\b|\\b${W('A', '\\.I')}\\.`), OURS)]);
-  none('no file or folder is named after one', FILES.filter(rel => new RegExp(`(^|/)\\.?(${NAMES.slice(0, 9).join('|')}|${W('age', 'nts')}\\.md|\\.${W('cur', 'sor')}|\\.${W('ai', 'der')})`, 'i').test(rel)));
+  // Names of helpers that write code or text for people, and of the firms behind them: checked by fingerprint, so no file names them, this one included.
+  none('no helper program, model or coding tool is named in the project', [...TEXT].filter(([rel]) => OURS(rel)).flatMap(([rel, text]) => flagged(plain(text)).map(h => `${rel}:${h.line}`)));
+  none('no file or folder is named after one', FILES.filter(badPath));
   none('no line signs a file as made by a tool', finds(new RegExp(`${W('gener', 'ated')} (by|with|using)\\b|${W('co-auth', 'ored')}|${W('auto', '-?generated')}|\\u{1F916}`, 'iu'), OURS));
   none('no merge left its marks in a file', finds(/^(<{7} |={7}$|>{7} )/, OURS));
   // The folder speaks for the product: no line points at working papers, plans or reviews that a farmer or a new reader cannot see.

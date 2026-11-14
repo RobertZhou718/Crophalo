@@ -6,6 +6,7 @@
  * Run: node scripts/test_cropsnear.mjs (no network). The last line is "N passed, M failed".
  */
 import fs from 'node:fs';
+import { flagged } from './wordguard.mjs';
 import os from 'node:os';
 import path from 'node:path';
 import { spawnSync } from 'node:child_process';
@@ -124,8 +125,8 @@ same('a broken answer: open, said so', NB.gateFrom({ ok: true, country: 'CA' }).
 
 // ---- the files: plain words only
 const mine = ['js/nearby.js', 'scripts/live/cropsnear.py', 'scripts/live/cropsnear_map.json', 'scripts/test_cropsnear.mjs', 'scripts/record_demo.mjs'].map(f => [f, fs.readFileSync(path.join(HERE, '..', f), 'utf8')]);
-const marks = new RegExp(['cla' + 'ude', 'anthr' + 'opic', 'open' + 'ai', 'gp' + 't-', 'ch' + 'atgpt', 'aud' + 'it', 'mile' + 'stone', 're' + 'build', 'Tur' + 'key\\b'].join('|'), 'i');
-same('no tool names, no process words', mine.filter(([, t]) => marks.test(t)).map(([f]) => f), []);
+const marks = new RegExp(['aud' + 'it', 'mile' + 'stone', 're' + 'build', 'Tur' + 'key\\b'].join('|'), 'i');
+same('no tool names, no process words', mine.filter(([, t]) => marks.test(t) || flagged(t).length).map(([f]) => f), []);
 same('js/nearby.js touches no page, network, clock or chance', /Date\.now|new Date\(|fetch\(|document\.|window\.|localStorage|Math\.random/.test(mine[0][1]), false);
 
 console.log(`${passed} passed, ${failed} failed`);

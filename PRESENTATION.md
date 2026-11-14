@@ -7,8 +7,8 @@ heat and rain, and how much the soil is left bare between crops.
 weather record from NASA POWER since 2001 and shows one recommended rotation, the one reason it suits the field, and how it
 compares with what you grow now.
 
-**The demo: Oxford County, Ontario.** Current plan: corn, then soybeans. Ready answers: rain-fed, loam assumed. Two taps from
-the home reach the field report.
+**The demo: Oxford County, Ontario.** Current plan: corn, then soybeans. Answers already chosen: rain-fed, loam assumed. The judge clicks
+through the same four steps a farmer does, then opens the field report.
 
 **Key points**
 

@@ -7,6 +7,27 @@ in My Farm and look at it on a map board or in 3D. Everything works without sign
 
 Crophalo is a guide to think with, not advice. It shows "not read yet" for anything it has not read, and never a made-up number.
 
+We built it for the NASA Space Apps Challenge 2026, "Field Shift", in Toronto.
+
+## Try the demo
+
+Start Crophalo, then open the demo field in Oxford County, Ontario, from the home screen. You go through the same four steps a
+farmer would, with the answers already chosen (corn then soybeans, rain-fed, loam). Change any of them if you like, then
+open the field report. From there, "Add to My Farm" opens the same field on the map board, where you can compare plans and
+see it in 3D.
+
+## Where the data comes from
+
+- **NASA POWER:** daily weather for the field since 2001 (frost dates, heat, rain).
+- **NASA SMAP:** root-zone soil moisture.
+- **NASA GPM IMERG:** recent rain.
+- **NASA GRACE-FO:** groundwater change.
+- **NASA ECOSTRESS and HLS:** crop stress and greenness.
+- **Other open sources:** Open-Meteo forecasts, SoilGrids soil, the Agriculture and Agri-Food Canada crop inventory, FAOSTAT yields and World Bank prices.
+
+Every figure in the app has an "i" button that names its source and date. The full list, with citations, is in
+`docs/nasa-data-used.md` and `docs/data-sources/`. Crophalo uses NASA data but is not made, reviewed or endorsed by NASA.
+
 ## Start it
 
 **Mac.** Double-click `Start Crophalo.command`. A Terminal window opens: keep it open, closing it stops Crophalo. The first
@@ -47,7 +68,7 @@ The lookups and their suites use the folder's own Python: `FW_PYTHON=.venv/bin/p
 | `js/farm.js`, `simulate.js`, `farmio.js`, `fielddrawer.js`, `fieldedit.js` | My Farm: the farm store, the map board, Compare plans, editing a field, map files and spreadsheets |
 | `js/farm3d.js`, `farm3d-data.js`, `heights3d.js`, `shade.js`, `shade-worker.js`, `moon.js` | the 3D field look, land heights, shade and the sun's and moon's place |
 | `js/soiltest.js`, `soiltestui.js`, `remind.js`, `remind-plan.js`, `remind-sw.js`, `sharetext.js`, `statement.js`, `fieldcard.js`, `discuss.js`, `notice.js`, `exports.js` | soil-test rules and form, reminders, share texts, the season weather record, the printed field card, spreadsheets |
-| `data/regions.json` | the demo region: Oxford County, Ontario, with its ready answers |
+| `data/regions.json` | the demo region: Oxford County, Ontario, with its answers already chosen |
 | `scripts/serve.mjs` | the server: the app's files, `/api/health`, `/api/sources`, the live lookups, reminders (`/api/push/*`) and US drought weeks (`/api/drought`) |
 | `scripts/live/` | the Python lookups: `smaproot.py` (NASA SMAP), `dem.py` and `heights.py` (land heights), `cropsnear.py` (crop maps), with `common.py` and `README.md` |
 | `scripts/test*.mjs`, `scripts/e2e*.mjs`, `scripts/check.sh` | the suites and the one check; `scripts/fixtures/` holds recorded answers of the outside services |
@@ -58,8 +79,8 @@ The lookups and their suites use the folder's own Python: `FW_PYTHON=.venv/bin/p
 ## What works today
 
 - The home: search a place or type coordinates, use the demo card "Oxford County, Ontario", open a saved field.
-- Setup in four steps, with the map to pin the field or draw it. The demo region comes with ready answers (corn then soybeans,
-  rain-fed, loam assumed), so two taps reach the report.
+- Setup in four steps, with the map to pin the field or draw it. The demo region has its answers already chosen (corn then soybeans,
+  rain-fed, loam assumed); you click through the same steps a farmer does.
 - The field report: Overview (one recommendation, why it suits the field, and the comparison with the current rotation),
   Options (the plans side by side), Weather (the field's record, this year so far, the next 7 days, the regional SMAP
   soil-moisture card) and Calendar (the farming year and the ground month by month). Every figure has an "i" with its source,

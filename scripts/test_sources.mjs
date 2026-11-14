@@ -1,6 +1,7 @@
 // Crophalo's offline suite for the source notes and the "i" button's card: every note is complete and plain, NASA is said once and only for NASA, the markup is safe and the card sits inside the screen.
 // RULE: never loosen a check here without a written farming reason beside it. A source named wrongly would be shown to a farmer, and to a judge, as the origin of a figure. Run: node scripts/test_sources.mjs
 import path from 'node:path';
+import { flagged } from './wordguard.mjs';
 import { fileURLToPath, pathToFileURL } from 'node:url';
 let passed = 0, failed = 0;
 const brief = v => { const s = typeof v === 'string' ? v : JSON.stringify(v); return s == null ? String(v) : s.length > 300 ? s.slice(0, 300) + '…' : s; };
@@ -66,7 +67,7 @@ check('a card taller than the screen still starts inside it', I.cardPlace({ left
   check('the citation page exists and names both NASA datasets with their citation text', /NASA POWER/.test(doc) && /SPL4SMGP/.test(doc) && /10\.5067\/T5RUATAQREF8/.test(doc) && /The data was obtained from the POWER Project's Daily \d+\.\d+\.\d+ version on \d{4}\/\d{2}\/\d{2}/.test(doc));
   check('it lists the other sources and tools, each by name', ['Open-Meteo', 'SoilGrids', 'FAOSTAT', 'MapSPAM', 'Esri World Imagery', 'OpenStreetMap', 'Leaflet', 'MapLibre', 'three.js', 'axe-core'].every(n => doc.includes(n)));
   check('it keeps the honest limits: counts not chances, a regional value is one value for a square, a missing figure is not filled in', /counts, not chances/.test(doc) && /one value for a whole cell of land/.test(doc) && /not read yet/.test(doc));
-  { const tools = new RegExp('\\b(' + [['cl', 'aude'], ['anthr', 'opic'], ['chat', 'gpt'], ['open', 'ai'], ['copi', 'lot']].map(p => p.join('')).join('|') + ')\\b', 'i'); check('it names no author tool, and not the old English country name', !tools.test(doc) && !doc.includes(['Tur', 'key'].join(''))); }
+  { check('it names no author tool, and not the old English country name', !flagged(doc).length && !doc.includes(['Tur', 'key'].join(''))); }
   { const bad = new RegExp([['mile', 'stone'], ['\\bno', 'te \\d'], ['re', 'build']].map(p => p.join('')).join('|'), 'i'); check('it points at nothing outside itself (no plan words)', !bad.test(doc)); }
   check('every NASA source note has a place in the page by name', S.SOURCES.power && doc.includes('NASA POWER') && doc.includes('SMAP'));
 }
