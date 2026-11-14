@@ -271,5 +271,37 @@ same('field of view 30°, 36° when taller than wide, polar limits 10–80', [d.
   check('the sun, moon and sky words have no placeholder text', !/undefined|NaN|\[object/.test(JSON.stringify(sc.moon) + sc.label + sc.sky.words));
 }
 
+// ---- the comparison view: one field, one plan, one date, what covers the ground
+{
+  const pin = { lat: 44.40, lon: -79.78 };
+  const mk = (ground, extra = {}) => d.groundScene({ pin, field: { id: 'demo', name: 'Demo field', polygon: null, areaEstimated: true }, planKind: 'proposed', date: '2027-10-05', ground, ...extra });
+  const corn = mk({ state: 'crop', crop: 'corn', stage: 3, label: 'Planned' }), soy = mk({ state: 'crop', crop: 'soy', stage: 3, label: 'Planned' });
+  const res = mk({ state: 'residue', crop: 'soy', label: 'Planned' }), wheat1 = mk({ state: 'crop', crop: 'wheat', stage: 1, label: 'Planned' }), wheat2 = mk({ state: 'crop', crop: 'wheat', stage: 2, label: 'Observed' }), bare = mk({ state: 'bare', label: 'Planned' });
+  same('crop ids from the engine get their shapes: corn maize, soy a bush, wheat a cereal', [corn.cover.shape, soy.cover.shape, wheat1.cover.shape], ['maize', 'legume-bush', 'cereal']);
+  same('no outline: a square of 10 ha, said to be estimated', [corn.field.estimated, corn.field.areaHa, corn.words.outline.startsWith('Outline estimated: a 10 ha square')], [true, 10, true]);
+  same('drawn outline: its own area, not estimated', (g => [g.field.estimated, g.words.outline.includes('from the outline you drew')])(d.groundScene({ pin, field: { id: 'x', name: 'North', polygon: squareAt(44.4, -79.78, 200, 100) }, date: '2027-10-05', ground: null })), [false, true]);
+  same('the label says Planned or Observed, the plan and the date', [corn.label.line, wheat2.label.line], ['Planned · Proposed plan · 5 October 2027', 'Observed · Proposed plan · 5 October 2027']);
+  same('the four kinds are different things', [corn.cover.kind, res.cover.kind, wheat1.cover.kind, bare.cover.kind], ['standing', 'residue', 'young', 'bare']);
+  check('standing corn is far taller than residue, and residue lies low and thin', corn.cover.height > 3 * res.cover.height && res.cover.length > res.cover.height, [corn.cover.height, res.cover.height]);
+  check('wheat seedlings are shorter than standing wheat and both are drawn at least the farm unit for standing', wheat1.cover.height < mk({ state: 'crop', crop: 'wheat', stage: 3 }).cover.height, [wheat1.cover.height]);
+  check('every plant and fleck is inside the field, none beyond 4,000', [corn, res, wheat1].every(s => s.cover.plants.length > 100 && s.cover.plants.length <= 4000 && s.cover.plants.every(p => d.insidePolygon(p.x, p.z, s.field.polygon))));
+  same('bare soil has nothing standing and says so', [bare.cover.plants.length, bare.words.cover], [0, 'Bare soil: nothing grows and no residue is left.']);
+  check('the residue words name the crop and say it lies low', /^Soybeans residue|^Soybean|residue: thin, low stalks left lying/.test(res.words.cover), res.words.cover);
+  same('no ground answer yet: the honest line, never a made-up cover', [mk(null).cover, mk(null).words.cover], [null, 'Not read yet: what covers this field on this date.']);
+  same('missing heights: flat, schematic, plain status', [corn.heights.status, corn.words.heights], ['missing', 'Heights not read: the land is drawn flat, as a plain schematic.']);
+  const n = 17, h = new Float32Array(n * n); for (let k = 0; k < h.length; k++) h[k] = 300 + (k % n) * 1.5;
+  const hilly = mk({ state: 'crop', crop: 'corn', stage: 3 }, { heights: { nx: n, ny: n, width: 800, depth: 800, h } });
+  same('heights read: true height, said so', [hilly.heights.status, /^Heights read: the land rises \d+ m across this view, drawn at true height\.$/.test(hilly.words.heights)], ['read', true]);
+  same('heights that are over half missing are drawn flat, said so', mk(null, { heights: { nx: 3, ny: 3, width: 800, depth: 800, h: new Float32Array(9).fill(NaN) } }).heights.status, 'flat');
+  same('the height request is the block the server keys on: 4 decimals, whole metres, 257 points (129 on a phone)', [corn.heightRequest.n, mk(null, { phone: true }).heightRequest.n, Number.isInteger(corn.heightRequest.width), String(corn.heightRequest.lat).split('.')[1].length <= 4], [257, 129, true, true]);
+  same('one sun: one directional light, a unit direction, up in the morning', [corn.light.lights.filter(l => l.type === 'directional').length, Math.abs(Math.hypot(corn.sun.x, corn.sun.y, corn.sun.z) - 1) < 1e-9, corn.sun.up], [1, true, true]);
+  same('the sun is the same on the same date for every plan', [JSON.stringify(corn.sun), JSON.stringify(res.sun)].filter((v, i, a) => a.indexOf(v) === i).length, 1);
+  same('the same input gives the same scene', JSON.stringify(mk({ state: 'crop', crop: 'corn', stage: 3, label: 'Planned' })), JSON.stringify(corn));
+  check('the first view is one repeatable angle: from the south at 200°, tilt 55°', corn.camera.azimuth === 200 && corn.camera.tilt === 55);
+  check('the screen-reader sentence names the field, the cover and the heights', /^3D view of Demo field, seen from the south\. Planned: .*Drawn flat\.$/.test(corn.aria), corn.aria);
+  check('plants are said to be symbols', corn.words.illustrative.includes('drawn larger than real'));
+  same('a polar-night date still describes the scene (no sun)', mk(null, { pin: { lat: 69.65, lon: 18.96 }, date: '2026-12-21' }).sun.up, false);
+}
+
 console.log(`${passed} passed, ${failed} failed`);
 process.exit(failed ? 1 : 0);

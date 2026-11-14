@@ -71,13 +71,15 @@ export function blocksOf(fields, pin) {
   });
   return blocks.sort((p, q) => p.lon - q.lon);
 }
+// Blocks are laid side by side west to east (north–south differences are not kept) with a drawn gap of this share of a block.
+export const BLOCK_GAP_SHARE = 0.2;
 // Blocks laid side by side west to east with a gap of about a fifth of a block; the real gap between neighbours is kept for the "Gap not to scale" line.
 export function layoutBlocks(blocks) {
   let x = 0; const out = [];
   blocks.forEach((b, i) => {
     const prev = out[i - 1];
     const real = prev ? Math.max(0, (b.lon - prev.lon) * metresPerDegreeLon((b.lat + prev.lat) / 2) - (b.width + prev.width) / 2) : 0;
-    const gap = prev ? Math.round(Math.min(real, 0.2 * Math.max(b.width, prev.width))) : 0;
+    const gap = prev ? Math.round(Math.min(real, BLOCK_GAP_SHARE * Math.max(b.width, prev.width))) : 0;
     x += prev ? prev.width / 2 + gap + b.width / 2 : 0;
     out.push({ ...b, offsetX: x, realGap: Math.round(real), drawnGap: gap, scaled: prev ? Math.abs(real - gap) < 1 : true });
   });
@@ -132,17 +134,21 @@ export function hillStep(rise, span) {
 }
 
 // ---- the soil: the real top 2 m drawn D metres deep, colour from sand / silt / clay and organic matter, class by the USDA triangle
+// The round exaggeration factors the drawn soil depth may take: a few steady choices, so a picture never gets an odd depth. Change them here.
+export const DEPTH_FACTORS = [2, 5, 10, 20, 50, 100];
 export function soilDepthDrawn(span) {
   const target = clamp(0.06 * span, 4, 60) / 2;
-  const factor = [2, 5, 10, 20, 50, 100].reduce((best, f) => Math.abs(f - target) < Math.abs(best - target) ? f : best);
+  const factor = DEPTH_FACTORS.reduce((best, f) => Math.abs(f - target) < Math.abs(best - target) ? f : best);
   return { factor, depth: 2 * factor };
 }
+// How much the organic matter (%) darkens the soil colour: upper edge of each band and the share of the colour kept. Bands are a working choice; change them here.
+export const ORGANIC_STEPS = [[1, 1], [2, 0.9], [3, 0.8], [5, 0.68], [Infinity, 0.55]];
 export function soilColour({ sand, silt, clay, organic }) {
   const total = sand + silt + clay;
   if (!(total > 0)) return null;
   const w = [sand / total, silt / total, clay / total], a = [hex(PALETTE.sand), hex(PALETTE.silt), hex(PALETTE.clay)];
   let rgb = [0, 1, 2].map(c => a[0][c] * w[0] + a[1][c] * w[1] + a[2][c] * w[2]);
-  const dark = organic == null ? 1 : organic < 1 ? 1 : organic < 2 ? 0.9 : organic < 3 ? 0.8 : organic < 5 ? 0.68 : 0.55;
+  const dark = organic == null ? 1 : ORGANIC_STEPS.find(([edge]) => organic < edge)[1];
   return toHex(rgb.map(v => v * dark));
 }
 export function soilClass({ sand, silt, clay }) {
@@ -167,12 +173,14 @@ export function soilClass({ sand, silt, clay }) {
 export const STAGES = ['just sown', 'young plants', 'growing', 'full growth', 'ripening', 'harvested'];
 export const GROWTH_SHARE = [0, f => 0.15 + 0.25 * f, f => 0.4 + 0.6 * f, 1, 1, 0.12];
 const DAY = 86400000;
+// "Just sown" lasts this share of the first stage, never under 3 days nor over 10 (a working choice: the stage is named but its length is not given).
+export const FRESH_SOWING = { share: 0.2, minDays: 3, maxDays: 10 };
 // crop: {sow: UTC ms of the sowing day, lengths: {ini, dev, mid, late} in days}. Returns the stage on a day: {stage, f (0..1 within it), share}, or null before sowing.
 export function stageOn(crop, ms) {
   if (!crop || !Number.isFinite(crop.sow) || !crop.lengths) return null;
   const { ini, dev, mid, late } = crop.lengths, t = (ms - crop.sow) / DAY;
   if (t < 0) return null;
-  const seed = clamp(ini * 0.2, 3, 10);      // fresh sowing: until the first leaves, about a fifth of the first stage
+  const seed = clamp(ini * FRESH_SOWING.share, FRESH_SOWING.minDays, FRESH_SOWING.maxDays);      // fresh sowing: until the first leaves
   let stage, f;
   if (t < Math.min(seed, ini)) { stage = 0; f = t / Math.min(seed, ini); }
   else if (t < ini) { stage = 1; f = (t - seed) / Math.max(1, ini - seed); }
@@ -203,9 +211,11 @@ const SHAPE_OF_CROP = {
   'green-bean': 'legume-bush', hemp: 'cane', jute: 'cane',
 };
 const SHAPE_OF_GROUP = { cover: 'cover-mix', forage: 'forage', legume: 'legume-bush', root: 'tuber', oil: 'brassica', vegetable: 'leafy-veg', sugar: 'beet' };
+const squash = id => String(id || '').toLowerCase().replace(/[^a-z0-9]/g, '');
+const SHAPE_BY_KEY = new Map([...Object.entries(SHAPE_OF_CROP).map(([k, v]) => [squash(k), v]), ['soy', 'legume-bush'], ['soybean', 'legume-bush'], ['soybeans', 'legume-bush'], ['greenbean', 'legume-bush'], ['bean', 'legume-bush']]);
 export function cropShape(id, group) {
-  const key = String(id || '').toLowerCase().replace(/[_\s]+/g, '-');
-  if (Object.hasOwn(SHAPE_OF_CROP, key)) return SHAPE_OF_CROP[key];
+  const key = squash(id);
+  if (key && SHAPE_BY_KEY.has(key)) return SHAPE_BY_KEY.get(key);
   if (Object.hasOwn(SHAPE_OF_GROUP, group)) return SHAPE_OF_GROUP[group];
   return 'cereal';
 }
@@ -342,7 +352,6 @@ export const camera = (southernHemisphere, layers = false, tall = false) => ({
 // ---- the words for the legend and the live region
 export function sunLine(sun, ev, opts) {
   if (sun.apparent <= 0) {
-    const end = sun.apparent > -6 ? (new Date(0), null) : null;
     return `The sun is down at ${opts.at}.` + (opts.twilightUntil ? ` Twilight until ${opts.twilightUntil}.` : '') + ' No sun shadows.';
   }
   return `Sun at ${opts.at}: ${heightWords(sun.apparent)} up, in the ${compass8(sun.azimuth)}. Shadows ${shadowWords(shadowRatio(sun.apparent))}, on flat ground. The dotted arc is the sun's path in the sky.`;
@@ -392,6 +401,85 @@ export function sceneOf(input) {
     moon: { height: moon.apparent, azimuth: moon.azimuth, lit: moon.lit, growing: moon.growing, up: moon.apparent > 0, words: moonWords(moon) },
     camera: camera(southern),
     label: farmLabel(farm.name, fields.length, ha, southern ? 'north' : 'south', true, 1),
+    palette: PALETTE,
+  };
+}
+
+// ---- the comparison view: one field, one plan, one date, what covers the ground (the smallest 3D look)
+// Real heights of a grown plant by shape and stage (metres), so a symbol is never drawn smaller than the real crop. From the FAO-56 stages.
+export const REAL_HEIGHT = {
+  maize: [0.057, 0.308, 1.201, 2.002, 2.002, 0.302], cereal: [0.024, 0.15, 0.551, 1, 1, 0.182], 'legume-bush': [0.03, 0.12, 0.3, 0.45, 0.45, 0.1],
+};
+const NAMES = { corn: 'corn', soy: 'soybeans', wheat: 'winter wheat', swheat: 'spring wheat', durum: 'durum wheat', barley: 'barley', oats: 'oats', rye: 'rye', sorghum: 'sorghum' };
+export const cropName = id => NAMES[id] || String(id || 'the crop').replace(/[-_]/g, ' ');
+const MONTHS = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
+export function dateWords(iso) { const m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(iso || ''); return m ? `${+m[3]} ${MONTHS[+m[2] - 1]} ${m[1]}` : 'no date'; }
+export const ESTIMATED_HA = 10;
+// input: {name, pin:{lat,lon}, field:{id, name, polygon:[[lat,lon]…] | null, areaEstimated}, planKind:'current'|'proposed', planName, date:'YYYY-MM-DD',
+//         ground:{state:'crop'|'cover'|'residue'|'bare', crop, stage, label:'Planned'|'Observed', note}|null, heights:{nx, ny, width, depth, h}|null, soil:{colour}|null, viewPx?, phone?, offsetMin?, zone?}
+export function groundScene(input) {
+  const pin = input.pin, field = input.field || {}, phone = !!input.phone;
+  let polygon = field.polygon, estimated = !!field.areaEstimated;
+  if (!Array.isArray(polygon) || polygon.length < 3) {   // no outline drawn: a square of 10 ha round the pin, always said to be an estimate
+    const half = Math.sqrt(ESTIMATED_HA * 1e4) / 2, f = frameAt(pin.lat, pin.lon);
+    polygon = [[-half, -half], [half, -half], [half, half], [-half, half]].map(([x, z]) => { const p = f.toLatLon(x, z); return [p.lat, p.lon]; });
+    estimated = true;
+  }
+  const block = blocksOf([{ id: field.id || 'f', polygon }], pin)[0];
+  const frame = frameAt(block.lat, block.lon);
+  const poly = polygon.map(([la, lo]) => frame.toXZ(la, lo));
+  const area = polyArea(poly), xs = poly.map(p => p.x), zs = poly.map(p => p.z);
+  const box = { x0: Math.min(...xs), x1: Math.max(...xs), z0: Math.min(...zs), z1: Math.max(...zs) };
+  const span = Math.max(block.width, block.depth), unit = farmUnit(span);
+  // the sun, at a morning moment of the chosen date so shadows and light read the same on every date
+  const m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(input.date || '');
+  const day = m ? { y: +m[1], m: +m[2], d: +m[3] } : null;
+  const ev = day ? sunEvents(day, pin.lat, pin.lon) : null;
+  const momentMs = ev && ev.state === 'normal' ? ev.noon - 90 * 60000 : ev ? ev.noon : null;
+  const sunNow = momentMs != null ? sunAt(momentMs, pin.lat, pin.lon) : null;
+  const sunUp = sunNow && sunNow.apparent > 0;
+  const lights = sunNow ? lightsOf(sunNow, null, 0) : { state: 'day', lights: [{ type: 'hemisphere', sky: '#eaf2ff', ground: '#a47148', intensity: 1.5 }] };
+  // the ground cover
+  const g = input.ground, label = g?.label === 'Observed' ? 'Observed' : 'Planned';
+  let cover = null;
+  if (g) {
+    const shape = g.crop ? cropShape(g.crop) : null, st = Number.isInteger(g.stage) ? g.stage : null;
+    const px = (input.viewPx || (phone ? 360 : 900)) * 0.8 / Math.max(box.x1 - box.x0, box.z1 - box.z0, 1);
+    const limit = (phone ? MAX_PLANTS_PHONE : MAX_PLANTS);
+    const bearing = rowBearing(poly, 0);
+    if ((g.state === 'crop' || g.state === 'cover') && shape) {
+      const stage = st ?? 3, real = (REAL_HEIGHT[shape] || REAL_HEIGHT.cereal)[stage], share = GROWTH_SHARE[stage];
+      const height = symbolHeight({ realHeight: real, span, pxPerMetre: px, stage, share: typeof share === 'function' ? 0.5 : share });
+      const lay = plantsOf(poly, { bearing, rowGap: unit * 0.55, plantGap: unit * 0.45, limit });
+      cover = { kind: stage >= 2 ? 'standing' : 'young', state: g.state, shape, crop: g.crop, stage, stageName: STAGES[stage], height, realHeight: real, colour: g.state === 'cover' ? PALETTE.cover : leafColour(stage, 0.5), plants: lay.plants, bearing,
+        words: `${stage >= 2 ? 'Standing' : 'Young'} ${cropName(g.crop)}, ${STAGES[stage]}.` };
+    } else if (g.state === 'residue') {
+      const lay = plantsOf(poly, { bearing, rowGap: unit * 0.22, plantGap: unit * 0.22, limit });
+      cover = { kind: 'residue', shape: shape || 'cereal', crop: g.crop, stage: null, height: unit * 0.2, length: unit * 0.7, colour: '#cdb27a', plants: lay.plants, bearing,
+        words: `${g.crop ? cropName(g.crop)[0].toUpperCase() + cropName(g.crop).slice(1) + ' residue' : 'Crop residue'}: thin, low stalks left lying after harvest.` };
+    } else {
+      cover = { kind: 'bare', shape: null, crop: null, stage: null, height: 0, colour: PALETTE.soil, plants: [], bearing, words: 'Bare soil: nothing grows and no residue is left.' };
+    }
+  }
+  // heights
+  const hm = input.heights ? heightModel(input.heights) : null;
+  const heights = hm && !hm.flat ? { model: hm, rise: hm.rise, status: 'read', words: `Heights read: the land rises ${hm.rise < 10 ? hm.rise.toFixed(1) : Math.round(hm.rise)} m across this view, drawn at true height.` }
+    : { model: null, rise: 0, status: input.heights ? 'flat' : 'missing', words: 'Heights not read: the land is drawn flat, as a plain schematic.' };
+  const soilColour = input.soil?.colour || PALETTE.soil;
+  const kindWord = input.planKind === 'proposed' ? 'Proposed plan' : 'Current plan';
+  return {
+    slab: { width: block.width, depth: block.depth, span, lat: block.lat, lon: block.lon }, heightRequest: { lat: block.lat, lon: block.lon, width: block.width, depth: block.depth, n: phone ? GRID_SIZE_PHONE : GRID_SIZE },
+    field: { id: field.id || null, name: field.name || 'Your field', polygon: poly, areaM2: area, areaHa: Math.round(area / 1e3) / 10, estimated, box },
+    heights, soilColour, cover, camera: camera(pin.lat < 0), light: lights, momentMs, sun: sunNow ? { ...lightDirection(sunNow.apparent, sunNow.azimuth), height: sunNow.apparent, azimuth: sunNow.azimuth, up: sunUp } : null,
+    sky: skyOf(null, sunNow ? sunNow.apparent : 30, false),
+    label: { state: label, plan: kindWord, planName: input.planName || null, date: input.date || null, dateWords: dateWords(input.date), line: `${label} · ${kindWord} · ${dateWords(input.date)}` },
+    words: {
+      cover: cover?.words || 'Not read yet: what covers this field on this date.', note: g?.note || null,
+      outline: estimated ? `Outline estimated: a ${ESTIMATED_HA} ha square round the pin. Draw the field to replace it.` : `${field.name || 'Your field'}: ${Math.round(area / 1e3) / 10} ha, from the outline you drew.`,
+      heights: heights.words, sun: sunNow ? (sunUp ? `Sun at ${clock(momentMs, { zone: input.zone, offsetMin: input.offsetMin, lon: pin.lon })}: ${heightWords(sunNow.apparent)} up, in the ${compass8(sunNow.azimuth)}. The one light in the picture.` : 'The sun is down on this date at the hour shown.') : 'No date, so no sun.',
+      illustrative: 'Plants are symbols, drawn larger than real so they show from here.',
+    },
+    aria: `3D view of ${field.name || 'your field'}, seen from the ${pin.lat < 0 ? 'north' : 'south'}. ${label}: ${cover?.words || 'ground cover not read yet'} ${heights.status === 'read' ? 'Hills at true height.' : 'Drawn flat.'}`,
     palette: PALETTE,
   };
 }
