@@ -1,0 +1,64 @@
+# The six Python libraries of the live lookups (scripts/live) and every library they bring with them, each pinned to
+# the version the first start installed on 2026-11-14, so every computer gets the same set. Python 3.12, ready-built files only.
+# A change here rebuilds .venv at the next start; keep PY_IMPORTS in scripts/portable.sh in step.
+# Each line has a ready-built file for Apple-chip Macs, Intel Macs and 64-bit Windows (read from pypi.org on 2026-11-14).
+
+# ---- the six
+earthaccess==0.11.0
+h5py==3.14.0
+netCDF4==1.7.2
+numpy==2.0.2
+rasterio==1.4.3
+openpyxl==3.1.5
+
+# ---- needed by earthaccess
+aiobotocore==3.10.0
+aiohappyeyeballs==2.7.1
+aiohttp==3.14.5
+aioitertools==0.13.0
+aiosignal==1.4.0
+botocore==1.43.117
+bounded-pool-executor==0.0.3
+charset-normalizer==3.5.2
+frozenlist==1.8.0
+fsspec==2026.9.0
+idna==3.20
+importlib-resources==7.1.0
+jmespath==1.1.0
+multidict==7.2.1
+multimethod==2.1
+pqdm==0.2.0
+propcache==0.5.4
+python-cmr==0.13.0
+python-dateutil==2.9.0.post0
+requests==2.34.2
+s3fs==2026.9.0
+six==1.17.0
+tinynetrc==1.3.1
+tqdm==4.70.1
+typing-extensions==4.16.0
+urllib3==2.8.0
+wrapt==2.5.2
+yarl==1.25.1
+
+# ---- needed by rasterio
+affine==3.0.1
+click==8.5.1
+click-plugins==1.1.1.2
+cligj==0.7.2
+pyparsing==3.3.3
+
+# ---- needed by netCDF4
+cftime==1.6.6.1
+
+# ---- needed by openpyxl
+et-xmlfile==2.0.0
+
+# ---- needed by earthaccess and rasterio
+attrs==26.1.0
+
+# ---- needed by earthaccess, netCDF4 and rasterio
+certifi==2026.10.23
+
+# ---- needed by earthaccess on Windows only (tqdm asks for it there); a Mac skips this line
+colorama==0.4.6 ; sys_platform == "win32"

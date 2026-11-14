@@ -1,0 +1,33 @@
+{
+ "library": "axe",
+ "version": "4.14.0",
+ "packages": [
+  {
+   "name": "axe-core",
+   "version": "4.14.0",
+   "licence": "MPL-2.0",
+   "source": "https://registry.npmjs.org/axe-core/-/axe-core-4.14.0.tgz",
+   "integrity": "sha512-9WTZxEjsZ7b13TH8JPmbV2z8CHbl80/2hm3XPEG4JgNdQLK81IBRXmSxHfMAOkSqQeRxT/0dwNDz2GOm3zzpcQ==",
+   "files": [
+    {
+     "path": "axe.min.js",
+     "from": "axe.min.js",
+     "bytes": 652140,
+     "sha512": "sha512-KqPL5lI4SN/ALevz73R1lLlllD2e4MXKxnVfdadF4tc2y5he6aH84s5SOWWYC0UB5zfRiTd1GXRESL7U7o1bJg=="
+    },
+    {
+     "path": "LICENSE-axe-core.txt",
+     "from": "LICENSE",
+     "bytes": 15921,
+     "sha512": "sha512-3HEmOO8y0jwqlfKVZLahXVGYBmA4dWDkqDPwNXLj7tGgUg5XCmezSEfeMvjw6whTN+Qxv1DwwIZGi+PYA4OSEg=="
+    },
+    {
+     "path": "LICENSE-3RD-PARTY-axe-core.txt",
+     "from": "LICENSE-3RD-PARTY.txt",
+     "bytes": 3766,
+     "sha512": "sha512-DuaVOdkfbuXbJp9i0djs5Rgpq7Acfw5qmEGM10jmWvXebkwu32vEjahgAWCDB1rB7mew4Z+t+CvLArsYDTp0mQ=="
+    }
+   ]
+  }
+ ]
+}

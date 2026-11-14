@@ -1,0 +1,54 @@
+{
+ "library": "maplibre",
+ "version": "4.7.1",
+ "packages": [
+  {
+   "name": "maplibre-gl",
+   "version": "4.7.1",
+   "licence": "BSD-3-Clause",
+   "source": "https://registry.npmjs.org/maplibre-gl/-/maplibre-gl-4.7.1.tgz",
+   "integrity": "sha512-lgL7XpIwsgICiL82ITplfS7IGwrB1OJIw/pCvprDp2dhmSSEBgmPzYRvwYYYvJGJD7fxUv1Tvpih4nZ6VrLuaA==",
+   "files": [
+    {
+     "path": "maplibre-gl.js",
+     "from": "dist/maplibre-gl.js",
+     "bytes": 803086,
+     "sha512": "sha512-x8Bt/82VRs91xVTqHDpQ1t8c4qit3QCRbo9BVqnUsyw5yKqzvL4BAgcz7R34BDCiCwx9ypXPTnxPaNnazQz1ag=="
+    },
+    {
+     "path": "maplibre-gl.css",
+     "from": "dist/maplibre-gl.css",
+     "bytes": 65534,
+     "sha512": "sha512-6AYkNPc8EvA9WwC0CvbRQHWpK1zV1+QeW+lVBfYqN2zTfG9IfWMRMyUDOw6GdF5US0poI/C/pz8tkiL+nfmYHg=="
+    },
+    {
+     "path": "LICENSE.txt",
+     "from": "LICENSE.txt",
+     "bytes": 5984,
+     "sha512": "sha512-OkO/ffc7ZoVjnXbcCCQkLT+KYnvimHEyUB+MZm+Pm57Qx6LVK8etuyaBA2slGRs3AK+5FOAiRL1PJi32RKPlnw=="
+    }
+   ]
+  },
+  {
+   "name": "@maplibre/maplibre-gl-leaflet",
+   "version": "0.0.22",
+   "licence": "ISC",
+   "source": "https://registry.npmjs.org/@maplibre/maplibre-gl-leaflet/-/maplibre-gl-leaflet-0.0.22.tgz",
+   "integrity": "sha512-9p4DSPLUE5t0StXH/IcZw37/UL7Ekea4jcVdkSsb2jWI+sM3K7mYHLOnti/2wn+HqxG4jMVUHah7Xun3bs00AQ==",
+   "files": [
+    {
+     "path": "leaflet-maplibre-gl.js",
+     "from": "leaflet-maplibre-gl.js",
+     "bytes": 10451,
+     "sha512": "sha512-4hOh6BjNuYJf+rPwoj2uzKKsFvwpqv7JE/+5Ga7pkq1pLPNEB3bjjA2y7i8+TZt13i+EAzKeW5pvFXm6YzjARw=="
+    },
+    {
+     "path": "LICENSE-leaflet-plugin.txt",
+     "from": "LICENSE",
+     "bytes": 767,
+     "sha512": "sha512-/D+u5UJr65rxtHs+tuWo9/lEZyfhAn/XL3iJDvaWCxC7YROukBbJ6iAtmVsGZxuNQgV1f4MNVX1BpvKvzcOzoQ=="
+    }
+   ]
+  }
+ ]
+}

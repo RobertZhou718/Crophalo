@@ -1,0 +1,15 @@
+# Made on each computer by the start, never shipped
+.cache/
+runtime/
+.venv/
+.secrets/
+.userdata/
+
+# The test weather, made by the tests
+scripts/_cache/
+
+# Left behind by the Mac and by Python
+.DS_Store
+__pycache__/
+*.pyc
+*.part
