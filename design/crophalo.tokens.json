@@ -568,9 +568,40 @@
       "$extensions": {
         "css": "--shadow-map"
       }
+    },
+    "thumb": {
+      "$type": "shadow",
+      "$value": [
+        {
+          "color": "#00000024",
+          "offsetX": "0px",
+          "offsetY": "0.5px",
+          "blur": "1px",
+          "spread": "0px"
+        },
+        {
+          "color": "#0000001a",
+          "offsetX": "0px",
+          "offsetY": "1px",
+          "blur": "3px",
+          "spread": "0px"
+        }
+      ],
+      "$description": "The white thumb of the chosen segment: a soft lift.",
+      "$extensions": {
+        "css": "--shadow-thumb"
+      }
     }
   },
   "radius": {
+    "big": {
+      "$type": "dimension",
+      "$value": "16px",
+      "$description": "The two big buttons on the home.",
+      "$extensions": {
+        "css": "--r-big"
+      }
+    },
     "r1": {
       "$type": "dimension",
       "$value": "14px",
@@ -605,10 +636,26 @@
     },
     "chip": {
       "$type": "dimension",
-      "$value": "6px",
-      "$description": "Chips and status tags. Small, because their words can wrap.",
+      "$value": "11px",
+      "$description": "Chips on one line: a pill (22 px tall).",
       "$extensions": {
         "css": "--r-chip"
+      }
+    },
+    "chip-wrap": {
+      "$type": "dimension",
+      "$value": "6px",
+      "$description": "A chip whose words can wrap: small corners, so two lines never look like a broken pill.",
+      "$extensions": {
+        "css": "--r-chip-wrap"
+      }
+    },
+    "badge": {
+      "$type": "dimension",
+      "$value": "6px",
+      "$description": "Status badges and the tick box.",
+      "$extensions": {
+        "css": "--r-badge"
       }
     },
     "tag": {
@@ -827,7 +874,7 @@
       },
       "field": {
         "$type": "dimension",
-        "$value": "13.5px",
+        "$value": "14px",
         "$description": "Text in a field; 16 px on touch screens so phones do not zoom in.",
         "$extensions": {
           "css": "--fs-field"

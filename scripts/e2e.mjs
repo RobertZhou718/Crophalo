@@ -7,7 +7,11 @@ import path from 'node:path';
 import { openRun } from './e2e_lib.mjs';
 
 const run = await openRun('e2e');
-const { ROOT, js, page, until, seen, tap, tapAt, rest, press, size, device, go, flat, calmPress, shot, check, same, group, finish, sleep, send, cutOff, asked } = run;
+const { ROOT, js, page, until, seen, tap, tapAt, rest, press, size, device, go, flat, calmPress, shot, check, same, finish, sleep, send, cutOff, asked } = run;
+// This suite drives the bar, the views and the settings as a farmer does on a second visit: the welcome sheet was read once and is out of the way.
+// The welcome itself (it blocks until accepted, Escape cannot skip it) is driven by scripts/e2e_flow.mjs.
+const welcomed = async () => { await js(`import('/js/welcome.js').then(m => localStorage.setItem(m.WELCOME_KEY, JSON.stringify({ v: m.WELCOME_VERSION, at: 'test' })))`); await go('/'); await rest(); };
+const group = (label, body) => run.group(label, async () => { await welcomed(); await body(); });
 
 // ---- the screens of the shell
 const VIEWS = [
@@ -16,7 +20,7 @@ const VIEWS = [
   { name: 'limits', id: 'info', hash: '#limits', title: 'Limitations · Crophalo', h1: 'Limitations' }, { name: 'settings', id: 'info', hash: '#settings', title: 'Settings · Crophalo', h1: 'Settings' },
   { name: 'admin', id: 'admin', hash: '#admin', title: 'Admin · Crophalo' }, { name: 'report', id: 'report', title: 'Your report · Crophalo' }, { name: 'farm', id: 'farm', title: 'My farm · Crophalo' },
 ];
-const WIDTHS = [320, 375, 390, 768, 1280];   // the notes name 375 in one place and 390 in another: both are walked
+const WIDTHS = [320, 375, 390, 768, 1280];   // the two common phone widths, 375 and 390, are both walked
 const settled = () => until(`document.getAnimations().every(a => a.playState !== 'running' || a.effect?.getComputedTiming().iterations === Infinity)`, 4000).catch(() => {});
 const shows = v => `!document.querySelector('#view-${v.id}').hidden && document.title === ${JSON.stringify(v.title)}`;
 async function open(v) {   // by its address where it has one, else by the app's own show()
@@ -49,18 +53,23 @@ async function everyScreen(width, visit, { largest = false, still = false } = {}
 const WIDGET = 'a[href], button, input, select, textarea, summary, [role=button], [role=tab], [role=switch], [role=checkbox], [role=radio], [role=link]';
 const targets = () => page((T, WIDGET) => {   // what a finger must hit: 44 by 44 px on the glass, counting the invisible tap area a small button carries
   const small = [], touching = [], seen = [];
-  for (const el of T.controls().filter(el => el.matches(WIDGET))) {
+  // Behind an open sheet the page is out of reach (the browser makes it inert), so only the sheet's own controls are measured.
+  const modal = document.querySelector('dialog:modal');
+  // A bar that stays put while the page scrolls under it (the sticky Back and Next bar) is measured on its own: what slides beneath it is out of reach there, and is measured once scrolled into view.
+  const layerOf = el => { for (let n = el; n && n !== document.body; n = n.parentElement) if (/^(sticky|fixed)$/.test(getComputedStyle(n).position)) return n; return null; };
+  for (const el of T.controls().filter(el => el.matches(WIDGET) && (!modal || modal.contains(el)))) {
     const face = T.face(el), b = T.box(face), after = getComputedStyle(face, '::after'), zoom = face.offsetWidth ? b.w / face.offsetWidth : 1;
     const grow = side => after.content !== 'none' && after.position === 'absolute' ? Math.max(0, -parseFloat(after[side]) || 0) * zoom : 0;
     const w = b.w + grow('left') + grow('right'), h = b.h + grow('top') + grow('bottom');
     // A link in the middle of a sentence is as tall as its line; the rule for touch targets leaves such links out (WCAG 2.5.8, "inline").
     const inSentence = el.tagName === 'A' && !el.matches('.btn, .tbtn, .brand, .skip, .card, .bigbtn, .chip') && [...el.parentElement.childNodes].some(n => n.nodeType === 3 && n.textContent.trim());
     if (!inSentence && (w < 43.5 || h < 43.5)) small.push(`${T.name(el)} is ${Math.round(w)} × ${Math.round(h)} px`);
-    if (!seen.some(s => s.face === face)) seen.push({ el, face, b });
+    if (!seen.some(s => s.face === face)) seen.push({ el, face, b, layer: layerOf(face) });
   }
   for (let i = 0; i < seen.length; i++) for (let j = i + 1; j < seen.length; j++) {
     const a = seen[i], c = seen[j];
     if (a.face.contains(c.face) || c.face.contains(a.face)) continue;   // a field and the button inside it
+    if (a.layer !== c.layer) continue;   // one rides on a bar the other scrolls under: they never sit side by side for a finger
     if (a.el.closest('.seg') && a.el.closest('.seg') === c.el.closest('.seg')) continue;   // the parts of one segmented control share one track: they are one control
     const dx = Math.max(0, Math.max(a.b.x, c.b.x) - Math.min(a.b.r, c.b.r)), dy = Math.max(0, Math.max(a.b.y, c.b.y) - Math.min(a.b.b, c.b.b)), gap = Math.hypot(dx, dy);
     if (gap < 2) touching.push(`${T.name(a.face)} and ${T.name(c.face)} are ${gap ? gap.toFixed(1) + ' px apart' : 'touching'}`);
@@ -98,12 +107,13 @@ const blues = () => page(T => {   // the colours a chosen control is painted wit
   const strong = c => T.sat(c) >= .2 && Math.max(c[0], c[1], c[2]) - Math.min(c[0], c[1], c[2]) >= 30;   // a real colour, not a grey
   const CHOSEN = '[aria-pressed=true], [aria-checked=true], [aria-selected=true], [aria-current]:not([aria-current=false]), [aria-expanded=true], .on';
   const drawn = input => input.nextElementSibling?.matches('.sw, .cbx') ? input.nextElementSibling : input.closest('.choice, .lrow');
-  const chosen = [...document.querySelectorAll(CHOSEN), ...[...document.querySelectorAll('input:checked')].map(drawn)].filter(el => el && T.shown(el) && !el.matches('.mic'));   // the microphone is red while it listens, as a recording light is (note 25)
+  const chosen = [...document.querySelectorAll(CHOSEN), ...[...document.querySelectorAll('input:checked')].map(drawn)].filter(el => el && T.shown(el) && !el.matches('.mic'));   // the microphone is red while it listens, as a recording light is
   const CAN_BE = '.tbtn, .tab, .seg button, button.chip, .choice, .lrow, .mapbtn, .sw, .cbx, .card.act';
   const plain = [...document.querySelectorAll(CAN_BE)].filter(el => T.shown(el) && !chosen.includes(el) && !el.matches(CHOSEN) && !el.matches(':focus, :has(:focus)'));
   return {
     chosen: chosen.length, plain: plain.length,
-    notBlue: chosen.filter(el => !paints(el).some(inFamily)).map(el => `${T.name(el)} has no blue: ${paints(el).filter(strong).map(c => `rgb(${c.slice(0, 3)})`).join(' ') || 'only greys'}`),
+    // The chosen segment is marked by its raised white thumb and heavier dark words, as on the control a farmer knows from the phone: a second, blue mark on it would only add noise. It must still carry no other colour (the check below).
+    notBlue: chosen.filter(el => !el.matches('.seg button') && !paints(el).some(inFamily)).map(el => `${T.name(el)} has no blue: ${paints(el).filter(strong).map(c => `rgb(${c.slice(0, 3)})`).join(' ') || 'only greys'}`),
     other: chosen.filter(el => paints(el).some(c => strong(c) && !inFamily(c))).map(el => `${T.name(el)} is also painted ${paints(el).filter(c => strong(c) && !inFamily(c)).map(c => `rgb(${c.slice(0, 3)})`).join(' ')}`),
     blueAtRest: plain.filter(el => paints(el).some(inFamily)).map(el => `${T.name(el)} is not chosen, yet it is blue`),
   };
@@ -185,6 +195,16 @@ await group('shell', async () => {
   check('shell: Back again goes home, still inside the app', await seen(shows(VIEWS[0]) + ` && location.pathname === '/'`), await js('document.title + " at " + location.href'));
   await js('history.forward()');
   check('shell: Forward goes to My farm again', await seen(shows(VIEWS[8])));
+  // an address the app does not know: the farmer lands on the home, and Back always moves (it never stands still on the same screen)
+  await js(`location.hash = '#nonsense'`);
+  check('shell: an address the app does not know shows the home', await seen(shows(VIEWS[0])), await js('document.title'));
+  await js('history.back()');
+  check('shell: Back from there goes to My farm, where the farmer was', await seen(shows(VIEWS[8])), await js('document.title'));
+  await go('/#nonsense');
+  check('shell: a page opened at an address the app does not know shows the home', await seen(shows(VIEWS[0])));
+  await tap('#navFarm'); await until(shows(VIEWS[8]));
+  await js('history.back()');
+  check('shell: My farm, then Back, goes home again', await seen(shows(VIEWS[0])), await js('document.title + " at " + location.href'));
 
   // the Menu, where the screen is too narrow for the four links
   same('shell: on a wide screen there is no Menu button and the four links sit in the bar', await page(T => [T.shown(document.querySelector('#navMenuBtn')), [...document.querySelectorAll('#navMenu a')].filter(T.shown).length]), [false, 4]);
@@ -357,7 +377,8 @@ await group('offline', async () => {
   check('offline: the home draws with every outside request failing', await page(T => T.shown(document.querySelector('#view-home h1')) && document.querySelector('#offlineBar').hidden && document.title === 'Start · Crophalo'));
   const before = cutOff.length;
   same('offline: a request to an outside service really is cut off here', await js(`fetch('https://power.larc.nasa.gov/api/').then(() => 'answered', () => 'failed')`), 'failed');
-  check('offline: the cut-off request was seen and listed', cutOff.length === before + 1 && cutOff.at(-1).where.startsWith('power.larc.nasa.gov'), cutOff.slice(before));
+  // the demo card on the home may still be asking for its satellite picture at this moment, so the NASA request is looked for among what was cut off, not only last
+  check('offline: the cut-off request was seen and listed', cutOff.slice(before).filter(c => c.where.startsWith('power.larc.nasa.gov')).length === 1, cutOff.slice(before));
   none('offline: the app asks no outside address for a script, a style or a font', cutOff.filter(c => /Script|Stylesheet|Font/i.test(c.kind)).map(c => `${c.kind}: ${c.where}`));
   check('offline: the app\'s own files were asked for from the throwaway copy', asked.includes('/js/app.js') && asked.includes('/css/app.css') && asked.includes('/vendor/leaflet/leaflet.js'), asked.slice(0, 12));
   none('offline: the first screen does not ask for three.js or MapLibre', [...new Set(asked.filter(a => /\/vendor\/(three|maplibre)\//.test(a)))]);

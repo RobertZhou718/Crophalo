@@ -176,12 +176,12 @@ if ($Chip -eq 'ARM64' -and $Os.Build -ge 22000) {
   Say "Crophalo needs a 64-bit Windows PC with an Intel or AMD chip. This PC is of another kind ($Chip)."; Log "stopped: chip $Chip"; exit 1
 }
 
-# ---- 6 - already running from this folder? then only open the browser
+# ---- 6 - already running from this folder? then only open the browser. The server names its own folder (root) in /api/health;
+#      the cache is no sign of it, since two folders may share one FW_CACHE
 $Url = "http://localhost:$Port/"
-$cacheHome = [string]$env:FW_CACHE; if (-not $cacheHome) { $cacheHome = "$Root\.cache" }
-$CacheApi = [IO.Path]::Combine([IO.Path]::GetFullPath($cacheHome), 'api')   # as the server names it in /api/health
+$RootFull = [IO.Path]::GetFullPath($Root)   # as the server names it in /api/health
 $health = Get-Health $Port 3000
-if ($health -and ([string]$health.cache) -ieq $CacheApi) {   # capitals do not tell two Windows folders apart
+if ($health -and ([string]$health.root) -ieq $RootFull) {   # capitals do not tell two Windows folders apart
   Say "Crophalo is already running from this folder: $Url"; Log "already running on $Port"
   if ($Open) { Open-Browser }
   exit 0
@@ -382,11 +382,10 @@ if ($Why) {
 # The NASA library (earthaccess 0.11.0) and Python's own netrc reader look for ".netrc" in the home folder on Windows too
 # (not "_netrc"), and so does scripts/earthdata.mjs: that is the file written here.
 $HomeDir = [string]$env:USERPROFILE; if (-not $HomeDir) { $HomeDir = [Environment]::GetFolderPath('UserProfile') }   # the folder Python and Node call home
-function Test-HasHost([string]$file) { try { return ([IO.File]::ReadAllText($file)).Contains($EarthdataHost) } catch { return $false } }
+# A login counts only as the server counts it (an active entry with both a login and a password, in the folder, the settings or .netrc):
+# scripts\earthdata.mjs answers "yes <where>" or "no", and never prints the login itself.
 function Test-Login {
-  if (Test-HasHost "$Root\.secrets\earthdata.netrc") { return $true }
-  if ($env:EARTHDATA_USERNAME -and $env:EARTHDATA_PASSWORD) { return $true }
-  return ($HomeDir -and (Test-HasHost "$HomeDir\.netrc"))
+  return ((Get-ToolText $Node @("$Root\scripts\earthdata.mjs")) -like 'yes *')
 }
 function ConvertTo-NetrcWord([string]$value) {   # a value with anything but A-Za-z0-9 . _ @ + = , : / - goes in "quotes", with \ and " escaped
   if ($value -eq '' -or $value -cmatch '[^A-Za-z0-9._@+=,:/-]') { return '"' + $value.Replace('\', '\\').Replace('"', '\"') + '"' }

@@ -5,6 +5,9 @@ import http from 'node:http';
 import fs from 'node:fs';
 import path from 'node:path';
 import zlib from 'node:zlib';
+import os from 'node:os';
+import crypto from 'node:crypto';
+import { spawn } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
 import { findLogin } from './earthdata.mjs';
 
@@ -31,7 +34,9 @@ const SECURE = {
   'permissions-policy': 'geolocation=(self), camera=(), microphone=(), payment=()',
   'content-security-policy': "frame-ancestors 'self'; object-src 'none'; base-uri 'self'",   // only the safe parts: the app loads maps and data from several hosts
   vary: 'accept-encoding',
+  ...(PUBLIC ? { 'strict-transport-security': 'max-age=31536000' } : {}),   // the public site is reached over https only; on this computer (plain http) the line would mean nothing
 };
+const FAULT = 'Something went wrong on the server. Please try again in a moment.';   // what a visitor of the public site reads; the detail stays in the log
 const open = (res, status, headers) => res.writeHead(status, { ...SECURE, ...headers });
 function send(req, res, status, headers = {}, body = '') {
   const bytes = Buffer.isBuffer(body) ? body : Buffer.from(body);
@@ -92,9 +97,8 @@ function rateOK(req) {
   return ok;
 }
 
-// ---- live lookups. The table is empty for now: each row arrives with its Python script, and the runner (queue, shared runs,
-//      cache, warm timer) takes the place of lookup(). Health, ready and sources already read everything from here.
-const LIVE = {};   // id → { name, ttl, point?, box?, timeout?, args? }. Keep this on one line: test_server.mjs puts test rows into a copy of it.
+// ---- live lookups: one Python script per row in scripts/live/, run by the runner below. Health, ready and sources read everything from here.
+const LIVE = { smaproot: { name: 'NASA SMAP root-zone soil moisture', ttl: 6 * H, point: true, snap: 0.01, timeout: 150e3, script: 'smaproot.py' }, dem: { name: 'Land heights (the finest free height map)', ttl: 30 * 24 * H, timeout: 120e3, args: boxArgs, script: 'dem.py' } };   // id → { name, ttl, point?, snap?, timeout?, args?, script }. Keep this on one line: test_server.mjs puts test rows into a copy of it.
 const liveStats = {}, inFlight = new Map(), liveQueue = [];
 let liveRunning = 0;
 const statOf = id => (liveStats[id] ||= { last_ms: null, last_time: null, last_ok_time: null, last_error: null });   // times in ms; ISO only on the way out
@@ -105,11 +109,94 @@ function pointArgs(q) {   // decimal degrees; a blank is missing, never 0
   const lat = read(q.get('lat')), lon = read(q.get('lon'));
   return Math.abs(lat) <= 90 && Math.abs(lon) <= 180 ? [lat.toFixed(4), lon.toFixed(4)] : { reason: 'lat and lon are required (decimal degrees)' };   // 4 decimals is about 11 m
 }
-async function lookup(id, row, url) {
-  const args = row.args ? row.args(url.searchParams) : row.point ? pointArgs(url.searchParams) : [];
+// The height lookup: LAT LON W D NX NY [SOURCE]. A box of 20 m to 8 km a side with 2 to 257 points a side.
+const DEM_SOURCES = ['hrdem', 'hrdem2', 'usgs3dep', 'usgs13', 'mrdem', 'ahn', 'ea', 'ign-es', 'ign-fr', 'glo30', 'nasadem'];
+const BOX_WORDS = 'The box must be 20 m to 8 km a side, with 2 to 257 points a side';
+function boxArgs(q) {   // the arguments written the way the script and the cache key want them: 4 decimals (about 11 m), whole metres, whole points
+  const num = v => (/^[+-]?(\d+\.?\d*|\.\d+)$/.test(String(v ?? '').trim()) ? Number(v) : NaN);
+  const lat = num(q.get('lat')), lon = num(q.get('lon')), w = num(q.get('w')), d = num(q.get('d')), nx = num(q.get('nx')), ny = num(q.get('ny'));
+  if (![lat, lon, w, d, nx, ny].every(Number.isFinite)) return { reason: 'lat, lon, w, d, nx and ny are required as plain numbers' };
+  if (Math.abs(lat) > 84 || Math.abs(lon) > 180) return { reason: 'lat must be -84..84 and lon -180..180' };
+  const side = v => Math.round(v);
+  if (side(w) < 20 || side(w) > 8000 || side(d) < 20 || side(d) > 8000 || !Number.isInteger(nx) || !Number.isInteger(ny) || nx < 2 || nx > 257 || ny < 2 || ny > 257) return { reason: BOX_WORDS };
+  const source = String(q.get('source') ?? '').trim();
+  if (source && !DEM_SOURCES.includes(source)) return { reason: 'That height map is not one of the known sources' };
+  return [lat.toFixed(4), lon.toFixed(4), String(side(w)), String(side(d)), String(nx), String(ny), ...(source ? [source] : [])];
+}
+
+// The runner: one Python process per question, one run for one question however many ask, a few at once in all (LIVE_MAX; one on a small host),
+// at most LIVE_WAIT_MAX waiting, each with its time limit, in its own process group, with a clean environment, its answer kept on disk for its row's time.
+const LIVE_MAX = Math.max(1, Number(ENV.LIVE_MAX) || (os.totalmem() < 2 * 1024 ** 3 ? 1 : 2)), LIVE_WAIT_MAX = 24, LIVE_DIR = path.join(ROOT, 'scripts', 'live'), OUT_MAX = 8e6;
+const snap = (value, step) => (Math.round(Number(value) / step) * step).toFixed(Math.max(0, Math.ceil(-Math.log10(step))));   // 44.4037 on a 0.01 grid is "44.40": every pin inside one square shares one answer
+const hashOf = args => crypto.createHash('sha1').update(args.join('\u0001')).digest('hex').slice(0, 20);
+const cacheFile = (id, args, final = false) => path.join(CACHE, 'api', `${final ? 'final-' : ''}${id}_${hashOf(args)}.json`);   // a final failure has its own name, so the sources count leaves it out
+function keepFor(answer, row) {   // a whole answer for the row's time; a partial one for an hour; a failure asking again cannot change for a day; any other failure not at all
+  if (answer.ok !== true) return answer.final === true ? 24 * H : 0;
+  return answer.incomplete || answer.stale || answer.read_errors > 0 ? H : row.ttl;
+}
+function readKept(file, now) { try { const kept = JSON.parse(fs.readFileSync(file, 'utf8')); return now >= kept.stored && now < kept.until ? kept : null; } catch { return null; } }
+function writeKept(file, answer, keep) {
+  try { fs.mkdirSync(path.dirname(file), { recursive: true }); const tmp = `${file}.${process.pid}.tmp`, now = Date.now(); fs.writeFileSync(tmp, JSON.stringify({ stored: now, until: now + keep, answer })); fs.renameSync(tmp, file); return now; }
+  catch { return Date.now(); }   // a full disk only means no keeping
+}
+function childEnv(row) {   // a clean environment: the NASA login and the time limit, nothing else of the server's
+  const keep = name => (ENV[name] ? { [name]: ENV[name] } : {});
+  return { PATH: ENV.PATH, ...keep('HOME'), ...keep('USERPROFILE'), ...keep('SystemRoot'), ...keep('TEMP'), ...keep('TMP'), ...keep('TMPDIR'),
+    ...keep('EARTHDATA_USERNAME'), ...keep('EARTHDATA_PASSWORD'), FW_CACHE: CACHE, FW_LIMIT_S: String((row.timeout || 120e3) / 1e3), PYTHONWARNINGS: 'ignore', PYTHONDONTWRITEBYTECODE: '1',
+    ...(process.platform === 'win32' ? { PYTHONUTF8: '1', PYTHONIOENCODING: 'utf-8' } : {}), ...findLogin(ROOT).env };
+}
+function stopTree(child, signal) { try { process.platform === 'win32' ? spawn('taskkill', ['/pid', String(child.pid), '/T', '/F'], { stdio: 'ignore' }) : process.kill(-child.pid, signal); } catch { /* already gone */ } }
+function runScript(id, row, args) {   // always resolves with an answer object
+  return new Promise(done => {
+    const started = Date.now(), out = [], err = [], limitMs = row.timeout || 120e3;
+    let size = 0, over = false, timedOut = false, hard = 0, child;
+    const finish = answer => {
+      const stat = statOf(id); stat.last_ms = Date.now() - started; stat.last_time = Date.now();
+      if (answer.ok) { stat.last_ok_time = Date.now(); stat.last_error = null; } else stat.last_error = String(answer.reason || '');
+      done(answer);
+    };
+    try { child = spawn(PY, ['-u', row.script || id + '.py', ...args], { cwd: LIVE_DIR, env: childEnv(row), detached: process.platform !== 'win32', stdio: ['ignore', 'pipe', 'pipe'] }); }
+    catch (e) { return finish({ ok: false, reason: 'Could not start Python: ' + e.message }); }
+    child.stdout.on('data', d => { size += d.length; if (size > OUT_MAX) over = true; else out.push(d); });
+    child.stderr.on('data', d => { err.push(d); if (err.length > 50) err.shift(); });
+    const limit = setTimeout(() => { timedOut = true; stopTree(child, 'SIGTERM'); hard = setTimeout(() => stopTree(child, 'SIGKILL'), 3000); }, limitMs);
+    let ended = false;
+    child.on('error', e => { if (ended) return; ended = true; clearTimeout(limit); clearTimeout(hard); finish({ ok: false, reason: 'Could not start Python: ' + e.message }); });
+    child.on('close', code => {
+      if (ended) return; ended = true; clearTimeout(limit); clearTimeout(hard);
+      let answer = null;
+      if (!timedOut && !over) { try { answer = JSON.parse(Buffer.concat(out).toString('utf8')); } catch { /* said below */ } }
+      if (timedOut) answer = { ok: false, reason: `Timed out after ${Math.round(limitMs / 1000)} s` };
+      else if (!answer || typeof answer !== 'object' || Array.isArray(answer) || typeof answer.ok !== 'boolean') {
+        console.error(`${id}: no valid answer (exit ${code})${over ? ', the output was too long' : ''}:`, Buffer.concat(err).toString('utf8').slice(-600));   // the lookup's own log: it holds no address and no secret
+        answer = { ok: false, reason: `The ${id} script gave no valid answer (exit ${code})` };
+      }
+      finish(answer);
+    });
+  });
+}
+async function lookup(req, res, id, row, url) {
+  let args = row.args ? row.args(url.searchParams) : row.point ? pointArgs(url.searchParams) : [];
   if (!Array.isArray(args)) throw new Fail(400, args.reason);
   if (!fs.existsSync(PY)) throw new Fail(500, 'Python environment not found (.venv)');
-  throw new Fail(503, 'This lookup is not switched on yet');   // the runner slots in here; no row can reach this line before it does
+  if (row.snap) args = args.map(v => snap(v, row.snap));
+  const spot = row.point && row.snap ? { lat: Number(args[0]), lon: Number(args[1]) } : null;   // the place really read: the answer says it
+  const send = (answer, cached, at) => json(req, res, 200, { ...answer, ...(spot && answer.ok ? { spot } : {}), cached, fetched: new Date(at).toISOString() });
+  const file = cacheFile(id, args), finalFile = cacheFile(id, args, true), now = Date.now(), hit = readKept(file, now) || readKept(finalFile, now);
+  if (hit) return send(hit.answer, true, hit.stored);
+  let job = inFlight.get(file);
+  if (!job) {   // visitors asking the same thing share one run
+    if (liveRunning >= LIVE_MAX && liveQueue.length >= LIVE_WAIT_MAX) return json(req, res, 200, { ok: false, reason: 'The data server is busy. Try again in a minute.' });
+    job = { id, promise: (async () => {
+      while (liveRunning >= LIVE_MAX) await new Promise(wake => liveQueue.push(wake));
+      liveRunning++;
+      try { return await runScript(id, row, args); } finally { liveRunning--; liveQueue.shift()?.(); }
+    })().then(answer => { const keep = keepFor(answer, row); return { answer, at: keep ? writeKept(answer.ok ? file : finalFile, answer, keep) : Date.now() }; }) };
+    inFlight.set(file, job);
+    job.promise.finally(() => inFlight.delete(file));
+  }
+  const { answer, at } = await job.promise;
+  return send(answer, false, at);
 }
 
 // ---- status
@@ -118,7 +205,7 @@ function health() {   // a host calls this every few seconds: memory and two sma
   for (const [id, row] of Object.entries(LIVE)) live[id] = { last_ok: iso(statOf(id).last_ok_time), error: statOf(id).last_error, ttl_hours: row.ttl / H };
   return {
     ok: true, python: fs.existsSync(PY),
-    ...(PUBLIC ? {} : { cache: path.join(CACHE, 'api') }),   // a public server never says where its folders are
+    ...(PUBLIC ? {} : { root: ROOT, cache: path.join(CACHE, 'api') }),   // a public server never says where its folders are; root tells two folders that share one cache apart
     netrc: !!login, ...(PUBLIC ? {} : { login }),
     userdata: USERDATA, uptime_s: Math.round(process.uptime()), busy: liveRunning, queued: liveQueue.length, live,
   };
@@ -156,7 +243,7 @@ const ROUTES = {
 function routeFor(pathname) {
   const id = pathname.slice(5);
   if (Object.hasOwn(ROUTES, pathname)) return ROUTES[pathname];
-  return Object.hasOwn(LIVE, id) ? { methods: ['GET'], rate: true, run: (req, res, url) => lookup(id, LIVE[id], url) } : null;   // own keys only: "toString" is not a lookup
+  return Object.hasOwn(LIVE, id) ? { methods: ['GET'], rate: true, run: (req, res, url) => lookup(req, res, id, LIVE[id], url) } : null;   // own keys only: "toString" is not a lookup
 }
 async function api(req, res, url) {
   const route = routeFor(url.pathname), fits = !!route && route.methods.includes(req.method);
@@ -168,8 +255,15 @@ async function api(req, res, url) {
 }
 
 // ---- files of the app
-const TYPES = { '.html': 'text/html; charset=utf-8', '.js': 'text/javascript', '.css': 'text/css', '.json': 'application/json', '.svg': 'image/svg+xml', '.png': 'image/png', '.md': 'text/markdown' };
-const TEXT = new Set(['.html', '.js', '.css', '.json', '.svg', '.md']);   // the types worth compressing
+const TYPES = {
+  '.html': 'text/html; charset=utf-8', '.js': 'text/javascript', '.css': 'text/css', '.json': 'application/json', '.svg': 'image/svg+xml', '.png': 'image/png', '.md': 'text/markdown',
+  '.txt': 'text/plain; charset=utf-8', '.xml': 'application/xml', '.webmanifest': 'application/manifest+json', '.ico': 'image/x-icon', '.webp': 'image/webp', '.jpg': 'image/jpeg',
+  '.jpeg': 'image/jpeg', '.gif': 'image/gif', '.woff2': 'font/woff2', '.glb': 'model/gltf-binary', '.wasm': 'application/wasm',
+};
+const TEXT = new Set(['.html', '.js', '.css', '.json', '.svg', '.md', '.txt', '.xml', '.webmanifest', '.wasm']);   // the types worth compressing
+// What the page asks for: its own pages and files at the top, and the six folders of the app, and the citation pages in docs/. Everything else (the server's code, the tests,
+// the starters, the folder's own pages) stays on this computer, so the public site never hands it out.
+const SERVED = /^(index\.html|design\.html|manifest\.json|robots\.txt|favicon\.ico|docs\/[a-z0-9-]+\.md|(js|css|data|design|icons|vendor)\/.+)$/;
 const KEPT_A_DAY = /^(data\/spam|icons|design|vendor)\//;   // these change only with a release; code is asked about on every visit
 const ZIPPED = new Map(), ZIPPED_MAX = 400;   // compressed copies by kind and file, reused while the ETag matches
 
@@ -190,7 +284,7 @@ async function file(req, res, url) {
   if (req.method !== 'GET' && req.method !== 'HEAD') return send(req, res, 405, { allow: 'GET, HEAD' });
   const full = path.join(ROOT, asked.endsWith('/') ? asked + 'index.html' : asked), rel = path.relative(ROOT, full).split(path.sep).join('/');
   const outside = rel.startsWith('..') || path.isAbsolute(rel), hidden = /(^|\/)\./.test(rel), packed = /^runtime(\/|$)/i.test(rel);   // "RUNTIME" too: this Mac's disk does not tell capitals apart
-  if (outside || hidden || packed) return send(req, res, 403);
+  if (outside || hidden || packed || !SERVED.test(rel)) return send(req, res, 403);
   const st = await fs.promises.stat(full).catch(() => null);
   if (!st || !st.isFile()) return text(req, res, 404, 'not found');
   const ext = path.extname(full).toLowerCase();
@@ -209,17 +303,29 @@ async function file(req, res, url) {
   stream.pipe(res);
 }
 
+// ---- the reminder pushes (scripts/push.mjs) and the US drought weeks (scripts/drought.mjs): each answers its own /api paths and reads its own request body.
+//      A copy of the server without those files (a test site) simply has no such routes.
+const SITE_HOSTS = ALLOWED_HOSTS;
+const push = await import('./push.mjs').then(m => m.createPush({ dir: CACHE, env: ENV, publicMode: PUBLIC, siteHosts: SITE_HOSTS })).catch(e => (e?.code === 'ERR_MODULE_NOT_FOUND' ? null : (console.error('push: not started:', e?.message || e), null)));
+const drought = await import('./drought.mjs').then(m => m.createDrought({ dir: CACHE, env: ENV })).catch(e => (e?.code === 'ERR_MODULE_NOT_FOUND' ? null : (console.error('drought: not started:', e?.message || e), null)));
+
 // ---- the request boundary: one bad request must never stop the server
 async function handle(req, res) {
   let url;
   try { url = new URL(req.url.startsWith('/') ? 'http://localhost' + req.url : req.url); } catch { return text(req, res, 400, 'bad request'); }
+  if (url.pathname.startsWith('/api/push') || url.pathname === '/api/drought') {
+    for (const [name, value] of Object.entries(SECURE)) res.setHeader(name, value);   // these two write their own answers: the security headers go on first
+    if (push && await push.handle(req, res, url.pathname)) return;
+    if (drought && await drought.handle(req, res, url)) return;
+  }
   return url.pathname.startsWith('/api/') ? api(req, res, url) : file(req, res, url);
 }
 function fault(req, res, e) {
   if (res.headersSent) return res.destroy();
-  if (e instanceof Fail) return json(req, res, e.status, { ok: false, reason: e.message }, e.headers);
+  if (e instanceof Fail && !(PUBLIC && e.status >= 500)) return json(req, res, e.status, { ok: false, reason: e.message }, e.headers);
   console.error('request failed:', e?.stack || e);   // the error only: never the address asked for, it can hold a field's position
-  return String(req.url).startsWith('/api/') ? json(req, res, 500, { ok: false, reason: 'Server error: ' + (e?.message || e) }) : text(req, res, 500, 'server error');
+  if (e instanceof Fail) return json(req, res, e.status, { ok: false, reason: FAULT }, e.headers);   // a public site never tells a visitor about its own insides
+  return String(req.url).startsWith('/api/') ? json(req, res, 500, { ok: false, reason: PUBLIC ? FAULT : 'Server error: ' + (e?.message || e) }) : text(req, res, 500, 'server error');
 }
 const server = http.createServer((req, res) => {
   handle(req, res).catch(e => fault(req, res, e)).catch(() => res.destroy());
@@ -239,12 +345,13 @@ server.on('error', e => {
     : `Crophalo could not start on ${HOST}, port ${PORT}: ${e.message}`);
   process.exit(1);
 });
-server.listen(PORT, HOST, () => console.log(`Crophalo on http://${HOST.includes(':') ? `[${HOST}]` : HOST}:${server.address().port}${PUBLIC ? ' (public)' : ''}`));
+server.listen(PORT, HOST, () => { push?.start(); console.log(`Crophalo on http://${HOST.includes(':') ? `[${HOST}]` : HOST}:${server.address().port}${PUBLIC ? ' (public)' : ''}`); });
 
 let stopping = false;
 function stop(signal) {   // a new release, Ctrl-C or a closed Terminal window
   if (stopping) return;
   stopping = true;
+  push?.stop();
   console.log(`${signal}: shutting down`);
   server.close(() => process.exit(0));   // requests in progress finish first
   server.closeIdleConnections();

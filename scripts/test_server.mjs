@@ -7,7 +7,7 @@ import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 import zlib from 'node:zlib';
-import { spawn } from 'node:child_process';
+import { spawn, spawnSync } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
 import { findLogin, parseNetrc, netrcWords, LOGIN_PLACES } from './earthdata.mjs';
 
@@ -31,7 +31,7 @@ const PNG = Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR
 const put = (root, rel, content) => { const file = path.join(root, rel); fs.mkdirSync(path.dirname(file), { recursive: true }); fs.writeFileSync(file, content); return file; };
 const FILES = {
   'index.html': '<!doctype html>\n<meta charset="utf-8">\n<title>Test page</title>\n<p>Türkiye</p>\n' + lines('<!-- test page for the server suite, line', 40),
-  'sub/index.html': '<!doctype html>\n<title>Test page in a folder</title>\n',
+  'data/sub/index.html': '<!doctype html>\n<title>Test page in a folder</title>\n',
   'js/app.js': lines('// test script for the server suite, line', 80),
   'js/tiny.js': '// a test script under 1 KB\n',
   'css/app.css': lines('/* test styles for the server suite, line', 40).replace(/(\d+)\n/g, '$1 */\n'),
@@ -39,10 +39,16 @@ const FILES = {
   'data/spam/index.json': JSON.stringify({ test: true }),
   'design/tokens.json': JSON.stringify({ test: true }),
   'icons/mark.svg': '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 8 8">' + lines('<!-- test icon, line', 40).replace(/(\d+)\n/g, '$1 -->\n') + '</svg>\n',
-  'icons/dot.png': PNG, 'dot.png': PNG,
+  'icons/dot.png': PNG, 'data/dot.png': PNG,
+  'design.html': '<!doctype html>\n<title>Test design page</title>\n', 'manifest.json': '{"test":true}', 'robots.txt': 'test robots file\n',
+  'data/kinds/a.ico': PNG, 'data/kinds/a.webp': PNG, 'data/kinds/a.jpg': PNG, 'data/kinds/a.jpeg': PNG, 'data/kinds/a.gif': PNG, 'data/kinds/a.woff2': PNG,
+  'data/kinds/a.glb': PNG, 'data/kinds/a.xml': '<test/>\n', 'data/kinds/a.webmanifest': '{"test":true}', 'data/kinds/a.wasm': PNG,
+  'Start Crophalo.command': '#!/bin/sh\n# test starter\n', 'Start Crophalo (Add NASA login).bat': 'rem test starter\n', 'Start Crophalo.bat': 'rem test starter\n',
+  'MOVING.md': '# test page about moving the folder\n', 'README.md': '# test readme\n', 'stray.html': '<!doctype html>\n<title>A page the app never asks for</title>\n',
+  'sub/index.html': '<!doctype html>\n<title>A folder the app never asks for</title>\n',
   'vendor/lib/lib.js': lines('// test library file for the server suite, line', 60),
-  'notes.md': '# Test note\n',
-  'plain.txt': 'a test text file\n',
+  'data/about.md': '# Test words\n',
+  'data/plain.txt': 'a test text file\n',
   '.hidden': 'hidden test file\n', 'js/.DS_Store': 'hidden test file\n',
   '.venv/pyvenv.cfg': 'hidden test file\n', '.cache/api/x.json': '{"test":true}', '.userdata/backup.json': '{"test":true}',
   '.secrets/earthdata.netrc': `machine urs.earthdata.nasa.gov login ${USER} password ${WORD}\n`,
@@ -56,7 +62,8 @@ fs.mkdirSync(HOME_EMPTY);
 const PYTHON = put(TMP, 'stand-in/python', '');   // only has to exist: nothing runs it in this suite
 
 // The server finds its root from its own file, so each site gets its own copy of the two scripts.
-const SOURCE = fs.readFileSync(path.join(HERE, 'serve.mjs'), 'utf8'), LIVE_LINE = 'const LIVE = {};';
+function SERVE_LIVE() { const line = fs.readFileSync(path.join(HERE, 'serve.mjs'), 'utf8').split('\n').find(l => l.startsWith('const LIVE = {')); return line.slice(0, line.indexOf('};') + 2); }   // the table as written in the server: the suite swaps it for test rows in its own copy
+const SOURCE = fs.readFileSync(path.join(HERE, 'serve.mjs'), 'utf8'), LIVE_LINE = SERVE_LIVE();
 const TEST_ROWS = `const LIVE = {
   probe: { name: 'Test row: a point lookup', ttl: 3600e3, point: true },
   shared: { name: 'Test row: shared data', ttl: 7200e3 },
@@ -109,7 +116,7 @@ const SECURE = {
 };
 const secure = (name, r) => { const missing = Object.keys(SECURE).filter(k => r.headers[k] !== SECURE[k]); check(`${name} carries every security header`, !missing.length, 'wrong or missing: ' + missing.join(', ')); };
 const OTHER_SITE = 'Requests from other websites are not allowed';
-const refused = (name, r) => { same(`${name}: 403`, r.status, 403); same(`${name}: the note's exact reason`, r.text, JSON.stringify({ ok: false, reason: OTHER_SITE })); };
+const refused = (name, r) => { same(`${name}: 403`, r.status, 403); same(`${name}: the exact reason`, r.text, JSON.stringify({ ok: false, reason: OTHER_SITE })); };
 
 function stopAll() { for (const child of children) if (child.exitCode === null && child.signalCode === null) { try { process.kill(child.pid, 'SIGKILL'); } catch { /* already gone */ } } }
 process.on('exit', stopAll);   // only this suite's own servers, by PID, even when a check throws
@@ -123,11 +130,18 @@ async function filesOfTheApp(A) {
   same('/ gives index.html, plain when no compression is asked for', index.text, FILES['index.html']);
   check('/ keeps "Türkiye" readable (utf-8)', index.text.includes('Türkiye') && index.headers['content-type'] === 'text/html; charset=utf-8');
   secure('a file answer', index);
-  same('a folder path gives that folder\'s index.html', (await get('/sub/')).text, FILES['sub/index.html']);
-  same('a folder path without its slash is not a file: 404', (await get('/sub')).status, 404);
+  same('a folder path gives that folder\'s index.html', (await get('/data/sub/')).text, FILES['data/sub/index.html']);
+  same('a folder path without its slash is not a file: 404', (await get('/data/sub')).status, 404);
+  same('the design page, the install file and the robots file are served', await Promise.all(['/design.html', '/manifest.json', '/robots.txt'].map(async u => (await get(u)).status)), [200, 200, 200]);
+  same('a missing /favicon.ico is a plain 404', (await get('/favicon.ico')).status, 404);
+  // The page never asks for these: the server's own code, its tests, the starters and the folder's own pages stay on this computer, never on the public site.
+  const NOT_APP = ['/scripts/serve.mjs', '/scripts/earthdata.mjs', '/scripts/', '/scripts', '/Start%20Crophalo.command', '/Start%20Crophalo%20(Add%20NASA%20login).bat', '/Start%20Crophalo.bat',
+    '/MOVING.md', '/README.md', '/stray.html', '/sub/', '/SCRIPTS/serve.mjs', '/Scripts/earthdata.mjs', '/js/../scripts/serve.mjs', '/js/..%2fscripts%2fserve.mjs'];
+  for (const pathname of NOT_APP) { const r = await get(pathname); same(`${pathname}: a file the page never asks for is refused: 403, empty`, [r.status, r.bytes.length], [403, 0]); }
+  secure('a refused file', await get('/MOVING.md'));
   same('a query does not change which file is sent', (await get('/index.html?x=1')).text, FILES['index.html']);
 
-  const missing = await get('/nothing.html');
+  const missing = await get('/js/nothing.js');
   same('a missing file: 404', missing.status, 404); same('a missing file: "not found"', missing.text, 'not found'); secure('a 404', missing);
 
   const nul = await get('/%00');
@@ -177,12 +191,14 @@ async function filesOfTheApp(A) {
   same('If-None-Match with a list that holds the ETag: 304', (await get('/', { 'if-none-match': `"other", ${etag}` })).status, 304);
   same('If-None-Match with another tag: 200', (await get('/', { 'if-none-match': 'W/"1-1"' })).status, 200);
 
-  const TIERS = { '/index.html': 'no-cache', '/js/app.js': 'no-cache', '/css/app.css': 'no-cache', '/data/regions.json': 'no-cache', '/notes.md': 'no-cache', '/plain.txt': 'no-cache',
-    '/icons/mark.svg': 'public, max-age=86400', '/icons/dot.png': 'public, max-age=86400', '/dot.png': 'public, max-age=86400', '/vendor/lib/lib.js': 'public, max-age=86400',
+  const TIERS = { '/index.html': 'no-cache', '/js/app.js': 'no-cache', '/css/app.css': 'no-cache', '/data/regions.json': 'no-cache', '/data/about.md': 'no-cache', '/data/plain.txt': 'no-cache',
+    '/icons/mark.svg': 'public, max-age=86400', '/icons/dot.png': 'public, max-age=86400', '/data/dot.png': 'public, max-age=86400', '/vendor/lib/lib.js': 'public, max-age=86400',
     '/design/tokens.json': 'public, max-age=86400', '/data/spam/index.json': 'public, max-age=86400' };
   for (const [pathname, tier] of Object.entries(TIERS)) same(`${pathname} is sent with cache-control ${tier}`, (await get(pathname)).headers['cache-control'], tier);
   const KINDS = { '/index.html': 'text/html; charset=utf-8', '/js/app.js': 'text/javascript', '/css/app.css': 'text/css', '/data/regions.json': 'application/json',
-    '/icons/mark.svg': 'image/svg+xml', '/icons/dot.png': 'image/png', '/notes.md': 'text/markdown', '/plain.txt': 'application/octet-stream', '/scripts/earthdata.mjs': 'application/octet-stream' };
+    '/icons/mark.svg': 'image/svg+xml', '/icons/dot.png': 'image/png', '/data/about.md': 'text/markdown', '/data/plain.txt': 'text/plain; charset=utf-8',
+    '/data/kinds/a.ico': 'image/x-icon', '/data/kinds/a.webp': 'image/webp', '/data/kinds/a.jpg': 'image/jpeg', '/data/kinds/a.jpeg': 'image/jpeg', '/data/kinds/a.gif': 'image/gif',
+    '/data/kinds/a.woff2': 'font/woff2', '/data/kinds/a.glb': 'model/gltf-binary', '/data/kinds/a.xml': 'application/xml', '/data/kinds/a.webmanifest': 'application/manifest+json', '/data/kinds/a.wasm': 'application/wasm' };
   for (const [pathname, kind] of Object.entries(KINDS)) same(`${pathname} is sent as ${kind}`, (await get(pathname)).headers['content-type'], kind);
   check('a picture arrives byte for byte', (await get('/icons/dot.png')).bytes.equals(PNG));
 
@@ -225,14 +241,15 @@ async function statusRoutes(A) {
   const health = await askJson(p, '/api/health');
   same('/api/health: 200', health.status, 200); secure('an API answer', health);
   same('/api/health: JSON, never stored', [health.headers['content-type'], health.headers['cache-control']], ['application/json', 'no-store']);
-  same('health fields, in the recorded order', Object.keys(health.json), ['ok', 'python', 'cache', 'netrc', 'login', 'userdata', 'uptime_s', 'busy', 'queued', 'live']);
+  same('health fields, in the recorded order', Object.keys(health.json), ['ok', 'python', 'root', 'cache', 'netrc', 'login', 'userdata', 'uptime_s', 'busy', 'queued', 'live']);
   const h = health.json;
   same('health: ok, no Python here, nothing running or waiting', [h.ok, h.python, h.busy, h.queued], [true, false, 0, 0]);
   same('health: where the cache is (this computer only)', h.cache, path.join(CACHE, 'api'));
+  same('health: which Crophalo folder answers (this computer only), so a start never takes another folder\'s server for its own', h.root, SITE);
   same('health: a login was found, in the folder', [h.netrc, h.login], [true, 'folder']);
   same('health: the saved-fields copy is off until its route exists', h.userdata, false);
   check('health: uptime in whole seconds', Number.isInteger(h.uptime_s) && h.uptime_s >= 0, show(h.uptime_s));
-  same('health: no lookups yet, so none listed', h.live, {});
+  same('health: the two lookups the server has (SMAP root-zone moisture, kept 6 hours; land heights, kept 30 days), never run yet', h.live, { smaproot: { last_ok: null, error: null, ttl_hours: 6 }, dem: { last_ok: null, error: null, ttl_hours: 720 } });
   check('health never holds the login itself', !health.text.includes(USER) && !health.text.includes(WORD));
   const named = await askJson(p, '/api/health', { headers: { host: 'uptime-checker.example', origin: 'https://uptime-checker.example' } });
   same('health answers for any Host name', [named.status, named.json?.ok], [200, true]);
@@ -248,7 +265,7 @@ async function statusRoutes(A) {
   same('POST to health from another name: refused', (await ask(p, '/api/health', { method: 'POST', headers: { host: 'evil.example' } })).status, 403);
 
   const sources = await askJson(p, '/api/sources');
-  same('/api/sources: 200, a list (empty until the lookups arrive)', [sources.status, sources.json], [200, []]);
+  same('/api/sources: 200, a list: the SMAP root-zone moisture and the land heights, nothing run, nothing kept', [sources.status, sources.json.map(r => [r.id, r.name, r.last_ok_time, r.cache_items, r.ttl_hours])], [200, [['smaproot', 'NASA SMAP root-zone soil moisture', null, 0, 6], ['dem', 'Land heights (the finest free height map)', null, 0, 720]]]);
   same('/api/sources: never stored', sources.headers['cache-control'], 'no-store');
   const wrong = await askJson(p, '/api/sources', { method: 'POST' });
   same('POST to sources: 405 as JSON with allow', [wrong.status, wrong.headers.allow, wrong.json], [405, 'GET', { ok: false, reason: 'Use GET' }]);
@@ -275,11 +292,11 @@ async function statusRoutes(A) {
   same('a small API answer is not compressed', unknown.headers['content-encoding'], undefined);
 }
 
-async function publicServer(B, D) {
+async function publicServer(A, B, D) {
   check('a public server says so when it starts', /^Crophalo on http:\/\/0\.0\.0\.0:\d+ \(public\)$/m.test(B.out), show(B.out));
   for (const pathname of ['/api/health', '/api/ready']) {
     const r = await askJson(B.port, pathname);
-    same(`public ${pathname}: no cache folder, no login place`, Object.keys(r.json || {}).filter(k => k !== 'reason'), ['ok', 'python', 'netrc', 'userdata', 'uptime_s', 'busy', 'queued', 'live']);
+    same(`public ${pathname}: no root or cache folder, no login place`, Object.keys(r.json || {}).filter(k => k !== 'reason'), ['ok', 'python', 'netrc', 'userdata', 'uptime_s', 'busy', 'queued', 'live']);
     check(`public ${pathname}: nothing about its folders or the login in the whole answer`, ![TMP, 'site', '.cache', 'folder', '.secrets', USER, WORD].some(word => r.text.includes(word)), r.text);
     same(`public ${pathname}: still says a login exists, and no saved-fields copy`, [r.json?.netrc, r.json?.userdata], [true, false]);
   }
@@ -288,6 +305,16 @@ async function publicServer(B, D) {
   refused('...but not another website\'s', await ask(B.port, '/api/sources', { headers: { host: 'any.example', origin: 'https://evil.example' } }));
   same('a public server serves the app the same way', (await ask(B.port, '/')).status, 200);
   same('a public server keeps its hidden folders shut', (await ask(B.port, '/.secrets/earthdata.netrc')).status, 403);
+  same('a public server keeps its own code shut', (await ask(B.port, '/scripts/serve.mjs')).status, 403);
+  // On the public site the browser is told to come back over https only; on this computer (plain http) the line would mean nothing.
+  const HSTS = 'max-age=31536000';
+  same('a public server asks for https from now on (strict-transport-security), on files, the API and refusals', [(await ask(B.port, '/')).headers['strict-transport-security'], (await ask(B.port, '/api/health')).headers['strict-transport-security'], (await ask(B.port, '/MOVING.md')).headers['strict-transport-security']], [HSTS, HSTS, HSTS]);
+  same('a server on this computer does not', (await ask(A.port, '/')).headers['strict-transport-security'], undefined);
+  // A fault on the public site: the visitor reads one plain sentence; what went wrong stays in the server's log for the owner.
+  const boom = await askJson(D.port, '/api/boom', { headers: { host: 'farm.example' } });
+  same('a public server answers a fault with one plain sentence', [boom.status, boom.json], [500, { ok: false, reason: 'Something went wrong on the server. Please try again in a moment.' }]);
+  check('...and the detail is in its log, not in the answer', D.err.includes('test fault') && !boom.text.includes('test fault'), show(D.err));
+  same('a public server without the Python setup says the same plain sentence', (await askJson(D.port, '/api/probe?lat=42.03&lon=-93.62', { headers: { host: 'farm.example' } })).json, { ok: false, reason: 'Something went wrong on the server. Please try again in a moment.' });
 
   for (const host of ['farm.example', 'other.example:443', 'crophalo.example', 'FARM.example', 'localhost']) same(`a public server with a list answers ${host}`, (await ask(D.port, '/api/sources', { headers: { host } })).status, 200);
   refused('a public server with a list turns away a name not on it', await ask(D.port, '/api/sources', { headers: { host: 'evil.example' } }));
@@ -295,12 +322,29 @@ async function publicServer(B, D) {
   same('...yet its health still answers any name, and says no login was found', [h.status, h.json?.netrc, 'login' in (h.json || {})], [200, false, false]);
 }
 
-async function liveFrontDoor(C) {
+// The one answer the two starters ask before they offer to type a login: "yes <where>" or "no", never a value.
+function theLoginAnswer() {
+  const ask = (root, env = {}) => spawnSync(process.execPath, [path.join(root, 'scripts', 'earthdata.mjs')], { cwd: TMP, encoding: 'utf8', env: { PATH: process.env.PATH, HOME: HOME_EMPTY, ...env } });
+  const all = [];
+  const said = (root, env) => { const r = ask(root, env); all.push(r.stdout + r.stderr); return [r.status, r.stdout]; };
+  same('login answer: a login kept in the folder', said(SITE), [0, 'yes folder\n']);
+  same('login answer: none anywhere', said(SITE2), [0, 'no\n']);
+  same('login answer: in the server settings', said(SITE2, { EARTHDATA_USERNAME: USER, EARTHDATA_PASSWORD: WORD }), [0, 'yes env\n']);
+  same('login answer: in the home folder', said(SITE2, { HOME: HOME_LOGIN }), [0, 'yes home\n']);
+  const commented = path.join(TMP, 'home-commented');
+  put(commented, '.netrc', '# Set up urs.earthdata.nasa.gov later\nmachine urs.earthdata.nasa.gov login user1\n');
+  same('login answer: a comment naming NASA, or an entry with no password, is no login', said(SITE2, { HOME: commented }), [0, 'no\n']);
+  check('login answer: it never prints the username or the password', !all.some(t => t.includes(USER) || t.includes(WORD) || t.includes('user1')), all.join('|'));
+}
+
+async function liveFrontDoor(C, A) {
   const p = C.port;
   check('serve.mjs has the one LIVE line this suite fills with test rows', SOURCE.split(LIVE_LINE).length === 2);
   const h = (await askJson(p, '/api/health')).json || {};
   same('health lists each row of the LIVE table', [Object.keys(h.live || {}).slice(0, 4), h.live?.probe, h.live?.shared?.ttl_hours], [['probe', 'shared', 'boom', 'late'], { last_ok: null, error: null, ttl_hours: 1 }, 2]);
   same('health finds a login kept in the home folder', [h.netrc, h.login], [true, 'home']);
+  const a = (await askJson(A.port, '/api/health')).json || {};
+  same('two folders sharing one cache: the same cache, yet each server names its own folder', [a.cache === h.cache, a.root, h.root], [true, SITE, SITE2]);
 
   const now = Date.now(), old = new Date(now - 2 * 3600e3);
   const fresh = put(CACHE, 'api/probe_1.0000_2.0000.json', '{"test":true}');
@@ -354,7 +398,7 @@ async function rateLimit(R, R0, R2, R3) {
   const free = []; for (const pathname of ['/api/health', '/api/ready', '/api/sources', '/api/nothing', '/']) for (let i = 0; i < 4; i++) free.push((await ask(R.port, pathname, { headers: { 'x-forwarded-for': '9.9.9.9, 1.1.1.1' } })).status);
   same('health, ready, sources, unknown paths and files never count against the limit', free, [200, 200, 200, 200, 200, 200, 200, 200, 200, 200, 200, 200, 404, 404, 404, 404, 200, 200, 200, 200]);
   same('ready with Python and a login in the server settings: 200, no reason', [(await askJson(R.port, '/api/ready')).json?.ok, (await askJson(R.port, '/api/ready')).json?.reason, (await askJson(R.port, '/api/health')).json?.login], [true, undefined, 'env']);
-  same('a lookup with Python but no runner yet says so honestly', (await askJson(R.port, '/api/probe?lat=1&lon=2', { headers: { 'x-forwarded-for': '3.3.3.3' } })).json, { ok: false, reason: 'This lookup is not switched on yet' });
+  same('a test row whose Python cannot start says so plainly (the runner itself is tested in test_smap_route.mjs and test_server_dem.mjs)', (await askJson(R.port, '/api/probe?lat=1&lon=2', { headers: { 'x-forwarded-for': '3.3.3.3' } })).json.reason.startsWith('Could not start Python'), true);
 
   const alone = []; for (const forwarded of ['1.1.1.1', '2.2.2.2', '3.3.3.3', '4.4.4.4']) alone.push((await probe(R0, forwarded)).status);
   same('with no trusted proxy x-forwarded-for is ignored: the 4th of 3 is refused whatever it claims', alone, [400, 400, 400, 429]);
@@ -404,6 +448,14 @@ function theLogin() {
   same('netrc: a password that reads "machine" is still a password', parseNetrc(`${HOSTLINE} login user1 password machine`), { login: 'user1', password: 'machine' });
   same('netrc: an account word is passed over', parseNetrc(`${HOSTLINE} login user1 account x password pw1`), { login: 'user1', password: 'pw1' });
   same('netrc: empty or missing text', [parseNetrc(''), parseNetrc(null), parseNetrc(undefined)], [null, null, null]);
+  // A commented-out login is never used: what follows a # that starts a word is a comment to the end of its line, as for Python's own netrc reader.
+  same('netrc: a login commented out after another service\'s line is never used',
+    parseNetrc('machine other.example login user password pass # machine urs.earthdata.nasa.gov login commented password commented'), null);
+  same('netrc: a comment after our whole entry leaves the entry as it is', parseNetrc(`${HOSTLINE} login user1 password pw1 # machine two.example`), { login: 'user1', password: 'pw1' });
+  same('netrc: a comment in the middle hides the rest of its line only', parseNetrc(`${HOSTLINE} login user1 # password no\npassword pw1`), { login: 'user1', password: 'pw1' });
+  same('netrc: a password commented out leaves no login', parseNetrc(`${HOSTLINE} login user1 # password pw1`), null);
+  same('netrc: the words, a comment to the end of its line only', netrcWords('a b # c "d\ne #f\n#g\nh'), ['a', 'b', 'e', 'h']);
+  same('netrc: a quoted # is part of the word, even at its start', parseNetrc(`${HOSTLINE} login user1 password "#pw1"`), { login: 'user1', password: '#pw1' });
 
   const entry = (user, word) => `machine urs.earthdata.nasa.gov login ${user} password ${word}\n`;
   const withFolder = path.join(TMP, 'login-folder'), bare = path.join(TMP, 'login-bare'), broken = path.join(TMP, 'login-broken'), home = path.join(TMP, 'login-home'), otherHome = path.join(TMP, 'login-home-other');
@@ -418,6 +470,12 @@ function theLogin() {
   same('login: a folder file without a whole entry is passed over', findLogin(broken, { env, home }).where, 'env');
   same('login: a username alone in the settings is not a login', findLogin(bare, { env: { EARTHDATA_USERNAME: 'env-user' }, home: HOME_EMPTY }).where, null);
   same('login: a home file without the NASA entry is not a login', findLogin(bare, { env: {}, home: otherHome }).where, null);
+  const commentedFolder = path.join(TMP, 'login-commented'), commentedHome = path.join(TMP, 'login-home-commented');
+  put(commentedFolder, '.secrets/earthdata.netrc', `machine one.example login a password b # ${entry('folder-user', 'folder-word')}`);
+  put(commentedHome, '.netrc', `# Set up urs.earthdata.nasa.gov later\nmachine one.example login a password b # ${entry('home-user', 'home-word')}`);
+  same('login: a folder login commented out never wins over the settings', findLogin(commentedFolder, { env, home }).where, 'env');
+  same('login: a folder login commented out never wins over the home folder', findLogin(commentedFolder, { env: {}, home }).where, 'home');
+  same('login: a home login commented out is not a login', findLogin(bare, { env: {}, home: commentedHome }).where, null);
   same('login: the plain words for each place', [findLogin(withFolder, { env, home }).words, findLogin(bare, { env, home }).words, findLogin(bare, { env: {}, home }).words, findLogin(bare, { env: {}, home: HOME_EMPTY }).words],
     ['inside the Crophalo folder (.secrets), so it moves with the folder', 'in the server settings (EARTHDATA_USERNAME and EARTHDATA_PASSWORD)', 'in your home folder (~/.netrc), so it stays on this computer', 'not set up']);
   same('login: the four places are the only words there are', Object.keys(LOGIN_PLACES), ['folder', 'env', 'home', 'none']);
@@ -438,11 +496,12 @@ try {
   await group('starting the test servers', () => Promise.all([A, B, C, D, R, R0, R2, R3].map(s => s.up)));
   await group('files of the app', () => filesOfTheApp(A));
   await group('health, ready, sources and who may ask', () => statusRoutes(A));
-  await group('a public server', () => publicServer(B, D));
-  await group('the front door of the live lookups', () => liveFrontDoor(C));
+  await group('a public server', () => publicServer(A, B, D));
+  await group('the front door of the live lookups', () => liveFrontDoor(C, A));
   await group('the rate limit', () => rateLimit(R, R0, R2, R3));
   await group('starting and stopping', () => startAndStop(A));
   await group('the NASA login', async () => theLogin());
+  await group('the login answer for the starters', async () => theLoginAnswer());
 } finally {
   clearTimeout(watchdog);
   stopAll();

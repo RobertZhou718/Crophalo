@@ -1,0 +1,15 @@
+{
+ "method": "GET",
+ "url": "https://datacube.services.geo.ca/stac/api/search?collections=hrdem-mosaic-1m&bbox=-79.78075,44.39946,-79.77925,44.40054&limit=5",
+ "recorded": "2026-11-14T19:50:07Z",
+ "hand_made": false,
+ "replies": [
+  {
+   "status": 200,
+   "headers": {
+    "content-type": "application/geo+json",
+    "content-length": "4046"
+   }
+  }
+ ]
+}

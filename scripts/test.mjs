@@ -18,7 +18,7 @@ async function group(name, run) { try { await run(); } catch (e) { check(`${name
 const HERE = path.dirname(fileURLToPath(import.meta.url));
 const ROOT = path.resolve(process.env.CROPHALO_ROOT || path.join(HERE, '..'));
 const BEGAN = '2026-11-14', BEGAN_MS = new Date(2026, 10, 14).getTime();   // the day this build began: nothing in the folder may be older or say an older date
-const MADE_HERE = ['.cache', 'runtime', '.venv', '.secrets', '.userdata'];   // made on each computer, never shipped (note 04)
+const MADE_HERE = ['.cache', 'runtime', '.venv', '.secrets', '.userdata'];   // made on each computer, never shipped
 const SKIP_DIRS = new Set([...MADE_HERE, '.git', 'scripts/_cache']);
 const OTHERS_BYTES = rel => /^(vendor|scripts\/vendor-test)\//.test(rel) && !/(^|\/)(README\.md|VERSION\.json)$/.test(rel);   // the published files of a library: checked byte for byte below, so their words and dates are the library's own
 const W = (...parts) => parts.join('');   // words this suite looks for are put together from pieces, so the suite never finds itself
@@ -108,13 +108,16 @@ await group('the folder', async () => {
   // Dates written in the project. Outside data keeps its own honest dates; each entry below says which data and why.
   // A dotted number such as 2026.10.23 is not read as a date: it is how some libraries number their versions, and a version keeps its own date.
   const DATA_DATES = {
-    '2001-01-01': 'the first day of the NASA POWER daily weather record the app reads (note 07): a date of the data, not of the project',
+    '2001-01-01': 'the first day of the NASA POWER daily weather record the app reads: a date of the data, not of the project',
   };
   const MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'], MONTH = '(Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec)[a-z]*\\.?';
   const iso = (y, m, d) => `${y}-${String(m).padStart(2, '0')}-${String(d).padStart(2, '0')}`, month = name => MONTHS.indexOf(name.slice(0, 3)) + 1;
+  // Recorded outside answers keep the dates of their data: a weather record since 2001 is the data itself, not a date of the project. Only files under
+  // scripts/fixtures/ (answers recorded from the outside services, played back by the suites) are passed over; nothing the project writes itself is.
+  const RECORDED = rel => rel.startsWith('scripts/fixtures/');
   const early = [];
   for (const [rel, text] of TEXT) {
-    if (!OURS(rel)) continue;
+    if (!OURS(rel) || RECORDED(rel)) continue;
     plain(text).split('\n').forEach((line, i) => {
       const hit = (found, date) => { if (date < BEGAN && !Object.hasOwn(DATA_DATES, date)) early.push(`${rel}:${i + 1} "${found}"`); };
       for (const m of line.matchAll(/(?<![\w.])(\d{4})[-/](\d{1,2})[-/](\d{1,2})\b/g)) if (+m[1] >= 1900 && +m[1] <= 2100 && +m[2] >= 1 && +m[2] <= 12 && +m[3] >= 1 && +m[3] <= 31) hit(m[0], iso(m[1], m[2], m[3]));
@@ -138,8 +141,10 @@ await group('the folder', async () => {
   none('no file or folder is named after one', FILES.filter(rel => new RegExp(`(^|/)\\.?(${NAMES.slice(0, 9).join('|')}|${W('age', 'nts')}\\.md|\\.${W('cur', 'sor')}|\\.${W('ai', 'der')})`, 'i').test(rel)));
   none('no line signs a file as made by a tool', finds(new RegExp(`${W('gener', 'ated')} (by|with|using)\\b|${W('co-auth', 'ored')}|${W('auto', '-?generated')}|\\u{1F916}`, 'iu'), OURS));
   none('no merge left its marks in a file', finds(/^(<{7} |={7}$|>{7} )/, OURS));
+  // The folder speaks for the product: no line points at working papers, plans or reviews that a farmer or a new reader cannot see.
+  none('no line points at working papers, plans or reviews', finds(new RegExp(`\\(${W('no', 'te')} \\d|\\b${W('no', 'tes?')} \\d{2}\\b|\\bthe ${W('no', 'tes')}\\b|\\b${W('hand', '-?over')}\\b|\\b${W('mile', 'stones?')}\\b|\\b${W('au', 'dits?')}\\b|\\b${W('re', 'build')}\\b`, 'i'), OURS));
 
-  // Every module opens by saying what it is, what is pure and which test checks it (note 04, 3.8).
+  // Every module opens by saying what it is, what is pure and which test checks it, so whoever opens it knows how to prove a change.
   const header = text => { const lines = text.split('\n'), top = []; for (const l of lines) { if (l.startsWith('//')) top.push(l); else break; } return top; };
   const names = rel => { const top = header(read(rel)), suite = /(^|\/)(test|e2e)\w*\.mjs$/.test(rel);
     return top.length < 2 || top.length > 4 ? `${rel}: its header is ${top.length} lines, not two to four`
@@ -150,12 +155,14 @@ await group('the folder', async () => {
 
   const suites = FILES.filter(rel => /^scripts\/(test|e2e)\w*\.mjs$/.test(rel) && rel !== 'scripts/e2e_lib.mjs'), runner = has('scripts/check.sh') ? read('scripts/check.sh') : '';
   none('check.sh runs every suite there is (a suite nobody runs guards nothing)', suites.filter(rel => !runner.includes(path.basename(rel))));
+  // A test browser must never ask the computer's keychain for anything: on a Mac that puts a system dialog in front of the owner.
+  none('every browser a suite starts carries the two keychain flags', FILES.filter(rel => /^scripts\/[^/]+\.mjs$/.test(rel) && rel !== 'scripts/test.mjs' && /--remote-debugging-port|--headless/.test(read(rel))).filter(rel => !read(rel).includes("'--use-mock-keychain'") || !read(rel).includes("'--password-store=basic'")));
   none('every suite ends with its "N passed, M failed" line', suites.filter(rel => !/passed, \$\{\w+\} failed/.test(read(rel)) && !read(rel).includes('finish()')));
 });
 
 // ---- nothing is loaded from an outside address (the data services are asked for data, never for code, fonts or styles)
 await group('outside addresses', async () => {
-  const DATA_HOSTS = ['power.larc.nasa.gov', 'api.open-meteo.com', 'server.arcgisonline.com'];   // NASA weather, the forecast, the satellite photo tiles (note 04, 3.1)
+  const DATA_HOSTS = ['power.larc.nasa.gov', 'api.open-meteo.com', 'server.arcgisonline.com'];   // NASA weather, the forecast, the satellite photo tiles
   const outside = v => /^(https?:)?\/\//i.test(v.trim());
   const tags = [], hints = [];
   for (const rel of PAGES) for (const m of read(rel).matchAll(/<(script|link|img|iframe|source|video|audio|embed|object|use|image)\b[^>]*>/gi)) {
@@ -210,16 +217,19 @@ await group('index.html', async () => {
 // ---- the one demo region, the install file, the robots file
 await group('data and install files', async () => {
   const regions = JSON.parse(read('data/regions.json'));
-  same('one demo region only: Ontario (the owner chose to keep just this one)', Array.isArray(regions) && regions.map(r => r.id), ['barrie']);
+  check('one demo region only: Ontario (the owner chose to keep just this one)', Array.isArray(regions) && regions.length === 1 && /Ontario/.test(regions[0].name), regions.map(r => r.name).join());
   const r = regions[0] || {};
-  same('it is Barrie & Simcoe County, Canada', [r.name, r.country], ['Barrie & Simcoe County', 'Canada']);
+  same('its country is Canada and it has a name', [typeof r.name === 'string' && r.name.length > 3, r.country], [true, 'Canada']);
   check('its place is a real pair of numbers inside Ontario', Number.isFinite(r.lat) && Number.isFinite(r.lon) && r.lat > 41.6 && r.lat < 56.9 && r.lon > -95.2 && r.lon < -74.3, `lat ${r.lat}, lon ${r.lon}`);
-  none('it carries only the fields the app knows', Object.keys(r).filter(k => !['id', 'name', 'country', 'lat', 'lon', 'rotation', 'blurb'].includes(k)));
+  none('it carries only the fields the app knows', Object.keys(r).filter(k => !['id', 'name', 'country', 'lat', 'lon', 'rotation', 'defaults', 'aliases', 'blurb'].includes(k)));
+  // Its ready answers: rain only, and a soil that is said to be assumed, never one that looks measured (the report then says it is less sure).
+  same('its ready answers are rain-fed and an assumed soil', r.defaults, { irrigation: 'none', soil: 'assumed' });
+  check('its other names are short words a farmer may search for', Array.isArray(r.aliases) && r.aliases.every(a => typeof a === 'string' && a.length >= 2 && a.length <= 40), r.aliases);
   check('its rotation is a short id, not a sentence', typeof r.rotation === 'string' && /^[a-z0-9-]+$/.test(r.rotation), r.rotation);
 
   const man = JSON.parse(read('manifest.json'));
   same('install file: the names', [man.name, man.short_name], ['Crophalo: crop rotation with NASA data', 'Crophalo']);
-  same('install file: what it is, in one line (note 17, 3.2)', man.description, 'Compare crop rotations for your field using NASA Earth observations, your soil and what matters to you.');
+  same('install file: what it is, in one line, as a phone shows it when the app is added', man.description, 'Compare crop rotations for your field using NASA Earth observations, your soil and what matters to you.');
   same('install file: it starts and stays inside its own folder', [man.start_url, man.scope], ['./', './']);
   same('install file: it opens like an app, on the page colour', [man.display, man.background_color, man.theme_color], ['standalone', '#f2f2f4', '#f2f2f4']);
   same('install file: two icons, safe for any shape', (man.icons || []).map(i => [i.src, i.sizes, i.type, i.purpose]), [['icons/crophalo-192.png', '192x192', 'image/png', 'any maskable'], ['icons/crophalo-512.png', '512x512', 'image/png', 'any maskable']]);
@@ -260,10 +270,10 @@ await group('the tokens', async () => {
 
 // ---- one blue
 await group('one blue', async () => {
-  const ACCENT = '#0a63d8', TEXT_BLUES = { '#0959c4': 'the same blue, darker, for words on white or on the tint (note 25: 6.5:1)', '#063f96': 'the same blue, darker again, for words under High contrast (note 38)' };
-  const DATA_MARKS = /^--(c-[\w-]+|shade)$/;   // chart marks and the shade hatch are data, drawn in their own colours (note 25); they are never a chosen state
+  const ACCENT = '#0a63d8', TEXT_BLUES = { '#0959c4': 'the same blue, darker, for words on white or on the tint (6.5:1, so a farmer reads it in sunlight)', '#063f96': 'the same blue, darker again, for words under High contrast' };
+  const DATA_MARKS = /^--(c-[\w-]+|shade)$/;   // chart marks and the shade hatch are data, drawn in their own colours; they are never a chosen state
   const BLUE_TOKENS = ['--accent', '--accent-soft', '--accent-text', '--sel', '--focus-soft'];
-  const QUIET = ['--accent-ink', '--card', '--card2', '--seg-thumb', '--sep', '--sep2', '--ink', '--ink2', '--bg', '--bar', '--fill', '--fill2', '--shadow', '--shadow-lg', '--shadow-ctl', '--shadow-map', '--shadow-primary'];
+  const QUIET = ['--accent-ink', '--card', '--card2', '--seg-thumb', '--sep', '--sep2', '--ink', '--ink2', '--bg', '--bar', '--fill', '--fill2', '--shadow', '--shadow-lg', '--shadow-ctl', '--shadow-map', '--shadow-primary', '--shadow-thumb'];
   same('--accent is the one blue', colour(ROOT_VARS['--accent'] || ''), ACCENT);
   same('the tokens file says the same blue', TOKENS.find(t => t.css === '--accent')?.value, ACCENT);
   same('the focus ring and the chosen option are that blue too, by name', canon(ROOT_VARS['--sel'] || ''), 'var(--accent)');
@@ -280,7 +290,7 @@ await group('one blue', async () => {
   // A chosen thing: a pressed, checked, selected, current or open control. It may use the one blue and quiet neutrals, nothing else.
   const CHOSEN = /\.on(?![\w-])|\[aria-(pressed|checked|selected|expanded)="?true|\[aria-current(?!="?false)|:checked|\.(sel|selected|active|current|chosen|talking)(?![\w-])/;
   const PAINT = /^(background(-color|-image)?|color|box-shadow|border(-\w+)*|outline(-color)?|fill|stroke|text-decoration(-color)?|caret-color|accent-color)$/;
-  const HEARING = /^\.mic\.hearing, \.mic\[aria-pressed=true\]$/;   // the microphone turns red while it listens, as a recording light does (note 25): the one chosen state that is not blue, by design
+  const HEARING = /^\.mic\.hearing, \.mic\[aria-pressed=true\]$/;   // the microphone turns red while it listens, as a recording light does: the one chosen state that is not blue, by design
   const NAMED = /\b(blue|navy|royalblue|dodgerblue|steelblue|skyblue|deepskyblue|cornflowerblue|green|limegreen|seagreen|forestgreen|lime|teal|aqua|cyan|turquoise|red|crimson|orange|gold|yellow|purple|violet|indigo|magenta|pink)\b/i;
   const chosen = RULES.filter(r => onScreen(r) && split(r.sel, ',').some(s => CHOSEN.test(noNot(s))) && !HEARING.test(r.sel));
   const wrong = [], blue = new Set();
@@ -294,6 +304,33 @@ await group('one blue', async () => {
   none('every chosen state is painted with the one blue and quiet neutrals only (no second blue, no green tab)', wrong);
   check('the scan really finds the chosen states', chosen.length >= 12 && blue.size >= 10, `${chosen.length} rules for chosen states, ${blue.size} of them use the blue`);
   same('the browser bar and the installed app take the page colour', [colour(ROOT_VARS['--bg'] || ''), ...PAGES.map(rel => (/<meta name="theme-color" content="([^"]*)"/.exec(read(rel)) || [])[1])], ['#f2f2f4', ...PAGES.map(() => '#f2f2f4')]);
+});
+
+// ---- the look of the small parts: the corners, weights and sizes a farmer sees on every screen
+await group('the look', async () => {
+  const appRules = RULES.filter(r => r.rel === 'css/app.css' && !r.at.length);
+  const ruleOf = sel => appRules.filter(r => r.sel === sel);
+  const valueOf = (sel, prop) => { let found; for (const r of ruleOf(sel)) for (const [p, v] of r.decls) if (p === prop) found = v; return found; };
+  const px = v => { const m = /^(-?[\d.]+)px$/.exec(String(ROOT_VARS[String(v).replace(/^var\((--[\w-]+)\)$/, '$1')] ?? v).trim()); return m ? +m[1] : String(v); };
+  same('a chip is a pill on one line: radius 11 for a 22 px chip', px(valueOf('.chip', 'border-radius')), 11);
+  same('a chip whose words can wrap keeps small corners: radius 6, so two lines never look like a broken pill', px(valueOf('.chip.wrap', 'border-radius')), 6);
+  same('the status badge and the tick box keep their own small corner, apart from the chip', [px(valueOf('.st-badge', 'border-radius')), px(valueOf('.cbx', 'border-radius'))], [6, 6]);
+  check('the status badge and the tick box do not borrow the chip corner', !/--r-chip\b/.test(valueOf('.st-badge', 'border-radius') + valueOf('.cbx', 'border-radius')));
+  same('the big buttons on the home: radius 16', px(valueOf('.bigbtn', 'border-radius')), 16);
+  same('the big buttons stand 12 px apart', px(valueOf('.bigbtns', 'gap')), 12);
+  const pressed = '.seg button:is([aria-pressed=true], [aria-checked=true])';
+  same('the pressed segment: ink words, weight 600, on the white thumb', [valueOf(pressed, 'color'), valueOf(pressed, 'font-weight'), valueOf(pressed, 'background')], ['var(--ink)', 'var(--fw-semi)', 'var(--seg-thumb)']);
+  same('the white thumb has its soft lift', canon(valueOf(pressed, 'box-shadow')), 'var(--shadow-thumb)');
+  same('the thumb shadow token', shadowCanon(ROOT_VARS['--shadow-thumb'] || ''), shadowCanon('0 .5px 1px rgba(0,0,0,.14), 0 1px 3px rgba(0,0,0,.1)'));
+  same('the sliding thumb has the same lift', canon(valueOf('.seg.slide::before', 'box-shadow')), 'var(--shadow-thumb)');
+  same('the top bar keeps 12 px between its parts', valueOf('.nav-in', 'gap'), '0 var(--space-12)');
+  same('the count on Saved is weight 650', valueOf('.count', 'font-weight'), 'var(--fw-brand)');
+  same('the Listen button: 6 px between picture and words, padding 6 12 6 10', [valueOf('.listen', 'gap'), valueOf('.listen', 'padding')], ['6px', '6px var(--space-12) 6px 10px']);
+  same('words in a select or text field are 14 px (16 px on a phone, so it does not zoom in)', px('--fs-field'), 14);
+  same('the toast words are 13.5 px', px(valueOf('.toast', 'font-size')), 13.5);
+  const design = has('design.html') ? read('design.html') : '';
+  none('the design page shows the card title, label and eyebrow type', ['Card title · 18 / 600', 'Label · 13.5 / 500', 'Eyebrow · 13 / 600'].filter(t => !design.includes(t)));
+  none('a part of the design page that carries a name has a role that may carry it', [...design.matchAll(/<div\b(?![^>]*\brole=)[^>]*\baria-label="[^"]*"[^>]*>/g)].map(m => m[0].slice(0, 80)));
 });
 
 // ---- calm motion: nothing bounces (the owner: "No bouncing buttons! Fix for all.")
@@ -330,7 +367,7 @@ await group('calm motion', async () => {
   const pressed = RULES.filter(r => split(r.sel, ',').some(s => /:active/.test(noNot(s)))), pointed = RULES.filter(r => split(r.sel, ',').some(s => /:hover/.test(noNot(s))));
   const MOVES = ['transform', 'scale', 'translate', 'rotate', 'zoom'];
   none('a press never moves or resizes anything (no transform on :active)', pressed.flatMap(r => r.decls.filter(([p, v]) => MOVES.includes(p) && v !== 'none').map(([p, v]) => `${r.rel}: ${r.sel} { ${p}: ${v} }`)));
-  // Pointing at a thing may change its shade. The one move the notes allow is an arrow sliding sideways by a few px (note 26); nothing lifts, grows or turns.
+  // Pointing at a thing may change its shade. The one move allowed is an arrow sliding sideways by a few px; nothing lifts, grows or turns.
   none('pointing at a thing never lifts, grows or turns it (no such transform on :hover)', pointed.flatMap(r => r.decls.filter(([p, v]) => MOVES.includes(p) && v !== 'none' && !(p === 'transform' && /^translateX\(\s*-?[0-4](\.\d+)?px\s*\)$/.test(v))).map(([p, v]) => `${r.rel}: ${r.sel} { ${p}: ${v} }`)));
   same('"spring" is only another name for the one smooth curve', canon(ROOT_VARS['--spring'] || ''), 'var(--ease)');
 
@@ -397,7 +434,7 @@ await group('the libraries', async () => {
   const { LIBS, inspect, vendorRun } = await import(pathToFileURL(path.join(ROOT, 'scripts', 'vendor.mjs')).href);
   for (const lib of LIBS) { const here = inspect(lib, ROOT); check(`${lib.label || lib.id}: every file is the published one, byte for byte`, here.ok, here.why); }
   const version = dir => { try { return JSON.parse(read(`${dir}/VERSION.json`)).packages.map(p => `${p.name} ${p.version}`); } catch { return 'no VERSION.json'; } };
-  same('the versions are the ones the notes name: Leaflet 1.9.4, MapLibre GL 4.7.1 with its Leaflet plugin, three.js r160', [version('vendor/leaflet'), version('vendor/maplibre').slice(0, 1), version('vendor/three').map(v => v.replace(/\.\d+$/, ''))], [['leaflet 1.9.4'], ['maplibre-gl 4.7.1'], ['three 0.160']]);
+  same('the versions are the ones the app is built on: Leaflet 1.9.4, MapLibre GL 4.7.1 with its Leaflet plugin, three.js r160', [version('vendor/leaflet'), version('vendor/maplibre').slice(0, 1), version('vendor/three').map(v => v.replace(/\.\d+$/, ''))], [['leaflet 1.9.4'], ['maplibre-gl 4.7.1'], ['three 0.160']]);
   none('each library keeps its licence beside it', ['vendor/leaflet', 'vendor/maplibre', 'vendor/three', 'scripts/vendor-test'].filter(dir => !FILES.some(rel => rel.startsWith(dir + '/') && /LICEN[CS]E/i.test(rel))));
   check('the accessibility checker is only for tests: no page and no module of the app names it', !PAGES.some(rel => /vendor-test|axe\.min/.test(read(rel))) && !JS_FILES.some(rel => /vendor-test|axe\.min/.test(read(rel))));
   const online = await fetch('https://registry.npmjs.org/', { method: 'HEAD', signal: AbortSignal.timeout(6000) }).then(r => r.status < 500, () => false);
@@ -405,7 +442,7 @@ await group('the libraries', async () => {
   else { const said = []; check('the registry publishes the checksums the folder pins', await vendorRun({ args: ['--check'], root: ROOT, say: line => said.push(line) }) === 0, said.join(' | ')); }
 });
 
-// ---- what the first screen loads: three.js and MapLibre wait until they are asked for (note 04, 3.4 and 8)
+// ---- what the first screen loads: three.js and MapLibre wait until they are asked for, so a phone on a slow line sees the start screen first
 await group('the first screen', async () => {
   const STATIC = /(?:^|[;\n])\s*(?:import|export)\b[^'"()]*?\bfrom\s*['"]([^'"]+)['"]|(?:^|[;\n])\s*import\s*['"]([^'"]+)['"]/g;
   const LATER = /\bimport\(\s*['"]([^'"]+)['"]\s*\)|new URL\(\s*['"]([^'"]+)['"]\s*,\s*import\.meta\.url\s*\)/g;

@@ -200,6 +200,50 @@ function reading() {
   check('the shell scripts use nothing a Mac lacks and stop no other program (timeout, pkill, killall, sed -i -e)', !/(^|[\s;(|&])(timeout|pkill|killall)\s|sed -i -e/m.test(code));
 }
 
+// ---- 1b · the browser checks: asked for by default, so a missing browser or WebSocket is a failure with a plain line, never a silent pass
+async function browserChecks() {
+  const lib = await import('./e2e_lib.mjs').catch(e => ({ failedToLoad: e }));
+  check('e2e_lib.mjs says why the browser checks cannot run (whyNoBrowser)', typeof lib.whyNoBrowser === 'function', lib.failedToLoad?.message || Object.keys(lib));
+  if (typeof lib.whyNoBrowser === 'function') {
+    const noWs = lib.whyNoBrowser('e2e', { webSocket: false, browser: '/a/browser' }), noBrowser = lib.whyNoBrowser('e2e', { webSocket: true, browser: undefined });
+    check('no WebSocket: one plain line that names the way out (E2E=0)', /^e2e: /.test(noWs) && noWs.includes('E2E=0') && !noWs.includes('\n'), noWs);
+    check('no browser: one plain line that names CHROME= and the way out (E2E=0)', /^e2e: /.test(noBrowser) && noBrowser.includes('CHROME=') && noBrowser.includes('E2E=0') && !noBrowser.includes('\n'), noBrowser);
+    same('a browser and WebSocket: nothing stands in the way', lib.whyNoBrowser('e2e', { webSocket: true, browser: '/a/browser' }), '');
+  }
+  const run = (args, env = {}) => spawnSync(process.execPath, args, { cwd: TMP, encoding: 'utf8', env: { PATH: SYSTEM_PATH, HOME: path.join(TMP, 'no-home'), ...env }, timeout: 60000 });
+  const noWs = run(['--no-experimental-websocket', path.join(HERE, 'e2e.mjs')]);
+  check('e2e.mjs on a Node without WebSocket: it fails (exit 1) with its plain line, it does not pass as skipped', noWs.status === 1 && /^e2e: .*E2E=0/m.test(noWs.stdout) && !/skipped/.test(noWs.stdout), [noWs.status, noWs.stdout, noWs.stderr]);
+  const missing = run([path.join(HERE, 'e2e.mjs')], { CHROME: path.join(TMP, 'no such browser') });
+  check('e2e.mjs with CHROME at a missing path: it fails (exit 1) and says so', missing.status === 1 && missing.stdout.includes('there is no browser there'), [missing.status, missing.stdout]);
+  if (!MAC) return;
+  // check.sh in a copy, with a stand-in Node: the offline suites pass at once, the browser suites run on a Node without WebSocket
+  const dir = path.join(TMP, 'check copy'), standIn = path.join(TMP, 'check bin', 'node');
+  for (const f of ['check.sh', 'e2e.mjs', 'e2e_flow.mjs', 'e2e_lib.mjs']) put(path.join(dir, 'scripts', f), text(path.join(HERE, f)));
+  for (const f of (text(path.join(HERE, 'check.sh')).match(/^OFFLINE="([^"]*)"/m)?.[1] ?? '').split(' ').filter(Boolean)) put(path.join(dir, 'scripts', f), '// stand-in suite\n');
+  put(standIn, `#!/bin/sh\n# Stand-in Node for check.sh: offline suites pass at once; a browser suite runs on the real Node without WebSocket.\ncase $1 in scripts/e2e*) exec ${sq(process.execPath)} --no-experimental-websocket "$@" ;; esac\necho "stand-in $1: 1 passed, 0 failed"\n`, 0o755);
+  const sh = env => spawnSync('/bin/sh', [path.join(dir, 'scripts', 'check.sh')], { cwd: TMP, encoding: 'utf8', env: { PATH: SYSTEM_PATH, HOME: path.join(TMP, 'no-home'), NODE: standIn, ...env }, timeout: 60000 });
+  const asked = sh({});
+  check('check.sh: by default the browser suites are asked for, so without WebSocket the check FAILS and shows the plain line', asked.status !== 0 && /^e2e: .*E2E=0/m.test(asked.stdout) && !asked.stdout.includes('skipped'), [asked.status, asked.stdout]);
+  const off = sh({ E2E: '0' });
+  check('check.sh: E2E=0 is the one way to leave the browser suites out, and it says so', off.status === 0 && off.stdout.trim().endsWith('e2e: skipped (E2E=0)'), [off.status, off.stdout]);
+}
+
+// ---- 1c · the Windows start, read (no suite can run it on a Mac): it asks the same one question about the NASA login as the Mac start
+function windowsLogin() {
+  const ps = text(path.join(HERE, 'start-windows.ps1')), body = ps.match(/^function Test-Login \{\r\n([\s\S]*?)^\}/m)?.[1] ?? '';
+  check('start-windows.ps1: Test-Login asks scripts\\earthdata.mjs through the folder\'s Node and takes only a "yes" answer as a login',
+    /Get-ToolText \$Node @\("\$Root\\scripts\\earthdata\.mjs"\)/.test(body) && /-like 'yes \*'/.test(body), body);
+  check('start-windows.ps1: no file is searched for the NASA host name to decide whether a login exists', !/Contains\(\$EarthdataHost\)/.test(ps) && !/Test-HasHost/.test(ps));
+  const nodeSet = ps.search(/^\$Node = "\$RT\\node-\$Arch\\node\.exe"/m), firstAsk = ps.search(/-not \(Test-Login\)/);
+  check('start-windows.ps1: Node is found (step 7) before the login is asked about (step 9)', nodeSet > 0 && firstAsk > nodeSet, [nodeSet, firstAsk]);
+  const run = text(path.join(HERE, 'run.sh'));
+  check('run.sh: has_login asks scripts/earthdata.mjs and searches no file for the NASA host name', /^has_login\(\) \{[^\n]*earthdata\.mjs/m.test(run) && !/grep -qF "\$EARTHDATA_HOST"/.test(run));
+  // the server's health names its own folder; the Windows start compares that folder, not the shared cache
+  const six = ps.match(/# ---- 6 - already running[\s\S]*?\r\n\r\n/)?.[0] ?? '';
+  check('start-windows.ps1: "already running" compares the folder the server names (root), not only its cache', /\$health\.root\) -ieq/.test(six) && !/\$health\.cache\) -ieq/.test(six), six);
+  check('start-windows.ps1: plain ASCII with Windows line ends only', /^[\x00-\x7f]*$/.test(ps) && !/[^\r]\n/.test(ps) && ps.includes('\r\n'));
+}
+
 // ---- 2 · the pure parts of the doctor
 function doctorParts() {
   same('doctor line: ok, FIX and note start in one column, the fix under an arrow', [line('ok', 'A'), line('fix', 'B', 'do C'), line('note', 'D')], ['  ok    A', '  FIX   B\n        -> do C', '  note  D']);
@@ -357,6 +401,20 @@ async function firstStarts() {
   return c;
 }
 
+// ---- 5b · two folders that share one cache folder (FW_CACHE) on one port: each start knows its own server by its folder, not by the cache
+async function sharedCache() {
+  const one = makeFolder(), two = makeFolder(), P = await freePorts(2), shared = path.join(TMP, `shared cache ${P}`), env = { FW_CACHE: shared };
+  const a = await start(one, [...QUIET, '--port', P], { env });
+  const b = await start(two, [...QUIET, '--port', P], { env });
+  const [ha, hb] = [await health(P), await health(P + 1)];
+  check('shared cache: the second folder is not taken for the first; it starts its own server on the next port and says so',
+    a.port === P && b.port === P + 1 && !b.out.includes('already running') && b.out.includes(`Port ${P} is in use by another program, so Crophalo uses ${P + 1}.`), b.out);
+  same('shared cache: each server names its own folder and both name the one cache', [ha?.root, hb?.root, ha?.cache, hb?.cache], [one.root, two.root, path.join(shared, 'api'), path.join(shared, 'api')]);
+  const again = await once(one, ['--no-login', '--port', P], { env });
+  same('shared cache: the first folder, started again, still finds its own server and only opens the browser', [again.code, again.out.trim()], [0, `Crophalo is already running from this folder: http://localhost:${P}/`]);
+  await stop(b); await stop(a);
+}
+
 // ---- 6 · the fingerprint rules, on the folder the first start set up
 async function fingerprint(c) {
   const builds = () => uvCalls(c, 'venv --python').length;
@@ -380,7 +438,7 @@ async function fingerprint(c) {
   }) && text(c.stamp).includes(`folder=${moved}\n`) && uvCalls(c, 'venv --python').at(-1).startsWith(`venv --python ${moved}/runtime/python/`), text(c.stamp));
 
   flag(c, 'libs-missing'); let n = builds(), s = await start(c, QUIET); flag(c, 'libs-missing', false);
-  same('failed rebuild: Crophalo\'s own old .venv comes back, the reason is said in plain words, and Crophalo still opens',
+  same('a failed new .venv: Crophalo\'s own old .venv comes back, the reason is said in plain words, and Crophalo still opens',
     [s.port > 0, builds(), text(c.stamp), exists(path.join(c.rt, 'venv-before')), s.out.includes('The NASA data tools are not set up: the NASA data libraries could not be installed. Crophalo still opens; the satellite and data-server parts stay empty until this is fixed.')],
     [true, n + 1, goodStamp(c), false, true]);
   await stop(s);
@@ -539,6 +597,12 @@ async function logins() {
   check('no terminal: --login says the login can only be typed in a Terminal window, and Crophalo still starts', s.port === P && !ASK.test(s.out) && s.out.includes('The NASA login can only be typed in a Terminal window: double-click Start Crophalo.command.'), s.out);
   s = await typed(['--no-login'], []);
   check('in a terminal: --no-login never asks', s.port === P && !ASK.test(s.out), s.out);
+  // Only a whole login counts: a comment that names NASA, or an entry with no password, would leave the five satellite parts empty without a word.
+  put(homeLogin, '# Set up urs.earthdata.nasa.gov later\n', 0o600); put(folderLogin, 'machine urs.earthdata.nasa.gov login user1\n', 0o600);
+  s = await typed([], [[ASK, USER + '\n'], [PASS, '\n']]);
+  check('in a terminal: a comment naming NASA at home and a folder entry with no password are no login, so the start still asks',
+    s.port === P && !s.stuck && s.out.includes('No password was typed, so nothing was saved.') && !exists(skipped), s.stuck || s.out);
+  fs.rmSync(homeLogin); fs.rmSync(path.dirname(folderLogin), { recursive: true });
   s = await typed([], [[ASK, '\n']]);
   check('in a terminal: with no login the start asks once, names the five products and the free sign-up page; Return skips',
     s.port === P && ['SMAP', 'GRACE-FO', 'ECOSTRESS', 'HLS', 'GEDI', 'https://urs.earthdata.nasa.gov/users/new'].every(w => s.out.includes(w)) && s.out.includes('Skipped. To add the login later: sh "') && exists(skipped), s.stuck || s.out);
@@ -590,13 +654,15 @@ const watchdog = setTimeout(() => { console.log('FAIL  the suite did not finish 
 try {
   await group('what can be read', async () => reading());
   await group('the pure parts of the doctor', async () => doctorParts());
+  await group('the browser checks are never passed over in silence', browserChecks);
+  await group('the Windows start, read', async () => windowsLogin());
   if (MAC) {
     UP = await services();
     await Promise.all([   // four lanes, each in its own folders and on its own ports
       group('the helpers of portable.sh', async () => shellHelpers()).then(() => group('the doctor', theDoctor)).then(() => group('packing', packing)),
       (async () => { let c; await group('the first start', async () => { c = await firstStarts(); }); if (c) await group('the fingerprint', () => fingerprint(c)); })(),
       group('the ports', thePorts).then(() => group('what stops a start', refusals)).then(() => group('downloads', downloads)),
-      group('the NASA login', logins),
+      group('the NASA login', logins).then(() => group('two folders, one cache', sharedCache)),
     ]);
   } else console.log('note  the Mac start (shell) is checked on a Mac only; here only the parts written for Node ran');
 } finally {

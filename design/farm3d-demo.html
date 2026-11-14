@@ -1,0 +1,31 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><link rel="icon" href="data:,"><title>3D field look · test page</title>
+<link rel="stylesheet" href="../css/farm3d.css">
+<style>body{margin:0;padding:16px;background:#f2f2f4;font-family:system-ui,sans-serif} main{max-width:980px;margin:0 auto}</style></head>
+<body><main><h1 style="font-size:1.2rem;color:#0b2545">3D field look</h1><div id="host"></div></main>
+<script type="module">
+import { view3d } from '../js/farm3d.js';
+import { loadHeights } from '../js/heights3d.js';
+// a small rolling land: 65 × 65 heights over the block, a few metres of rise
+const hills = (block) => { const n = 65, h = new Float32Array(n * n); for (let j = 0; j < n; j++) for (let i = 0; i < n; i++) h[j * n + i] = 300 + 6 * Math.sin(i / 9) + 4 * Math.cos(j / 11) + i * 0.06; return { nx: n, ny: n, width: block.width, depth: block.depth, h }; };
+const place = new URLSearchParams(location.search).get('place');
+const base = place === 'woodstock' ? { name: 'Oxford County demo', pin: { lat: 43.13, lon: -80.75 }, field: { id: 'demo', name: 'Demo field', polygon: null, areaEstimated: true } } : { name: 'Barrie demo', pin: { lat: 44.40, lon: -79.78 }, field: { id: 'demo', name: 'Demo field', polygon: null, areaEstimated: true } };
+window.demo = {
+  async open(state, extra = {}) {
+    const input = { ...base, planKind: 'proposed', date: '2027-10-05', ground: state, ...extra };
+    if (extra.hills) input.heights = hills({ width: 800, depth: 800 });
+    window.view = await view3d(input, document.getElementById('host'), { onFallback: why => { window.fellBack = why; } });
+    return window.view.status;
+  },
+  async next(state, extra = {}) { const input = { ...base, planKind: 'proposed', date: '2027-11-05', ground: state, ...extra }; if (extra.hills) input.heights = hills({ width: 800, depth: 800 }); window.view.update(input); return window.view.status; },
+};
+window.ready = true;
+// ?live=residue|wheat1|wheat2|corn opens at once with the real height lookup (a picture of the real land)
+const live = new URLSearchParams(location.search).get('live');
+if (live) {
+  const states = { residue: { state: 'residue', crop: 'soy', label: 'Planned' }, wheat1: { state: 'crop', crop: 'wheat', stage: 1, label: 'Planned' }, wheat2: { state: 'crop', crop: 'wheat', stage: 2, label: 'Planned' }, corn: { state: 'crop', crop: 'corn', stage: 3, label: 'Planned' } };
+  window.view = await view3d({ ...base, planKind: 'proposed', date: '2027-10-05', ground: states[live] || states.corn, loadHeights: req => loadHeights(req) }, document.getElementById('host'));
+  const t0 = Date.now(); while (!/Heights (read|not read: [A-Z])/.test(document.querySelector('.f3d-heights')?.textContent || '') && Date.now() - t0 < 60000) await new Promise(r => setTimeout(r, 200));
+  window.liveDone = true;
+}
+</script></body></html>

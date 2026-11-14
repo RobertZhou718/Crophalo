@@ -1,0 +1,15 @@
+{
+ "method": "GET",
+ "url": "https://agriculture.canada.ca/imagery-images/rest/services/annual_crop_inventory/2025/ImageServer/computeHistograms?geometry=%7B%22xmin%22%3A-79.905%2C%22ymin%22%3A44.275%2C%22xmax%22%3A-79.655%2C%22ymax%22%3A44.525%2C%22spatialReference%22%3A%7B%22wkid%22%3A4326%7D%7D&geometryType=esriGeometryEnvelope&pixelSize=%7B%22x%22%3A30%2C%22y%22%3A30%2C%22spatialReference%22%3A%7B%22wkid%22%3A102100%7D%7D&f=json",
+ "recorded": "2026-11-14T22:36:24Z",
+ "hand_made": false,
+ "replies": [
+  {
+   "status": 200,
+   "headers": {
+    "content-type": "application/json;charset=UTF-8",
+    "content-length": "621"
+   }
+  }
+ ]
+}

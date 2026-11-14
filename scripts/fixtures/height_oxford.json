@@ -1,0 +1,1 @@
+{"_recorded":{"date":"2026-11-14","address":"https://api.opentopodata.org/v1/srtm30m?locations=43.1300,-80.7500"},"results":[{"dataset":"srtm30m","elevation":298,"location":{"lat":43.13,"lng":-80.75}}],"status":"OK"}

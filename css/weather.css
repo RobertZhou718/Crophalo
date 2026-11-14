@@ -1,0 +1,25 @@
+/* Crophalo: the Weather tab's look: the next 7 days, the year-so-far tiles, the record's facts, the charts and the large chart sheet. Tokens of css/app.css only. */
+.wk-sec { margin-top: var(--space-24); } .wk-sec h3 { font-size: var(--fs-headline); margin-bottom: var(--space-8); }
+.wk-through { margin-top: var(--space-8); }
+.wk-days { margin: 0; padding: 0; list-style: none; display: grid; grid-template-columns: repeat(7, minmax(0, 1fr)); gap: 6px; }
+.wk-day { display: grid; justify-items: center; align-content: start; gap: 2px; padding: var(--space-8) 4px; border-radius: var(--r2); background: var(--card); box-shadow: var(--shadow); text-align: center; min-width: 0; }
+.wk-day.is-calm { box-shadow: 0 0 0 1.5px var(--good); }
+.wk-hi { font-weight: var(--fw-semi); } .wk-lo { color: var(--ink2); font-size: var(--fs-small); }
+.wk-ico { font-size: var(--fs-micro); font-weight: var(--fw-semi); color: var(--ink2); }
+@media (max-width: 700px) { .wk-days { grid-template-columns: repeat(7, minmax(44px, 1fr)); overflow-x: auto; } .wk-day .chip { white-space: normal; text-align: center; } }
+.wk-tile h3, .wk-fact h3 { font-size: var(--fs-row); font-weight: var(--fw-semi); color: var(--ink2); margin: 0 0 var(--space-4); }
+.wk-big { font-size: var(--fs-number); font-weight: var(--fw-bold); letter-spacing: var(--ls-title); line-height: 1.1; }
+.wk-status { display: flex; align-items: center; gap: 6px; margin: var(--space-8) 0 var(--space-4); }
+.wk-facts { display: grid; grid-template-columns: repeat(auto-fill, minmax(min(240px, 100%), 1fr)); gap: var(--space-12); margin-bottom: var(--space-16); }
+.wk-fact { padding: var(--space-12) 14px; border-radius: var(--r2); background: var(--card); box-shadow: var(--shadow); min-width: 0; }
+.wk-fact .wk-big { font-size: 22px; }
+.chart-card figcaption { margin-bottom: var(--space-8); } .chart-card .cz-open { margin-top: var(--space-8); }
+.ch { display: block; width: 100%; height: auto; }
+.ch-bar.rain { fill: var(--c-rain); } .ch-bar.hi { fill: var(--c-hi); } .ch-bar.lo { fill: var(--c-lo); }
+.ch-grid { stroke: var(--sep); stroke-width: .5; } .ch-tick { fill: var(--ink2); font-size: 9px; } .ch-median { stroke: var(--ink); stroke-width: 1.5; stroke-dasharray: 4 3; }
+.ch-legend { display: flex; flex-wrap: wrap; gap: var(--space-12); margin-top: var(--space-8); font-size: var(--fs-caption); color: var(--ink2); }
+.ch-key { display: inline-block; width: 10px; height: 10px; margin-right: 4px; border-radius: 2px; background: var(--c-rain); } .ch-key.hi { background: var(--c-hi); } .ch-key.lo { background: var(--c-lo); }
+dialog.chart-sheet { width: min(1040px, calc(100vw / var(--tz) - 24px)); }
+.cz-body h3 { margin: var(--space-16) 0 var(--space-4); font-size: var(--fs-headline); }
+.cz-body .tbl { max-height: 40vh; overflow: auto; }
+@media print { .wk-days { grid-template-columns: repeat(7, 1fr); } .cz-open { display: none; } }

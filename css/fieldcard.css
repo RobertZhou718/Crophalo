@@ -1,0 +1,26 @@
+/* Crophalo: the field card and the adviser's brief, on the screen (in their sheets) and on paper. Only the tokens of css/app.css on screen; paper uses plain black on white. */
+.field-card, .discuss { max-width: 720px; margin: 0 auto; padding: var(--space-16); border-radius: var(--r1); background: var(--card); box-shadow: var(--shadow); font-size: var(--fs-row); }
+.field-card h1, .discuss h1 { font-size: 24px; }
+.fc-brand, .ds-brand { font-size: var(--fs-micro); font-weight: var(--fw-bold); letter-spacing: .08em; color: var(--ink2); }
+.fc-top { display: grid; grid-template-columns: auto minmax(0, 1fr); gap: var(--space-16); align-items: start; margin-top: var(--space-12); }
+.fc-answer h2 { font-size: var(--fs-small); text-transform: uppercase; letter-spacing: .04em; color: var(--ink2); }
+.fc-head { font-size: 18px; font-weight: var(--fw-semi); }
+.fc-warn { font-weight: var(--fw-semi); }
+.field-card section, .discuss section { margin-top: var(--space-12); }
+.field-card h3, .discuss h3 { font-size: var(--fs-row); }
+.fc-box, .ds-boxed { padding: var(--space-8) var(--space-12); border: 1px solid var(--ctl); border-radius: var(--r3); }
+.fc-check { list-style: none; padding: 0; } .fc-check li { display: flex; gap: var(--space-8); align-items: center; padding: 2px 0; }
+.fc-boxmark { display: inline-block; width: 12px; height: 12px; border: 1.5px solid var(--ink); border-radius: 2px; flex: none; }   /* an empty square to tick by hand */
+.fc-sources, .ds-sources { font-size: var(--fs-caption); color: var(--ink2); padding-left: 1.3em; }
+.ds-sources { columns: 2; }
+@media (max-width: 560px) { .fc-top { grid-template-columns: minmax(0, 1fr); } .ds-sources { columns: 1; } }
+/* paper: the card alone, one page, black on white. The page gets one class and everything else is hidden. */
+@media print {
+  html.print-card body > *:not(#printHost) { display: none !important; }
+  #printHost { display: block !important; }
+  .field-card, .discuss { max-width: none; padding: 0; box-shadow: none; border-radius: 0; font-size: 10pt; color: #000; background: #fff; }
+  .field-card section, .discuss section, .field-card header, .field-card footer, .discuss footer { break-inside: avoid; }
+  .field-card h1 { font-size: 18pt; } .fc-where { font-size: 9pt; } .fc-brand { font-size: 8.5pt; }
+  .fc-sources, .ds-sources { font-size: 7.5pt; color: #000; }
+  .discuss.tight { font-size: 9pt; } .discuss.tight p { margin-top: 2pt; }
+}

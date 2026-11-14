@@ -1,0 +1,33 @@
+/* Crophalo: the Calendar tab's look: twelve equal months at every width, the rain bars, the ground rows of each plan, the legend and the sowing timeline.
+   Only the tokens of css/app.css. Every ground state has its own pattern as well as its colour: nothing rests on colour alone. */
+.fcal { --lab: 84px; position: relative; overflow: hidden; }   /* relative, so the hidden screen-reader table is clipped here and cannot widen the page */
+.fc-labels { display: grid; grid-template-columns: var(--lab) minmax(0, 1fr); font-size: var(--fs-caption); color: var(--ink2); }
+.fc-grid, .fc-yearrow { display: grid; grid-template-columns: var(--lab) minmax(0, 1fr); gap: 4px 0; align-items: end; }
+.fc-grid .fc-row { grid-column: 2; }
+.fc-row { display: grid; grid-template-columns: repeat(12, minmax(0, 1fr)); gap: 5px; min-width: 0; }
+.fc-head { margin-top: 2px; } .fc-m { text-align: center; font-size: var(--fs-caption); color: var(--ink2); } .fc-ini { display: none; }
+.fc-rain { height: 110px; align-items: end; }
+.fc-col { position: relative; display: flex; flex-direction: column; justify-content: flex-end; align-items: center; height: 100%; min-width: 0; }
+.fc-fig { font-size: 11px; color: var(--ink2); line-height: 1.2; } .fc-bar { display: block; width: 100%; border-radius: 4px 4px 0 0; background: var(--c-rain); }
+.fc-marks { height: 24px; } .fc-mk { display: flex; justify-content: center; align-items: center; gap: 1px; font-size: 13px; min-width: 0; } .fc-mk i { font-style: normal; } .fc-frost { color: var(--c-lo); } .fc-sun { color: var(--sun); }
+.fc-plans { display: grid; gap: var(--space-16); margin-top: var(--space-16); } .fc-plan h3 { font-size: var(--fs-headline); } .fc-plan .cap { margin: 2px 0 var(--space-8); }
+.fc-yearrow + .fc-yearrow { margin-top: 6px; } .fc-year { font-size: var(--fs-small); font-weight: var(--fw-semi); color: var(--ink2); }
+.fc-ground { align-items: stretch; }
+.fc-cell { position: relative; display: flex; align-items: center; min-height: 28px; border-radius: 4px; background: var(--fill2); overflow: hidden; }
+.fc-cell.is-crop { background: var(--c-g); } .fc-cell.is-cover { background: #8fc678; } .fc-cell.is-residue { background: #cdbd7a; background-image: radial-gradient(rgba(0,0,0,.35) 1px, transparent 1.4px); background-size: 5px 5px; }
+.fc-cell.is-bare { background-color: #b08060; background-image: repeating-linear-gradient(135deg, rgba(255,255,255,.7) 0 2px, transparent 2px 6px); }
+.fc-cell.in-window { box-shadow: inset 0 0 0 2px var(--accent); }
+.fc-name { padding: 0 4px; font-size: 11px; font-weight: var(--fw-semi); color: #fff; text-shadow: 0 0 2px rgba(0,0,0,.6); white-space: nowrap; }
+.fc-legend { display: flex; flex-wrap: wrap; gap: var(--space-8) var(--space-16); margin: 0; padding: 0; list-style: none; font-size: var(--fs-caption); color: var(--ink2); }
+.fc-key { display: inline-block; width: 16px; height: 12px; margin-right: 6px; border-radius: 3px; vertical-align: -1px; background: var(--fill2); }
+.fc-key.is-crop { background: var(--c-g); } .fc-key.is-cover { background: #8fc678; } .fc-key.is-residue { background: #cdbd7a radial-gradient(rgba(0,0,0,.35) 1px, transparent 1.4px) 0 0 / 5px 5px; } .fc-key.is-bare { background: #b08060 repeating-linear-gradient(135deg, rgba(255,255,255,.7) 0 2px, transparent 2px 6px); } .fc-key.in-window { background: var(--card); box-shadow: inset 0 0 0 2px var(--accent); }
+.fc-when { margin-top: var(--space-24); } .fc-when h3 { font-size: var(--fs-headline); margin-bottom: var(--space-8); }
+.fc-sow h4 { font-size: var(--fs-body); }
+.tl { display: block; width: 100%; height: auto; margin: var(--space-8) 0; }
+.tl-window { fill: var(--accent-soft); stroke: var(--accent); stroke-width: 1.5; } .tl-left { fill: var(--warn-soft); stroke: var(--warn); stroke-width: 1.5; stroke-dasharray: 4 2; }
+.tl-harvest { stroke: var(--warn); stroke-width: 2; } .tl-sow { stroke: var(--good); stroke-width: 2; } .tl-t { fill: var(--ink2); font-size: 9.5px; }
+.fc-squeeze { display: flex; gap: var(--space-8); align-items: flex-start; font-size: var(--fs-row); }
+.fc-squeeze .mark { margin-top: 5px; }
+@media (max-width: 620px) { .fcal { --lab: 0px; } .fc-labels > :first-child, .fc-lab, .fc-year { display: none; } .fc-labels { display: none; } .fc-grid, .fc-yearrow { grid-template-columns: minmax(0, 1fr); } .fc-grid .fc-row { grid-column: 1; } }
+@media (max-width: 420px) { .fc-full { display: none; } .fc-ini { display: inline; } .fc-row { gap: 3px; } .fc-fig { font-size: 9px; } .fc-name { display: none; } }
+@media print { .fc-cell.is-bare { background-image: repeating-linear-gradient(135deg, #fff 0 2px, transparent 2px 6px); } }

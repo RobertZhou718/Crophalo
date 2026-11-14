@@ -6,6 +6,11 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<script>
+// The kept look (text size, contrast, links, motion) goes on the page before its first paint, so nothing jumps; js/settings.js keeps it in step after.
+try { var kept = JSON.parse(localStorage.getItem('crophalo.settings.v1')) || {}, looks = { text: ['large', 'xlarge'], contrast: ['high'], links: ['underline'], motion: ['reduce'] };
+  for (var name in looks) if (looks[name].indexOf(kept[name]) >= 0) document.documentElement.setAttribute('data-' + name, kept[name]); } catch (e) { /* blocked storage: the defaults */ }
+</script>
 <title>Crophalo · Rotation planning with NASA data</title>
 <meta name="description" content="Crophalo helps farmers explore crop-rotation options using NASA Earth observations, local soil information and their own priorities.">
 <meta name="color-scheme" content="light">
@@ -27,9 +32,25 @@
 <link rel="preconnect" href="https://server.arcgisonline.com">
 <link rel="stylesheet" href="vendor/leaflet/leaflet.css">
 <link rel="stylesheet" href="css/app.css">
+<link rel="stylesheet" href="css/setup.css">
+<link rel="stylesheet" href="css/map.css">
+<link rel="stylesheet" href="css/sources.css">
+<link rel="stylesheet" href="css/region.css">
+<link rel="stylesheet" href="css/report.css">
+<link rel="stylesheet" href="css/weather.css">
+<link rel="stylesheet" href="css/soiltest.css">
+<link rel="stylesheet" href="css/remind.css">
+<link rel="stylesheet" href="css/fieldcard.css">
+<link rel="stylesheet" href="css/statement.css">
+<link rel="stylesheet" href="css/farm.css">
+<link rel="stylesheet" href="css/farm3d.css">
 <link rel="modulepreload" href="js/app.js">
 <link rel="modulepreload" href="js/settings.js">
 <link rel="modulepreload" href="js/words.js">
+<link rel="modulepreload" href="js/home.js">
+<link rel="modulepreload" href="js/welcome.js">
+<link rel="modulepreload" href="js/wizard.js">
+<link rel="modulepreload" href="js/report.js">
 </head>
 <body>
 <svg class="sr" width="0" height="0" aria-hidden="true" focusable="false">
@@ -41,6 +62,25 @@
   <symbol id="i-eye" viewBox="0 0 24 24"><path d="M2.5 12S6 5.5 12 5.5 21.5 12 21.5 12 18 18.5 12 18.5 2.5 12 2.5 12z"/><circle cx="12" cy="12" r="2.8"/></symbol>
   <symbol id="i-shield" viewBox="0 0 24 24"><path d="M12 3l7 3v5.5c0 4.4-3 7.7-7 9.5-4-1.8-7-5.1-7-9.5V6zM12 8.5v4M12 15.7v.1"/></symbol>
   <symbol id="i-gear" viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M12 3v2.5M12 18.5V21M3 12h2.5M18.5 12H21M5.6 5.6l1.8 1.8M16.6 16.6l1.8 1.8M5.6 18.4l1.8-1.8M16.6 7.4l1.8-1.8"/></symbol>
+  <symbol id="i-speaker" viewBox="0 0 24 24"><path d="M4 9.5v5h3.5L12 18V6L7.5 9.5zM15.5 9a4 4 0 0 1 0 6M18 6.5a7.5 7.5 0 0 1 0 11"/></symbol>
+  <symbol id="i-mic" viewBox="0 0 24 24"><rect x="9.5" y="3.5" width="5" height="10" rx="2.5"/><path d="M6.5 11a5.5 5.5 0 0 0 11 0M12 16.5V20M9 20h6"/></symbol>
+  <symbol id="i-pin" viewBox="0 0 24 24"><path d="M12 21s6.5-6.2 6.5-11a6.5 6.5 0 0 0-13 0c0 4.8 6.5 11 6.5 11z"/><circle cx="12" cy="10" r="2.3"/></symbol>
+  <symbol id="i-map" viewBox="0 0 24 24"><path d="M3.5 6.5 9 4l6 2.5L20.5 4v13.5L15 20l-6-2.5L3.5 20zM9 4v13.5M15 6.5V20"/></symbol>
+  <symbol id="i-search" viewBox="0 0 24 24"><circle cx="10.5" cy="10.5" r="6"/><path d="m15 15 5 5"/></symbol>
+  <symbol id="i-drop" viewBox="0 0 24 24"><path d="M12 3.5s6 6.3 6 10.5a6 6 0 0 1-12 0c0-4.2 6-10.5 6-10.5z"/></symbol>
+  <symbol id="i-leaf" viewBox="0 0 24 24"><path d="M5 19c0-8 5-13 14-14 0 9-5 14-14 14zM5 19l9-9"/></symbol>
+  <symbol id="i-scale" viewBox="0 0 24 24"><path d="M12 4v16M8 20h8M5 7h14M5 7l-2.3 6h4.6zM19 7l-2.3 6h4.6z"/></symbol>
+  <symbol id="i-star" viewBox="0 0 24 24"><path d="m12 3.5 2.6 5.4 5.9.8-4.3 4.1 1 5.9L12 16.9l-5.2 2.8 1-5.9-4.3-4.1 5.9-.8z"/></symbol>
+  <symbol id="i-cloud" viewBox="0 0 24 24"><path d="M7 18a4.5 4.5 0 0 1-.5-9A6 6 0 0 1 18 9.5 4 4 0 0 1 17.5 18z"/></symbol>
+  <symbol id="i-cal" viewBox="0 0 24 24"><rect x="4" y="5.5" width="16" height="14" rx="2"/><path d="M4 10h16M8.5 3.5v4M15.5 3.5v4"/></symbol>
+  <symbol id="i-expand" viewBox="0 0 24 24"><path d="M4 9V4h5M20 9V4h-5M4 15v5h5M20 15v5h-5"/></symbol>
+  <symbol id="i-tick" viewBox="0 0 24 24"><path d="m5 12.5 4.5 4.5L19 7.5"/></symbol>
+  <symbol id="i-back" viewBox="0 0 24 24"><path d="M19 12H5M11 6l-6 6 6 6"/></symbol>
+  <symbol id="i-shieldok" viewBox="0 0 24 24"><path d="M12 3l7 3v5.5c0 4.4-3 7.7-7 9.5-4-1.8-7-5.1-7-9.5V6zM8.8 12l2.3 2.3 4.2-4.6"/></symbol>
+  <symbol id="i-globe" viewBox="0 0 24 24"><circle cx="12" cy="12" r="8.5"/><path d="M3.5 12h17M12 3.5c2.6 2.4 3.9 5.2 3.9 8.5s-1.3 6.1-3.9 8.5c-2.6-2.4-3.9-5.2-3.9-8.5s1.3-6.1 3.9-8.5z"/></symbol>
+  <symbol id="i-soil" viewBox="0 0 24 24"><path d="M12 13V6.5M12 9c0-2 1.3-3.3 3.8-3.5 0 2.3-1.3 3.5-3.8 3.5zM12 8c0-1.7-1.1-2.8-3.3-3 0 2 1.1 3 3.3 3zM4 15c1.6-1.2 3.2-1.2 4.8 0s3.2 1.2 4.8 0 3.2-1.2 4.8 0M4 19c1.6-1.2 3.2-1.2 4.8 0s3.2 1.2 4.8 0 3.2-1.2 4.8 0"/></symbol>
+  <symbol id="i-hand" viewBox="0 0 24 24"><path d="M8 12V6.2a1.5 1.5 0 0 1 3 0V11M11 10.5V4.7a1.5 1.5 0 0 1 3 0V11M14 11V6.2a1.5 1.5 0 0 1 3 0V14c0 3.9-2.2 6.5-5.5 6.5-2.4 0-3.8-1-5-3.2L4.3 13.4a1.4 1.4 0 0 1 2.4-1.4L8 14"/></symbol>
+  <symbol id="i-lock" viewBox="0 0 24 24"><rect x="5.5" y="10.5" width="13" height="9.5" rx="2"/><path d="M8.5 10.5V8a3.5 3.5 0 0 1 7 0v2.5M12 14.5v2"/></symbol>
 </svg>
 
 <a class="skip" href="#main">Skip to content</a>
@@ -68,19 +108,50 @@
       <p class="eyebrow">Built with NASA Earth observations</p>
       <h1 class="hero-h1">Know your field<br>before you plant.</h1>
       <p class="lede">Find your field. Say what you grow. See what could grow better, from NASA weather since 2001 and fresh satellite pictures.</p>
+      <p class="hero-listen"><button type="button" class="listen" id="homeListen" hidden><svg class="ic" aria-hidden="true"><use href="#i-speaker"/></svg><span class="t">Listen to how it works</span></button></p>
+      <div class="bigbtns">
+        <button type="button" class="bigbtn primary" id="homeLocate"><svg class="ic" aria-hidden="true"><use href="#i-pin"/></svg><span><b>I am at my field</b><small>Use where I am now</small></span></button>
+        <button type="button" class="bigbtn" id="homeMapPick"><svg class="ic" aria-hidden="true"><use href="#i-map"/></svg><span><b>Find it on the map</b><small>Tap your field</small></span></button>
+      </div>
+      <div class="search-box" id="searchBox">
+        <form class="search" role="search" id="searchForm" aria-label="Find your farm location">
+          <svg class="ic search-ic" aria-hidden="true"><use href="#i-search"/></svg>
+          <input type="text" id="searchInput" role="combobox" aria-label="Find your farm location" aria-autocomplete="list" aria-expanded="false" aria-controls="searchList" placeholder="Town or place"
+            autocomplete="off" autocapitalize="words" autocorrect="off" spellcheck="false" inputmode="search" enterkeyhint="search">
+          <button type="button" class="mic" id="searchMic" aria-label="Say the name of a place" title="Say the name of a place. In Chrome your speech is sent to Google to turn it into text." hidden><svg class="ic" aria-hidden="true"><use href="#i-mic"/></svg></button>
+          <button type="submit" class="btn primary" id="searchGo">Search</button>
+        </form>
+        <div class="sugg" id="searchList" role="listbox" aria-label="Suggestions" hidden></div>
+      </div>
+      <p class="search-msg" id="searchMsg" role="status"></p>
+      <p class="search-try" id="searchTry">Try <button type="button" class="link" id="tryRegion">Oxford County, Ontario</button> or <button type="button" class="link">42.03, -93.62</button></p>
     </div>
-    <div class="wrap"><p class="foot">Crophalo · NASA Space Apps 2026 · A guide, not advice. You decide.</p></div>
+    <div class="wrap">
+      <figure class="lens">
+        <svg id="lens" viewBox="0 0 640 172" aria-hidden="true" focusable="false"></svg>
+        <figcaption>Run your finger or mouse over the fields to look through a satellite’s eyes: greener means more growing crop.</figcaption>
+      </figure>
+      <section aria-labelledby="homeRegionsTitle">
+        <div class="sec-head"><h2 id="homeRegionsTitle">Try a demo region</h2><p>This opens instantly. Any other place works too; its first report takes a few minutes.</p></div>
+        <div class="grid" id="homeRegions"></div>
+      </section>
+      <section id="homeSaved" aria-labelledby="homeSavedTitle" hidden>
+        <div class="sec-head"><h2 id="homeSavedTitle">Your saved fields</h2></div>
+        <div class="grid" id="homeSavedGrid"></div>
+      </section>
+      <p class="foot">Crophalo · NASA Space Apps 2026 · A guide, not advice. You decide.</p>
+    </div>
   </section>
-  <section class="view" id="view-setup" hidden><div class="wrap"><div class="sec"><h1>Farm setup</h1></div></div></section>
-  <section class="view" id="view-info" hidden><div class="wrap"><div class="sec"><h1 id="infoTitle"></h1></div></div></section>
+  <section class="view" id="view-setup" hidden><div class="setup" id="setupRoot"><h1>Farm setup</h1></div></section>
+  <section class="view" id="view-info" hidden><div class="wrap"><div class="sec"><h1 id="infoTitle"></h1><div id="infoBody"></div></div></div></section>
   <section class="view" id="view-admin" hidden><div class="wrap"><div class="sec"><h1>Admin</h1></div></div></section>
-  <section class="view" id="view-report" hidden><div class="wrap"><div class="sec"><h1>Your report</h1></div></div></section>
+  <section class="view" id="view-report" hidden><div id="reportRoot"><h1>Your field report</h1></div></section>
   <section class="view" id="view-farm" hidden><div class="wrap"><div class="sec"><h1>My farm</h1></div></div></section>
 </main>
 
 <dialog class="sheet" id="dlgSaved" aria-labelledby="dlgSavedTitle">
   <div class="sheet-head"><h2 id="dlgSavedTitle">Saved fields</h2><button type="button" class="btn" id="dlgSavedDone">Done</button></div>
-  <div class="sheet-body" id="savedList"><p>Nothing saved yet. Open a report and choose Save to keep a field here. Saved fields live only in this browser.</p></div>
+  <div class="sheet-body" id="savedList"></div>
 </dialog>
 
 <div id="toast" class="toast" role="status"></div>

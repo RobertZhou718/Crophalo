@@ -1,0 +1,125 @@
+/* My farm: the board on the real map, the slim top row, one toolbar, the Compare plans drawer. Every colour and size comes from the tokens in app.css.
+   Checked by scripts/e2e_farm.mjs (44 px targets, no sideways scroll at 320 px with the largest text, Reduce motion). */
+#view-farm { padding: 0; }
+.fw { position: relative; display: flex; flex-direction: column; height: calc(100dvh - var(--navh)); min-height: 520px; background: var(--bg); }
+.fw-hud { flex: none; padding: var(--space-8) var(--gutter) var(--space-4); background: var(--bar-glass); border-bottom: .5px solid var(--sep); }
+.fw-row { display: flex; align-items: center; gap: var(--space-12); flex-wrap: wrap; }
+.fw-pick { flex: 1 1 200px; min-width: 0; }
+.fw-select, .fw-input { width: 100%; min-height: var(--touch); padding: 6px 12px; border: 0; border-radius: var(--r2); background: var(--card); box-shadow: var(--shadow-ctl); font: inherit; font-size: var(--fs-field); color: var(--ink); }
+.fw-date { margin: 0; display: flex; align-items: baseline; gap: 8px; font-size: var(--fs-body); color: var(--ink); }
+.fw-date time { font-weight: var(--fw-semi); }
+.fw-label { display: inline-block; padding: 1px 8px; border-radius: var(--r-tag); background: var(--accent-soft); color: var(--accent-text); font-size: var(--fs-chip); font-weight: var(--fw-semi); }
+.fw-compare { flex: none; min-height: var(--touch); }
+.fw-finding { margin: var(--space-4) 0 0; font-size: var(--fs-body); line-height: var(--lh-body); color: var(--ink); max-width: 70ch; }
+.fw-bar { position: relative; z-index: 5; flex: none; display: flex; align-items: center; gap: var(--space-8); flex-wrap: wrap; padding: var(--space-8) var(--gutter); background: var(--bar); border-bottom: .5px solid var(--sep2); }
+.fw-seg { display: inline-flex; gap: 4px; padding: 4px; border-radius: var(--r-seg); background: var(--fill); }
+.fw-segb { min-width: 64px; min-height: var(--touch); padding: 0 16px; border: 0; border-radius: calc(var(--r-seg) - 2px); background: none; font: inherit; font-size: var(--fs-btn); font-weight: var(--fw-medium); color: var(--ink2); cursor: pointer; }
+.fw-segb[aria-pressed=true] { background: var(--accent); color: var(--accent-ink); }
+.fw-tool { min-height: var(--touch); }
+.fw-menuwrap { position: relative; }
+.fw-menu { position: absolute; z-index: var(--z-menu); top: calc(100% + 4px); left: 0; min-width: 190px; padding: 6px; border-radius: var(--r1); background: var(--card); box-shadow: var(--shadow-lg); }
+.fw-menu[hidden] { display: none; }
+.fw-menu button { display: block; width: 100%; min-height: var(--touch); padding: 0 12px; border: 0; border-radius: var(--r2); background: none; font: inherit; font-size: var(--fs-row); color: var(--ink); text-align: left; cursor: pointer; }
+.fw-menu button:hover { background: var(--fill); }
+.fw-menu button[aria-checked=true]::after { content: " ✓"; color: var(--accent-text); }
+.fw-menu .fw-danger { color: var(--delete); }
+.fw-stage { isolation: isolate; position: relative; flex: 1 1 auto; min-height: 280px; overflow: hidden; background: #b9d99d; }
+.fw-map, .fw-3d { position: absolute; inset: 0; }
+.fw-map { background: #b9d99d repeating-linear-gradient(135deg, rgba(255,255,255,.14) 0 6px, transparent 6px 18px); }
+.fw-photo .fw-map { background: var(--map-ph); }
+.fw-map[hidden], .fw-3d[hidden] { display: none; }
+.fw-status { position: absolute; z-index: 1100; left: var(--space-12); right: var(--space-12); bottom: var(--space-12); margin: 0; padding: 8px 12px; border-radius: var(--r2); background: var(--card); box-shadow: var(--shadow-ctl); font-size: var(--fs-small); }
+.fw-empty { position: absolute; inset: 0; display: grid; place-content: center; gap: 8px; padding: var(--gutter); text-align: center; background: var(--bg); }
+.fw-empty[hidden], .fw-status[hidden] { display: none; }
+.fw-empty h2 { margin: 0; font-size: var(--fs-title2); } .fw-empty p { margin: 0 auto; max-width: 46ch; color: var(--ink2); }
+/* the field on the board: the token is a real 44 px button with the name under it */
+.fw-tokenwrap { background: none; border: 0; text-align: center; }
+.fw-token { display: block; width: 44px; height: 44px; margin: 0 auto; padding: 0; border: 3px solid var(--shade); border-radius: 50%; background: #fff; cursor: pointer; color: var(--shade); }
+.fw-token svg { width: 24px; height: 24px; fill: currentColor; }
+.fw-token.is-chosen { border-color: var(--shade); box-shadow: 0 0 0 4px #ffc233; }
+.fw-plate { display: block; width: max-content; max-width: 130px; margin: 3px auto 0; padding: 3px 8px; border-radius: var(--r3); background: #fff; box-shadow: var(--shadow-ctl); line-height: 1.2; }
+.fw-plate b { display: block; font-size: var(--fs-small); color: var(--ink); } .fw-plate small { font-size: var(--fs-micro); color: var(--ink2); }
+.fw-here { background: none; border: 0; } .fw-here svg { width: 30px; height: 30px; display: block; filter: drop-shadow(0 1px 2px rgba(0,0,0,.4)); }
+.leaflet-container :focus-visible, .fw :focus-visible { outline: 3px solid var(--accent); outline-offset: 2px; }
+/* the drawer: a side panel on wide screens, a bottom sheet on phones */
+.fw-panel { position: absolute; z-index: 1200; top: 0; right: 0; bottom: 0; width: min(420px, 100%); overflow: auto; padding: var(--space-16) var(--gutter) calc(var(--space-20) + env(safe-area-inset-bottom, 0px)); background: var(--card); box-shadow: var(--shadow-lg); }
+.fw-panel[hidden] { display: none; }
+.fw-panel-head { display: flex; align-items: center; justify-content: space-between; gap: var(--space-12); margin-bottom: var(--space-8); }
+.fw-panel h2 { margin: 0; font-size: var(--fs-headline); letter-spacing: var(--ls-head); } .fw-panel h2:focus { outline: none; }
+.fw-panel h3 { margin: 0; font-size: var(--fs-row); }
+.fw-stepper { display: flex; align-items: stretch; gap: 6px; margin: var(--space-8) 0; }
+.fw-steps { flex: 1 1 auto; display: grid; grid-template-columns: repeat(3, 1fr); gap: 6px; min-width: 0; }
+.fw-step { min-height: var(--touch); padding: 4px 6px; border: 0; border-radius: var(--r2); background: var(--fill); font: inherit; color: var(--ink); text-align: center; cursor: pointer; display: grid; align-content: center; line-height: 1.2; }
+.fw-step span { font-size: var(--fs-small); font-weight: var(--fw-medium); overflow-wrap: anywhere; } .fw-step small { font-size: var(--fs-micro); color: var(--ink2); }
+.fw-step[aria-pressed=true] { background: var(--accent); color: var(--accent-ink); } .fw-step[aria-pressed=true] small { color: inherit; }
+.fw-onedate { margin: 4px 0 var(--space-12); font-size: var(--fs-small); color: var(--ink2); }
+.fw-cards { display: grid; gap: var(--space-8); grid-template-columns: 1fr 1fr; }
+.fw-card { padding: var(--space-12); border-radius: var(--r1); background: var(--card2); box-shadow: var(--shadow); min-width: 0; }
+.fw-card p { margin: 6px 0 0; font-size: var(--fs-small); line-height: 1.4; overflow-wrap: anywhere; }
+.fw-crops { color: var(--ink2); } .fw-muted { color: var(--ink2); }
+.fw-state { display: flex; align-items: center; flex-wrap: wrap; gap: 6px; }
+.fw-swatch { width: 14px; height: 14px; border-radius: 3px; border: 1px solid var(--shade); background: var(--cell); }
+.fw-swatch[data-state=crop] { background: #7ed957; } .fw-swatch[data-state=cover] { background: #9ccc65; } .fw-swatch[data-state=residue] { background: #cdb88a; } .fw-swatch[data-state=bare] { background: #a47148; }
+.fw-caveat p, .fw-note { font-size: var(--fs-small); line-height: 1.45; }
+.fw-fold { margin: var(--space-8) 0; font-size: var(--fs-small); } .fw-fold summary { min-height: var(--touch); display: flex; align-items: center; cursor: pointer; font-weight: var(--fw-medium); }
+.fw-note { color: var(--ink2); }
+.fw-actions { display: flex; flex-wrap: wrap; gap: var(--space-8); margin-top: var(--space-12); }
+.fw-form { display: grid; gap: 8px; } .fw-err { margin: 0; color: var(--bad); font-size: var(--fs-small); min-height: 1em; }
+.fw-list { list-style: none; margin: 0; padding: 0; display: grid; gap: 8px; } .fw-list li { display: flex; align-items: center; justify-content: space-between; gap: 8px; padding: 8px 12px; border-radius: var(--r2); background: var(--card2); }
+.fw-toast { position: absolute; z-index: 1300; left: var(--space-12); bottom: var(--space-16); display: none; align-items: center; gap: var(--space-12); max-width: calc(100% - 24px); padding: 8px 12px; border-radius: var(--r2); background: var(--toast); color: #fff; font-size: var(--fs-small); }
+.fw-toast.show { display: flex; } .fw-toast .btn { background: #fff; color: var(--ink); }
+.fw .btn.danger.armed { background: var(--delete); color: #fff; }
+@media (max-width: 700px) {
+  .fw { height: calc(100dvh - var(--navh)); }
+  .fw-panel { position: fixed; top: auto; left: 0; width: 100%; max-height: 72dvh; border-radius: var(--r-big) var(--r-big) 0 0; }
+  .fw-cards { grid-template-columns: 1fr; }
+  .fw-compare { flex: 1 1 100%; }
+  .fw-bar { flex-wrap: nowrap; overflow-x: auto; scrollbar-width: none; padding-block: var(--space-4); }
+  .fw-bar > * { flex: none; }
+  .fw-stepper { display: grid; grid-template-columns: 1fr 1fr; grid-template-areas: "prev next" "steps steps"; }
+  .fw-stepper #fwPrev { grid-area: prev; } .fw-stepper #fwNext { grid-area: next; } .fw-stepper .fw-steps { grid-area: steps; grid-template-columns: 1fr; }
+  .fw-step { grid-template-columns: 1fr auto; align-items: center; text-align: left; padding: 6px 12px; column-gap: 8px; }
+  .fw-date { flex: 1 1 100%; }
+}
+@media (prefers-reduced-motion: reduce), (hover: none) and (max-width: 0px) { .fw * { transition: none !important; animation: none !important; } }
+html[data-motion=reduce] .fw * { transition: none !important; animation: none !important; }
+/* the field drawer */
+.fw-sub { margin: 2px 0 0; font-size: var(--fs-small); color: var(--ink2); }
+.fw-now { display: grid; gap: 6px; margin: var(--space-8) 0; padding: var(--space-12); border-radius: var(--r1); background: var(--accent-soft); font-size: var(--fs-small); }
+.fw-now b { font-size: var(--fs-row); } .fw-now .btn { justify-self: start; }
+.fw-tabs { display: flex; gap: 4px; margin: var(--space-8) 0; padding: 4px; border-radius: var(--r-seg); background: var(--fill); overflow-x: auto; scrollbar-width: none; }
+.fw-tabs [role=tab] { flex: 1 0 auto; min-width: 44px; min-height: var(--touch); padding: 0 12px; border: 0; border-radius: calc(var(--r-seg) - 2px); background: none; font: inherit; font-size: var(--fs-btn); color: var(--ink2); cursor: pointer; }
+.fw-tabs [role=tab][aria-selected=true] { background: var(--accent); color: var(--accent-ink); }
+.fw-tabs small { margin-left: 4px; }
+.fw-answer { margin: var(--space-8) 0; font-size: var(--fs-body); font-weight: var(--fw-medium); }
+.fw-todo { list-style: none; margin: 0 0 var(--space-8); padding: 0; display: grid; gap: 8px; }
+.fw-todo li { display: grid; gap: 6px; padding: 8px 12px; border-radius: var(--r2); background: var(--card2); font-size: var(--fs-small); } .fw-todo .btn { justify-self: start; }
+.fw-dl { display: grid; grid-template-columns: auto 1fr; gap: 4px 12px; margin: 0 0 var(--space-8); font-size: var(--fs-small); } .fw-dl dt { color: var(--ink2); } .fw-dl dd { margin: 0; }
+.fw-panel h3 { margin: var(--space-12) 0 4px; }
+[role=tabpanel]:focus-visible { outline-offset: 4px; }
+.fw-stepbar { display: flex; gap: 4px; flex-wrap: wrap; margin-bottom: var(--space-8); }
+.fw-stepb { min-height: var(--touch); padding: 0 12px; border: 0; border-radius: var(--r2); background: var(--fill); font: inherit; font-size: var(--fs-small); color: var(--ink); cursor: pointer; }
+.fw-stepb[aria-pressed=true] { background: var(--accent); color: var(--accent-ink); }
+.fw-sheetbody { display: grid; gap: 8px; } .fw-sheetbody label { font-size: var(--fs-small); }
+.fw-packets { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 8px; }
+.fw-packet { position: relative; display: grid; gap: 2px; min-height: var(--touch); padding: 8px 10px 8px 34px; border-radius: var(--r1); background: var(--card2); box-shadow: var(--shadow); cursor: pointer; }
+.fw-packet input { position: absolute; left: 10px; top: 12px; width: 20px; height: 20px; }
+.fw-chip { justify-self: start; padding: 1px 8px; border-radius: var(--r-tag); background: var(--good-soft); color: var(--good); font-size: var(--fs-chip); font-weight: var(--fw-semi); }
+.fw-packet[data-tone=warn] .fw-chip { background: var(--warn-soft); color: var(--warn); } .fw-packet[data-tone=bad] .fw-chip { background: var(--bad-soft); color: var(--bad); }
+.fw-radios { display: grid; gap: 4px; margin: 0; padding: 0; border: 0; } .fw-radios legend { padding: 0; font-size: var(--fs-small); font-weight: var(--fw-medium); }
+.fw-radios label { display: flex; align-items: center; gap: 10px; min-height: var(--touch); font-size: var(--fs-row); } .fw-radios input { width: 20px; height: 20px; }
+.fw-date2 { display: grid; grid-template-columns: 80px 1fr; gap: 8px; align-items: center; }
+.fw-actions .btn.primary { color: var(--accent-ink); }
+.fw-fold summary { list-style: none; } .fw-fold summary::-webkit-details-marker { display: none; }
+.fw-fold summary::after { content: "›"; margin-left: auto; padding-left: 12px; font-size: 1.2em; color: var(--ink3); } .fw-fold[open] summary::after { content: "⌄"; }
+.fw-fold summary { display: flex; align-items: center; }
+/* editing the outline: the bar over the foot of the board, the corner handles */
+.fw-editbar { position: absolute; z-index: 1250; left: var(--space-12); right: var(--space-12); bottom: var(--space-12); display: grid; gap: 8px; padding: 10px 12px; border-radius: var(--r1); background: var(--card); box-shadow: var(--shadow-lg); }
+.fw-editbar[hidden] { display: none; }
+.fw-editline { margin: 0; font-size: var(--fs-body); font-weight: var(--fw-medium); overflow-wrap: anywhere; } .fw-editline.is-bad { color: var(--bad); }
+.fw-editbtns { display: flex; flex-wrap: wrap; gap: 8px; }
+.fw-handlewrap { background: none; border: 0; }
+.fw-handle { display: grid; place-items: center; width: 44px; height: 44px; padding: 0; border: 0; background: none; cursor: grab; }
+.fw-handle i { width: 18px; height: 18px; border-radius: 50%; background: #fff; border: 3px solid var(--shade); box-shadow: 0 1px 3px rgba(0,0,0,.4); }
+.fw-handle.is-chosen i { width: 24px; height: 24px; background: var(--accent); border-color: #fff; }
+.fw-tick { display: flex; align-items: center; gap: 10px; min-height: var(--touch); width: 100%; } .fw-tick input { width: 22px; height: 22px; flex: none; }

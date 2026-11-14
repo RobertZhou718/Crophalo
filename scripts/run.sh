@@ -53,11 +53,12 @@ case $OSMAJOR in '' | *[!0-9]*) OSMAJOR=0 ;; esac
 [ "$OSMAJOR" -ge "$MACOS_MIN" ] || { say "Crophalo needs macOS $MACOS_MIN or newer. This Mac has macOS ${OSVER:-(unknown)}."; log "stopped: macOS $OSVER"; exit 1; }
 RUN_ARCH=$ARCH
 
-# ---- 6 · already running from this folder? then only open the browser
+# ---- 6 · already running from this folder? then only open the browser. The server names its own folder (root) in /api/health;
+#      the cache is no sign of it, since two folders may share one FW_CACHE
 URL="http://localhost:$PORT/"
-CACHE_JSON=$(printf '%s' "${FW_CACHE:-$ROOT/.cache}/api" | sed -e 's/\\/\\\\/g' -e 's/"/\\"/g')   # as the server writes it in /api/health
+ROOT_JSON=$(printf '%s' "$ROOT" | sed -e 's/\\/\\\\/g' -e 's/"/\\"/g')   # as the server writes it in /api/health
 case $(curl -s -m 3 "http://127.0.0.1:$PORT/api/health" 2>/dev/null) in
-  *"\"cache\":\"$CACHE_JSON\""* | *"\"cache\": \"$CACHE_JSON\""*)
+  *"\"root\":\"$ROOT_JSON\""* | *"\"root\": \"$ROOT_JSON\""*)
     say "Crophalo is already running from this folder: $URL"; log "already running on $PORT"
     [ "$OPEN" = 1 ] && open "$URL"
     exit 0 ;;
@@ -120,11 +121,9 @@ fi
   log "python not set up: $WHY"; }
 
 # ---- 9 · the NASA Earthdata login: asked once, in a Terminal window only; nothing of it is ever shown or logged
-has_login() {
-  grep -qF "$EARTHDATA_HOST" "$ROOT/.secrets/earthdata.netrc" 2>/dev/null && return 0
-  [ -n "${EARTHDATA_USERNAME:-}" ] && [ -n "${EARTHDATA_PASSWORD:-}" ] && return 0
-  [ -n "${HOME:-}" ] && grep -qF "$EARTHDATA_HOST" "$HOME/.netrc" 2>/dev/null
-}
+# A login counts only as the server counts it (an active entry with both a login and a password, in the folder, the settings or ~/.netrc):
+# scripts/earthdata.mjs answers "yes <where>" or "no", and never prints the login itself.
+has_login() { case $("$NODE" "$ROOT/scripts/earthdata.mjs" 2>/dev/null) in 'yes '*) return 0 ;; esac; return 1; }
 other_logins() {   # the lines of a netrc file that belong to other services
   awk -v host="$EARTHDATA_HOST" '/^[ \t]*(machine|default)([ \t]|$)/ { skip = ($1 == "machine" && $2 == host) } !skip { print }' "$1"
 }

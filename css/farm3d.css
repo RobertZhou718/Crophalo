@@ -1,0 +1,23 @@
+/* The 3D look of one field. Light mode, one blue, calm. Everything the farmer reads is page text beside the picture. */
+.f3d { display: grid; gap: 12px; padding: 12px 16px 16px; background: #f2f2f4; color: var(--ink, #1d1d1f); font-size: 1rem; line-height: 1.45; box-sizing: border-box; min-height: 100%; }   /* its own paper and padding, so it sits the same inside any page */
+.f3d-bar { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+.f3d-label { margin: 0; font-size: 1.05rem; overflow-wrap: anywhere; }
+.f3d-stage { position: relative; height: clamp(300px, 56vh, 620px); border: 1px solid #c9ccd3; border-radius: 12px; overflow: hidden; touch-action: none; background: #eef0f3; }
+.f3d-stage:focus-visible { outline: 3px solid #0a63d8; outline-offset: 2px; }
+.f3d-canvas { display: block; width: 100%; height: 100%; }
+.f3d-tools { position: absolute; left: 8px; bottom: 8px; display: flex; flex-wrap: wrap; justify-content: flex-start; gap: 6px; max-width: calc(100% - 16px); }   /* on the left: a side panel opens over the right */
+.f3d-btn { min-width: 44px; min-height: 44px; padding: 0 12px; border: 1px solid #0a63d8; border-radius: 10px; background: #fff; color: #0a63d8; font: inherit; font-weight: 600; cursor: pointer; }
+.f3d-btn:hover { background: #eaf2fd; }
+.f3d-btn:focus-visible { outline: 3px solid #0a63d8; outline-offset: 2px; }
+.f3d-reset { white-space: nowrap; }
+.f3d-wait { position: absolute; left: 8px; top: 8px; right: 8px; margin: 0; padding: 8px 10px; border-radius: 8px; background: rgba(255, 255, 255, 0.92); color: var(--ink, #1d1d1f); }
+.f3d-keys, .f3d-note { margin: 0; font-size: 0.9rem; color: #46526a; }
+.f3d-legend { display: flex; flex-wrap: wrap; gap: 8px; margin: 0; padding: 0; list-style: none; }
+.f3d-legend li { display: inline-flex; align-items: center; gap: 6px; min-height: 36px; padding: 4px 10px; border: 1px solid #c9ccd3; border-radius: 999px; color: #46526a; background: #fff; }
+.f3d-legend li.is-on { border-color: #0a63d8; color: #0a63d8; font-weight: 600; box-shadow: inset 0 0 0 1px #0a63d8; }
+.f3d-words p { margin: 0 0 6px; overflow-wrap: anywhere; }
+.f3d-cover { font-weight: 600; }
+.f3d-plain { margin: 0; padding: 12px; border: 1px solid #c9ccd3; border-radius: 10px; background: #fff; }
+@media (max-width: 599px) { .f3d { padding: 8px 12px 12px; } .f3d-stage { height: clamp(260px, 52vh, 440px); } }
+@media (prefers-reduced-motion: reduce) { .f3d-btn { transition: none; } }
+@media (forced-colors: active) { .f3d-btn, .f3d-legend li { border: 1px solid ButtonText; } .f3d-legend li.is-on { border-width: 3px; } }

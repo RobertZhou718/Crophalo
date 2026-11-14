@@ -1,5 +1,5 @@
 // Crophalo's real-browser harness: one headless browser drives a throwaway copy of the app, served on its own port, with every outside service cut off.
-// Pure: browserPlaces(), portRefusal(), wanted(), copyList(). The rest starts a server and a browser in the system temp folder and stops both by PID.
+// Pure: browserPlaces(), portRefusal(), wanted(), copyList(), whyNoBrowser(). The rest starts a server and a browser in the system temp folder and stops both by PID.
 // Checked by scripts/e2e.mjs, which is built on it; every later e2e_*.mjs imports this file and copies nothing out of it.
 // RULE: it never drives the real folder's running copy or its port: a test browser there once wrote test data over the owner's saved fields.
 import fs from 'node:fs';
@@ -47,6 +47,12 @@ export function portRefusal(port, real = realPorts()) {
   return real.has(+port) ? `Refused: port ${+port} is where the real Crophalo runs. Browser tests only ever drive their own throwaway copy on another port.` : '';
 }
 // E2E_ONLY=fit,motion runs only the groups whose name holds one of the words.
+// The browser checks are asked for unless E2E=0 says otherwise, so a run that cannot drive a browser fails with one plain line, never passes as skipped.
+export function whyNoBrowser(name, { webSocket = typeof WebSocket === 'function', browser } = {}) {
+  if (!webSocket) return `${name}: this Node has no WebSocket, so the browser tests cannot run (Node 22 or newer has it). To leave the browser tests out on purpose: E2E=0 sh scripts/check.sh`;
+  if (!browser) return `${name}: no Chrome, Chromium or Edge was found, so the browser tests cannot run. Set CHROME=/path/to/the/browser, or leave them out on purpose: E2E=0 sh scripts/check.sh`;
+  return '';
+}
 export const wanted = (name, only = process.env.E2E_ONLY || '') => { const words = only.split(',').map(w => w.trim().toLowerCase()).filter(Boolean); return !words.length || words.some(w => name.toLowerCase().includes(w)); };
 // What the throwaway copy holds: the page, what it loads, and the server with the scripts it imports (found by reading it, so a new import never needs a change here).
 export function copyList(root = ROOT) {
@@ -91,7 +97,7 @@ function pageKit() {
   };
   T.tiny = b => b.w <= 2 && b.h <= 2;   // the 1 px box of words kept for screen readers only, at any text size
   T.widest = vw => {   // what sticks out of the screen: nothing may, except inside a box that scrolls on its own. vw is the width of the device: on a phone the window itself grows with a page that is too wide
-    const out = [], scrolls = el => { for (let n = el.parentElement; n; n = n.parentElement) if (/auto|scroll/.test(getComputedStyle(n).overflowX) && n !== document.documentElement && n !== document.body) return true; return false; };
+    const out = [], scrolls = el => { for (let n = el.parentElement; n; n = n.parentElement) { const o = getComputedStyle(n).overflowX; if (/auto|scroll/.test(o) && n !== document.documentElement && n !== document.body) return true; if (/hidden|clip/.test(o) && n !== document.documentElement && n !== document.body) { const c = n.getBoundingClientRect(); if (c.left >= -.5 && c.right <= vw + .5) return true; } } return false; };   // a box that clips its inside, and itself sits on the screen, shows nothing beyond it
     for (const el of document.body.querySelectorAll('*')) {
       if (!T.shown(el)) continue;
       const b = T.box(el); if (T.tiny(b)) continue;
@@ -104,7 +110,7 @@ function pageKit() {
     for (const el of document.body.querySelectorAll('*')) {
       if (!T.shown(el)) continue;
       const cs = getComputedStyle(el), b = T.box(el);
-      if (!/hidden|clip/.test(cs.overflowX) || cs.textOverflow === 'ellipsis' || T.tiny(b) || !el.textContent.trim()) continue;
+      if (!/hidden|clip/.test(cs.overflowX) || cs.textOverflow === 'ellipsis' || T.tiny(b) || !el.textContent.trim() || el.classList.contains('leaflet-container')) continue;   // a map's panes are drawn, not read
       if (el.scrollWidth > el.clientWidth + 1) out.push(`${T.name(el)} holds ${el.scrollWidth} px in ${el.clientWidth} px`);
     }
     return out.slice(0, 3);
@@ -140,10 +146,10 @@ export async function openRun(name) {
   const refuse = line => { say(line); process.exit(1); };
   if (env.E2E_URL || env.E2E_TARGET) refuse('Refused: browser tests cannot be pointed at a running Crophalo (E2E_URL, E2E_TARGET). They only ever drive their own throwaway copy.');
   if (portRefusal(env.E2E_PORT)) refuse(portRefusal(env.E2E_PORT));
-  if (typeof WebSocket !== 'function') { say(`${name}: skipped (the browser tests need Node 22 or newer)`); process.exit(0); }
+  if (whyNoBrowser(name, { browser: true })) refuse(whyNoBrowser(name, { browser: true }));
   if (env.CHROME && !isFile(env.CHROME)) refuse(`${name}: CHROME points at ${env.CHROME}, and there is no browser there.`);
   const browser = env.CHROME || browserPlaces().find(isFile);
-  if (!browser) { say(`${name}: skipped (no Chrome, Chromium or Edge found; set CHROME=/path/to/the/browser to run the browser tests)`); process.exit(0); }
+  if (whyNoBrowser(name, { browser })) refuse(whyNoBrowser(name, { browser }));
   const shots = env.E2E_SHOTS ? path.resolve(env.E2E_SHOTS) : '';
   if (shots && !path.relative(ROOT, shots).startsWith('..') && !path.isAbsolute(path.relative(ROOT, shots))) refuse(`Refused: E2E_SHOTS=${env.E2E_SHOTS} is inside the Crophalo folder. Pictures from tests go somewhere else.`);
 

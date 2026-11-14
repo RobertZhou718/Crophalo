@@ -1,0 +1,15 @@
+{
+ "method": "GET",
+ "url": "https://agriculture.canada.ca/imagery-images/rest/services/annual_crop_inventory?f=json",
+ "recorded": "2026-11-14T22:36:23Z",
+ "hand_made": false,
+ "replies": [
+  {
+   "status": 200,
+   "headers": {
+    "content-type": "application/json;charset=UTF-8",
+    "content-length": "1052"
+   }
+  }
+ ]
+}

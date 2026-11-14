@@ -1,9 +1,11 @@
 // Where the NASA Earthdata login lives: in the Crophalo folder, in the server settings, or in the home folder.
-// netrcWords() and parseNetrc() are pure; findLogin() only reads. Nothing here prints, logs or writes.
-// Checked by scripts/test_server.mjs (the netrc parser and the finding order).
+// netrcWords() and parseNetrc() are pure; findLogin() only reads. Nothing here logs or writes. Run as a program, it prints one line for
+// the starters, "yes <where>" or "no" and never a value, so they count a login as the server does: an active entry with a login and a password.
+// Checked by scripts/test_server.mjs (the netrc parser, the finding order and the one line).
 import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
+import { fileURLToPath } from 'node:url';
 
 export const EARTHDATA_HOST = 'urs.earthdata.nasa.gov';
 export const LOGIN_PLACES = {   // the only words the app ever says about the login: where it is kept, never what it is
@@ -13,11 +15,15 @@ export const LOGIN_PLACES = {   // the only words the app ever says about the lo
   none: 'not set up',
 };
 
-// The words of a netrc file: split on whitespace; a "quoted" word keeps its spaces, with \" and \\ inside it; # lines are notes.
+// The words of a netrc file: split on whitespace; a "quoted" word keeps its spaces, with \" and \\ inside it.
+// A word that starts with # begins a comment that runs to the end of its line, as Python's own netrc reader has it; a # inside
+// a word or inside quotes is part of the word. So a login commented out is never read.
 export function netrcWords(text) {
-  const lines = String(text ?? '').split(/\r?\n/).filter(line => !line.trimStart().startsWith('#')).join('\n');
-  const words = [], re = /"((?:[^"\\]|\\[\s\S])*)"|(\S+)/g;
-  for (let m; (m = re.exec(lines));) words.push(m[1] != null ? m[1].replace(/\\(["\\])/g, '$1') : m[2]);
+  const words = [], re = /\s+|#[^\n]*|"((?:[^"\\]|\\[\s\S])*)"|(\S+)/g;
+  for (let m; (m = re.exec(String(text ?? '')));) {
+    if (m[1] != null) words.push(m[1].replace(/\\(["\\])/g, '$1'));
+    else if (m[2] != null) words.push(m[2]);
+  }
   return words;
 }
 
@@ -51,4 +57,11 @@ export function findLogin(root, { env = process.env, home = os.homedir() } = {})
   if (env.EARTHDATA_USERNAME && env.EARTHDATA_PASSWORD) return answer('env');
   if (home && parseNetrc(readText(path.join(home, '.netrc')))) return answer('home');
   return answer(null);
+}
+
+// node scripts/earthdata.mjs: the starters' one question, answered for the Crophalo folder above scripts/.
+const HERE = fileURLToPath(import.meta.url), real = file => { try { return fs.realpathSync(file); } catch { return path.resolve(file); } };
+if (process.argv[1] && real(process.argv[1]) === real(HERE)) {
+  const { where } = findLogin(path.resolve(path.dirname(HERE), '..'));
+  process.stdout.write(where ? `yes ${where}\n` : 'no\n');
 }

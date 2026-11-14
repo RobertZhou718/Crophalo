@@ -1,0 +1,23 @@
+/* Crophalo: the reminders' look: the Remind me button, its dialog, the list and the Settings panel. Only the tokens and classes of css/app.css. */
+.remind-btn { gap: 6px; }
+.remind-btn .ic { width: 16px; height: 16px; }
+.remind-btn[aria-expanded=true], .remind-btn[aria-pressed=true] { background: linear-gradient(var(--accent-soft), var(--accent-soft)) var(--card); color: var(--accent-text); box-shadow: inset 0 0 0 2px var(--accent); }   /* the opener looks chosen while its dialog is open */
+dialog.remind { width: min(520px, calc(100vw / var(--tz) - 24px)); }
+.remind-form .sheet-body { display: grid; gap: var(--space-12); }
+.remind-hint { padding: var(--space-8) var(--space-12); border-radius: var(--r2); background: var(--accent-soft); color: var(--accent-text); }
+.remind-when { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: var(--space-8); }
+.remind-when input, .remind-form input[type=text] { min-height: var(--touch); width: 100%; }
+.remind-err { min-height: 1.3em; color: var(--bad); font-size: var(--fs-row); font-weight: var(--fw-semi); }
+.remind-err:empty { display: none; }
+@media (max-width: 420px) { .remind-when { grid-template-columns: minmax(0, 1fr); } }
+.remind-group + .remind-group { margin-top: var(--space-20); }
+.remind-group h3 { margin-bottom: var(--space-8); font-size: var(--fs-headline); }
+.remind-list { margin: 0; padding: 0; list-style: none; display: grid; gap: var(--space-8); }
+.remind-card { display: grid; grid-template-columns: auto minmax(0, 1fr); align-items: start; gap: var(--space-8) var(--space-12); padding: var(--space-12); border-radius: var(--r2); background: var(--card); box-shadow: var(--shadow); }
+.remind-card .btnrow { grid-column: 2; margin: 0; }
+.remind-card.is-done .remind-body { opacity: .6; text-decoration: line-through; }
+.remind-body b { font-size: var(--fs-body); font-weight: var(--fw-semi); }
+.remind-body p { margin-top: 2px; }
+.remind-empty { display: grid; justify-items: center; gap: var(--space-8); padding: var(--space-24) var(--space-16); text-align: center; border-radius: var(--r1); background: var(--card); box-shadow: var(--shadow); }
+.remind-empty .ic.big { width: 44px; height: 44px; color: var(--accent); }
+@media (forced-colors: active) { .remind-card, .remind-empty, .remind-hint { border: 1px solid CanvasText; } }

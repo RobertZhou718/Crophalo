@@ -2,6 +2,7 @@
 # Crophalo's one check: every suite, in one fixed order, stopping at the first failure. Pass or fail is the exit code only;
 # each suite prints its own "N passed, M failed". Run it after every change:  sh scripts/check.sh
 #
+#   NET=1            also run the suite that needs the internet once
 #   E2E=0            skip the browser suites              E2E_ONLY=fit,axe   only the groups of a browser suite whose name holds one of the words
 #   E2E_PORT=5600    the port of the throwaway copy       E2E_KEEP=1         keep the throwaway copy afterwards, to look at it
 #   TEST_PORT=5601   the port of a server suite that takes one               CHROME=/path       the browser to drive
@@ -12,8 +13,9 @@
 set -e
 cd "$(dirname "$0")/.."
 
-OFFLINE="test.mjs test_server.mjs test_portable.mjs"   # seconds each, no internet needed
-BROWSER="e2e.mjs"                                      # one at a time: together they share the processor and fail for no reason
+OFFLINE="test.mjs test_server.mjs test_portable.mjs test_crops.mjs test_places.mjs test_state.mjs test_wizard.mjs test_weather.mjs test_climate.mjs test_season.mjs test_engine.mjs test_cropsnear.mjs test_report.mjs test_weather_tab.mjs test_calendar.mjs test_sources.mjs test_geo.mjs test_spot.mjs test_region.mjs test_live_smaproot.mjs test_smap_route.mjs test_sun.mjs test_shade.mjs test_farm3d.mjs test_live_dem.mjs test_server_dem.mjs test_sim.mjs test_soil.mjs test_remind.mjs test_sharetext.mjs test_sharefiles.mjs test_statement.mjs"   # seconds each, no internet needed
+NETWORK="test_fallback.mjs"   # needs the internet once: it asks the back-up weather service for 16 far places and keeps the answers in scripts/_cache/ (NET=1 runs it)
+BROWSER="e2e.mjs e2e_flow.mjs e2e_map.mjs e2e_farm.mjs e2e_farm3d.mjs"   # one at a time: together they share the processor and fail for no reason
 
 # ---- the real port: where this folder last ran (runtime/last-port), else the starter's own 5173
 REAL_PORT=$(cat runtime/last-port 2>/dev/null | tr -cd '0-9')
@@ -50,6 +52,13 @@ for suite in $OFFLINE; do
   fi
   "$NODE_BIN" "scripts/$suite"
 done
+
+# ---- the suite that needs the internet once, when asked for
+if [ "${NET:-0}" = "1" ]; then
+  for suite in $NETWORK; do "$NODE_BIN" "scripts/$suite"; done
+else
+  echo "net: $NETWORK not run (NET=1 runs it)"
+fi
 
 # ---- the browser suites, one at a time, each on its own throwaway copy
 if [ "${E2E:-1}" = "0" ]; then

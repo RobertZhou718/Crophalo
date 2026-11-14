@@ -1,0 +1,1174 @@
+{
+ "source": "US Naval Observatory, aa.usno.navy.mil/api (rstt/oneday and celnav)",
+ "recordedAt": "2026-11-14T19:07:45.966Z",
+ "cases": [
+  {
+   "place": "barrie",
+   "name": "Barrie, Ontario",
+   "lat": 44.39,
+   "lon": -79.69,
+   "date": "2026-11-14",
+   "tzHours": -5,
+   "rise": "07:14",
+   "noon": "12:03",
+   "set": "16:52",
+   "civilBegin": "06:42",
+   "civilEnd": "17:24",
+   "samples": [
+    {
+     "utc": "2026-11-14T03:00:00Z"
+    },
+    {
+     "utc": "2026-11-14T09:00:00Z"
+    },
+    {
+     "utc": "2026-11-14T15:00:00Z",
+     "sun": {
+      "height": 21.261835,
+      "azimuth": 148.560596,
+      "declination": -18.331424
+     }
+    },
+    {
+     "utc": "2026-11-14T21:00:00Z",
+     "sun": {
+      "height": 7.271517,
+      "azimuth": 235.242063,
+      "declination": -18.395824
+     },
+     "moon": {
+      "height": 21.407898,
+      "azimuth": 173.140709,
+      "declination": -23.903325
+     }
+    }
+   ]
+  },
+  {
+   "place": "barrie",
+   "name": "Barrie, Ontario",
+   "lat": 44.39,
+   "lon": -79.69,
+   "date": "2026-12-21",
+   "tzHours": -5,
+   "rise": "07:52",
+   "noon": "12:17",
+   "set": "16:42",
+   "civilBegin": "07:18",
+   "civilEnd": "17:16",
+   "samples": [
+    {
+     "utc": "2026-12-21T03:00:00Z",
+     "moon": {
+      "height": 65.966876,
+      "azimuth": 205.539938,
+      "declination": 22.104957
+     }
+    },
+    {
+     "utc": "2026-12-21T09:00:00Z",
+     "moon": {
+      "height": 10.961877,
+      "azimuth": 291.726892,
+      "declination": 23.124188
+     }
+    },
+    {
+     "utc": "2026-12-21T15:00:00Z",
+     "sun": {
+      "height": 15.300936,
+      "azimuth": 147.658767,
+      "declination": -23.437186
+     }
+    },
+    {
+     "utc": "2026-12-21T21:00:00Z",
+     "sun": {
+      "height": 5.208605,
+      "azimuth": 229.597669,
+      "declination": -23.437415
+     },
+     "moon": {
+      "height": 17.184886,
+      "azimuth": 71.700404,
+      "declination": 24.900182
+     }
+    }
+   ]
+  },
+  {
+   "place": "barrie",
+   "name": "Barrie, Ontario",
+   "lat": 44.39,
+   "lon": -79.69,
+   "date": "2027-03-20",
+   "tzHours": -4,
+   "rise": "07:22",
+   "noon": "13:26",
+   "set": "19:31",
+   "civilBegin": "06:53",
+   "civilEnd": "20:00",
+   "samples": [
+    {
+     "utc": "2027-03-20T03:00:00Z",
+     "moon": {
+      "height": 56.282154,
+      "azimuth": 166.522151,
+      "declination": 11.309773
+     }
+    },
+    {
+     "utc": "2027-03-20T09:00:00Z",
+     "moon": {
+      "height": 14.392544,
+      "azimuth": 269.616551,
+      "declination": 9.744084
+     }
+    },
+    {
+     "utc": "2027-03-20T15:00:00Z",
+     "sun": {
+      "height": 34.950999,
+      "azimuth": 133.382233,
+      "declination": -0.089085
+     }
+    },
+    {
+     "utc": "2027-03-20T21:00:00Z",
+     "sun": {
+      "height": 25.189995,
+      "azimuth": 242.601306,
+      "declination": 0.009685
+     }
+    }
+   ]
+  },
+  {
+   "place": "barrie",
+   "name": "Barrie, Ontario",
+   "lat": 44.39,
+   "lon": -79.69,
+   "date": "2027-06-21",
+   "tzHours": -4,
+   "rise": "05:34",
+   "noon": "13:21",
+   "set": "21:07",
+   "civilBegin": "04:58",
+   "civilEnd": "21:44",
+   "samples": [
+    {
+     "utc": "2027-06-21T03:00:00Z",
+     "moon": {
+      "height": 2.817269,
+      "azimuth": 126.943652,
+      "declination": -23.240432
+     }
+    },
+    {
+     "utc": "2027-06-21T09:00:00Z",
+     "sun": {
+      "height": -5.681312,
+      "azimuth": 48.948871,
+      "declination": 23.437049
+     },
+     "moon": {
+      "height": 18.781428,
+      "azimuth": 206.129088,
+      "declination": -22.468935
+     }
+    },
+    {
+     "utc": "2027-06-21T15:00:00Z",
+     "sun": {
+      "height": 54.527422,
+      "azimuth": 114.498032,
+      "declination": 23.437215
+     }
+    },
+    {
+     "utc": "2027-06-21T21:00:00Z",
+     "sun": {
+      "height": 40.974132,
+      "azimuth": 263.512316,
+      "declination": 23.436952
+     }
+    }
+   ]
+  },
+  {
+   "place": "iowa",
+   "name": "Ames, Iowa",
+   "lat": 42.03,
+   "lon": -93.62,
+   "date": "2026-11-14",
+   "tzHours": -6,
+   "rise": "07:03",
+   "noon": "11:59",
+   "set": "16:54",
+   "civilBegin": "06:33",
+   "civilEnd": "17:24",
+   "samples": [
+    {
+     "utc": "2026-11-14T03:00:00Z"
+    },
+    {
+     "utc": "2026-11-14T09:00:00Z"
+    },
+    {
+     "utc": "2026-11-14T15:00:00Z",
+     "sun": {
+      "height": 16.877775,
+      "azimuth": 135.720945,
+      "declination": -18.331424
+     }
+    },
+    {
+     "utc": "2026-11-14T21:00:00Z",
+     "sun": {
+      "height": 16.550644,
+      "azimuth": 224.677317,
+      "declination": -18.395824
+     },
+     "moon": {
+      "height": 21.287747,
+      "azimuth": 159.495831,
+      "declination": -23.903325
+     }
+    }
+   ]
+  },
+  {
+   "place": "iowa",
+   "name": "Ames, Iowa",
+   "lat": 42.03,
+   "lon": -93.62,
+   "date": "2026-12-21",
+   "tzHours": -6,
+   "rise": "07:39",
+   "noon": "12:13",
+   "set": "16:46",
+   "civilBegin": "07:07",
+   "civilEnd": "17:18",
+   "samples": [
+    {
+     "utc": "2026-12-21T03:00:00Z",
+     "moon": {
+      "height": 69.916432,
+      "azimuth": 171.867854,
+      "declination": 22.104957
+     }
+    },
+    {
+     "utc": "2026-12-21T09:00:00Z",
+     "moon": {
+      "height": 19.919392,
+      "azimuth": 283.634513,
+      "declination": 23.124188
+     }
+    },
+    {
+     "utc": "2026-12-21T15:00:00Z",
+     "sun": {
+      "height": 10.858257,
+      "azimuth": 135.89973,
+      "declination": -23.437186
+     }
+    },
+    {
+     "utc": "2026-12-21T21:00:00Z",
+     "sun": {
+      "height": 13.981761,
+      "azimuth": 219.081429,
+      "declination": -23.437415
+     },
+     "moon": {
+      "height": 6.928469,
+      "azimuth": 62.517971,
+      "declination": 24.900182
+     }
+    }
+   ]
+  },
+  {
+   "place": "iowa",
+   "name": "Ames, Iowa",
+   "lat": 42.03,
+   "lon": -93.62,
+   "date": "2027-03-20",
+   "tzHours": -5,
+   "rise": "07:18",
+   "noon": "13:22",
+   "set": "19:27",
+   "civilBegin": "06:50",
+   "civilEnd": "19:54",
+   "samples": [
+    {
+     "utc": "2027-03-20T03:00:00Z",
+     "moon": {
+      "height": 53.992076,
+      "azimuth": 142.293164,
+      "declination": 11.309773
+     }
+    },
+    {
+     "utc": "2027-03-20T09:00:00Z",
+     "moon": {
+      "height": 24.698436,
+      "azimuth": 260.575349,
+      "declination": 9.744084
+     }
+    },
+    {
+     "utc": "2027-03-20T15:00:00Z",
+     "sun": {
+      "height": 28.131939,
+      "azimuth": 118.966423,
+      "declination": -0.089085
+     }
+    },
+    {
+     "utc": "2027-03-20T21:00:00Z",
+     "sun": {
+      "height": 34.963958,
+      "azimuth": 230.949025,
+      "declination": 0.009685
+     }
+    }
+   ]
+  },
+  {
+   "place": "iowa",
+   "name": "Ames, Iowa",
+   "lat": 42.03,
+   "lon": -93.62,
+   "date": "2027-06-21",
+   "tzHours": -5,
+   "rise": "05:39",
+   "noon": "13:16",
+   "set": "20:54",
+   "civilBegin": "05:04",
+   "civilEnd": "21:28",
+   "samples": [
+    {
+     "utc": "2027-06-21T03:00:00Z",
+     "sun": {
+      "height": -10.396088,
+      "azimuth": 315.215037,
+      "declination": 23.436452
+     }
+    },
+    {
+     "utc": "2027-06-21T09:00:00Z",
+     "moon": {
+      "height": 24.407844,
+      "azimuth": 193.084424,
+      "declination": -22.468935
+     }
+    },
+    {
+     "utc": "2027-06-21T15:00:00Z",
+     "sun": {
+      "height": 45.462604,
+      "azimuth": 98.775823,
+      "declination": 23.437215
+     }
+    },
+    {
+     "utc": "2027-06-21T21:00:00Z",
+     "sun": {
+      "height": 51.377818,
+      "azimuth": 254.315283,
+      "declination": 23.436952
+     }
+    }
+   ]
+  },
+  {
+   "place": "konya",
+   "name": "Konya, Türkiye",
+   "lat": 37.87,
+   "lon": 32.48,
+   "date": "2026-11-14",
+   "tzHours": 3,
+   "rise": "07:29",
+   "noon": "12:34",
+   "set": "17:39",
+   "civilBegin": "07:01",
+   "civilEnd": "18:07",
+   "samples": [
+    {
+     "utc": "2026-11-14T03:00:00Z"
+    },
+    {
+     "utc": "2026-11-14T09:00:00Z",
+     "sun": {
+      "height": 33.280661,
+      "azimuth": 170.194648,
+      "declination": -18.266687
+     },
+     "moon": {
+      "height": -0.330088,
+      "azimuth": 122.399362,
+      "declination": -25.246078
+     }
+    },
+    {
+     "utc": "2026-11-14T15:00:00Z",
+     "sun": {
+      "height": -4.622919,
+      "azimuth": 250.315676,
+      "declination": -18.331424
+     },
+     "moon": {
+      "height": 25.254187,
+      "azimuth": 198.182488,
+      "declination": -24.608048
+     }
+    },
+    {
+     "utc": "2026-11-14T21:00:00Z"
+    }
+   ]
+  },
+  {
+   "place": "konya",
+   "name": "Konya, Türkiye",
+   "lat": 37.87,
+   "lon": 32.48,
+   "date": "2026-12-21",
+   "tzHours": 3,
+   "rise": "08:02",
+   "noon": "12:48",
+   "set": "17:34",
+   "civilBegin": "07:32",
+   "civilEnd": "18:04",
+   "samples": [
+    {
+     "utc": "2026-12-21T03:00:00Z"
+    },
+    {
+     "utc": "2026-12-21T09:00:00Z",
+     "sun": {
+      "height": 27.661206,
+      "azimuth": 167.540885,
+      "declination": -23.436468
+     }
+    },
+    {
+     "utc": "2026-12-21T15:00:00Z",
+     "sun": {
+      "height": -5.332646,
+      "azimuth": 244.312927,
+      "declination": -23.437186
+     },
+     "moon": {
+      "height": 34.448554,
+      "azimuth": 84.674032,
+      "declination": 24.058605
+     }
+    },
+    {
+     "utc": "2026-12-21T21:00:00Z",
+     "moon": {
+      "height": 67.09714,
+      "azimuth": 241.955309,
+      "declination": 24.900182
+     }
+    }
+   ]
+  },
+  {
+   "place": "konya",
+   "name": "Konya, Türkiye",
+   "lat": 37.87,
+   "lon": 32.48,
+   "date": "2027-03-20",
+   "tzHours": 3,
+   "rise": "06:54",
+   "noon": "12:58",
+   "set": "19:02",
+   "civilBegin": "06:28",
+   "civilEnd": "19:28",
+   "samples": [
+    {
+     "utc": "2027-03-20T03:00:00Z",
+     "sun": {
+      "height": -11.524476,
+      "azimuth": 81.251942,
+      "declination": -0.286665
+     }
+    },
+    {
+     "utc": "2027-03-20T09:00:00Z",
+     "sun": {
+      "height": 49.689385,
+      "azimuth": 157.374003,
+      "declination": -0.187869
+     }
+    },
+    {
+     "utc": "2027-03-20T15:00:00Z",
+     "sun": {
+      "height": 11.260461,
+      "azimuth": 260.976605,
+      "declination": -0.089085
+     },
+     "moon": {
+      "height": 11.67341,
+      "azimuth": 88.699532,
+      "declination": 8.149231
+     }
+    },
+    {
+     "utc": "2027-03-20T21:00:00Z",
+     "moon": {
+      "height": 58.268092,
+      "azimuth": 190.403027,
+      "declination": 6.531528
+     }
+    }
+   ]
+  },
+  {
+   "place": "konya",
+   "name": "Konya, Türkiye",
+   "lat": 37.87,
+   "lon": 32.48,
+   "date": "2027-06-21",
+   "tzHours": 3,
+   "rise": "05:28",
+   "noon": "12:52",
+   "set": "20:16",
+   "civilBegin": "04:57",
+   "civilEnd": "20:47",
+   "samples": [
+    {
+     "utc": "2027-06-21T03:00:00Z",
+     "sun": {
+      "height": 4.700585,
+      "azimuth": 63.794259,
+      "declination": 23.436452
+     },
+     "moon": {
+      "height": 11.875147,
+      "azimuth": 227.599317,
+      "declination": -23.240432
+     }
+    },
+    {
+     "utc": "2027-06-21T09:00:00Z",
+     "sun": {
+      "height": 71.805922,
+      "azimuth": 138.794165,
+      "declination": 23.437049
+     }
+    },
+    {
+     "utc": "2027-06-21T15:00:00Z",
+     "sun": {
+      "height": 23.997945,
+      "azimuth": 281.848988,
+      "declination": 23.437215
+     }
+    },
+    {
+     "utc": "2027-06-21T21:00:00Z",
+     "moon": {
+      "height": 16.825359,
+      "azimuth": 134.76016,
+      "declination": -20.754762
+     }
+    }
+   ]
+  },
+  {
+   "place": "punjab",
+   "name": "Ludhiana, Punjab",
+   "lat": 30.9,
+   "lon": 75.85,
+   "date": "2026-11-14",
+   "tzHours": 5.5,
+   "rise": "06:52",
+   "noon": "12:11",
+   "set": "17:30",
+   "civilBegin": "06:27",
+   "civilEnd": "17:55",
+   "samples": [
+    {
+     "utc": "2026-11-14T03:00:00Z",
+     "sun": {
+      "height": 17.715587,
+      "azimuth": 124.983027,
+      "declination": -18.201616
+     }
+    },
+    {
+     "utc": "2026-11-14T09:00:00Z",
+     "sun": {
+      "height": 30.567654,
+      "azimuth": 218.946443,
+      "declination": -18.266687
+     },
+     "moon": {
+      "height": 28.738022,
+      "azimuth": 153.516095,
+      "declination": -25.246078
+     }
+    },
+    {
+     "utc": "2026-11-14T15:00:00Z",
+     "moon": {
+      "height": 9.146153,
+      "azimuth": 233.992301,
+      "declination": -24.608048
+     }
+    },
+    {
+     "utc": "2026-11-14T21:00:00Z"
+    }
+   ]
+  },
+  {
+   "place": "punjab",
+   "name": "Ludhiana, Punjab",
+   "lat": 30.9,
+   "lon": 75.85,
+   "date": "2026-12-21",
+   "tzHours": 5.5,
+   "rise": "07:20",
+   "noon": "12:25",
+   "set": "17:29",
+   "civilBegin": "06:54",
+   "civilEnd": "17:56",
+   "samples": [
+    {
+     "utc": "2026-12-21T03:00:00Z",
+     "sun": {
+      "height": 11.870905,
+      "azimuth": 126.82926,
+      "declination": -23.435261
+     }
+    },
+    {
+     "utc": "2026-12-21T09:00:00Z",
+     "sun": {
+      "height": 27.910499,
+      "azimuth": 212.694842,
+      "declination": -23.436468
+     },
+     "moon": {
+      "height": -1.713949,
+      "azimuth": 61.588506,
+      "declination": 23.124188
+     }
+    },
+    {
+     "utc": "2026-12-21T15:00:00Z",
+     "moon": {
+      "height": 70.456534,
+      "azimuth": 105.412142,
+      "declination": 24.058605
+     }
+    },
+    {
+     "utc": "2026-12-21T21:00:00Z",
+     "moon": {
+      "height": 32.511793,
+      "azimuth": 281.561698,
+      "declination": 24.900182
+     }
+    }
+   ]
+  },
+  {
+   "place": "punjab",
+   "name": "Ludhiana, Punjab",
+   "lat": 30.9,
+   "lon": 75.85,
+   "date": "2027-03-20",
+   "tzHours": 5.5,
+   "rise": "06:31",
+   "noon": "12:34",
+   "set": "18:38",
+   "civilBegin": "06:07",
+   "civilEnd": "19:02",
+   "samples": [
+    {
+     "utc": "2027-03-20T03:00:00Z",
+     "sun": {
+      "height": 24.370613,
+      "azimuth": 106.11208,
+      "declination": -0.286665
+     }
+    },
+    {
+     "utc": "2027-03-20T09:00:00Z",
+     "sun": {
+      "height": 48.511954,
+      "azimuth": 226.959119,
+      "declination": -0.187869
+     }
+    },
+    {
+     "utc": "2027-03-20T15:00:00Z",
+     "moon": {
+      "height": 47.80099,
+      "azimuth": 114.464123,
+      "declination": 8.149231
+     }
+    },
+    {
+     "utc": "2027-03-20T21:00:00Z",
+     "moon": {
+      "height": 38.266887,
+      "azimuth": 252.347019,
+      "declination": 6.531528
+     }
+    }
+   ]
+  },
+  {
+   "place": "punjab",
+   "name": "Ludhiana, Punjab",
+   "lat": 30.9,
+   "lon": 75.85,
+   "date": "2027-06-21",
+   "tzHours": 5.5,
+   "rise": "05:24",
+   "noon": "12:28",
+   "set": "19:33",
+   "civilBegin": "04:56",
+   "civilEnd": "20:01",
+   "samples": [
+    {
+     "utc": "2027-06-21T03:00:00Z",
+     "sun": {
+      "height": 37.08342,
+      "azimuth": 82.607277,
+      "declination": 23.436452
+     }
+    },
+    {
+     "utc": "2027-06-21T09:00:00Z",
+     "sun": {
+      "height": 62.029112,
+      "azimuth": 262.028651,
+      "declination": 23.437049
+     }
+    },
+    {
+     "utc": "2027-06-21T15:00:00Z",
+     "sun": {
+      "height": -11.194763,
+      "azimuth": 306.226131,
+      "declination": 23.437215
+     }
+    },
+    {
+     "utc": "2027-06-21T21:00:00Z",
+     "moon": {
+      "height": 38.250943,
+      "azimuth": 176.12754,
+      "declination": -20.754762
+     }
+    }
+   ]
+  },
+  {
+   "place": "pampas",
+   "name": "Pergamino, the Pampas",
+   "lat": -33.89,
+   "lon": -60.57,
+   "date": "2026-11-14",
+   "tzHours": -3,
+   "rise": "05:51",
+   "noon": "12:47",
+   "set": "19:43",
+   "civilBegin": "05:24",
+   "civilEnd": "20:10",
+   "samples": [
+    {
+     "utc": "2026-11-14T03:00:00Z",
+     "moon": {
+      "height": -1.381126,
+      "azimuth": 237.25244,
+      "declination": -25.815088
+     }
+    },
+    {
+     "utc": "2026-11-14T09:00:00Z",
+     "sun": {
+      "height": 0.876101,
+      "azimuth": 111.552977,
+      "declination": -18.266687
+     }
+    },
+    {
+     "utc": "2026-11-14T15:00:00Z",
+     "sun": {
+      "height": 71.268449,
+      "azimuth": 36.765339,
+      "declination": -18.331424
+     },
+     "moon": {
+      "height": 25.338087,
+      "azimuth": 103.707106,
+      "declination": -24.608048
+     }
+    },
+    {
+     "utc": "2026-11-14T21:00:00Z",
+     "sun": {
+      "height": 19.608998,
+      "azimuth": 260.545485,
+      "declination": -18.395824
+     },
+     "moon": {
+      "height": 75.441704,
+      "azimuth": 310.135645,
+      "declination": -23.903325
+     }
+    }
+   ]
+  },
+  {
+   "place": "pampas",
+   "name": "Pergamino, the Pampas",
+   "lat": -33.89,
+   "lon": -60.57,
+   "date": "2026-12-21",
+   "tzHours": -3,
+   "rise": "05:48",
+   "noon": "13:00",
+   "set": "20:13",
+   "civilBegin": "05:19",
+   "civilEnd": "20:42",
+   "samples": [
+    {
+     "utc": "2026-12-21T03:00:00Z",
+     "moon": {
+      "height": 27.124581,
+      "azimuth": 328.587471,
+      "declination": 22.104957
+     }
+    },
+    {
+     "utc": "2026-12-21T09:00:00Z",
+     "sun": {
+      "height": 1.360492,
+      "azimuth": 117.601158,
+      "declination": -23.436468
+     }
+    },
+    {
+     "utc": "2026-12-21T15:00:00Z",
+     "sun": {
+      "height": 73.156883,
+      "azimuth": 55.586307,
+      "declination": -23.437186
+     }
+    },
+    {
+     "utc": "2026-12-21T21:00:00Z",
+     "sun": {
+      "height": 24.873084,
+      "azimuth": 257.483463,
+      "declination": -23.437415
+     },
+     "moon": {
+      "height": 0.737253,
+      "azimuth": 58.942746,
+      "declination": 24.900182
+     }
+    }
+   ]
+  },
+  {
+   "place": "pampas",
+   "name": "Pergamino, the Pampas",
+   "lat": -33.89,
+   "lon": -60.57,
+   "date": "2027-03-20",
+   "tzHours": -3,
+   "rise": "07:05",
+   "noon": "13:10",
+   "set": "19:14",
+   "civilBegin": "06:40",
+   "civilEnd": "19:39",
+   "samples": [
+    {
+     "utc": "2027-03-20T03:00:00Z",
+     "moon": {
+      "height": 43.486786,
+      "azimuth": 344.315653,
+      "declination": 11.309773
+     }
+    },
+    {
+     "utc": "2027-03-20T09:00:00Z"
+    },
+    {
+     "utc": "2027-03-20T15:00:00Z",
+     "sun": {
+      "height": 52.448277,
+      "azimuth": 29.460678,
+      "declination": -0.089085
+     }
+    },
+    {
+     "utc": "2027-03-20T21:00:00Z",
+     "sun": {
+      "height": 14.387629,
+      "azimuth": 279.934585,
+      "declination": 0.009685
+     },
+     "moon": {
+      "height": -1.626448,
+      "azimuth": 83.22261,
+      "declination": 6.531528
+     }
+    }
+   ]
+  },
+  {
+   "place": "pampas",
+   "name": "Pergamino, the Pampas",
+   "lat": -33.89,
+   "lon": -60.57,
+   "date": "2027-06-21",
+   "tzHours": -3,
+   "rise": "08:07",
+   "noon": "13:04",
+   "set": "18:01",
+   "civilBegin": "07:39",
+   "civilEnd": "18:29",
+   "samples": [
+    {
+     "utc": "2027-06-21T03:00:00Z",
+     "moon": {
+      "height": 52.559085,
+      "azimuth": 84.526923,
+      "declination": -23.240432
+     }
+    },
+    {
+     "utc": "2027-06-21T09:00:00Z",
+     "moon": {
+      "height": 48.292,
+      "azimuth": 273.538896,
+      "declination": -22.468935
+     }
+    },
+    {
+     "utc": "2027-06-21T15:00:00Z",
+     "sun": {
+      "height": 30.681709,
+      "azimuth": 17.12115,
+      "declination": 23.437215
+     }
+    },
+    {
+     "utc": "2027-06-21T21:00:00Z",
+     "sun": {
+      "height": -0.655324,
+      "azimuth": 298.131017,
+      "declination": 23.436952
+     }
+    }
+   ]
+  },
+  {
+   "place": "tromso",
+   "name": "Tromsø, Norway",
+   "lat": 69.65,
+   "lon": 18.96,
+   "date": "2026-11-14",
+   "tzHours": 1,
+   "rise": "09:19",
+   "noon": "11:29",
+   "set": "13:37",
+   "civilBegin": "07:48",
+   "civilEnd": "15:08",
+   "samples": [
+    {
+     "utc": "2026-11-14T03:00:00Z"
+    },
+    {
+     "utc": "2026-11-14T09:00:00Z",
+     "sun": {
+      "height": 0.687433,
+      "azimuth": 159.025902,
+      "declination": -18.266687
+     }
+    },
+    {
+     "utc": "2026-11-14T15:00:00Z",
+     "sun": {
+      "height": -9.811604,
+      "azimuth": 243.155238,
+      "declination": -18.331424
+     }
+    },
+    {
+     "utc": "2026-11-14T21:00:00Z"
+    }
+   ]
+  },
+  {
+   "place": "tromso",
+   "name": "Tromsø, Norway",
+   "lat": 69.65,
+   "lon": 18.96,
+   "date": "2026-12-21",
+   "tzHours": 1,
+   "rise": null,
+   "noon": null,
+   "set": null,
+   "civilBegin": "09:31",
+   "civilEnd": "13:53",
+   "samples": [
+    {
+     "utc": "2026-12-21T03:00:00Z",
+     "moon": {
+      "height": 14.174255,
+      "azimuth": 295.794465,
+      "declination": 22.104957
+     }
+    },
+    {
+     "utc": "2026-12-21T09:00:00Z",
+     "sun": {
+      "height": -4.877319,
+      "azimuth": 156.607861,
+      "declination": -23.436468
+     },
+     "moon": {
+      "height": 3.488961,
+      "azimuth": 14.752145,
+      "declination": 23.124188
+     }
+    },
+    {
+     "utc": "2026-12-21T15:00:00Z",
+     "moon": {
+      "height": 26.780175,
+      "azimuth": 92.727999,
+      "declination": 24.058605
+     }
+    },
+    {
+     "utc": "2026-12-21T21:00:00Z",
+     "moon": {
+      "height": 44.953437,
+      "azimuth": 191.219697,
+      "declination": 24.900182
+     }
+    }
+   ]
+  },
+  {
+   "place": "tromso",
+   "name": "Tromsø, Norway",
+   "lat": 69.65,
+   "lon": 18.96,
+   "date": "2027-03-20",
+   "tzHours": 1,
+   "rise": "05:45",
+   "noon": "11:52",
+   "set": "18:01",
+   "civilBegin": "04:45",
+   "civilEnd": "19:01",
+   "samples": [
+    {
+     "utc": "2027-03-20T03:00:00Z",
+     "sun": {
+      "height": -9.653048,
+      "azimuth": 63.641366,
+      "declination": -0.286665
+     },
+     "moon": {
+      "height": 10.225074,
+      "azimuth": 274.974803,
+      "declination": 11.309773
+     }
+    },
+    {
+     "utc": "2027-03-20T09:00:00Z",
+     "sun": {
+      "height": 17.708084,
+      "azimuth": 150.546855,
+      "declination": -0.187869
+     }
+    },
+    {
+     "utc": "2027-03-20T15:00:00Z",
+     "sun": {
+      "height": 9.28447,
+      "azimuth": 243.55834,
+      "declination": -0.089085
+     },
+     "moon": {
+      "height": 5.894595,
+      "azimuth": 82.447871,
+      "declination": 8.149231
+     }
+    },
+    {
+     "utc": "2027-03-20T21:00:00Z",
+     "moon": {
+      "height": 26.663877,
+      "azimuth": 171.060583,
+      "declination": 6.531528
+     }
+    }
+   ]
+  },
+  {
+   "place": "tromso",
+   "name": "Tromsø, Norway",
+   "lat": 69.65,
+   "lon": 18.96,
+   "date": "2027-06-21",
+   "tzHours": 2,
+   "rise": null,
+   "noon": "12:46",
+   "set": null,
+   "civilBegin": null,
+   "civilEnd": null,
+   "samples": [
+    {
+     "utc": "2027-06-21T03:00:00Z",
+     "sun": {
+      "height": 13.340244,
+      "azimuth": 57.581655,
+      "declination": 23.436452
+     }
+    },
+    {
+     "utc": "2027-06-21T09:00:00Z",
+     "sun": {
+      "height": 41.187045,
+      "azimuth": 147.076902,
+      "declination": 23.437049
+     }
+    },
+    {
+     "utc": "2027-06-21T15:00:00Z",
+     "sun": {
+      "height": 31.01266,
+      "azimuth": 253.364207,
+      "declination": 23.437215
+     }
+    },
+    {
+     "utc": "2027-06-21T21:00:00Z",
+     "sun": {
+      "height": 5.012858,
+      "azimuth": 335.733081,
+      "declination": 23.436952
+     }
+    }
+   ]
+  }
+ ]
+}

@@ -1,0 +1,102 @@
+/* Crophalo's setup map: the tool row, hint line, view stack, pin and outline over the Leaflet canvas. Only the tokens of css/app.css are used here. */
+.mapcol { overflow: hidden; }
+.mapx { position: relative; width: 100%; height: 100%; min-height: inherit; border-radius: inherit; overflow: hidden; background: var(--map-ph); container-type: size; container-name: mapx; outline: none; }
+.mapx:focus-visible { box-shadow: inset 0 0 0 3px var(--sel); }
+.mapx-canvas { position: absolute; inset: 0; background: var(--map-ph); z-index: 0; }
+.mapx-canvas .leaflet-container { background: var(--map-ph); font: inherit; }
+.mapx.full { position: fixed; inset: 0; z-index: var(--z-mapfull); border-radius: 0; }
+body.mapx-full .nav { display: none; }
+
+/* the tools, top left: glass over the photo; the word hides when the map is narrow, the icon never does */
+.mapx-top { position: absolute; left: var(--space-8); top: var(--space-8); z-index: 5; display: flex; flex-wrap: wrap; align-items: center; gap: var(--space-8); max-width: calc(100% - 72px); }
+.mapx-seg { background: var(--glass); -webkit-backdrop-filter: saturate(180%) blur(20px); backdrop-filter: saturate(180%) blur(20px); box-shadow: var(--shadow-map); }
+.mapx-seg button { display: inline-flex; align-items: center; justify-content: center; gap: 6px; min-width: var(--touch); min-height: var(--touch); }
+.mapx-seg button:disabled { opacity: .4; cursor: default; }
+.mapx-seg .ic { width: 18px; height: 18px; }
+@container mapx (max-width: 640px) { .mapx-w { position: absolute !important; width: 1px; height: 1px; margin: -1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; } }
+.mapx .mapbtn { position: relative; }
+
+/* the hint line, bottom left, above the scale */
+.mapx-hint { position: absolute; left: var(--space-8); bottom: 44px; z-index: 5; display: none; flex-wrap: wrap; align-items: center; gap: var(--space-8); max-width: calc(100% - 72px); padding: 6px var(--space-12); border-radius: var(--r2); background: var(--glass); -webkit-backdrop-filter: saturate(180%) blur(20px); backdrop-filter: saturate(180%) blur(20px); box-shadow: var(--shadow-map); font-size: var(--fs-small); }
+.mapx.has-hint .mapx-hint { display: flex; }
+.mapx-hint p { min-width: 0; overflow-wrap: anywhere; }
+.mapx-hint-btns { display: flex; flex-wrap: wrap; gap: var(--space-8); }
+.mapx-hint .btn { min-height: var(--touch); }
+.mapx[data-tool=pin]:not(.locked) .mapx-hint:not(:focus-within) { clip-path: none; }
+@media (hover: none) { .mapx-hint { bottom: 40px; } }
+
+/* the view stack: five buttons down the right edge, a thicker divider before the third */
+.mapx-stack { position: absolute; right: var(--space-8); top: var(--space-8); z-index: 5; display: flex; flex-direction: column; gap: 2px; border-radius: var(--r2); overflow: hidden; background: var(--glass); -webkit-backdrop-filter: saturate(180%) blur(20px); backdrop-filter: saturate(180%) blur(20px); box-shadow: var(--shadow-map); }
+.mapx-stack button { display: grid; place-items: center; width: var(--touch); height: var(--touch); padding: 0; border: 0; background: none; color: var(--ink); cursor: pointer; }
+.mapx-stack button + button { box-shadow: 0 -.5px 0 var(--sep); }
+.mapx-stack button:nth-child(3) { box-shadow: 0 -2px 0 var(--sep); }
+.mapx-stack button[aria-pressed=true], .mapx-stack button[aria-busy=true] { background: var(--accent-soft); color: var(--accent-text); }
+.mapx-stack button:focus-visible, .mapx-top button:focus-visible, .mapx-hint button:focus-visible { outline: 3px solid var(--sel); outline-offset: -3px; }
+.mapx-stack button[aria-busy=true] .ic { animation: spin 1s linear infinite; }
+@media (hover: hover) { .mapx-stack button:hover { background: var(--fill2); } }
+
+/* the pin: a 30 by 38 teardrop in a 44 by 44 tap area; it slides down on arrival (still under Reduce motion: that is the one move that says where it landed) */
+.mapx-pin { background: none; border: 0; display: grid; place-items: end center; cursor: grab; }
+.mapx-pin svg { filter: drop-shadow(0 2px 3px rgba(0,0,0,.35)); animation: mapx-drop .4s var(--ease) both; }
+.mapx-pin:focus-visible svg { outline: 3px solid #fff; outline-offset: 2px; border-radius: 6px; }
+@keyframes mapx-drop { from { opacity: 0; transform: translateY(-12px); } to { opacity: 1; transform: none; } }
+
+/* the outline: blue with marching ants, which stop under Reduce motion */
+.mapx-ants { stroke-dasharray: 8 6; animation: mapx-ants 1.2s linear infinite; }
+@keyframes mapx-ants { to { stroke-dashoffset: -28; } }
+html[data-motion=reduce] .mapx-ants { animation: none; }
+@media (prefers-reduced-motion: reduce) { .mapx-ants, .mapx-pin svg { animation: none; } }
+
+/* the keyboard crosshair: 30 px, white with a dark edge, only while the keyboard is in use */
+.mapx-cross { position: absolute; left: 50%; top: 50%; z-index: 4; display: none; width: 30px; height: 30px; margin: -15px 0 0 -15px; pointer-events: none;
+  background: linear-gradient(#fff, #fff) center / 2px 100% no-repeat, linear-gradient(#fff, #fff) center / 100% 2px no-repeat; filter: drop-shadow(0 0 1.5px rgba(0,0,0,.85)); }
+body.kbd-mode .mapx:focus-within .mapx-cross { display: block; }
+.mapx[data-tool=rect]:not(.locked) .leaflet-container, .mapx[data-tool=poly]:not(.locked) .leaflet-container { cursor: crosshair; }
+
+/* the scale and the credit, along the foot */
+.mapx > .leaflet-control-scale { position: absolute; left: var(--space-8); bottom: var(--space-8); z-index: 5; margin: 0; }
+.mapx .leaflet-control-scale-line { padding: 1px 6px; border: 0; border-radius: 4px; background: var(--glass); color: var(--ink); font-size: 10.5px; box-shadow: var(--shadow-map); }
+.mapx-credit { position: absolute; right: var(--space-8); bottom: 4px; z-index: 5; max-width: min(60%, 360px); margin: 0; padding: 1px 6px; border-radius: 4px; background: var(--glass); color: var(--ink2); font-size: 10.5px; line-height: 1.3; text-align: right; }
+@container mapx (max-width: 470px) { .mapx-credit { max-width: 55%; } }
+@media (prefers-reduced-transparency: reduce) { .mapx-seg, .mapx-hint, .mapx-stack { background: var(--card); -webkit-backdrop-filter: none; backdrop-filter: none; } }
+
+/* a short map (the strip above the questions on a phone): only zoom stays, the rest of the stack and the hint step aside; the farmer widens the map to use them */
+@container mapx (max-height: 330px) {
+  .mapx-stack button:nth-child(n+3) { display: none; }
+  .mapx-hint { display: none !important; }
+  .mapx-top { top: var(--space-4); }
+  .mapx-credit { display: none; }
+}
+
+/* the spot card: white, 340 px, over the map; along the bottom of a narrow map, where the stack and the hint step aside */
+.spot { position: absolute; z-index: 8; display: flex; flex-direction: column; width: 340px; max-width: calc(100% - 16px); max-height: calc(100% - 64px); border-radius: var(--r1); background: var(--card); box-shadow: var(--shadow-lg); overflow: hidden; outline: none; }
+.spot.spot-in { animation: spot-in .26s var(--ease) both; }
+@keyframes spot-in { from { opacity: 0; transform: scale(.96); } to { opacity: 1; transform: none; } }
+.spot.bottom { max-height: 58%; width: auto; }
+.spot-head { display: flex; align-items: center; gap: var(--space-8); padding: 6px 8px 6px 4px; box-shadow: 0 .5px 0 var(--sep); cursor: grab; touch-action: none; }
+.spot-head h3 { flex: 1 1 auto; min-width: 0; font-size: var(--fs-headline); overflow-wrap: anywhere; }
+.spot-grip { display: grid; grid-template-columns: repeat(2, 4px); gap: 3px; align-content: center; justify-content: center; width: var(--touch); height: var(--touch); flex: none; border-radius: var(--r3); cursor: grab; }
+.spot-grip i { width: 4px; height: 4px; border-radius: 50%; background: var(--ink2); }
+.spot-grip:focus-visible { outline: 3px solid var(--sel); outline-offset: -3px; }
+.spot-head .btn { min-height: var(--touch); }
+.spot-tabs { display: flex; gap: 4px; padding: 6px 8px; box-shadow: 0 .5px 0 var(--sep); }
+.spot-tabs [role=tab] { flex: 1 1 0; min-height: var(--touch); padding: 0 var(--space-8); border: 0; border-radius: var(--r2); background: none; color: var(--ink2); font: inherit; font-size: var(--fs-tab); font-weight: var(--fw-semi); cursor: pointer; }
+.spot-tabs [role=tab][aria-selected=true] { background: var(--card); color: var(--accent-text); box-shadow: inset 0 0 0 2px var(--accent); }   /* a ring as well as a colour, so a chosen tab never rests on colour alone */
+.spot-tabs [role=tab]:focus-visible { outline: 3px solid var(--sel); outline-offset: -3px; }
+.spot-panel { flex: 1 1 auto; min-height: 0; overflow: auto; overscroll-behavior: contain; padding: var(--space-12) var(--space-16) var(--space-16); font-size: var(--fs-row); }
+.spot-panel > * + * { margin-top: var(--space-8); }
+.spot-wait { display: flex; align-items: center; gap: var(--space-8); color: var(--ink2); }
+.spot-now { display: flex; flex-wrap: wrap; align-items: baseline; gap: var(--space-8); }
+.spot-temp { font-size: var(--fs-number); font-weight: var(--fw-bold); letter-spacing: var(--ls-title); }
+.spot-calm { padding: var(--space-8) var(--space-12); border-radius: var(--r3); background: var(--fill2); }
+.spot-calm.ok { background: var(--good-soft); color: var(--good); } .spot-calm.no { background: var(--warn-soft); color: var(--warn); }
+.spot-days { padding: 0; list-style: none; }
+.spot-days li { display: flex; flex-wrap: wrap; gap: 2px var(--space-8); padding: 6px 0; box-shadow: 0 -.5px 0 var(--sep); }
+.spot-days li b { min-width: 36px; }
+.spot-rows { display: grid; gap: 0; }
+.spot-rows > div { display: flex; flex-wrap: wrap; justify-content: space-between; gap: 2px var(--space-12); padding: 7px 0; box-shadow: 0 -.5px 0 var(--sep); }
+.spot-rows dt { color: var(--ink2); } .spot-rows dd { font-weight: var(--fw-medium); text-align: right; }
+.spot-big { font-size: 34px; font-weight: var(--fw-bold); letter-spacing: var(--ls-title); }
+.srcnote { display: grid; gap: 4px; padding: var(--space-8) var(--space-12); border-radius: var(--r3); background: var(--card2); box-shadow: inset 0 0 0 .5px var(--sep); font-size: var(--fs-caption); }
+.srcnote[hidden] { display: none; }
+@container mapx (max-width: 519px) { .mapx.spot-open .mapx-stack, .mapx.spot-open .mapx-hint { display: none !important; } }

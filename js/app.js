@@ -1,8 +1,15 @@
 // Crophalo's page shell: the start, show(view), the top bar with its Menu, and the address routes of the info pages.
 // Nothing here is pure: it reads and changes the page and the browser's history. Each feature gets its own module, not a section here.
-// Checked by scripts/e2e.mjs (the shell: one heading per view, the Menu, Back, focus).
+// Checked by scripts/e2e.mjs (the shell: one heading per view, the Menu, Back, focus), scripts/e2e_flow.mjs (home to report), scripts/e2e_map.mjs and scripts/e2e_farm.mjs.
 import { applySettings } from './settings.js';
 import { own } from './words.js';
+import { initHome } from './home.js';
+import { initWelcome } from './welcome.js';
+import { toast } from './toast.js';
+import { initWizard, setPlace } from './wizard.js';
+import { initReport, openReport, showReport } from './report.js';
+import { renderInfo } from './pages.js';
+import { initMapX } from './mapx.js';   // the setup map
 
 const $ = (sel, root = document) => root.querySelector(sel), $$ = (sel, root = document) => [...root.querySelectorAll(sel)];
 
@@ -29,10 +36,12 @@ export function show(view, fromPop = false, page = '') {
   if (!fromPop && IN_HISTORY.includes(view) && (changed || location.hash)) history.pushState({ v: view }, '', location.pathname + location.search);   // a clean address: leaving an info page or Admin drops its hash
   current = { view, page };
   for (const section of $$('.view')) section.hidden = section.id !== 'view-' + view;
-  if (page) $('#infoTitle').textContent = INFO_PAGES[page];
+  if (page) { $('#infoTitle').textContent = INFO_PAGES[page]; renderInfo(page); }
   document.title = (page ? INFO_PAGES[page] : VIEW_TITLES[view]) + ' · Crophalo';
   for (const [node, here] of [[$('#navFarm'), view === 'farm'], ...$$('#navMenu a').map(link => [link, link.hash === '#' + page])]) here ? node.setAttribute('aria-current', 'page') : node.removeAttribute('aria-current');   // the open place looks chosen in the bar
   setMenu(false);
+  if (view === 'report') showReport();   // a report in hand stays; else it is built from the setup answers, or the way back is offered
+  if (view === 'farm') openFarm();   // the board loads the first time it opens
   if (first || !changed) return;   // a page that has only just opened keeps focus at the top, so the skip link comes first
   scrollTo(0, 0); focusHeading();
 }
@@ -42,7 +51,7 @@ function fromAddress() {
   const [, name = ''] = /^#([a-z]+)(?:\/[a-z]+)?$/.exec(location.hash) || [];
   if (own(INFO_PAGES, name)) return { view: 'info', page: name };
   if (location.hash === '#admin') return { view: 'admin', page: '' };
-  const kept = history.state?.v ?? current.view;   // an address we do not know changes nothing
+  const kept = history.state?.v ?? 'home';   // an entry with no view of its own (an address typed in, or one we do not know) is the home, so Back never stands still
   return { view: IN_HISTORY.includes(kept) ? kept : 'home', page: '' };
 }
 function route() { const { view, page } = fromAddress(); show(view, true, page); }
@@ -73,9 +82,35 @@ function initTopBar() {
 }
 // ── end ──
 
+// ---- My Farm: loaded the first time it opens. The engine says what covers the ground on a date; the 3D look is loaded only when asked for.
+const loadFarm = () => import('./farm.js').then(async farm => {
+  if (!loadFarm.wired) {
+    loadFarm.wired = true;
+    farm.setOpener(() => show('farm'));
+    farm.setView3d((input, node, options) => import('./farm3d.js').then(m => m.view3d(input, node, options)));
+    import('./engine.js').then(engine => farm.setGround(engine.groundOn)).catch(() => { /* the board says "not read yet" for the ground */ });
+  }
+  return farm;
+});
+function openFarm() {
+  loadFarm().then(farm => farm.mountFarm($('#view-farm'))).catch(() => { $('#view-farm').innerHTML = '<div class="wrap"><div class="sec"><h1>My farm</h1><p>My farm could not load. Check the internet connection, then reload the page.</p></div></div>'; });
+}
+
+// ---- the place the farmer chose on the home: the setup wizard takes it from here
+function openSetup(spot) {
+  setPlace(spot);
+  show('setup');
+  if (!spot) toast('Tap the map where your field is');
+}
+
 // ---- start
 applySettings();
 initTopBar();
+initReport({ change: () => show('setup'), home: () => show('home'), engine: () => import('./engine.js'), farm: loadFarm, farmOpened: () => show('farm') });
+initWizard({ report: state => { show('report'); openReport(state); }, home: () => show('home') });
+initMapX();   // mounts in #setupMap whenever the wizard draws it
+initHome({ place: openSetup, mapPick: () => openSetup(null), saved: () => show('report') });
+initWelcome();
 addEventListener('popstate', route);
 addEventListener('hashchange', route);
 {
