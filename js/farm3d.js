@@ -309,7 +309,7 @@ export async function view3d(input, node, options = {}) {
     let grid = null; try { grid = await inp.loadHeights(sc.heightRequest); } catch { grid = null; }
     if (disposed || token !== heightsToken) return;
     waitEl.hidden = true;
-    input = { ...input, heights: grid || null };
+    input = { ...input, heights: grid || { failed: 'The land heights could not be read right now.' } };
     sc = groundScene({ ...input, phone: phone() }); build(); refreshWords(); if (!moved) fitCamera(false); need();
   }
 

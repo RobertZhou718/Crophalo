@@ -8,6 +8,7 @@ import { fileURLToPath } from 'node:url';
 import * as d from '../js/farm3d-data.js';
 import * as sun from '../js/sun.js';
 import { moonAt, moonWords } from '../js/moon.js';
+import { decodeHeights, floatsOf, loadHeights, sourceWords } from '../js/heights3d.js';
 
 let passed = 0, failed = 0;
 const brief = v => { const s = typeof v === 'string' ? v : JSON.stringify(v); return s == null ? String(v) : s.length > 300 ? s.slice(0, 300) + '…' : s; };
@@ -291,7 +292,7 @@ same('field of view 30°, 36° when taller than wide, polar limits 10–80', [d.
   same('missing heights: flat, schematic, plain status', [corn.heights.status, corn.words.heights], ['missing', 'Heights not read: the land is drawn flat, as a plain schematic.']);
   const n = 17, h = new Float32Array(n * n); for (let k = 0; k < h.length; k++) h[k] = 300 + (k % n) * 1.5;
   const hilly = mk({ state: 'crop', crop: 'corn', stage: 3 }, { heights: { nx: n, ny: n, width: 800, depth: 800, h } });
-  same('heights read: true height, said so', [hilly.heights.status, /^Heights read: the land rises \d+ m across this view, drawn at true height\.$/.test(hilly.words.heights)], ['read', true]);
+  same('heights read: true height, said so', [hilly.heights.status, /^Heights read: The land rises \d+ m across this view, drawn at true height\.$|^Heights read: the land rises \d+ m across this view, drawn at true height\.$/.test(hilly.words.heights.replace('Heights read: The', 'Heights read: the'))], ['read', true]);
   same('heights that are over half missing are drawn flat, said so', mk(null, { heights: { nx: 3, ny: 3, width: 800, depth: 800, h: new Float32Array(9).fill(NaN) } }).heights.status, 'flat');
   same('the height request is the block the server keys on: 4 decimals, whole metres, 257 points (129 on a phone)', [corn.heightRequest.n, mk(null, { phone: true }).heightRequest.n, Number.isInteger(corn.heightRequest.width), String(corn.heightRequest.lat).split('.')[1].length <= 4], [257, 129, true, true]);
   same('one sun: one directional light, a unit direction, up in the morning', [corn.light.lights.filter(l => l.type === 'directional').length, Math.abs(Math.hypot(corn.sun.x, corn.sun.y, corn.sun.z) - 1) < 1e-9, corn.sun.up], [1, true, true]);
@@ -301,6 +302,29 @@ same('field of view 30°, 36° when taller than wide, polar limits 10–80', [d.
   check('the screen-reader sentence names the field, the cover and the heights', /^3D view of Demo field, seen from the south\. Planned: .*Drawn flat\.$/.test(corn.aria), corn.aria);
   check('plants are said to be symbols', corn.words.illustrative.includes('drawn larger than real'));
   same('a polar-night date still describes the scene (no sun)', mk(null, { pin: { lat: 69.65, lon: 18.96 }, date: '2026-12-21' }).sun.up, false);
+}
+
+// ---- the land heights from the server
+{
+  const f32 = arr => Buffer.from(new Float32Array(arr).buffer).toString('base64');
+  const req = { lat: 44.4, lon: -79.78, width: 516, depth: 516, n: 3 };
+  const good = { ok: true, source: 'NRCan HRDEM lidar, 1 m (Natural Resources Canada)', name: 'NRCan HRDEM lidar', res_m: 2.02, native_m: 1, kind: 'DTM', credit: 'x', licence: 'y', data_date: '2025-11-14', cover: 1, filled: null, grid: { lat: 44.4, lon: -79.78, w: 516, d: 516, nx: 3, ny: 3 }, h: f32([300, 301, 302, 301, 302, 303, 302, 303, 304]) };
+  same('base64 floats decode, NaN stays NaN', Array.from(floatsOf(f32([1.5, NaN, -2]))).map(v => Number.isNaN(v) ? 'nan' : v), [1.5, 'nan', -2]);
+  const g = decodeHeights(good, req);
+  same('a good answer becomes the grid the view draws', [g.nx, g.ny, g.width, g.depth, g.h.length, g.name, g.kind], [3, 3, 516, 516, 9, 'NRCan HRDEM lidar', 'DTM']);
+  same('a failure keeps its own sentence and no heights', decodeHeights({ ok: false, reason: 'No height map answered for this place right now' }, req), { failed: 'No height map answered for this place right now' });
+  check('a grid of the wrong length is refused, not guessed at', decodeHeights({ ...good, h: f32([1, 2, 3]) }, req).failed?.includes('shape'));
+  check('heights for another piece of land are refused', decodeHeights({ ...good, grid: { ...good.grid, w: 900 } }, req).failed?.includes('another piece of land'));
+  check('rubbish is refused in words', decodeHeights(null, req).failed && decodeHeights('x', req).failed);
+  const asked = []; const seen = await loadHeights(req, { fetchImpl: async url => { asked.push(url); return { json: async () => good }; } });
+  same('the request asks the one route, with the block\'s own numbers', [asked[0], seen.nx], ['/api/dem?lat=44.4&lon=-79.78&w=516&d=516&nx=3&ny=3', 3]);
+  check('a server that cannot be reached gives a plain failure, not a throw', (await loadHeights(req, { fetchImpl: async () => { throw new Error('down'); } })).failed.includes('could not be reached'));
+  check('a server that sends no JSON gives a plain failure', (await loadHeights(req, { fetchImpl: async () => ({ json: async () => { throw new Error('x'); } }) })).failed !== undefined);
+  check('the source words name the map, its cell, and whether trees are in it', /^NRCan HRDEM lidar, one every 2\.0 m\. Bare ground/.test(sourceWords(g)) && /includes the tops of trees/.test(sourceWords({ ...g, kind: 'DSM', name: 'Copernicus DEM GLO-30', res_m: 30 })));
+  const sceneRead = d.groundScene({ pin: { lat: 44.4, lon: -79.78 }, field: { id: 'x' }, date: '2027-10-05', ground: null, heights: g });
+  check('a read grid is drawn at true height and its source is in the words', sceneRead.heights.status === 'read' && /NRCan HRDEM lidar, one every 2\.0 m/.test(sceneRead.words.heights) && /drawn at true height/.test(sceneRead.words.heights), sceneRead.words.heights);
+  const sceneFail = d.groundScene({ pin: { lat: 44.4, lon: -79.78 }, field: { id: 'x' }, date: '2027-10-05', ground: null, heights: decodeHeights({ ok: false, reason: 'No height map answered for this place right now' }, req) });
+  same('a failed lookup draws the land flat and says why', [sceneFail.heights.status, sceneFail.words.heights], ['failed', 'Heights not read: No height map answered for this place right now. The land is drawn flat, as a plain schematic.']);
 }
 
 console.log(`${passed} passed, ${failed} failed`);

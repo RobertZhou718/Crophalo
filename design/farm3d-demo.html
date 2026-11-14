@@ -5,6 +5,7 @@
 <body><main><h1 style="font-size:1.2rem;color:#0b2545">3D field look</h1><div id="host"></div></main>
 <script type="module">
 import { view3d } from '../js/farm3d.js';
+import { loadHeights } from '../js/heights3d.js';
 // a small rolling land: 65 × 65 heights over the block, a few metres of rise
 const hills = (block) => { const n = 65, h = new Float32Array(n * n); for (let j = 0; j < n; j++) for (let i = 0; i < n; i++) h[j * n + i] = 300 + 6 * Math.sin(i / 9) + 4 * Math.cos(j / 11) + i * 0.06; return { nx: n, ny: n, width: block.width, depth: block.depth, h }; };
 const base = { name: 'Barrie demo', pin: { lat: 44.40, lon: -79.78 }, field: { id: 'demo', name: 'Demo field', polygon: null, areaEstimated: true } };
@@ -18,4 +19,12 @@ window.demo = {
   async next(state, extra = {}) { const input = { ...base, planKind: 'proposed', date: '2027-11-05', ground: state, ...extra }; if (extra.hills) input.heights = hills({ width: 800, depth: 800 }); window.view.update(input); return window.view.status; },
 };
 window.ready = true;
+// ?live=residue|wheat1|wheat2|corn opens at once with the real height lookup (a picture of the real land)
+const live = new URLSearchParams(location.search).get('live');
+if (live) {
+  const states = { residue: { state: 'residue', crop: 'soy', label: 'Planned' }, wheat1: { state: 'crop', crop: 'wheat', stage: 1, label: 'Planned' }, wheat2: { state: 'crop', crop: 'wheat', stage: 2, label: 'Planned' }, corn: { state: 'crop', crop: 'corn', stage: 3, label: 'Planned' } };
+  window.view = await view3d({ ...base, planKind: 'proposed', date: '2027-10-05', ground: states[live] || states.corn, loadHeights: req => loadHeights(req) }, document.getElementById('host'));
+  const t0 = Date.now(); while (!/Heights (read|not read: [A-Z])/.test(document.querySelector('.f3d-heights')?.textContent || '') && Date.now() - t0 < 60000) await new Promise(r => setTimeout(r, 200));
+  window.liveDone = true;
+}
 </script></body></html>

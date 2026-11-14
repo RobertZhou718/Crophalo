@@ -461,10 +461,13 @@ export function groundScene(input) {
       cover = { kind: 'bare', shape: null, crop: null, stage: null, height: 0, colour: PALETTE.soil, plants: [], bearing, words: 'Bare soil: nothing grows and no residue is left.' };
     }
   }
-  // heights
-  const hm = input.heights ? heightModel(input.heights) : null;
-  const heights = hm && !hm.flat ? { model: hm, rise: hm.rise, status: 'read', words: `Heights read: the land rises ${hm.rise < 10 ? hm.rise.toFixed(1) : Math.round(hm.rise)} m across this view, drawn at true height.` }
-    : { model: null, rise: 0, status: input.heights ? 'flat' : 'missing', words: 'Heights not read: the land is drawn flat, as a plain schematic.' };
+  // heights: a grid, a failure with its reason ({failed}), or nothing asked for yet
+  const given = input.heights && !input.heights.failed ? input.heights : null;
+  const hm = given ? heightModel(given) : null;
+  const why = input.heights?.failed ? String(input.heights.failed).replace(/[.\s]+$/, '') : null;
+  const src = given?.name ? `${given.name}, ${given.res_m ? `one every ${given.res_m >= 10 ? Math.round(given.res_m) : given.res_m.toFixed(1)} m` : 'cell size not stated'}. ${given.kind === 'DSM' ? 'It includes the tops of trees and buildings.' : 'Bare ground: trees and buildings are not in it.'} ` : '';
+  const heights = hm && !hm.flat ? { model: hm, rise: hm.rise, status: 'read', source: given.name || null, words: `Heights read: ${src}The land rises ${hm.rise < 10 ? hm.rise.toFixed(1) : Math.round(hm.rise)} m across this view, drawn at true height.` }
+    : { model: null, rise: 0, status: why ? 'failed' : given ? 'flat' : 'missing', source: null, words: why ? `Heights not read: ${why}. The land is drawn flat, as a plain schematic.` : 'Heights not read: the land is drawn flat, as a plain schematic.' };
   const soilColour = input.soil?.colour || PALETTE.soil;
   const kindWord = input.planKind === 'proposed' ? 'Proposed plan' : 'Current plan';
   return {
