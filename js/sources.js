@@ -1,0 +1,80 @@
+// Crophalo's source notes: for every outside source of a figure, who runs it, one plain line, how to explain it, and its link.
+// All of it is pure: a table and three small readers, no page. The "i" button and its card are built on top of this elsewhere.
+// Checked by scripts/test_weather.mjs (every note has every field; NASA is said once; a source is named, never defined by what it is not).
+import { own } from './words.js';
+
+// One note per key. org: the short name on the card's tag. name: the heading. nasa: true gives the solid NASA "i".
+// who: the "Run by" line. what: one plain line. talk: "How to explain it", the longer text behind the fold. url: "Visit the source".
+export const SOURCE_FIELDS = ['org', 'name', 'nasa', 'who', 'what', 'talk', 'url'];
+export const SOURCES = {
+  power: { org: 'NASA', name: 'NASA POWER', nasa: true,
+    who: 'NASA Langley Research Center',
+    what: 'Daily weather for the area around your field since 2001: heat, cold, rain, how wet the soil is at root depth and how much water the land loses to the air.',
+    talk: 'POWER joins satellite observations and NASA’s weather model into one figure a day for every square of the globe. A square is about 50 km wide, so your own field can differ. Crophalo reads it fresh for your spot in whole UTC days, and moves the temperatures to your field’s own height: 6.5 °C cooler for every 1,000 m higher.',
+    url: 'https://power.larc.nasa.gov/' },
+  gpm: { org: 'NASA', name: 'NASA GPM IMERG rain', nasa: true,
+    who: 'NASA Goddard Space Flight Center, with Japan’s space agency JAXA',
+    what: 'Rain measured from space: the readings of many satellites joined into one rain map. Crophalo reads its daily totals through NASA POWER.',
+    talk: 'The GPM mission joins many satellites into rain maps about 10 km wide, one every 30 minutes. The daily totals reach POWER about two months after the rain, so the newest weeks are not in it yet. Crophalo uses this record first, because the weather model’s rain reads low after about 2015 in several regions.',
+    url: 'https://gpm.nasa.gov/data/imerg' },
+  merra2: { org: 'NASA', name: 'NASA MERRA-2 weather model', nasa: true,
+    who: 'NASA Global Modeling and Assimilation Office, Goddard Space Flight Center',
+    what: 'Rain worked out by a weather model and corrected with rain gauges, for a square about 50 km wide. Crophalo uses it only where satellite rain has too few days.',
+    talk: 'MERRA-2 reruns the world’s weather since 1980 with one model. POWER takes its temperatures, soil wetness and water loss from it, and fills the newest weeks from a quicker run of the same family of models (GEOS-IT). Its rain reads low after about 2015 in several regions, which would look like the land drying out, so satellite rain comes first.',
+    url: 'https://gmao.gsfc.nasa.gov/reanalysis/merra-2/' },
+  forecast: { org: 'Open-Meteo', name: 'Open-Meteo forecast', nasa: false,
+    who: 'Open-Meteo, from national weather services (NOAA, ECMWF, DWD and others)',
+    what: 'The weather forecast for the coming days, hour by hour, with the soil temperature and the water crops lose.',
+    talk: 'Open-Meteo picks the best weather-service model for each place and gives its forecast freely (CC BY 4.0). Crophalo keeps each answer for a short while, so the same square is not asked for again and again, and reads every time on the field’s own clock. A day the service left out is shown as not available, never as dry or calm.',
+    url: 'https://open-meteo.com/' },
+  era5: { org: 'Open-Meteo', name: 'ERA5 weather record', nasa: false,
+    who: 'ECMWF for the Copernicus Climate Change Service, through Open-Meteo.com',
+    what: 'A back-up record of daily heat, cold and rain since 2001. Crophalo uses it only when NASA POWER cannot answer.',
+    talk: 'ERA5 reruns the world’s weather with one model, on squares about 25 km wide, and ends about a week before today. It has no satellite rain, no root-zone wetness and no water-loss figure, so those parts of the report stay empty and say so.',
+    url: 'https://open-meteo.com/en/docs/historical-weather-api' },
+  era5land: { org: 'Open-Meteo', name: 'ERA5-Land coldest nights', nasa: false,
+    who: 'ECMWF for the Copernicus Climate Change Service, through Open-Meteo.com',
+    what: 'A second record of the coldest night of each year, for a square about 9 km wide.',
+    talk: 'ERA5-Land is a land model that reruns the weather from 1950 to today. One record alone can miss a cold hollow or a mild slope, so Crophalo reads this one beside NASA’s, uses the middle of the two and keeps the colder in mind for trees that frost can kill. When the two are 2 °C or more apart, the report shows both.',
+    url: 'https://open-meteo.com/en/docs/historical-weather-api' },
+  smap: { org: 'NASA', name: 'NASA SMAP root-zone soil moisture', nasa: true,
+    who: 'NASA Goddard Space Flight Center, from the SMAP satellite; shared through the National Snow and Ice Data Center',
+    what: 'How wet the soil is around the roots (the top metre), worked out by a land model that is kept true by the SMAP satellite\u2019s measurements, for a square about 9 km wide.',
+    talk: 'SMAP is a NASA satellite that has measured the water in the top of the soil since 2015. Its Level-4 product feeds those measurements into a land model, which fills in the deeper soil down to about one metre, where roots drink. The answer is one value for each square of about 9 km, so it tells you how wet the whole area around your field is, not what is inside your field. It arrives about two to three days after the day it describes.',
+    url: 'https://nsidc.org/data/spl4smgp' },
+  gibs: { org: 'NASA', name: 'NASA GIBS satellite images', nasa: true,
+    who: 'NASA Earth Science Data and Information System (ESDIS), Global Imagery Browse Services',
+    what: 'Daily satellite pictures of the Earth, such as plant greenness, rain and land temperature, served as map tiles.',
+    talk: 'GIBS turns NASA\u2019s satellite data into pictures that load quickly on a map. Each picture has a date; where a satellite did not see a place that day (clouds, or the edge of its path), NASA has no image and Crophalo says so instead of filling it in.',
+    url: 'https://www.earthdata.nasa.gov/engage/open-data-services-software/earthdata-developer-portal/gibs-api' },
+  soilgrids: { org: 'ISRIC', name: 'ISRIC SoilGrids soil map', nasa: false,
+    who: 'ISRIC \u2013 World Soil Information, in the Netherlands',
+    what: 'A world soil map made by computer from soil samples: texture, acidity and organic matter, about 250 m wide.',
+    talk: 'SoilGrids learns from soil samples taken at many places around the world and predicts the soil everywhere else. It is a rough guide, not a soil test: your own test of your own field is always better.',
+    url: 'https://www.isric.org/explore/soilgrids' },
+  fao: { org: 'FAO', name: 'FAOSTAT crop statistics', nasa: false,
+    who: 'The Food and Agriculture Organization of the United Nations',
+    what: 'How much land each country harvests of each crop, and how much it produces.',
+    talk: 'FAOSTAT collects the figures countries report each year. Crophalo uses them to show what farmers in your country grow and to leave out crops nobody grows there.',
+    url: 'https://www.fao.org/faostat/' },
+  mapspam: { org: 'IFPRI', name: 'MapSPAM crop map', nasa: false,
+    who: 'The International Food Policy Research Institute (IFPRI), with partners',
+    what: 'A world map of where 46 crops are grown, on a grid of about 9 km, for the year 2020.',
+    talk: 'MapSPAM splits each country\u2019s crop statistics into the squares where that crop can grow, using soil, climate and satellite land cover. It is a model\u2019s best estimate of where crops are, not a count of fields.',
+    url: 'https://www.mapspam.info/' },
+  esri: { org: 'Esri', name: 'Esri World Imagery', nasa: false,
+    who: 'Esri, with Vantor, Earthstar Geographics and the GIS user community',
+    what: 'The satellite and aerial photograph under the map.',
+    talk: 'The picture is taken from several sources and different places are photographed in different years, so it may not show your field as it is today.',
+    url: 'https://www.arcgis.com/home/item.html?id=10df2279f9684e4a9f6a7f08febac2a9' },
+  osm: { org: 'OpenStreetMap', name: 'OpenStreetMap place search', nasa: false,
+    who: 'OpenStreetMap contributors, through the Nominatim search service',
+    what: 'The names of towns and places, and where they are.',
+    talk: 'OpenStreetMap is a map of the world that volunteers keep up to date. When you type a place, its name is sent to Nominatim and the best matches come back.',
+    url: 'https://nominatim.org/' },
+};
+
+export const sourceNote = key => (own(SOURCES, key) ? SOURCES[key] : null);
+// The notes for one figure, NASA first, each key once; a key nobody wrote a note for is left out.
+export const sourceNotes = keys => [...new Set(keys)].filter(key => own(SOURCES, key)).map(key => ({ key, ...SOURCES[key] })).sort((a, b) => b.nasa - a.nasa);
+export const anyNasa = keys => keys.some(key => own(SOURCES, key) && SOURCES[key].nasa);   // which of the two "i" shapes the figure gets
