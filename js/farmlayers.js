@@ -15,6 +15,7 @@ export const LINES = Object.freeze({
 });
 // picture and plants are switches; the others draw one at a time over the picture, so the panel shows them as one choice.
 export const SWITCHES = Object.freeze(['picture', 'plants']);
+export const LAYERS_ICON = '<svg class="ic" aria-hidden="true" viewBox="0 0 24 24"><path d="M12 4 3 9l9 5 9-5z"/><path d="m3 14 9 5 9-5"/></svg>';   // the setup map's own layers icon
 const STATES = ['idle', 'loading', 'ready', 'failed'];
 
 // raw: [{ id, name, line, on, state, source, date, needs, legend }] from handle.layers(); rows without an id or a name are dropped, so no empty promise is shown.
@@ -34,7 +35,7 @@ const legendHTML = l => !l ? '' : typeof l === 'string' ? `<span class="cap fw-l
 // ask: the row of a layer that waits for a figure given to the 3D look My farm can make by asking (greenness: "Find weak spots") gets that button.
 export function layersHTML(model, { ask = {} } = {}) {
   const row = (r, kind) => {
-    const s = stateWords(r), wait = r.needs && r.state === 'idle', off = wait && !ask[r.id], bad = r.state === 'failed';
+    const s = r.state === 'failed' && /could not/i.test(r.line) ? '' : stateWords(r), wait = r.needs && r.state === 'idle', off = wait && !ask[r.id], bad = r.state === 'failed';
     const more = r.source || r.date ? `<details class="fw-lmore"><summary>Show more</summary><p class="cap">${r.source ? `Source: ${esc(r.source)}.` : ''}${r.source && r.date ? ' ' : ''}${r.date ? `Date: ${esc(r.date)}.` : ''}</p></details>` : '';
     const input = `<input type="${kind}" ${kind === 'radio' ? 'name="fwLayerOne" ' : ''}data-layer="${esc(r.id)}"${r.on ? ' checked' : ''}${off ? ' disabled' : ''}>`;
     const status = s ? `<span class="cap fw-lstate" data-state="${r.state}"${r.state === 'loading' ? ' aria-hidden="true"' : ''}>${esc(s)}</span>${r.state === 'loading' ? `<span class="fw-lsk" role="status"><span class="sr">${esc(s)}</span><span aria-hidden="true"><i class="sk" style="width:70%"></i><i class="sk" style="width:45%"></i></span></span>` : ''}` : '';

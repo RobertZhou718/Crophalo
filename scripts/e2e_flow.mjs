@@ -209,7 +209,7 @@ await group('report', async () => {
   await press('Escape');
   check('report: Escape closes the card and gives the keyboard back to the "i"', await seen(`document.querySelector('#srcPop').hidden && document.activeElement.classList.contains('srci') && document.querySelector('#answer .srci').getAttribute('aria-expanded') === 'false'`));
   await js(`document.querySelector('#answer .srci').click()`); check('report: a click pins it', await seen(`!document.querySelector('#srcPop').hidden`)); await js(`document.querySelector('#answer .srci').click()`); check('report: a second click closes it', await seen(`document.querySelector('#srcPop').hidden`));
-  check('report: no sliders and no priorities panel', await js(`document.querySelectorAll('input[type=range], .rv-prio').length === 0`));
+  check('report: no sliders in the letter and no priorities panel (the "Change and see" panel holds the what-if sliders)', await js(`document.querySelectorAll('.rv-letter input[type=range], .rv-prio').length === 0`));
   // add to My farm
   await tap('#rbFarm');
   check('report: Add to My Farm puts the field in My farm and keeps the report on screen, with a toast that offers Open', await seen(`!document.querySelector('#view-report').hidden && JSON.parse(localStorage.getItem('crophalo.farms.v1') || '{}').farms?.some(f => f.fields?.length === 1) && /Added to My farm/.test(document.querySelector('#toast').textContent) && /Open/.test(document.querySelector('#toast button')?.textContent || '')`, 8000));   // the farmer stays on the comparison they were reading; Open is one tap away

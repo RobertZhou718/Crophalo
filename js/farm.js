@@ -26,7 +26,7 @@ import { renderDrawer, resetDrawer, drawerState, startPlant, startCopy, ADDED_WO
 import { shellHTML } from './farm3d-shell.js';
 import { firstView as ruleView, remember, recall, WORDS as RULE_WORDS } from './farm3d-rule.js';   // when 3D opens by itself, and what the board says when it does not
 import { skeleton } from './skeleton.js';
-import { layersModel, layersHTML, buttonWords } from './farmlayers.js';
+import { layersModel, layersHTML, buttonWords, LAYERS_ICON } from './farmlayers.js';
 export { ADDED_WORDS };
 
 const $ = (sel, node = document) => node.querySelector(sel);
@@ -208,7 +208,6 @@ function build(node) {
     <div class="fw-seg" role="group" aria-label="View">
       <button type="button" class="fw-segb" id="fwMapBtn" aria-pressed="true">Map</button><button type="button" class="fw-segb" id="fwThreeBtn" aria-pressed="false">3D</button>
     </div>
-    <button type="button" class="btn lg fw-tool" id="fwLayersBtn" aria-controls="fwLayers" aria-expanded="false" hidden>Layers</button>
     <div class="fw-menuwrap fw-morewrap"><button type="button" class="btn lg fw-tool fw-more" id="fwMoreBtn" aria-haspopup="menu" aria-expanded="false" aria-controls="fwMoreMenu">${esc(FW.more)}<i class="chev" aria-hidden="true"></i></button>
       <div class="fw-menu" id="fwMoreMenu" tabindex="-1" role="menu" aria-labelledby="fwMoreBtn" hidden>
         <div role="group" aria-labelledby="fwMoreH2"><p class="fw-menuh" id="fwMoreH2">${esc(FW.moreMap)}</p>${item('role="menuitemradio" data-look="photo" aria-checked="false"', FW.photo)}${item('role="menuitemradio" data-look="board" aria-checked="true"', FW.board)}</div>
@@ -219,7 +218,8 @@ function build(node) {
   <div class="fw-stage" id="fwStage">
     <div id="fwMap" class="fw-map" tabindex="-1"></div>
     <div id="fw3d" class="fw-3d" hidden></div>
-    <section class="mapx-panel fw-layers" id="fwLayers" aria-labelledby="fwLayersTitle" hidden></section>
+    <div class="fw-layers-wrap" id="fwLayersWrap" hidden><button type="button" class="mapbtn mapx-pbtn fw-layers-btn" id="fwLayersBtn" aria-haspopup="dialog" aria-controls="fwLayers" aria-expanded="false">${LAYERS_ICON}<span class="mapx-w">Layers</span></button>
+    <section class="mapx-panel fw-layers" id="fwLayers" aria-labelledby="fwLayersTitle" hidden></section></div>
     <p class="fw-status" id="fwStatus" role="status" hidden></p>
     <div class="fw-empty" id="fwEmpty" hidden><h2>No field yet</h2><p>Your fields and their plans show here. Find your field, then choose Add to My farm on its report.</p><div class="fw-emptybtns"><button type="button" class="btn lg primary" id="fwEmptyFind" hidden>Find your field</button><button type="button" class="btn lg" id="fwEmptyAdd">Draw a field by hand</button></div></div>
     <div class="fw-editbar" id="fwEditBar" role="group" aria-label="Edit the field" hidden></div>
@@ -242,7 +242,10 @@ function wire() {
   on('#fwYearPick', 'change', e => { stopPlay(); setYear(+e.target.value); });
   on('#fwHistoryBack', 'click', () => closeHistory());
   on('#fwOpenReport', 'click', () => go?.('report')); on('#fwFarmBtn', 'click', () => togglePanel('farms')); on('#fwEmptyAdd', 'click', () => edit('newfarm')); on('#fwEmptyFind', 'click', () => go?.('setup'));
-  on('#fwLayersBtn', 'click', () => { layersOpen = !layersOpen; renderLayers(); if (layersOpen) $('#fwLayers input', root)?.focus(); });
+  layersWrap = $('#fwLayersWrap', root);
+  for (const ev of ['pointerdown', 'pointerup', 'pointermove', 'mousedown', 'touchstart', 'wheel', 'keydown', 'dblclick']) layersWrap.addEventListener(ev, e => e.stopPropagation());   // inside the 3D picture, a press or a key on the control is not the camera's: it does not turn or zoom the view
+  layersWrap.addEventListener('keydown', e => { if (e.key === 'Escape') document.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true })); });   // kept: the 3D look redraws its own box, and the control is put back into it
+  on('#fwLayersBtn', 'click', () => { layersOpen = !layersOpen; renderLayers(); if (layersOpen) layersWrap.querySelector('#fwLayers input')?.focus(); });
   on('#fwLayers', 'change', e => {
     const box = e.target.closest?.('[data-layer]'); if (!box || !handle3d?.setLayer) return; const id = box.dataset.layer;
     try {
@@ -252,7 +255,7 @@ function wire() {
     renderLayers();
   });
   on('#fwLayers', 'click', e => {
-    if (e.target.closest?.('#fwLayersClose')) { layersOpen = false; renderLayers(); $('#fwLayersBtn', root).focus(); }
+    if (e.target.closest?.('#fwLayersClose')) { layersOpen = false; renderLayers(); layersWrap.querySelector('#fwLayersBtn').focus(); }
     else if (e.target.closest?.('[data-ask=greenness]')) findWeak();   // the greenness layer waits for the weak-spots answer: asking for it is the farmer's own press
   });
   on('#fw3d', 'f3d-layer', () => renderLayers());   // the 3D look tells when a layer has loaded or failed
@@ -272,7 +275,7 @@ function wire() {
   document.addEventListener('keydown', e => {
     if (e.key !== 'Escape' || !root || root.closest('[hidden]')) return;
     if (!$('#fwMoreMenu', root).hidden) { closeMenus(); focusOn('#fwMoreBtn'); }
-    else if (layersOpen) { layersOpen = false; renderLayers(); focusOn('#fwLayersBtn'); }
+    else if (layersOpen) { layersOpen = false; renderLayers(); layersWrap.querySelector('#fwLayersBtn').focus(); }
     else if (ui.year) { exitYear(); }
     else if (ui.history) { closeHistory(); }
     else if (ui.panel === 'field' && drawerState.sheet) { resetDrawer(); renderPanel(); $('#fwPanelTitle', root)?.focus(); }
@@ -814,7 +817,7 @@ function initMap() {
 }
 
 // ---- the Layers of the 3D view: the button shows only when the 3D look offers layers; the panel is the map's own Layers look
-let layersOpen = false, erosionFn = null;
+let layersOpen = false, erosionFn = null, layersWrap = null;
 export function setErosionInput(fn) { erosionFn = typeof fn === 'function' ? fn : null; }   // fn(field) -> { soil: { sand, silt, clay, carbon }, mfi } | { factor } | null, from the soil and rain record the page has read
 // What a layer of the 3D waits for, handed over from My farm's own data, once for each answer: the weak-spots answer for the greenness layer, the soil and rain figures for erosion.
 const handed = new WeakMap();
@@ -824,13 +827,14 @@ function giveTo3d(h) {
   if (typeof h.setErosion === 'function' && erosionFn) { let e = null; try { e = erosionFn(f); } catch { e = null; } const k = e ? JSON.stringify(e) : ''; if (e && sent.erosion !== k) { sent.erosion = k; try { h.setErosion(e); } catch { /* the row says it */ } } }
 }
 function renderLayers() {
-  const btn = $('#fwLayersBtn', root), host = $('#fwLayers', root), f0 = field();
+  const btn = layersWrap.querySelector('#fwLayersBtn'), host = layersWrap.querySelector('#fwLayers'), f0 = field();
   // a layer that only says it needs something (erosion: no soil and rain figures here) is not listed until it can draw; greenness stays only where "Find weak spots" can answer it
   const drawable = r => !(r.needs && r.state === 'idle') || (r.id === 'greenness' && !!f0 && !f0.estimated) || (r.id === 'erosion' && !!erosionFn);
   const model = ui.view === '3d' && typeof handle3d?.layers === 'function' ? layersModel(handle3d.layers()).filter(drawable) : [];
-  btn.hidden = !model.length; if (!model.length) { layersOpen = false; host.hidden = true; return; }
+  layersWrap.hidden = !model.length; if (!model.length) { layersOpen = false; host.hidden = true; if (layersWrap.parentNode !== $('#fwStage', root)) $('#fwStage', root).append(layersWrap); return; }
   giveTo3d(handle3d);
-  btn.textContent = buttonWords(model); btn.setAttribute('aria-expanded', String(layersOpen)); host.hidden = !layersOpen;
+  const stage = $('#fw3d .f3d-stage', root); if (stage && layersWrap.parentNode !== stage) stage.append(layersWrap);   // at the top right of the picture, as the setup map has its Layers
+  const on = model.filter(r => r.on).length; btn.querySelector('.mapx-w').textContent = buttonWords(model); btn.classList.toggle('has-on', on > 0); btn.setAttribute('aria-expanded', String(layersOpen)); host.hidden = !layersOpen;
   if (!layersOpen) return;
   const had = document.activeElement?.closest?.('#fwLayers') ? document.activeElement.dataset?.layer : null;
   const f = field(), g = f && weak.get(f.id)?.state, ask = { greenness: f && !f.estimated && g !== 'reading' ? FW.askWeak : '' };

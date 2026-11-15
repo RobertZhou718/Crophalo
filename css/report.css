@@ -218,3 +218,24 @@
 html:has(.rv-parts) { scroll-padding-top: calc(var(--navh) + var(--rbh) + 8px); }   /* a part opened by its link, or a focused control, stays clear of the top bar and the report's bar with its row of parts */
 
 .hy-months { display: grid; grid-template-columns: repeat(12, minmax(0, 1fr)); gap: 2px; font-size: 12px; color: var(--ink2); text-align: center; line-height: 1.2; }
+
+/* "Change and see": a narrow column at the left of the one-page report on a wide screen (sticky under the bars, always open), a fold at the top on a phone */
+.rv-filter { margin-top: var(--space-16); border-radius: var(--r2); background: var(--fill); }
+.rv-filter > summary { list-style: none; cursor: pointer; min-height: 48px; display: flex; align-items: center; padding: 0 var(--space-16); font-weight: var(--fw-semi); }
+.rv-filter > summary::-webkit-details-marker { display: none; }
+.rv-filter > summary::after { content: ''; margin-left: auto; width: 8px; height: 8px; border: solid currentColor; border-width: 0 2px 2px 0; transform: rotate(45deg); transition: transform .2s; }
+.rv-filter[open] > summary::after { transform: rotate(225deg); }
+.rv-filter-body { display: grid; gap: var(--space-16); padding: 0 var(--space-16) var(--space-16); }
+.rv-ff { border: 0; margin: 0; padding: 0; min-width: 0; display: grid; gap: var(--space-8); }
+.rv-ff > legend { padding: 0; font-size: var(--fs-small); font-weight: var(--fw-semi); margin-bottom: var(--space-8); }
+.rv-ff-tiles { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; }
+.rv-ff-tiles .choice { min-height: 44px; padding: 8px 10px; font-size: var(--fs-small); text-align: center; background: var(--bg, #fff); }
+.rv-ff-tiles .choice small { font-size: var(--fs-caption); color: var(--ink2); }
+.rv-ff-actions { margin: 0; } .rv-ff-actions .btn { width: 100%; min-height: 44px; }
+.rv-filter .rv-slider + .rv-slider { margin-top: var(--space-12); } .rv-filter input[type=range] { width: 100%; }
+@media (min-width: 1000px) {
+  .rv-wrap.rv-has-filter { display: grid; grid-template-columns: 264px minmax(0, 1fr); column-gap: var(--space-32); align-items: start; }
+  .rv-has-filter > .rv-filter { position: sticky; top: calc(var(--navh, 56px) + var(--rbh, 96px) + 16px); max-height: calc(100vh - var(--navh, 56px) - var(--rbh, 96px) - 32px); overflow-y: auto; margin-top: var(--space-16); }
+  .rv-has-filter > .rv-filter > summary { pointer-events: none; cursor: default; padding-top: var(--space-8); } .rv-has-filter > .rv-filter > summary::after { display: none; }
+  .rv-has-filter > .rv-letter { grid-column: 2; }
+}

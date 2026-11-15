@@ -21,7 +21,7 @@ const showReport = async () => { await js(`import('/js/state.js').then(async st 
 for (const width of [1280, 390]) await group(`the one page at ${width}`, async () => {
   await fresh(width); await showReport();
   const q = sel => js(`document.querySelectorAll(${JSON.stringify(sel)}).length`);
-  check('no tab strip, no "Next" button, no priorities panel, no sliders', (await q('[role=tablist], [role=tab], .rv-nextrow, .rv-prio, input[type=range]')) === 0);
+  check('no tab strip, no "Next" button, no priorities panel, no sliders in the letter (they are in "Change and see")', (await q('[role=tablist], [role=tab], .rv-nextrow, .rv-prio, .rv-letter input[type=range]')) === 0);
   same('the questions are the headings, in order', await js(`[...document.querySelectorAll('#reportRoot .rv-block > h2')].map(h => h.textContent)`), ['What should I plant next?', 'Compare strategies', 'What could go wrong?', 'When do I do what?', 'More about your field']);
   check('no "Overview", "What if" or "Fine-tune" anywhere', await js(`!/Overview|What if the weather|Fine-tune/.test(document.querySelector('#reportRoot').textContent)`));
   const rows = await js(`[...document.querySelectorAll('.srow')].map(r => [r.querySelector('.srow-tag').textContent.trim(), r.open])`);

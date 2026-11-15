@@ -1178,13 +1178,18 @@ await group('layers', async () => {
   await open();
   await js(`window.__farm.setView3d((data, node) => { node.textContent = '3D'; const L = [{ id: 'picture', name: 'Satellite picture', on: true, state: 'ready', source: 'NASA HLS', date: '7 Nov' }, { id: 'slope', name: 'Slope', on: false, state: 'idle' }, { id: 'frost', name: 'Frost pockets', on: false, state: 'idle' }, { id: 'erosion', name: 'Erosion exposure', on: false, state: 'idle', needs: true }], cbs = [];
     window.__L = L; return { ok: true, update() {}, dispose() {}, layers: () => L.map(x => ({ ...x })), setLayer(id, on) { const l = L.find(x => x.id === id); l.on = on; l.state = on ? 'loading' : 'idle'; setTimeout(() => { l.state = id === 'frost' ? 'failed' : 'ready'; node.dispatchEvent(new CustomEvent('f3d-layer')); }, 300); }, onLayer: f => cbs.push(f) }; })`);
-  check('layers: on the Map there is no Layers button', await js(`document.querySelector('#fwLayersBtn').hidden`) === true);
+  check('layers: on the Map there is no Layers button', await js(`document.querySelector('#fwLayersWrap').hidden`) === true);
   await tap('#fwThreeBtn'); await until(`!document.querySelector('#fwLayersBtn').hidden`, 5000);
   same('layers: in 3D the button reads Layers and counts what is on', await text('#fwLayersBtn'), 'Layers · 1');
-  same('layers: the bar is This field, Map | 3D, Layers, More at one height', await js(`[...document.querySelectorAll('#fwBar > *')].filter(b => b.getClientRects().length).map(b => Math.round(b.getBoundingClientRect().height))`), [44, 44, 44, 44]);
+  same('layers: the bar is This field, Map | 3D, More: one row at one height, and Layers is not in it', await js(`[[...document.querySelectorAll('#fwBar > *')].filter(b => b.getClientRects().length).map(b => Math.round(b.getBoundingClientRect().height)), !!document.querySelector('#fwBar #fwLayersBtn')]`), [[44, 44, 44], false]);
+  { const r = await js(`(() => { const a = document.querySelector('#fwDetailsBtn'), m = document.querySelector('#fwMoreBtn'), ca = getComputedStyle(a), cm = getComputedStyle(m); return { pad: [ca.paddingLeft, ca.paddingRight, cm.paddingLeft], radius: [ca.borderRadius, cm.borderRadius], h: [a.offsetHeight, m.offsetHeight], gap: cm.columnGap }; })()`);
+    same('more: the same side padding and corner as This field, 44 px high, the chevron 6 px after the word', [r.pad[0] === r.pad[2], r.radius[0] === r.radius[1], r.h, r.gap], [true, true, [44, 44], '6px']); }
+  { const r = await js(`(() => { const b = document.querySelector('#fwLayersBtn').getBoundingClientRect(), p = document.querySelector('#fwStage').getBoundingClientRect(); return [Math.round(p.right - b.right) <= 16, Math.round(b.top - p.top) <= 16, !!document.querySelector('#fwLayersBtn svg.ic')]; })()`);
+    same('layers: the button is at the top right, a white button with the layers icon', r, [true, true, true]); }
   await tap('#fwLayersBtn'); await until(`!document.querySelector('#fwLayers').hidden`);
   check('layers: the panel is in the map\'s own Layers look and lists the picture as a switch and the others as one choice', await js(`!!document.querySelector('#fwLayers.mapx-panel .mapx-phead') && document.querySelectorAll('#fwLayers .mapx-lrow').length === 4 && document.querySelectorAll('#fwLayers input[type=radio]').length === 3 && document.querySelectorAll('#fwLayers input[type=checkbox]').length === 1`));
   check('layers: a layer that only says it needs something (erosion) is not listed', await js(`!document.querySelector('#fwLayers [data-layer=erosion]')`));
+  same('layers: a row that is on is tinted and its name is blue; a row that is off is not', await js(`(() => { const on = document.querySelector('#fwLayers [data-layer=picture]').closest('.mapx-lrow'), off = document.querySelector('#fwLayers [data-layer=slope]').closest('.mapx-lrow'); return [on.classList.contains('on'), getComputedStyle(on).backgroundColor !== getComputedStyle(off).backgroundColor, getComputedStyle(on.querySelector('b')).color !== getComputedStyle(off.querySelector('b')).color]; })()`), [true, true, true]);
   same('layers: the satellite picture is on at first', await js(`document.querySelector('#fwLayers [data-layer=picture]').checked`), true);
   check('layers: each layer has one line of what the farmer sees', await js(`[...document.querySelectorAll('#fwLayers .mapx-lrow .cap')].filter(c => !c.classList.contains('fw-lstate')).length === 3`));
   check('layers: the source and date are under Show more', /Source: NASA HLS\. Date: 7 Nov\./.test(await js(`document.querySelector('#fwLayers .fw-lmore')?.textContent || ''`)));
@@ -1199,7 +1204,7 @@ await group('layers', async () => {
   same('layers: in 3D More lists no map style (it changes nothing there), only the farm\'s rows', await js(`[...document.querySelectorAll('#fwMoreMenu [role^=menuitem]')].filter(b => b.getClientRects().length).map(b => b.textContent.trim())`), ['All fields', 'Add a field', 'Farm tools']);
   await press('Escape'); await sleep(150);
   await tap('#fwMapBtn'); await sleep(200);
-  check('layers: back on the Map the button is gone', await js(`document.querySelector('#fwLayersBtn').hidden`) === true);
+  check('layers: back on the Map the button is gone', await js(`document.querySelector('#fwLayersWrap').hidden`) === true);
 });
 
 await finish();

@@ -27,6 +27,7 @@ import { climateFacts, satelliteFacts, priceFacts } from './letter-facts.js';
 import { buildTrends } from './trends-data.js';
 import { trendsPartHTML } from './trends-view.js';
 import { loadGreenness } from './greenness.js';
+import { rainText, tempText, filterHTML, apply as applyFilter, pick as pickAnswers } from './filter-view.js';
 import { answerHTML, compareBlockHTML, wrongHTML, blockHTML, foldHTML, shareBlockHTML, H } from './letter-view.js';
 import { satellitesHTML, rainCardHTML, moistureCardHTML } from './satellites-view.js';
 import { graceCardHTML, hlsCardHTML, ecoCardHTML } from './satellites2-view.js';
@@ -168,6 +169,13 @@ function letterBody() {
   return `<div class="rv-letter">${cur.late?.size ? `<div class="rv-fresh card pad" id="rvFresh" role="status">${freshHTML()}</div>` : ''}${note}${answerHTML(r, ctx)}${recordHTML()}${compareBlockHTML(r, ctx)}${wrongHTML(r, { state: cur.state, shown, extra, units: u })}${when}${more}${shareBlockHTML(cur.rows, { ready })}</div>`;
 }
 // A late answer redraws the page without closing what the farmer opened or moving the keyboard: the open folds, the focused element and the place on the page come back.
+// "Change and see": the answers that drive the result, changed on the report's own copy (cur.state is a copy of the saved answers); the options are worked out again at once, with no new lookup.
+let ffTimer = 0;
+function filterRun() { const mine = run; clearTimeout(ffTimer); ffTimer = setTimeout(async () => { await work(); if (mine !== run || !cur) return; figuresNow(); redrawKeep(); }, 150); }
+function filterChange(name, value) { if (!cur?.result?.ok || cur.loading) return; const was = pickAnswers(cur.state); if (!applyFilter(cur.state, name, value)) return; cur.base ??= was; filterRun(); }
+function filterReset() {
+  if (!cur?.base) return; const b = cur.base; cur.state.farm = { ...cur.state.farm, irrigation: b.farm.irrigation, tillage: b.farm.tillage }; cur.state.soil = b.soil; cur.state.prio = b.prio; cur.state.prioPreset = b.prioPreset; cur.state.sc = b.sc; cur.base = null; filterRun();
+}
 function redrawKeep() {
   if (!cur || cur.loading || cur.failed || !root()) return;
   const r = root(), open = [...r.querySelectorAll('details[open][id]')].map(d => d.id), focus = document.activeElement?.id || '', y = scrollY;
@@ -246,7 +254,8 @@ function paint({ focus = false, keepScroll = true } = {}) {
       live.setAttribute('aria-busy', n.getAttribute('aria-busy')); return; }
     r.innerHTML = `<div class="rv-wrap">${loadingHTML(cur.rows, ctx)}</div>`; if (focus) $('#ldTitle', r)?.setAttribute('tabindex', '-1'); return; }
   if (cur.failed) { r.innerHTML = `<div class="rv-wrap"><section class="rv-sec"><h1 id="reportTitle" tabindex="-1" aria-describedby="failWhy">${cur.noPlace ? 'Choose your field first.' : 'We couldn’t get weather data.'}</h1><p id="failWhy">${esc(cur.failed)}</p><p class="btnrow">${cur.noPlace ? '' : `<button type="button" class="btn primary" data-act="retry">${WORDS.again}</button>`}<button type="button" class="btn${cur.noPlace ? ' primary' : ''}" data-act="change">${WORDS.back}</button></p></section></div>`; $('#reportTitle', r).focus(); return; }
-  r.innerHTML = `${barHTML()}<div class="rv-wrap">${letterBody()}</div>`;
+  const ff = cur.result?.ok ? filterHTML(cur.state, cur.base ?? pickAnswers(cur.state), { open: matchMedia('(min-width: 1000px)').matches }) : '';
+  r.innerHTML = `${barHTML()}<div class="rv-wrap${ff ? ' rv-has-filter' : ''}">${ff}${letterBody()}</div>`;
   afterPanel(r);
   markPart();
   paintFresh();   // answers that landed while the strategies were being compared are offered as soon as the report is on screen
@@ -402,6 +411,7 @@ async function openShare(trigger) {
 function bind() {
   const r = root();
   r.addEventListener('click', event => {
+    if (event.target.closest('[data-ff-reset]')) return filterReset();
     const jump = event.target.closest('[data-part]'); if (jump) { event.preventDefault(); const el = document.getElementById(jump.dataset.part); partHold.id = jump.dataset.part; partHold.until = Date.now() + 1100; for (const a of $$('.rv-parts a')) { if (a === jump) a.setAttribute('aria-current', 'true'); else a.removeAttribute('aria-current'); } const goTo = smooth => { const bar = $('#reportBar'); if (!el || !bar) return; const y = el.getBoundingClientRect().top + scrollY - bar.getBoundingClientRect().bottom - 8; scrollTo({ top: Math.max(0, y), behavior: smooth ? 'smooth' : 'auto' }); }; goTo(!motionOff()); setTimeout(() => { const bar = $('#reportBar'); if (el && bar && Math.abs(el.getBoundingClientRect().top - bar.getBoundingClientRect().bottom - 8) > 24) goTo(false); markPart(); }, 900); const h = el?.querySelector('h2'); if (h) { h.tabIndex = -1; h.focus({ preventScroll: true }); } return; }
     const zoom = event.target.closest('[data-zoom]'); if (zoom) return openZoom(zoom);
     const chip = event.target.closest('[data-hy-year]'); if (chip) { cur.hyYear = +chip.dataset.hyYear; redrawKeep(); document.getElementById(`hy-${cur.hyYear}`)?.focus({ preventScroll: true }); return; }
@@ -422,7 +432,8 @@ function bind() {
     if (act === 'keepwaiting') { cur.keep = Date.now(); return; }
     if (act === 'refresh') return void refreshReport();
   });
-  r.addEventListener('change', event => { const pick = event.target.closest?.('input[name=rvpick]'); if (pick) { cur.pick = pick.value; redrawKeep(); document.getElementById(`pick-${pick.value}`)?.focus({ preventScroll: true }); return; } const sel = event.target.closest?.('[data-hy-select]'); if (sel && sel.value) { cur.hyYear = +sel.value; redrawKeep(); } });
+  r.addEventListener('input', event => { const t = event.target; if (t?.type !== 'range' || !t.dataset?.ff) return; const v = +t.value, e = document.getElementById(`ff-${t.dataset.ff}-text`); if (e) e.textContent = t.dataset.ff === 'rain' ? rainText(v) : tempText(v); });   // the words follow the thumb; the report follows when it is let go
+  r.addEventListener('change', event => { const f = event.target.closest?.('[data-ff]'); if (f) return filterChange(f.dataset.ff, f.value); const pick = event.target.closest?.('input[name=rvpick]'); if (pick) { cur.pick = pick.value; redrawKeep(); document.getElementById(`pick-${pick.value}`)?.focus({ preventScroll: true }); return; } const sel = event.target.closest?.('[data-hy-select]'); if (sel && sel.value) { cur.hyYear = +sel.value; redrawKeep(); } });
   addEventListener('scroll', () => { if (!partsTick) partsTick = requestAnimationFrame(() => { partsTick = 0; markPart(); }); }, { passive: true });
   r.addEventListener('toggle', event => { const d = event.target; if (!d.open) return; if (d.id === 'lfSat') loadFor('satellites'); if (d.id === 'lfTrends') loadFor('trends'); if (d.id === 'lfAssumed') loadFor('field'); }, true);   // a fold that asks the server asks when it is first opened
 }
