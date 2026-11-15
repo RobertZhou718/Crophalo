@@ -116,7 +116,7 @@ async function nameThePlace(mine) {
   const bar = $('#reportBar'); if (bar && !bar.contains(document.activeElement)) bar.outerHTML = barHTML();
 }
 // The page's parts as jump links, fixed under the top bar while the page scrolls: the current part is marked and a heading is never hidden under the bar.
-const PARTS = [['blkAnswer', 'Plant next'], ['blkCompare', 'Strategies'], ['blkWrong', 'What could go wrong'], ['blkWhen', 'When'], ['blkMore', 'Your field'], ['blkShare', 'Share']];
+const PARTS = [['blkAnswer', 'Plant next'], ['blkCompare', 'Strategies'], ['blkWrong', 'What could go wrong'], ['blkWhen', 'When'], ['blkMore', 'Your field'], ['blkShare', 'Print']];
 // The row of parts also carries the page's two actions at its right end, so Add to My farm and Print are always in reach while the page scrolls.
 const partsHTML = () => { const added = !!(cur?.farm && cur.farmFor === (cur.chosen ?? ''));
   return `<nav class="rv-parts" aria-label="Parts of this page"><div class="rv-parts-in"><ul>${PARTS.map(([id, label], i) => `<li><a href="#${id}" data-part="${id}"${i === 0 ? ' aria-current="true"' : ''}>${esc(label)}</a></li>`).join('')}</ul><span class="rv-parts-acts"><button type="button" class="btn" data-act="share" aria-haspopup="dialog"><svg class="ic" aria-hidden="true"><use href="#i-share"/></svg><span>Print or save</span></button><button type="button" class="btn primary" data-act="farm">${added ? '<svg class="ic" aria-hidden="true"><use href="#i-tick"/></svg> Added' : cur?.inFarm ? 'Open in My farm' : 'Add to My farm'}</button></span></div></nav>`; };
@@ -387,10 +387,10 @@ async function addFarm() {
   else { cur.farmNote = out.reason; if (note) note.textContent = out.reason; }
 }
 
-// ---- Share or print: the sheet of texts, the card, the season record and the files (js/sharemenu.js), built from this report
+// ---- Print or save: the sheet with Print and Save as PDF (js/sharemenu.js), built from this report
 async function openShare(trigger) {
   if (!cur?.result?.ok) return;
-  for (const sheet of ['fieldcard', 'statement', 'share']) ensureStyle(`css/${sheet}.css`);
+  ensureStyle('css/share.css');
   const [menu, model, notice, units] = await Promise.all([import('./sharemenu.js'), import('./sharemodel.js'), import('./notice.js'), import('./units.js')]);
   const s = cur.state, notes = notice.readNotes().map(n => ({ date: n.date, text: n.text, photo: !!n.photo, kind: n.kind }));
   const report = model.buildShareReport({ state: s, result: cur.result, weather: cur.weather, notes, madeOn: today() });

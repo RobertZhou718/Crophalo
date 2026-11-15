@@ -115,6 +115,6 @@ export const foldHTML = (id, title, inner) => `<details class="fold-card" id="${
 // ---- block 6: Share or print, where the numbers come from, My notes and reminders
 export function shareBlockHTML(rows, ctx = {}) {
   const sources = (rows ?? []).filter(r => r.state !== 'skip').map(r => `<li><b>${esc(String(r.label).split(' · ')[0])}</b> · ${esc(String(r.label).split(' · ').slice(1).join(' · '))}: ${r.state === 'ok' ? 'answered' : r.state === 'fail' ? esc(plainReason(r.reason, 'did not answer this time')) : 'waiting'}</li>`).join('');
-  return `<section class="rv-block" id="blkShare" aria-label="Share, sources and notes"><p><button type="button" class="btn" data-act="share" id="rbShare"${ctx.ready === false ? ' disabled' : ''} aria-haspopup="dialog"><svg class="ic" aria-hidden="true"><use href="#i-share"/></svg><span>Share or print</span></button></p>
+  return `<section class="rv-block" id="blkShare" aria-label="Print, sources and notes"><p><button type="button" class="btn" data-act="share" id="rbShare"${ctx.ready === false ? ' disabled' : ''} aria-haspopup="dialog"><svg class="ic" aria-hidden="true"><use href="#i-share"/></svg><span>Print or save</span></button></p>
     ${foldHTML('lfSources', 'Where the numbers come from', `<ul class="rv-sources-list">${sources}</ul>`)}${foldHTML('lfNotes', 'My notes and reminders', '<div id="rmRoot"></div><div id="ntRoot"></div>')}</section>`;
 }

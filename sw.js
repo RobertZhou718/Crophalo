@@ -11,7 +11,7 @@ const RACE_MS = 4000, STALL_MS = 10000, AT_ONCE = 4;
 const SEEDS = ['index.html', 'manifest.json', 'data/regions.json'];
 // Files a screen asks by a built name (css/${sheet}.css, macro-${name}.js), which reading the modules cannot find. A big animation that lands adds its module here too.
 // One of them that this folder does not have (404) is left out; any other failure still drops the whole copy.
-const BY_NAME = ['css/market.css', 'css/fx.css', 'css/fx-halo.css', 'css/history.css', 'css/ahead.css', 'css/explain.css', 'css/notes.css', 'css/share.css', 'css/macro-report.css', 'css/trends.css',
+const BY_NAME = ['css/market.css', 'css/fx.css', 'css/fx-halo.css', 'css/history.css', 'css/ahead.css', 'css/explain.css', 'css/notes.css', 'css/share.css', 'css/print.css', 'css/macro-report.css', 'css/trends.css',
   'js/macro-turn.js', 'js/macro-setup.js', 'js/macro-descent.js', 'js/macro-light.js', 'js/macro-skeleton.js', 'js/macro-sun.js', 'css/macro-3d.css', 'css/video.css'];
 
 const here = new URL('./', self.location.href);

@@ -31,7 +31,7 @@ export function strategyOf(plan, result, role, labels) {
 export function buildShareReport({ state, result, weather = null, notes = [], madeOn = '', baseNote = '' } = {}) {
   const loc = state?.loc ?? {}, garden = !!state?.rotation?.garden, ha = fin(state?.area?.ha) ? state.area.ha : null;
   const base = { name: state?.name || loc.label || 'My field', place: { label: loc.label ?? '', lat: loc.lat, lon: loc.lon, ha }, area: state?.area?.pts ? { pts: state.area.pts } : null, madeOn, garden, warnings: warningsFrom(weather?.days), notes: Array.isArray(notes) ? notes : [],
-    soilTestLines: describe(state?.soilTest), backupNote: baseNote || weather?.note || '', sources: [], suggestion: null, strategies: [], options: [], nowYears: [], nowScore: null, sowLine: '', frostNormal: '', checkFirst: [], supportLine: '' };
+    soilTestLines: describe(state?.soilTest), backupNote: baseNote || weather?.note || '', weatherSource: (baseNote || weather?.note) ? 'Open-Meteo (the back-up record: NASA POWER did not answer)' : 'NASA POWER', sources: [], suggestion: null, strategies: [], options: [], nowYears: [], nowScore: null, sowLine: '', frostNormal: '', checkFirst: [], supportLine: '' };
   if (!result?.recommended || result.ok === false) return base;
   const labels = optionLabels(result), st = strategies(result), keep = isKeepAnswer(result), rec = keep ? st.first[1] ?? null : result.recommended;
   const strategiesList = st.first.map(p => strategyOf(p, result, st.roles.get(p), labels));
@@ -57,5 +57,5 @@ export function statementSeries(series) {
 export function csvReport(shared, result) {
   if (!shared || shared.garden || !result?.recommended) return shared?.garden ? { name: shared.name, garden: true } : null;
   const st = strategies(result), labels = optionLabels(result);
-  return { name: shared.name, garden: false, weatherSource: 'NASA POWER', options: [...st.first, ...st.more].map(p => { const b = bareInfo(p); return { name: labels.get(p) ?? optionLabel(p, result), type: p === result.current || p.id === result.current?.id ? 'What you grow now' : st.roles.get(p) ? ROLE_WORDS[st.roles.get(p)] : 'Option', score: hasScore(p) ? Math.round(p.score) : '', scores: p.flag === 'fails' ? null : p.scores ?? null, pestBreak: fin(p.pest) ? p.pest : '', bareMonths: b ? b.n : '', waterNeedMm: '', erosionExposure: p.erosionLevel ?? '' }; }) };
+  return { name: shared.name, garden: false, weatherSource: shared.weatherSource || 'NASA POWER', options: [...st.first, ...st.more].map(p => { const b = bareInfo(p); return { name: labels.get(p) ?? optionLabel(p, result), type: p === result.current || p.id === result.current?.id ? 'What you grow now' : st.roles.get(p) ? ROLE_WORDS[st.roles.get(p)] : 'Option', score: hasScore(p) ? Math.round(p.score) : '', scores: p.flag === 'fails' ? null : p.scores ?? null, pestBreak: fin(p.pest) ? p.pest : '', bareMonths: b ? b.n : '', waterNeedMm: '', erosionExposure: p.erosionLevel ?? '' }; }) };
 }

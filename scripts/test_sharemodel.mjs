@@ -1,7 +1,7 @@
 // Crophalo's share-model and share-sheet suite: the report as plain data names three strategies in every output (the long message, the card, the adviser page, the spreadsheet, the file), warnings come from the forecast, notes and the soil test travel only when handed in and ticked,
 // the sheet's markup, the season record's offer, and a garden. RULE: never loosen a check to make it pass. No network. Run: node scripts/test_sharemodel.mjs
 import { buildShareReport, statementSeries, csvReport, warningsFrom, yearsOf } from '../js/sharemodel.js';
-import { shareSheetHTML, adviserSheetHTML, recordOffer, recordWindow, WORDS } from '../js/sharemenu.js';
+import { shareSheetHTML, WORDS } from '../js/sharemenu.js';
 import { longMessage, shortText } from '../js/sharetext.js';
 import { fieldCardHTML } from '../js/fieldcard.js';
 import { discussModel, discussText } from '../js/discuss.js';
@@ -52,28 +52,18 @@ check('no answer yet: a plain report with no strategies and no made-up figure', 
 check('the keep answer says "Keep ..." and still lists three strategies when there are three', (() => { const K = buildShareReport({ state: STATE, result: { ...RESULT, recommended: now, others: [wheat, barley] }, madeOn: '2026-11-15' }); return /^Keep Corn, then soybeans/.test(K.suggestion.headline) && K.strategies.map(s => s.role).join() === 'now,worth,another'; })());
 
 // the sheet
-const html = shareSheetHTML({ strategiesCount: 3, hasNotes: true, hasSoil: true, garden: false, record: { ok: false, why: 'The weather record of this field is not read yet, so no season is ranked.' }, us: false, ticks: {} });
-check('the sheet says three strategies, offers every output and starts with every tick off', /three strategies/.test(html) && ['copy-short', 'copy-long', 'print-card', 'csv', 'json', 'adviser'].every(a => html.includes(`data-share="${a}"`)) && !/ checked/.test(html) && /id="tkNotes"/.test(html) && /id="tkSoil"/.test(html));
-check('the season record says why when it cannot be offered, and has no print button then', /not read yet, so no season is ranked/.test(html) && !/print-record/.test(html));
-check('the drought tick shows only for a US field with its sentence about the position', !/tkDrought/.test(html) && /tkDrought/.test(shareSheetHTML({ strategiesCount: 3, record: { ok: true }, us: true, ticks: {} })) && /asks the US FCC for your county/.test(shareSheetHTML({ strategiesCount: 3, record: { ok: true }, us: true, ticks: {} })));
-check('a garden\'s sheet does not claim strategies', !/three strategies/.test(shareSheetHTML({ strategiesCount: 3, garden: true, record: null, ticks: {} })));
-const adv = adviserSheetHTML({ ...R, farmerPick: null }, { change: 'suggestion', showWhere: false, notes: false, soilTest: false, edits: {} });
-check('the adviser view has the change to discuss, the four boxes and says what is left out', /id="dsChange"/.test(adv) && (adv.match(/data-ds=/g) ?? []).length === 4 && /Left out: where the field is, your notes and your soil test\./.test(adv) && /Crophalo sends nothing/.test(adv));
-check('every text box in the sheet has a name', (html.match(/<textarea[^>]*aria-labelledby/g) ?? []).length === 2 && (adv.match(/<label class="field"><span>/g) ?? []).length >= 5);
+const html = shareSheetHTML();
+check('the sheet is titled Print or save, offers exactly two actions, Print and Save as PDF, and the one line about the print window', (html.match(/data-share="(?!close)/g) ?? []).length === 2 && html.includes('data-share="print"') && html.includes('data-share="pdf"') && />Print</.test(html) && />Save as PDF</.test(html) && /In the print window choose Save as PDF\./.test(html));
+check('none of the older outputs is on the sheet (texts, copy boxes, the field card, the season record, the files, the adviser)', !/copy-short|copy-long|print-card|print-record|data-share="csv"|data-share="json"|data-share="adviser"|<textarea|tkPos|tkDrought/.test(html));
 // the season record
 const days = n => Array.from({ length: n }, (_, i) => new Date(Date.UTC(2001, 0, 1) + i * 864e5).toISOString().slice(0, 10));
-check('no weather record: no season is ranked, and it says why; no sown season yet says so', !recordOffer({ series: null, result: RESULT, today: '2026-11-15' }).ok && /no season of the plan|nothing to rank/i.test(recordOffer({ series: { start: '2001-01-01', rain: [] }, result: { current: { seasons: [] } }, today: '2026-11-15' }).why));
-same('the season to rank is the one sown most recently on or before today', recordWindow(RESULT, '2026-11-15').crop, 'corn');
 import fs from 'node:fs';
 import { buildSeries } from '../js/data.js';
 import { buildRecord, recordHTML } from '../js/statement.js';
 {
   const POW = buildSeries(JSON.parse(fs.readFileSync(new URL('./fixtures/power_oxford.json', import.meta.url), 'utf8')), { lat: 43.13, lon: -80.75 });
   const SS = statementSeries(POW); check('the weather record is turned into the season record\'s shape: a start, aligned arrays, a missing day is null', SS && SS.start === '2001-01-01' && SS.rain.length === POW.days.length && SS.rain.every(v => v === null || v > -900), brief(Object.keys(SS ?? {})));
-  const off = recordOffer({ series: SS, result: RESULT, today: '2026-11-14' });
-  check('with the real weather record of the demo place the season record is offered, for the crop sown this season', off.ok === true && off.win.start === '2026-05-01', brief(off));
-  const rec = buildRecord({ name: 'North field', place: 'Oxford County', crop: 'Corn', series: SS, win: off.win, units: { rain: 'mm', temp: 'C' }, madeOn: '2026-11-14', sources: [], notes: [] }), html = recordHTML(rec);
-  const plain = html.replace(/Public weather data[^<]*not an official record\./g, '').replace(/Ranks only: this record says nothing about yields or money\./g, '');
-  check('the record is ranks only and never a loss, a yield or a money word', rec.ok && /Ranks only/.test(html) && !/\b(loss|yield|income|profit|insur)\w*/i.test(plain), plain.slice(0, 200));
 }
+{ const mk = note => buildShareReport({ state: STATE, result: RESULT, madeOn: '2026-11-15', baseNote: note });
+  check('the weather source is carried into the table of strategies: NASA POWER normally, the back-up record named when it was used', csvReport(mk(''), RESULT).weatherSource === 'NASA POWER' && /Open-Meteo/.test(csvReport(mk('The weather is from the back-up record.'), RESULT).weatherSource), [csvReport(mk(''), RESULT).weatherSource, csvReport(mk('x'), RESULT).weatherSource]); }
 console.log(`sharemodel: ${passed} passed, ${failed} failed`); process.exit(failed ? 1 : 0);
