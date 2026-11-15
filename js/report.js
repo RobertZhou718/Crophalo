@@ -123,11 +123,13 @@ const partsHTML = () => { const added = !!(cur?.farm && cur.farmFor === (cur.cho
 function markPart() {
   const bar = $('#reportBar'); if (!bar || !cur || cur.loading) return;
   document.documentElement.style.setProperty('--rbh', `${bar.offsetHeight}px`);
-  const edge = bar.getBoundingClientRect().bottom + 12; let at = PARTS[0][0];
-  for (const [id] of PARTS) { const el = document.getElementById(id); if (el && el.getBoundingClientRect().top <= edge) at = id; }
+  const edge = bar.getBoundingClientRect().bottom + 96; let at = PARTS[0][0];   // a part is the current one as soon as its heading is in the top of the page under the bar
+  const held = partHold.id && Date.now() < partHold.until;
+  if (held) at = partHold.id; else for (const [id] of PARTS) { const el = document.getElementById(id); if (el && el.getBoundingClientRect().top <= edge) at = id; }
   for (const a of $$('.rv-parts a')) { if (a.dataset.part === at) a.setAttribute('aria-current', 'true'); else a.removeAttribute('aria-current'); }
 }
 let partsTick = 0;
+const partHold = { id: '', until: 0 };   // the part just pressed stays marked while the page travels to it
 function barHTML() {
   const s = cur.state, line = [s.name && s.loc.label ? s.loc.label : '', coordText(s.loc.lat, s.loc.lon), `Made ${longDate(today())}`].filter(Boolean).join(' · ');
   return `<header class="reportbar" id="reportBar"><div class="rb-in">
@@ -372,7 +374,9 @@ function openZoom(button) {
 async function addFarm() {
   if (!cur?.result?.ok) return;
   const s = cur.state, r = cur.result, area = s.area ? { ...s.area, estimated: false } : estimatedArea(s.loc);
-  const payload = { place: spotOf(s, cur.demo && s.name ? { fieldName: s.name } : {}), area: area.ha, outline: s.area ? s.area.pts : null, areaEstimated: !s.area, ...farmPlans(r, cur.chosen), date: today() };
+  const plans = farmPlans(r, cur.chosen);
+  if (!cur.chosen && r.recommended?.id === r.current?.id && cur.pick !== 'alt') plans.proposed = { ...r.current, kind: 'proposed', name: planName(r.current) };   // a keep answer carries what the farmer grows now: the plan the card shows, never another one
+  const payload = { place: spotOf(s, cur.demo && s.name ? { fieldName: s.name } : {}), area: area.ha, outline: s.area ? s.area.pts : null, areaEstimated: !s.area, ...plans, date: today() };
   const note = $('#farmNote'), btn = $('#rbFarm');
   btn.disabled = true;
   const out = await addToFarm(payload, seam.farm);
@@ -398,7 +402,7 @@ async function openShare(trigger) {
 function bind() {
   const r = root();
   r.addEventListener('click', event => {
-    const jump = event.target.closest('[data-part]'); if (jump) { event.preventDefault(); const el = document.getElementById(jump.dataset.part); el?.scrollIntoView({ block: 'start', behavior: motionOff() ? 'auto' : 'smooth' }); const h = el?.querySelector('h2'); if (h) { h.tabIndex = -1; h.focus({ preventScroll: true }); } return; }
+    const jump = event.target.closest('[data-part]'); if (jump) { event.preventDefault(); const el = document.getElementById(jump.dataset.part); partHold.id = jump.dataset.part; partHold.until = Date.now() + 1100; for (const a of $$('.rv-parts a')) { if (a === jump) a.setAttribute('aria-current', 'true'); else a.removeAttribute('aria-current'); } const goTo = smooth => { const bar = $('#reportBar'); if (!el || !bar) return; const y = el.getBoundingClientRect().top + scrollY - bar.getBoundingClientRect().bottom - 8; scrollTo({ top: Math.max(0, y), behavior: smooth ? 'smooth' : 'auto' }); }; goTo(!motionOff()); setTimeout(() => { const bar = $('#reportBar'); if (el && bar && Math.abs(el.getBoundingClientRect().top - bar.getBoundingClientRect().bottom - 8) > 24) goTo(false); markPart(); }, 900); const h = el?.querySelector('h2'); if (h) { h.tabIndex = -1; h.focus({ preventScroll: true }); } return; }
     const zoom = event.target.closest('[data-zoom]'); if (zoom) return openZoom(zoom);
     const chip = event.target.closest('[data-hy-year]'); if (chip) { cur.hyYear = +chip.dataset.hyYear; redrawKeep(); document.getElementById(`hy-${cur.hyYear}`)?.focus({ preventScroll: true }); return; }
     const t = event.target.closest('[data-act], [data-plan]'); if (!t) return;
