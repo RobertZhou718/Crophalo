@@ -232,3 +232,8 @@
 .adm-table tr.adm-group th { padding: var(--space-16) 14px 6px; background: var(--card2); font-size: var(--fs-small); font-weight: var(--fw-bold); text-transform: uppercase; letter-spacing: .05em; color: var(--ink2); }
 @media (max-width: 760px) { .adm-table tr.adm-group { background: none; box-shadow: none; padding: var(--space-8) 0 0; } .adm-table tr.adm-group th { display: block; padding: 0; background: none; } }
 .adm-table td[data-label=Success] { white-space: nowrap; }
+/* The owner's order of 15 November: page tabs are never thin, and the chosen one is plain to see: 44 px high, the chosen part filled blue with white bold words. */
+.pg-tabs { padding: 3px; gap: 3px; border-radius: 12px; }
+.pg-tabs .tab { min-height: 44px; padding: 4px var(--space-20); border-radius: 9px; font-size: var(--fs-body); }
+.pg-tabs .tab[aria-selected=true] { background: var(--accent); color: var(--accent-ink); font-weight: var(--fw-semi); box-shadow: none; }
+.pg-tabs .tab[aria-selected=true] .count { background: rgba(255,255,255,.22); color: var(--accent-ink); }
