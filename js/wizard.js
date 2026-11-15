@@ -50,6 +50,23 @@ const radio = (name, value, checked, inner, cls = '') => `<label class="choice $
 const tile = (name, item, checked, pic = '') => radio(name, item.value, checked, `${pic}<b>${esc(item.title)}</b>${item.sub ? `<small>${esc(item.sub)}</small>` : ''}`, 'tile');
 const fold = (id, title, body) => `<details class="fold-card" id="${id}"><summary><span class="t">${title}</span></summary><div class="fold-b">${body}</div></details>`;
 
+// As soon as a place is chosen (a demo, a search result, typed coordinates, a pin, a drawn outline) the lookups the report starts with are asked, with the country kept so the crop map is warmed too; the first answer never waits for the slow ones.
+// A quiet line under the area says so: a skeleton while the weather is read, "Weather read." when it is in.
+let placeRead = { key: '', words: '' };
+function paintPlaceRead() { const el = $('#placeRead'); if (!el) return; el.innerHTML = placeRead.words === 'reading' ? '<span class="sk" style="width:60%;height:12px;display:block"></span><span class="sr">Reading this place’s weather…</span>' : esc(placeRead.words); el.hidden = !placeRead.words; }
+function announcePlace() {
+  const loc = state.loc; if (!loc) { placeRead = { key: '', words: '' }; return; }
+  const key = `${loc.lat},${loc.lon}`; placeRead = { key, words: 'reading' }; paintPlaceRead();
+  clearTimeout(announcePlace.t);
+  announcePlace.t = setTimeout(async () => {
+    const ring = Array.isArray(state.area?.pts) && state.area.pts.length >= 3 ? state.area.pts : Array.isArray(spot?.outline) ? spot.outline.map(([lo, la]) => [la, lo]) : null;
+    document.dispatchEvent(new CustomEvent('crophalo:prefetch', { detail: { lat: loc.lat, lon: loc.lon, cc: loc.cc || '', label: loc.label || '', ...(ring ? { outline: ring } : {}) } }));   // the report's own handler asks the lookups (and keeps them for the report)
+    try {
+      const m = await import('./report-load.js'), got = await m.spotFor({ lat: loc.lat, lon: loc.lon, cc: loc.cc, label: loc.label }, { fetch: globalThis.fetch.bind(globalThis), caches: globalThis.caches });
+      if (placeRead.key === key) { placeRead.words = got?.ok ? 'Weather read.' : 'The weather could not be read yet. It will be asked again when you open the report.'; paintPlaceRead(); }
+    } catch { if (placeRead.key === key) { placeRead.words = 'The weather could not be read yet. It will be asked again when you open the report.'; paintPlaceRead(); } }
+  }, 650);
+}
 // The field's area under "Your field": the size in the farmer's unit, the corners, "Used in report" and the small outline, from the outline the map holds (the join gives the map's own source with setOutlineSource);
 // grey skeleton lines while the field's data load, never an empty area.
 let outlineSource = null, areaBlock = null, demoOutline = null;
@@ -102,7 +119,7 @@ function bar() {
 }
 function stepField() {
   const demo = spot?.demo ? `<div class="demo-ready"><p>${esc(WORDS.demoAnswers)}</p><button type="button" class="btn primary" id="demoSee">${esc(WORDS.last)}</button></div>` : '';
-  return `${demo}<div id="areaHost" class="area-host"></div><div id="mapSlot"></div>`;
+  return `${demo}<div id="areaHost" class="area-host"></div><p class="cap place-read" id="placeRead" role="status" aria-live="polite" hidden></p><div id="mapSlot"></div>`;
 }
 // ---- step 2: what do you grow? (the rules and the words are in js/cropstep.js)
 let cropMap = { key: '', status: 'idle', answer: null }, moreOpen = false, fieldYears = { key: '', status: 'idle', answer: null, used: false };
@@ -222,7 +239,7 @@ export function render({ focus = false } = {}) {
   else root.innerHTML = `${panel}<div class="mapcol" id="setupMap" role="group" aria-label="Map"></div>`;
   root.dataset.step = step.id;   // the stylesheet shrinks the map on a phone once the field is chosen
   enhancePickers($('#setupRoot'));
-  mountArea();
+  mountArea(); paintPlaceRead();
   initListen($('#wListen'), step.listen);
   if (focus) { $('#wHeading').tabIndex = -1; $('#wHeading').focus(); $('#setupPanel').scrollTop = 0; if (!motionOff()) scrollTo({ top: 0, behavior: 'smooth' }); else scrollTo(0, 0); }
   document.title = `Farm setup · Crophalo`;
@@ -318,6 +335,7 @@ export function setPlace(chosen) {
   render({ focus: false });
   setTimeout(() => { const v = $('#view-setup'); if (v && !v.hidden && (document.activeElement === document.body || !document.activeElement)) { const h = $('#wHeading'); if (h) { h.tabIndex = -1; h.focus({ preventScroll: true }); } } }, 160);   // when the setup opens the keyboard goes to its heading (the one h1)
   readCropMap();
+  announcePlace();
   document.dispatchEvent(new CustomEvent('crophalo:place', { detail: chosen ? { lat: fresh.loc.lat, lon: fresh.loc.lon, name: fresh.name, country: chosen.country ?? chosen.place ?? '', demo: !!chosen.demo, region: chosen.region ?? null, from: 'setup' } : null }));
 }
 // The field moved (a pin moved on the map, or coordinates typed in): only the place changes. Every answer and the step are kept, and only the panel's

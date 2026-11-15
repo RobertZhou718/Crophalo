@@ -434,7 +434,7 @@ function bindPrefetch() {
   if (prefetchBound) return; prefetchBound = true;
   document.addEventListener('crophalo:prefetch', event => {
     const d = event.detail ?? {}; clearTimeout(prefetchTimer);
-    prefetchTimer = setTimeout(() => prefetchPlace({ lat: d.lat, lon: d.lon }, { fetch: globalThis.fetch.bind(globalThis), caches: globalThis.caches, climateFrom: seam.climateFrom }, d.outline ?? null), PREFETCH_MS);
+    prefetchTimer = setTimeout(() => prefetchPlace({ lat: d.lat, lon: d.lon, ...(d.cc ? { cc: d.cc } : {}), ...(d.label ? { label: d.label } : {}) }, { fetch: globalThis.fetch.bind(globalThis), caches: globalThis.caches, climateFrom: seam.climateFrom }, d.outline ?? null), PREFETCH_MS);
   });
 }
 export function initReport(next) { seam = { ...seam, ...next }; setCropNamer(id => planName({ seasons: [{ crop: id }] })); startReminderWatch(); initSources(); bindPrefetch(); for (const sheet of ['calendar', 'satellites', 'field', 'notes', 'remind', 'market']) ensureStyle(`css/${sheet}.css`); if (root()) bind(); }

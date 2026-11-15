@@ -10,6 +10,8 @@ import { loadGrace, loadEcoUntilDone, loadHls, plainReason } from './satellites2
 import { fetchCropMap, nearbyFrom } from './near-load.js';
 import { loadSoilSurvey } from './soil-load.js';
 import { apiUrl } from './api.js';
+import { loadFieldYears, countryOk } from './fieldyears.js';
+import { areaHa } from './geo.js';
 
 export const ROWS = Object.freeze([
   { key: 'power', label: 'Weather, rain & soil wetness · NASA POWER' },
@@ -148,7 +150,9 @@ export function prefetchPlace(loc, env = {}, outline = null) {
   const near = loc?.cc || String(loc?.label ?? '').includes(',') ? [getNearby] : [];
   for (const ask of [getSmap, ...near, getImerg, getGrace, getEco, getHls]) ask(loc).catch(() => {});
   if (String(loc?.cc ?? '').toUpperCase() === 'US') getSoilSurvey(loc).catch(() => {});
-  if (outline) getDem(loc, outline).catch(() => {});
+  if (countryOk(loc?.cc)) loadFieldYears({ lat: place.lat, lon: place.lon, country: loc.cc, ring: Array.isArray(outline) ? outline : outline?.pts ?? null, ...(env.fetch ? { fetchFn: env.fetch } : {}) }).catch(() => {});   // the crop map by year (step 2's card) is warmed too; nothing waits for it
+  const dem = Array.isArray(outline) ? (outline.length >= 3 ? { pts: outline, ha: areaHa(outline) } : null) : outline;   // the map hands the corners, the report reads { pts, ha }
+  if (dem) getDem(loc, dem).catch(() => {});
   return true;
 }
 

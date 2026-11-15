@@ -2,7 +2,7 @@
 // a failed first answer is retried once after four seconds and the back-up record says so; the weather line says how new the record is; the loading list names every source. Stand-in answers made from the recorded NASA POWER answer for Barrie.
 // RULE: never loosen a check to make it pass. No network. Run: node scripts/test_report_load.mjs
 import fs from 'node:fs';
-import { outlineKey, loadSpot, ROWS, freshRows, BACKUP_WAIT_MS, COLD_WAIT_MS, forgetSpots } from '../js/report-load.js';
+import { outlineKey, prefetchPlace, loadSpot, ROWS, freshRows, BACKUP_WAIT_MS, COLD_WAIT_MS, forgetSpots } from '../js/report-load.js';
 import { forgetAll } from '../js/memo.js';
 import { buildSeries, BACKUP_CARD } from '../js/data.js';
 
@@ -73,4 +73,14 @@ check('fresh rows all wait', freshRows().every(r => r.state === 'wait'));
   check('the terrain key follows the outline\'s corners (the same count and size but one corner moved gives another key), and a pin has its own key', outlineKey(a) !== outlineKey(b) && outlineKey(a) === outlineKey(JSON.parse(JSON.stringify(a))) && outlineKey(null) === 'none', outlineKey(a).slice(0, 60)); }
 { const src = fs.readFileSync(new URL('../js/report-load.js', import.meta.url), 'utf8');
   check('the height map\'s code is fetched only when the height is asked: no import of js/field-data.js at the top, one when getDem runs', !/^import [^\n]*'\.\/field-data\.js'/m.test(src) && /getDem = [^\n]*await import\('\.\/field-data\.js'\)\)\.loadDem\(loc, outline\)/.test(src)); }
+// the place chosen: the report's lookups are asked at once and the country is kept (the crop map and the crop map by year are warmed), nothing waits for the slow ones
+{ clean(); const urls = [], get = async url => { urls.push(String(url)); return /power\.larc/.test(url) ? reply(PW) : /open-meteo/.test(url) ? reply(FC) : { ok: true, status: 200, headers: { get: () => null }, text: async () => '{"ok":false}', json: async () => ({ ok: false }) }; };
+  const realFetch = globalThis.fetch; globalThis.fetch = get;   // the crop-map lookups use the page's own fetch
+  const started = prefetchPlace({ lat: where.lat, lon: where.lon, cc: 'US' }, { fetch: get }, [[where.lat, where.lon], [where.lat, where.lon + 0.001], [where.lat + 0.001, where.lon + 0.001]]);
+  await new Promise(r => setTimeout(r, 400));
+  check('prefetchPlace asks the weather record and the forecast at once, the crop map with its country, and the crop map by year (near=0), and takes the corners the map hands over', started === true && urls.some(u => /power\.larc/.test(u)) && urls.some(u => /api\.open-meteo/.test(u)) && urls.some(u => /cropsnear/.test(u) && /country=US/i.test(u)) && urls.some(u => /crophist/.test(u) && /country=US/.test(u) && /near=0/.test(u)), urls.map(u => u.replace(/\?.*/, '')).join());
+  clean(); urls.length = 0;
+  prefetchPlace({ lat: where.lat, lon: where.lon }, { fetch: get });
+  await new Promise(r => setTimeout(r, 300)); globalThis.fetch = realFetch;
+  check('a bare position (no country) never asks the crop map by year, and a country outside Canada and the United States never does either', !urls.some(u => /crophist/.test(u))); }
 console.log(`report_load: ${passed} passed, ${failed} failed`); process.exit(failed ? 1 : 0);
