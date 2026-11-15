@@ -10,6 +10,8 @@ FROM node:22-bookworm-slim AS node
 FROM python:3.12-slim-bookworm
 # The server uses only Node's built-in parts, so Node is one file copied from the official image: no npm, no packages.
 COPY --from=node /usr/local/bin/node /usr/local/bin/node
+# rasterio's ready-built file needs the system's libexpat, which the slim image leaves out ("libexpat.so.1: cannot open shared object file").
+RUN apt-get update && apt-get install -y --no-install-recommends libexpat1 && rm -rf /var/lib/apt/lists/*
 
 # A user of its own, not root: everything the server writes (the kept answers, the login file) belongs to it and nobody else.
 RUN useradd --system --create-home --home-dir /home/crophalo --uid 10001 --shell /usr/sbin/nologin crophalo \
