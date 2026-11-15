@@ -45,11 +45,8 @@ design
 docs
 deploy
 
-# The reminder pushes need a server that never sleeps and a disk that lasts: this setup sleeps when nobody uses it and forgets its disk at every sleep (the push keys
-# and the browsers' subscriptions with it), so a reminder would never arrive. Without this file the server has no /api/push addresses (404) and the app says push
-# is not available; the calendar file and the in-app list still work. To offer push later: keep one copy always awake, give it lasting storage (Azure Files),
-# and remove this line.
-scripts/push.mjs
+# scripts/push.mjs stays in: the reminder pushes need one copy always awake (min and max replicas 1) and a lasting disk (the Azure Files share mounted at
+# /var/cache/crophalo), which the container app has. With min replicas 0 or no share the push keys and the browsers' subscriptions would be lost.
 
 # The checks and their recorded answers run on GitHub and on the owners' computers, not on the server.
 scripts/fixtures

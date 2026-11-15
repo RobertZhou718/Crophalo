@@ -27,8 +27,8 @@ COPY --chown=crophalo:crophalo . /app
 USER crophalo
 # HOST=0.0.0.0 makes the server public (the lookups are throttled, nothing of this computer is shown). No PORT here on purpose: scripts/start.sh takes PORT when a
 # host sets it, else CONTAINER_APP_PORT (the target port typed on the container app's Ingress page, which Container Apps hands every app), else 8080.
-# One proxy (the Container Apps ingress) stands in front and appends the visitor's address. The cache folder is the replica's own temporary disk (2 GiB at 0.5 vCPU):
-# it is empty again after every sleep, and the answers are simply fetched again.
+# One proxy (the Container Apps ingress) stands in front and appends the visitor's address. On Azure the cache folder is the Azure Files share crophalo-cache
+# (mount options uid=10001,dir_mode=0700,file_mode=0600), so the kept answers and the push keys and subscriptions survive a restart; without it, a temporary disk.
 ENV HOME=/home/crophalo \
     HOST=0.0.0.0 \
     FW_CACHE=/var/cache/crophalo \

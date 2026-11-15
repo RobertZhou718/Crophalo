@@ -77,7 +77,7 @@ jobs:
           test "$(curl -s -o /dev/null -w '%{http_code}' http://127.0.0.1:8080/api/ready)" = 200 || { echo "/api/ready is not 200"; exit 1; }
           test "$(docker exec api id -u)" = 10001 || { echo "the server does not run as its own user"; exit 1; }
           echo "a page of the website from this server: $(curl -s -o /dev/null -w '%{http_code}' http://127.0.0.1:8080/index.html) (404 when .dockerignore leaves the website out)"
-          echo "the push key from this server: $(curl -s -o /dev/null -w '%{http_code}' http://127.0.0.1:8080/api/push/key) (404 when .dockerignore leaves push out)"
+          test "$(curl -s -o /dev/null -w '%{http_code}' http://127.0.0.1:8080/api/push/key)" = 200 || { echo "/api/push/key is not 200: push is missing from the image"; exit 1; }
           docker exec api /app/.venv/bin/python -c "import numpy, h5py, netCDF4, rasterio, earthaccess, openpyxl; print('the six Python libraries load')"
           docker logs api
           docker rm -f api > /dev/null

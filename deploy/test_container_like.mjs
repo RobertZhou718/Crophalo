@@ -1,7 +1,7 @@
 // The data server the way Azure Container Apps will run it, on a computer without Docker: a copy of the repository with exactly what .dockerignore leaves out of
 // the image left out, started by scripts/start.sh with the image's settings and the ones Container Apps adds (its app name, its DNS suffix, the target port),
-// then asked what a browser on the website's own name would ask. Checks: start.sh takes the target port; health and ready answer; the pages and the push
-// addresses are not there; the website's own address may read the answers and ask before a POST, another website may not; the server answers on the names it
+// then asked what a browser on the website's own name would ask. Checks: start.sh takes the target port; health and ready answer; the pages are not there and the push
+// addresses are (min and max replicas 1 with the Azure Files share keep them); the website's own address may read the answers and ask before a POST, another website may not; the server answers on the names it
 // is given and refuses others; the security headers are on. Never the NASA login: an empty home and no EARTHDATA_ setting. Port 5932 only; stopped by its PID.
 // Use: node deploy/test_container_like.mjs <repository folder>       (the repository with the website-on-its-own-name changes in it)
 import fs from 'node:fs';
@@ -60,7 +60,8 @@ try {
   check('health answers, with the Python tools, and never says where its folders or a login are', health.status === 200 && h.ok === true && h.python === true && !('root' in h) && !('login' in h) && !health.body.includes(TMP), health.body);
   check('ready answers 200', (await ask('/api/ready')).status === 200);
   check('the pages are not handed out by the data server', (await ask('/index.html')).status === 404 && (await ask('/js/app.js')).status === 404);
-  check('no push addresses on a server that sleeps', (await ask('/api/push/key', { headers: { origin: SITE, host: API } })).status === 404);
+  const key = await ask('/api/push/key', { headers: { origin: SITE, host: API } });
+  check('the push key is handed out (push is in the image)', key.status === 200 && /"key"/.test(key.body), `${key.status}`);
   const mine = await ask('/api/sources', { headers: { origin: SITE, host: API } });
   check('the website\'s own pages may read the answers', mine.status === 200 && mine.headers['access-control-allow-origin'] === SITE, `${mine.status} ${mine.headers['access-control-allow-origin']}`);
   check('answers that depend on the page say so to caches (vary: origin)', /origin/.test(mine.headers.vary || ''), mine.headers.vary);
