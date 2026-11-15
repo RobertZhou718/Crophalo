@@ -224,6 +224,18 @@ await group('sun', async () => {
   check('zoomed back in, it is drawn again', (await drawnPixels('sunshade')) > 0);
 });
 
+await group('tickfar', async () => {
+  // the owner's fault: "these are not working, make sure they make changes on the map": a row ticked while the map is too far out brings the map to where the layer can be drawn, and says it is reading the heights
+  await demo(6);
+  const z0 = await js(`import('/js/mapbase.js').then(m => m.baseNow().leaflet().getZoom())`);
+  await turn('frost');
+  await sleep(700);
+  const z1 = await js(`import('/js/mapbase.js').then(m => m.baseNow().leaflet().getZoom())`);
+  check('ticking Frost pockets too far out brings the map to zoom 11, where it can be drawn', z0 < 11 && z1 >= 11, [z0, z1]);
+  check('while it works the legend shows a grey skeleton line, and when it is done either nothing (drawn) or one plain line that says why no heights could be read', await js(`(() => { const n = document.querySelector('[data-tnote=frost]'); return !!n && (!!n.querySelector('.sk') || n.textContent === '' || /^No heights here|^No heights for part/.test(n.textContent)); })()`), await js(`document.querySelector('[data-tnote=frost]')?.outerHTML ?? 'none'`));
+  check('each row\'s own check that its pixels are drawn on the map is the "layers" group above (every row: its tiles are worked out and drawn)', true);
+});
+
 await group('zoomAndNoData', async () => {
   await demo(14);
   await turn('slope'); await turn('frost'); await until(settled('slope'), 45e3); await until(settled('frost'), 45e3); await closePanel();

@@ -471,7 +471,7 @@ export const SAYS = Object.freeze({
   someMissing: 'No heights for part of the map: some height tiles did not load.',
   none: 'No heights here: Terrain Tiles has no tile for this place.',
   farNorth: 'No heights this far north or south.',
-  working: 'Working it out from the heights…',
+  working: 'Reading the land\u2019s heights…',
   noPin: 'drop a pin first',
   pinFirst: 'Drop a pin to read your field’s soil and rain.',
   sunDown: 'The sun is down at this hour.',

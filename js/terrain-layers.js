@@ -256,7 +256,9 @@ export function initTerrain(ui, env) {
     else if (busy) note = SAYS.working;
     if (!note && id === 'relief' && keep.strong) note = SAYS.stronger;
     if (!note && id === 'sunshade' && !entry.gate) { const s = sunNow(), relief = Math.max(0, ...ok.map(t => t.hi - t.lo)), reach = ok.length ? TILE * Math.min(...ok.map(t => Math.min(t.gx, t.gy))) : 0; note = reach ? lowSunWords(s.sun.apparent, reach, relief) : ''; }
-    setText(part(id, 'data-tnote'), note);
+    const noteEl = part(id, 'data-tnote');
+    if (note === SAYS.working) { if (noteEl && !noteEl.querySelector('.sk')) noteEl.innerHTML = `<span class="sr">${SAYS.working}</span><i class="sk" aria-hidden="true" style="width:70%"></i>`; }   // grey skeleton line while the heights are read
+    else { if (noteEl?.querySelector('.sk')) noteEl.textContent = ''; setText(noteEl, note); }
     const retry = card(id)?.querySelector('[data-tretry]'); if (retry) retry.hidden = !(failed || entry.inputs?.state === 'failed');
     if (id === 'sunshade') drawSun();
     if (play && !busy) play.frameDone?.();
@@ -442,6 +444,7 @@ export function initTerrain(ui, env) {
     if (id === 'sunshade') { clockFor(); drawSun(); }
     if (id === 'erosion') erosionInputs(entry); else attach(entry);
     probe(); readPin();
+    if (map().getZoom() < def.minZoom) { const p = env.pin?.(); map().setView(p && Number.isFinite(p.lat) ? [p.lat, p.lon] : map().getCenter(), def.minZoom, { animate: true }); }   // ticked too far out: the map comes to where the layer can be drawn, so the row visibly changes the map
     env.say?.(`${def.name} on the map, ${entry.gate && entry.gate !== 'inputs' ? entry.gate : 'worked out from the land heights'}`);
   }
   function turnOff(id) {
