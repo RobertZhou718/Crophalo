@@ -24,12 +24,12 @@ export const FIT_STEPS = Object.freeze([
 export function dataPageHTML(table = SOURCES) {
   const list = Object.entries(table).map(([key, n]) => ({ key, ...n })).sort((a, b) => Number(b.nasa) - Number(a.nasa) || a.name.localeCompare(b.name)), nasa = list.filter(n => n.nasa), other = list.filter(n => !n.nasa);
   const count = { nasa: nasa.length, other: other.length };
-  return `<p class="data-note" id="nasaLine">${esc(NASA_LINE)}</p>
+  return `<div class="pg-tabs" role="tablist" aria-label="Kinds of source">${DATA_TABS.map((t, i) => `<button type="button" role="tab" class="tab" id="srctab-${t.id}" aria-selected="${i === 0}" aria-controls="srcpanel-${t.id}" tabindex="${i === 0 ? 0 : -1}">${esc(t.label)}${count[t.id] != null ? ` <span class="count soft">${count[t.id]}</span>` : ''}</button>`).join('')}</div>
+    <p class="data-note" id="nasaLine">${esc(NASA_LINE)}</p>
     <p class="cap data-admin"><a class="link" href="#admin">API connections (service status)</a>: which data services answer right now, and how fast.</p>
     <details class="data-fold data-nasa" id="nasaUse"><summary>How Crophalo uses NASA data</summary>${NASA_USE.map(([n, what, does]) => `<p><b>${esc(n)}.</b> ${esc(what)}</p><p class="cap">${esc(does)}</p>`).join('')}<p class="cap">${esc(NASA_CREDIT)}</p></details>
     <h2>Where the numbers come from</h2>
     <div class="data-filter"><label class="field"><span>Find a source</span><input type="search" id="srcFilter" autocomplete="off" placeholder="e.g. rain, soil, price"></label><p class="cap" id="srcCount" role="status" aria-live="polite"></p></div>
-    <div class="pg-tabs" role="tablist" aria-label="Kinds of source">${DATA_TABS.map((t, i) => `<button type="button" role="tab" class="tab" id="srctab-${t.id}" aria-selected="${i === 0}" aria-controls="srcpanel-${t.id}" tabindex="${i === 0 ? 0 : -1}">${esc(t.label)}${count[t.id] != null ? ` <span class="count soft">${count[t.id]}</span>` : ''}</button>`).join('')}</div>
     <div role="tabpanel" id="srcpanel-nasa" aria-labelledby="srctab-nasa" tabindex="0"><ul class="gl data-sources">${nasa.map(row).join('')}</ul><p class="cap data-none" hidden>No NASA source matches.</p></div>
     <div role="tabpanel" id="srcpanel-other" aria-labelledby="srctab-other" tabindex="0" hidden><ul class="gl data-sources">${other.map(row).join('')}</ul><p class="cap data-none" hidden>No other source matches.</p></div>
     <div role="tabpanel" id="srcpanel-fit" aria-labelledby="srctab-fit" tabindex="0" hidden><h3>How a suggestion is made</h3><ol class="data-fit">${FIT_STEPS.map(([h, t]) => `<li><b>${esc(h)}</b> ${esc(t)}</li>`).join('')}</ol>
