@@ -956,7 +956,8 @@ function syncNow(fade) {
   ui.box.classList.toggle('crossing', crossingNow);
   ui.box.classList.toggle('drawview', drawView);
   ui.box.classList.toggle('no-pin', !keep.pin);
-  const shownTool = keep.tool === 'pin' && !keep.ring ? 'rect' : keep.tool;
+  if (keep.tool !== 'pin') lastTool = keep.tool;   // with the field drawn no tool is armed: the switch keeps showing the one that drew it, so its blue thumb always has its white words
+  const shownTool = keep.tool === 'pin' ? (keep.ring ? lastTool : 'rect') : keep.tool;
   ui.box.classList.toggle('has-ring', !!keep.ring);
   for (const b of ui.tools.querySelectorAll('button')) b.setAttribute('aria-pressed', b.dataset.tool === shownTool ? 'true' : 'false');
   slideTools();
@@ -965,6 +966,7 @@ function syncNow(fade) {
   if (handlesOn) kit.handles(keep.ring, { chosen, on: handleOn, fade, midsFrom: MID_FROM }); else if (kit.hasHandles()) kit.handles(null, { fade });
   drawBar(); syncCross(); measure();
 }
+let lastTool = 'rect';
 function slideTools() {
   const b = ui.tools.querySelector('[aria-pressed=true]'); if (!b) return;
   ui.tools.style.setProperty('--x', `${b.offsetLeft}px`); ui.tools.style.setProperty('--w', `${b.offsetWidth}px`);
