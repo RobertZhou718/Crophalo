@@ -297,11 +297,11 @@ function toggleMenu(byPointer = false) {
   const m = $('#fwMoreMenu', root), was = !m.hidden; closeMenus();
   if (was) return;
   m.hidden = false; $('#fwMoreBtn', root).setAttribute('aria-expanded', 'true'); menuBehind(m); placeMenu(m);
-  if (byPointer) m.focus({ preventScroll: true }); else m.querySelector('[role^=menuitem]:not(:disabled)')?.focus();   // a press opens the menu with nothing looking chosen; the keyboard lands on the first row
+  if (byPointer) m.focus({ preventScroll: true }); else [...m.querySelectorAll('[role^=menuitem]:not(:disabled)')].find(b => b.getClientRects().length)?.focus();   // a press opens the menu with nothing looking chosen; the keyboard lands on the first row
 }
 // Up and down move through the menu's items, Home and End go to the first and the last; Escape closes it (the board's own Escape handler).
 function menuKey(e) {
-  const items = [...$('#fwMoreMenu', root).querySelectorAll('[role^=menuitem]')].filter(b => !b.disabled), i = items.indexOf(document.activeElement);
+  const items = [...$('#fwMoreMenu', root).querySelectorAll('[role^=menuitem]')].filter(b => !b.disabled && b.getClientRects().length), i = items.indexOf(document.activeElement);
   const to = e.key === 'ArrowDown' ? (i + 1) % items.length : e.key === 'ArrowUp' ? (i - 1 + items.length) % items.length : e.key === 'Home' ? 0 : e.key === 'End' ? items.length - 1 : -1;
   if (to < 0 || !items.length) return;
   e.preventDefault(); items[to].focus();
@@ -824,7 +824,10 @@ function giveTo3d(h) {
   if (typeof h.setErosion === 'function' && erosionFn) { let e = null; try { e = erosionFn(f); } catch { e = null; } const k = e ? JSON.stringify(e) : ''; if (e && sent.erosion !== k) { sent.erosion = k; try { h.setErosion(e); } catch { /* the row says it */ } } }
 }
 function renderLayers() {
-  const btn = $('#fwLayersBtn', root), host = $('#fwLayers', root), model = ui.view === '3d' && typeof handle3d?.layers === 'function' ? layersModel(handle3d.layers()) : [];
+  const btn = $('#fwLayersBtn', root), host = $('#fwLayers', root), f0 = field();
+  // a layer that only says it needs something (erosion: no soil and rain figures here) is not listed until it can draw; greenness stays only where "Find weak spots" can answer it
+  const drawable = r => !(r.needs && r.state === 'idle') || (r.id === 'greenness' && !!f0 && !f0.estimated) || (r.id === 'erosion' && !!erosionFn);
+  const model = ui.view === '3d' && typeof handle3d?.layers === 'function' ? layersModel(handle3d.layers()).filter(drawable) : [];
   btn.hidden = !model.length; if (!model.length) { layersOpen = false; host.hidden = true; return; }
   giveTo3d(handle3d);
   btn.textContent = buttonWords(model); btn.setAttribute('aria-expanded', String(layersOpen)); host.hidden = !layersOpen;
@@ -888,6 +891,7 @@ export function render(refit = false) {
   for (const b of root.querySelectorAll('button[data-kind]')) { b.setAttribute('aria-pressed', String(b.dataset.kind === ui.planKind)); b.disabled = !f?.report?.[b.dataset.kind]; }
   $('#fwStage', root).classList.toggle('is-3d', ui.view === '3d');
   $('#fwStage', root).classList.toggle('has-panel', !!ui.panel && !$('#fwPanel', root).hidden); $('#fwStage', root).classList.toggle('panel-wide', ui.panel === 'fields'); $('#fwPanel', root).classList.toggle('wide', ui.panel === 'fields');
+  { const g = $('#fwMoreH2', root)?.closest('[role=group]'); if (g) g.hidden = ui.view === '3d'; }   // the map's own style changes nothing in 3D, so its choices are shown only on the flat map
   $('#fwMapBtn', root).setAttribute('aria-pressed', String(ui.view === 'map')); $('#fwThreeBtn', root).setAttribute('aria-pressed', String(ui.view === '3d'));
   // More: a tool that needs a field or a farm is off without one, and says nothing it cannot do
   $('#fwDetailsBtn', root).disabled = !f; $('#fwFieldsBtn', root).disabled = !fm;

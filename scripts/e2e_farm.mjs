@@ -1176,7 +1176,7 @@ await group('first', async () => {
 // The Layers of the 3D view: a button beside Map | 3D, the map's own Layers look, a loading sign, a plain sentence for a layer that failed
 await group('layers', async () => {
   await open();
-  await js(`window.__farm.setView3d((data, node) => { node.textContent = '3D'; const L = [{ id: 'picture', name: 'Satellite picture', on: true, state: 'ready', source: 'NASA HLS', date: '7 Nov' }, { id: 'slope', name: 'Slope', on: false, state: 'idle' }, { id: 'frost', name: 'Frost pockets', on: false, state: 'idle' }], cbs = [];
+  await js(`window.__farm.setView3d((data, node) => { node.textContent = '3D'; const L = [{ id: 'picture', name: 'Satellite picture', on: true, state: 'ready', source: 'NASA HLS', date: '7 Nov' }, { id: 'slope', name: 'Slope', on: false, state: 'idle' }, { id: 'frost', name: 'Frost pockets', on: false, state: 'idle' }, { id: 'erosion', name: 'Erosion exposure', on: false, state: 'idle', needs: true }], cbs = [];
     window.__L = L; return { ok: true, update() {}, dispose() {}, layers: () => L.map(x => ({ ...x })), setLayer(id, on) { const l = L.find(x => x.id === id); l.on = on; l.state = on ? 'loading' : 'idle'; setTimeout(() => { l.state = id === 'frost' ? 'failed' : 'ready'; node.dispatchEvent(new CustomEvent('f3d-layer')); }, 300); }, onLayer: f => cbs.push(f) }; })`);
   check('layers: on the Map there is no Layers button', await js(`document.querySelector('#fwLayersBtn').hidden`) === true);
   await tap('#fwThreeBtn'); await until(`!document.querySelector('#fwLayersBtn').hidden`, 5000);
@@ -1184,6 +1184,7 @@ await group('layers', async () => {
   same('layers: the bar is This field, Map | 3D, Layers, More at one height', await js(`[...document.querySelectorAll('#fwBar > *')].filter(b => b.getClientRects().length).map(b => Math.round(b.getBoundingClientRect().height))`), [44, 44, 44, 44]);
   await tap('#fwLayersBtn'); await until(`!document.querySelector('#fwLayers').hidden`);
   check('layers: the panel is in the map\'s own Layers look and lists the picture as a switch and the others as one choice', await js(`!!document.querySelector('#fwLayers.mapx-panel .mapx-phead') && document.querySelectorAll('#fwLayers .mapx-lrow').length === 4 && document.querySelectorAll('#fwLayers input[type=radio]').length === 3 && document.querySelectorAll('#fwLayers input[type=checkbox]').length === 1`));
+  check('layers: a layer that only says it needs something (erosion) is not listed', await js(`!document.querySelector('#fwLayers [data-layer=erosion]')`));
   same('layers: the satellite picture is on at first', await js(`document.querySelector('#fwLayers [data-layer=picture]').checked`), true);
   check('layers: each layer has one line of what the farmer sees', await js(`[...document.querySelectorAll('#fwLayers .mapx-lrow .cap')].filter(c => !c.classList.contains('fw-lstate')).length === 3`));
   check('layers: the source and date are under Show more', /Source: NASA HLS\. Date: 7 Nov\./.test(await js(`document.querySelector('#fwLayers .fw-lmore')?.textContent || ''`)));
@@ -1194,6 +1195,9 @@ await group('layers', async () => {
   same('layers: the panel is at most 316 px wide on a desktop', await js(`Math.round(document.querySelector('#fwLayers').getBoundingClientRect().width) <= 316`), true);
   await press('Escape'); await sleep(100);
   same('layers: Escape closes it and the keyboard is back on the button', await js(`[document.querySelector('#fwLayers').hidden, document.activeElement.id]`), [true, 'fwLayersBtn']);
+  await js(`document.getElementById('fwMoreBtn').click()`); await sleep(150);
+  same('layers: in 3D More lists no map style (it changes nothing there), only the farm\'s rows', await js(`[...document.querySelectorAll('#fwMoreMenu [role^=menuitem]')].filter(b => b.getClientRects().length).map(b => b.textContent.trim())`), ['All fields', 'Add a field', 'Farm tools']);
+  await press('Escape'); await sleep(150);
   await tap('#fwMapBtn'); await sleep(200);
   check('layers: back on the Map the button is gone', await js(`document.querySelector('#fwLayersBtn').hidden`) === true);
 });
