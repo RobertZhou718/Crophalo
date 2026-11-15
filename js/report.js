@@ -121,14 +121,14 @@ const PARTS = [['blkAnswer', 'Plant next'], ['blkCompare', 'Strategies'], ['blkW
 // The row of parts also carries the page's two actions at its right end, so Add to My farm and Print are always in reach while the page scrolls.
 const partsHTML = () => { const added = !!(cur?.farm && cur.farmFor === (cur.chosen ?? ''));
   return `<nav class="rv-parts" aria-label="Parts of this page"><div class="rv-parts-in"><ul>${PARTS.map(([id, label], i) => `<li><a href="#${id}" data-part="${id}"${i === 0 ? ' aria-current="true"' : ''}>${esc(label)}</a></li>`).join('')}</ul><span class="rv-parts-acts"><button type="button" class="btn" data-act="share" aria-haspopup="dialog"><svg class="ic" aria-hidden="true"><use href="#i-share"/></svg><span>Print or save</span></button><button type="button" class="btn primary" data-act="farm">${added ? '<svg class="ic" aria-hidden="true"><use href="#i-tick"/></svg> Added' : cur?.inFarm ? 'Open in My farm' : 'Add to My farm'}</button></span></div></nav>`; };
-function markPart() {
+function markPart() {   // the report's parts are tabs: only the chosen part is in sight (the owner's order of 15 November); printing shows them all
   const bar = $('#reportBar'); if (!bar || !cur || cur.loading) return;
   document.documentElement.style.setProperty('--rbh', `${bar.offsetHeight}px`);
-  const edge = bar.getBoundingClientRect().bottom + 96; let at = PARTS[0][0];   // a part is the current one as soon as its heading is in the top of the page under the bar
-  const held = partHold.id && Date.now() < partHold.until;
-  if (held) at = partHold.id; else for (const [id] of PARTS) { const el = document.getElementById(id); if (el && el.getBoundingClientRect().top <= edge) at = id; }
-  for (const a of $$('.rv-parts a')) { if (a.dataset.part === at) a.setAttribute('aria-current', 'true'); else a.removeAttribute('aria-current'); }
+  if (!PARTS.some(([id]) => id === partNow) || !document.getElementById(partNow)) partNow = PARTS[0][0];
+  const host = document.querySelector('.rv-letter'); if (host && document.getElementById(partNow)) host.dataset.part = partNow;
+  for (const a of $$('.rv-parts a')) { if (a.dataset.part === partNow) a.setAttribute('aria-current', 'true'); else a.removeAttribute('aria-current'); }
 }
+let partNow = 'blkAnswer';
 let partsTick = 0;
 const partHold = { id: '', until: 0 };   // the part just pressed stays marked while the page travels to it
 function barHTML() {
@@ -412,7 +412,7 @@ function bind() {
   const r = root();
   r.addEventListener('click', event => {
     if (event.target.closest('[data-ff-reset]')) return filterReset();
-    const jump = event.target.closest('[data-part]'); if (jump) { event.preventDefault(); const el = document.getElementById(jump.dataset.part); partHold.id = jump.dataset.part; partHold.until = Date.now() + 1100; for (const a of $$('.rv-parts a')) { if (a === jump) a.setAttribute('aria-current', 'true'); else a.removeAttribute('aria-current'); } const goTo = smooth => { const bar = $('#reportBar'); if (!el || !bar) return; const y = el.getBoundingClientRect().top + scrollY - bar.getBoundingClientRect().bottom - 8; scrollTo({ top: Math.max(0, y), behavior: smooth ? 'smooth' : 'auto' }); }; goTo(!motionOff()); setTimeout(() => { const bar = $('#reportBar'); if (el && bar && Math.abs(el.getBoundingClientRect().top - bar.getBoundingClientRect().bottom - 8) > 24) goTo(false); markPart(); }, 900); const h = el?.querySelector('h2'); if (h) { h.tabIndex = -1; h.focus({ preventScroll: true }); } return; }
+    const jump = event.target.closest('[data-part]'); if (jump) { event.preventDefault(); const el = document.getElementById(jump.dataset.part); partNow = jump.dataset.part; markPart(); const bar = $('#reportBar'), top = document.querySelector('.rv-letter'); if (bar && top) { const y = top.getBoundingClientRect().top + scrollY - bar.getBoundingClientRect().bottom - 16; if (scrollY > y) scrollTo({ top: Math.max(0, y), behavior: 'auto' }); } const h = el?.querySelector('h2'); if (h) { h.tabIndex = -1; h.focus({ preventScroll: true }); } return; }
     const zoom = event.target.closest('[data-zoom]'); if (zoom) return openZoom(zoom);
     const chip = event.target.closest('[data-hy-year]'); if (chip) { cur.hyYear = +chip.dataset.hyYear; redrawKeep(); document.getElementById(`hy-${cur.hyYear}`)?.focus({ preventScroll: true }); return; }
     const t = event.target.closest('[data-act], [data-plan]'); if (!t) return;
@@ -434,7 +434,7 @@ function bind() {
   });
   r.addEventListener('input', event => { const t = event.target; if (t?.type !== 'range' || !t.dataset?.ff) return; const v = +t.value, e = document.getElementById(`ff-${t.dataset.ff}-text`); if (e) e.textContent = t.dataset.ff === 'rain' ? rainText(v) : tempText(v); });   // the words follow the thumb; the report follows when it is let go
   r.addEventListener('change', event => { const f = event.target.closest?.('[data-ff]'); if (f) return filterChange(f.dataset.ff, f.value); const pick = event.target.closest?.('input[name=rvpick]'); if (pick) { cur.pick = pick.value; redrawKeep(); document.getElementById(`pick-${pick.value}`)?.focus({ preventScroll: true }); return; } const sel = event.target.closest?.('[data-hy-select]'); if (sel && sel.value) { cur.hyYear = +sel.value; redrawKeep(); } });
-  addEventListener('scroll', () => { if (!partsTick) partsTick = requestAnimationFrame(() => { partsTick = 0; markPart(); }); }, { passive: true });
+  addEventListener('resize', () => { if (!partsTick) partsTick = requestAnimationFrame(() => { partsTick = 0; markPart(); }); }, { passive: true });
   r.addEventListener('toggle', event => { const d = event.target; if (!d.open) return; if (d.id === 'lfSat') loadFor('satellites'); if (d.id === 'lfTrends') loadFor('trends'); if (d.id === 'lfAssumed') loadFor('field'); }, true);   // a fold that asks the server asks when it is first opened
 }
 // seam: { change(state), home(), farmOpened(result), engine: the engine's worker client (engine-client.js engineLoader) or () => import('./engine.js'), farm: () => import('./farm.js') } (the last two are given by the page start once those files exist)

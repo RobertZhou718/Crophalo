@@ -259,3 +259,11 @@ html:has(.rv-parts) { scroll-padding-top: calc(var(--navh) + var(--rbh) + 8px); 
 .rv-filter .rv-slider > span { font-size: var(--fs-row); font-weight: var(--fw-medium); }
 .rv-filter input[type=range] { accent-color: var(--accent); }
 .rv-filter .rv-ff-actions .btn { border-radius: 10px; }
+
+/* The report's parts are tabs: with a part chosen only that part's block shows. On paper every part prints. */
+.rv-letter[data-part] .rv-block { display: none; }
+.rv-letter[data-part="blkAnswer"] #blkAnswer, .rv-letter[data-part="blkCompare"] #blkCompare, .rv-letter[data-part="blkWrong"] #blkWrong,
+.rv-letter[data-part="blkWhen"] #blkWhen, .rv-letter[data-part="blkMore"] #blkMore, .rv-letter[data-part="blkShare"] #blkShare { display: block; }
+.rv-letter[data-part] #blkAsk, .rv-letter[data-part] #blkFail { display: block; }
+@media print { .rv-letter[data-part] .rv-block { display: block !important; } }
+html.print-doc .rv-letter[data-part] .rv-block { display: block !important; }
