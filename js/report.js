@@ -272,6 +272,7 @@ const loadingCtx = () => {
 export async function openReport(state, { demo = false } = {}) {
   const mine = ++run;
   cur = { state: structuredClone(state), tab: 'letter', plan: null, rows: freshRows(), loading: true, result: null, climate: null, demo, t0: Date.now(), weatherIn: false, seen: false, late: new Map() };
+  partNow = 'blkAnswer';   // a report opens on "Plant next", whatever part the last one was left on
   lastKind = '';   // a report that opens again is a new screen change, whatever the last one showed
   if (!hasPlace(cur.state)) { cur.loading = false; cur.noPlace = true; cur.failed = 'Draw your field on the map, then open the report again.'; draw(); return; }   // no position: nothing is asked of any service
   draw({ focus: true });
