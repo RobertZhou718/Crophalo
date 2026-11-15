@@ -567,6 +567,13 @@ await group('the top-row chips', async () => {
   const made = S.applyReport(S.emptyStore(), { ...REPORT, place: { lat: 44.4, lon: -79.78, name: 'Barrie', label: 'Barrie', cc: 'CA' }, proposed: { ...PROPOSED, id: 'cover-corn-soy-corn-cover' } }, { now: NOW, random: () => 0.4 });
   const farm = S.getFarm(made.store, made.farmId), field = S.getField(farm, made.fieldId);
   same('the engine is asked about the crops of the current plan', K.cropsOfField(farm, field), ['corn', 'soy', 'corn']);
+  { // a report plan from the engine names its crop cycle: the chips ask about that cycle (corn, soybeans), not its three repeated seasons, so they find the report's own options
+    const cyc = S.applyReport(S.emptyStore(), { ...REPORT, place: { lat: 44.4, lon: -79.78, name: 'Barrie', label: 'Barrie', cc: 'CA' }, current: { ...REPORT.current, slots: ['corn', 'soy'] } }, { now: NOW, random: () => 0.4 });
+    const cf = S.getFarm(cyc.store, cyc.farmId), cd = S.getField(cf, cyc.fieldId);
+    same('the report plan keeps the engine\'s crop cycle', cd.report.current.slots, ['corn', 'soy']);
+    same('and the chips ask the engine about that cycle', K.cropsOfField(cf, cd), ['corn', 'soy']);
+    same('a cycle with a crop the table does not know is not kept', S.applyReport(S.emptyStore(), { ...REPORT, current: { ...REPORT.current, slots: ['corn', 'no such crop'] } }, { now: NOW, random: () => 0.4, cropOk: id => id !== 'no such crop' }).store.farms[0].fields[0].report.current.slots, null);
+  }
   const st = K.stateFor(farm, field);
   same('the farm habits and an assumed soil go with it', [st.rotation.custom, st.farm.irrigation, st.farm.tillage, st.soil.mode], [['corn', 'soy', 'corn'], 'none', 'reduced', 'assumed']);
   const sp = K.spotFor(farm, field);

@@ -32,7 +32,8 @@ async function register() {
   try {
     const reg = await navigator.serviceWorker.register('sw.js');
     const tell = () => { const w = navigator.serviceWorker.controller || reg.active; if (w && navigator.onLine !== false) w.postMessage('loaded'); };   // after an online visit the worker may look for a new release
-    const idle = () => (window.requestIdleCallback ? requestIdleCallback(tell, { timeout: 60e3 }) : setTimeout(tell, 5e3));
+    // the release check reads the whole app again: it waits 30 s after the page has loaded, then for a quiet moment, so it never competes with the farmer's next steps or a reload
+    const idle = () => setTimeout(() => (window.requestIdleCallback ? requestIdleCallback(tell, { timeout: 60e3 }) : tell()), 30e3);
     if (document.readyState === 'complete') idle(); else addEventListener('load', idle, { once: true });
   } catch { /* a browser that refuses workers simply runs online */ }
 }

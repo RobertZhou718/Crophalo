@@ -180,7 +180,8 @@ export function cleanContractPlan(raw, cropOk = () => true) {
   if (!seasons.length || seasons.some(x => !x)) return null;
   const sc = raw.scores && typeof raw.scores === 'object' ? Object.fromEntries(['water', 'soil', 'erosion', 'income', 'weather'].map(k => [k, num(raw.scores[k], 0, 100, null)])) : null;
   return { id: ID_OK.test(raw.id || '') ? raw.id : 'plan', name: text(raw.name, 60) || 'Plan', kind: raw.kind === 'proposed' ? 'proposed' : 'current', seasons,
-    score: num(raw.score, 0, 100, null), scores: sc, flag: pick(raw.flag, ['holds', 'borderline', 'fails'], null), fit: text(raw.fit, 40), why: text(raw.why, 400), bareMonths: num(raw.bareMonths, 0, 12, null) };
+    score: num(raw.score, 0, 100, null), scores: sc, flag: pick(raw.flag, ['holds', 'borderline', 'fails'], null), fit: text(raw.fit, 40), why: text(raw.why, 400), bareMonths: num(raw.bareMonths, 0, 12, null),
+    slots: Array.isArray(raw.slots) && raw.slots.length && raw.slots.length <= 12 && raw.slots.every(c => ID_OK.test(c || '') && cropOk(c)) ? raw.slots.slice() : null };   // the crop cycle the engine planned: its seasons repeat it over three years or more
 }
 export function cleanReport(raw, cropOk = () => true) {
   if (!raw || typeof raw !== 'object') return null;

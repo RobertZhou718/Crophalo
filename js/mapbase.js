@@ -75,6 +75,16 @@ export function initBase(map, ui, { say = () => {} } = {}) {
     if (gl) return true;
     if (!window.maplibregl || !L.maplibreGL) return false;
     gl = L.maplibreGL({ style: { version: 8, sources: {}, layers: [] }, interactive: false, padding: 0.1, attributionControl: false });
+    // The plugin's step after a zoom, as the plugin does it, but only while the layer is still on a map: the wizard may take the map down within that one frame
+    gl._transitionEnd = function () {
+      L.Util.requestAnimFrame(function () {
+        if (!this._map || !this._glMap) return;
+        const zoom = this._map.getZoom(), center = this._map.getCenter(), offset = this._map.latLngToContainerPoint(this._map.getBounds().getNorthWest());
+        L.DomUtil.setTransform(this._glMap._actualCanvas, offset, 1);
+        this._glMap.once('moveend', L.Util.bind(function () { if (this._map) this._zoomEnd(); }, this));
+        this._glMap.jumpTo({ center, zoom: zoom - 1 });
+      }, this);
+    };
     gl.addTo(map);
     if (gl._container) gl._container.style.zIndex = 5;   // above the photo and the grey tiles, below Leaflet's markers
     glMap = gl.getMaplibreMap();

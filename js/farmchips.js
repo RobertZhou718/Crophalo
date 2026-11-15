@@ -17,9 +17,12 @@ const num1 = v => (Math.round(v * 10) / 10).toString();
 
 // ---- the engine's inputs from the farm's record (pure)
 // The crops of the plan being read: the farmer's own rotation when there is one, else the report's current plan.
+// The report's plan names its own crop cycle (slots: corn, soybeans); its seasons repeat that cycle over three years or more, and read as a rotation of their own
+// they would be another plan (corn, soybeans, corn) whose options the report never offered. A plan kept before the cycle was kept falls back to its seasons.
 export function cropsOfField(farm, field) {
-  const own = S.planOf(farm, field.id)?.seasons.map(x => x.crop), rep = field.report?.current?.seasons.map(x => x.crop);
-  return (own?.length ? own : rep || []).slice(0, 12);
+  const cur = field.report?.current, own = S.planOf(farm, field.id)?.seasons.map(x => x.crop), rep = cur?.seasons.map(x => x.crop), cycle = Array.isArray(cur?.slots) && cur.slots.length ? cur.slots : null;
+  const asReport = own && rep && own.length === rep.length && own.every((c, i) => c === rep[i]);   // the plan My farm made from the report, not changed since
+  return ((own?.length && !asReport ? own : cycle || rep) || []).slice(0, 12);
 }
 export function stateFor(farm, field) {
   const s = newState(), pr = farm.practice, soil = field.soil || farm.soil;
