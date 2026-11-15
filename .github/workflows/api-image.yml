@@ -71,7 +71,7 @@ jobs:
             if curl -fsS http://127.0.0.1:8080/api/ready -o /dev/null 2>/dev/null; then ok=1; break; fi   # ready waits for the one Python start check; health answers before it
             sleep 1
           done
-          if [ -z "$ok" ]; then echo "The server was not ready (/api/ready) within 60 s"; curl -s http://127.0.0.1:8080/api/ready; docker logs api; exit 1; fi
+          if [ -z "$ok" ]; then echo "The server was not ready (/api/ready) within 60 s"; curl -s http://127.0.0.1:8080/api/ready; docker logs api; docker exec api /app/.venv/bin/python -c "import earthaccess, h5py, netCDF4, numpy, rasterio, openpyxl, certifi" || true; exit 1; fi
           curl -fsS http://127.0.0.1:8080/api/health -o health.json
           cat health.json; echo
           jq -e '.ok == true and .python == true' health.json > /dev/null || { echo "health: not ok, or the Python tools are missing"; exit 1; }
