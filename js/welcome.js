@@ -4,6 +4,7 @@
 // Checked by scripts/e2e_flow.mjs (it blocks until accepted, Escape cannot dismiss it the first time, read again shows Close).
 import { esc } from './words.js';
 import { initListen, stopSpeaking } from './listen.js';
+import { playerHTML, wirePlayer } from './video.js';   // the 30-second video of how Crophalo works, above the points
 
 export const WELCOME_KEY = 'crophalo.welcome.v1';
 export const WELCOME_VERSION = '2026-11-14';   // the day these words were last changed: a new date here shows the sheet to everyone again
@@ -44,6 +45,8 @@ function build() {
   sheet.setAttribute('aria-labelledby', 'welcomeTitle'); sheet.setAttribute('aria-describedby', 'welcomeIntro');
   sheet.innerHTML = `
     <div class="welcome-body">
+      <div class="welcome-video">${playerHTML('vidWelcome')}</div>
+      <div class="welcome-read">
       <div class="welcome-top"><svg class="welcome-mark" aria-hidden="true"><use href="#logo"/></svg></div>
       <h1 id="welcomeTitle">${esc(WORDS.title)}</h1>
       <p class="welcome-intro" id="welcomeIntro">${esc(WORDS.intro)}</p>
@@ -59,13 +62,16 @@ function build() {
         </section>`).join('')}
       </div>
       <button type="button" class="link welcome-more" id="welcomeMore" aria-expanded="false" aria-controls="${CARDS.map((_, i) => `welcomeRest${i}`).join(' ')}">${esc(WORDS.more)} <i class="chev" aria-hidden="true"></i></button>
+      </div>
     </div>
     <div class="welcome-foot">
       <button type="button" class="btn primary lg" id="welcomeGo">${esc(WORDS.go)}</button>
     </div>`;
   document.body.append(sheet);
 
-  const go = sheet.querySelector('#welcomeGo'), more = sheet.querySelector('#welcomeMore');
+  const go = sheet.querySelector('#welcomeGo'), more = sheet.querySelector('#welcomeMore'), video = wirePlayer(sheet);
+  video.video.addEventListener('play', stopSpeaking);
+  sheet.addEventListener('crophalo-shown', () => video.auto());   // the video starts by itself when the sheet opens (without sound where the browser asks for a press first)   // the video and "Listen to this page" never talk at once
   more.addEventListener('click', () => {   // one button opens all five folds, and closes them again
     const open = more.getAttribute('aria-expanded') !== 'true';
     more.setAttribute('aria-expanded', open); more.firstChild.textContent = `${open ? WORDS.less : WORDS.more} `;
@@ -73,7 +79,7 @@ function build() {
   });
   go.addEventListener('click', () => { accept(); sheet.close(); });   // one press says it: "I understand. I decide what to plant."
   sheet.addEventListener('cancel', event => { if (!welcomeAccepted()) event.preventDefault(); });   // the first time, Escape cannot dismiss it
-  sheet.addEventListener('close', () => { stopSpeaking(); if (!welcomeAccepted()) show(); });       // and if a browser closes it anyway, it comes back
+  sheet.addEventListener('close', () => { stopSpeaking(); video.stop(); if (!welcomeAccepted()) show(); });       // and if a browser closes it anyway, it comes back; closing stops the video
   initListen(sheet.querySelector('#welcomeListen'), () => [WORDS.said, ...CARDS.map(card => `${card.title} ${card.first} ${card.rest}`)].join(' '));
 }
 
@@ -82,6 +88,7 @@ function show() {
   sheet.querySelector('#welcomeGo').textContent = accepted ? WORDS.close : WORDS.go;   // read again later: the button only closes
   if (!sheet.open) sheet.showModal();
   sheet.querySelector('.welcome-body').scrollTop = 0;
+  sheet.dispatchEvent(new Event('crophalo-shown'));
 }
 
 // Open the sheet: at the start for a farmer who has not accepted these words, or opened again by the welcome event.
