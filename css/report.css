@@ -207,10 +207,14 @@
 
 /* ---- the row of the page's parts: part of the fixed bar, solid, one line, scrolling sideways inside itself on a phone */
 .rv-parts { border-top: 1px solid var(--fill2); background: var(--bar); }
-.rv-parts ul { list-style: none; margin: 0 auto; padding: 0 20px; max-width: var(--nav-w); display: flex; gap: var(--space-4); overflow-x: auto; scrollbar-width: none; }
+.rv-parts-in { margin: 0 auto; padding: 6px 20px; max-width: var(--nav-w); display: flex; align-items: center; gap: var(--space-12); }
+.rv-parts ul { list-style: none; margin: 0; padding: 3px; display: flex; gap: 3px; overflow-x: auto; scrollbar-width: none; border-radius: 12px; background: var(--fill); min-width: 0; }   /* the house's switch look: a grey track, the current part filled blue */
 .rv-parts li { flex: none; }
-.rv-parts a { display: inline-flex; align-items: center; min-height: 44px; padding: 0 var(--space-12); color: var(--ink2); text-decoration: none; font-size: var(--fs-small); border-bottom: 3px solid transparent; white-space: nowrap; }
-.rv-parts a[aria-current=true] { color: var(--ink); font-weight: 700; border-bottom-color: var(--accent); }
+.rv-parts a { display: inline-flex; align-items: center; min-height: 38px; padding: 0 var(--space-16); color: var(--ink2); text-decoration: none; font-size: var(--fs-body); font-weight: var(--fw-medium); border-radius: 9px; white-space: nowrap; }
+.rv-parts a[aria-current=true] { background: var(--accent); color: var(--accent-ink); font-weight: var(--fw-semi); }
+.rv-parts-acts { margin-left: auto; display: flex; gap: var(--space-8); flex: none; }
+.rv-parts-acts .btn { min-height: 44px; }
+@media (max-width: 760px) { .rv-parts-in { flex-wrap: wrap; } .rv-parts-acts { margin-left: 0; width: 100%; } .rv-parts-acts .btn { flex: 1; } }
 html:has(.rv-parts) { scroll-padding-top: calc(var(--navh) + var(--rbh) + 8px); }   /* a part opened by its link, or a focused control, stays clear of the top bar and the report's bar with its row of parts */
 
 .hy-months { display: grid; grid-template-columns: repeat(12, minmax(0, 1fr)); gap: 2px; font-size: 12px; color: var(--ink2); text-align: center; line-height: 1.2; }

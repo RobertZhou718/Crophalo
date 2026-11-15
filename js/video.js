@@ -6,7 +6,7 @@ import { esc } from './words.js';
 
 export const VIDEO = Object.freeze({ file: 'media/crophalo-30s.mp4', poster: 'media/crophalo-30s-poster.jpg', words: 'media/crophalo-30s.vtt' });
 export const WORDS = Object.freeze({
-  open: 'Watch the video', title: 'How Crophalo works', close: 'Close',
+  open: 'How it works', title: 'How Crophalo works', close: 'Close',
   play: 'Play the video: how Crophalo works, 30 seconds',
   caption: '30 seconds: how Crophalo works. Narration: synthetic voice.',
   fold: 'Read it as text',

@@ -34,7 +34,7 @@ check('the id asked for is the video\'s id', html.includes('id="vidTest"') && pl
 check('an id with markup in it cannot break the page', !playerHTML('"><b>').includes('<b>'));
 
 // ---- the words
-same('the top bar\'s words', [WORDS.open, WORDS.title, WORDS.close], ['Watch the video', 'How Crophalo works', 'Close']);
+same('the top bar\'s words', [WORDS.open, WORDS.title, WORDS.close], ['How it works', 'How Crophalo works', 'Close']);
 check('the narration never promises three rotations (a place may have two) and never calls the past weather a forecast', !/\bthree\b/i.test(WORDS.text) && !/forecast|predict|guarantee/i.test(WORDS.text));
 check('the narration says Crophalo is a guide and the farmer decides', WORDS.text.includes('It\'s a guide. You decide what to plant.'));
 check('it starts with the name and ends with the motto', WORDS.text.startsWith('Hi, this is Crophalo.') && WORDS.text.endsWith('Know your field before you plant.'));
@@ -60,7 +60,7 @@ same('the text file holds the narration, word for word', read('media/crophalo-30
 // ---- wired into the page: one button, one dialog, each under its own comment line
 { const page = read('index.html');
   same('one "Watch the video" button and one dialog', [count(page, /id="navVideo"/g), count(page, /id="dlgVideo"/g)], [1, 1]);
-  check('the button sits in the top bar\'s links, says it opens a dialog, and carries its words (they are its name on a phone)', /<nav class="nav-links"[\s\S]*?<button type="button" class="tbtn" id="navVideo" aria-haspopup="dialog">[\s\S]*?<span class="t">Watch the video<\/span><\/button>[\s\S]*?<\/nav>/.test(page));
+  check('the button sits in the top bar\'s links, says it opens a dialog, and carries its words (they are its name on a phone)', /<nav class="nav-links"[\s\S]*?<button type="button" class="tbtn" id="navVideo" aria-haspopup="dialog">[\s\S]*?<span class="t">How it works<\/span><\/button>[\s\S]*?<\/nav>/.test(page));
   check('the button\'s drawing is hidden from a screen reader', /id="navVideo"[^>]*><svg class="ic"[^>]*aria-hidden="true"/.test(page));
   check('the dialog has its title, its Close button and the place for the player', /<dialog class="sheet vid-dlg" id="dlgVideo" aria-labelledby="vidTitle">.*<h2 id="vidTitle">How Crophalo works<\/h2>.*<button type="button" class="btn" id="vidClose">Close<\/button>.*id="vidHere".*<\/dialog>/.test(page));
   same('each of the two has a comment line naming the video just above it', count(page, /<!-- The video of how Crophalo works: [^\n]*-->\n\s*<(button type="button" class="tbtn" id="navVideo"|dialog class="sheet vid-dlg" id="dlgVideo")/g), 2);
