@@ -31,7 +31,7 @@ export { hasRotation, hasSoil, isGarden, stepsFor, needFor, canGo, rotationSlots
 export const SESSION_KEY = 'crophalo.session';
 export { readyAnswers };
 
-let state = newState(), at = 0, where = { report() {}, home() {} }, spot = null, outline = null;   // outline: { ring, used } as the map last told it, for the line under Next
+let pendingArea = null, state = newState(), at = 0, where = { report() {}, home() {} }, spot = null, outline = null;   // outline: { ring, used } as the map last told it, for the line under Next
 const steps = () => stepsFor(state);
 
 // ---- saved for this tab only, so a reload mid-setup comes back to the same step
@@ -309,14 +309,22 @@ function bind() {
   // the map tells the outline: kept in the state when it is used for the report, and said under Next while it is not
   document.addEventListener('crophalo:area', event => {
     const d = event.detail;
+    pendingArea = d || null;   // a first outline can arrive before its place does: it is kept until movePlace has the place
     state.area = d && state.loc ? cleanArea({ pts: d.pts, ha: d.ha }, state.loc) : null;
-    keep();
+    keep(); syncNext();
   });
   document.addEventListener('crophalo:outline', event => {
     outline = event.detail?.ring ? { ring: event.detail.ring, used: !!event.detail.used } : null;
     const line = $('#ctaOutline');
     if (line) line.hidden = !(outline?.ring && !outline.used);
   });
+}
+
+// The Next button and the line under it follow the answers without drawing the panel again (focus stays where it is).
+function syncNext() {
+  const step = steps()[at], need = needFor(step.id, state), next = $('#wNext'), under = $('#ctaNote');
+  if (next) { next.disabled = !!need; if (need) next.setAttribute('aria-disabled', 'true'); else next.removeAttribute('aria-disabled'); }
+  if (under) under.textContent = need;
 }
 
 // ---- the seam to the home and the map
@@ -330,7 +338,7 @@ export function setPlace(chosen) {
     fresh.name = chosen.name || '';
     if (chosen.demo) Object.assign(fresh, readyAnswers(fresh, chosen));
   }
-  demoOutline = null; state = fresh; at = 0; outline = null; cropMap = { key: '', status: 'idle', answer: null }; fieldYears = { key: '', status: 'idle', answer: null, used: false }; moreOpen = false;
+  demoOutline = null; state = fresh; at = 0; outline = null; pendingArea = null; cropMap = { key: '', status: 'idle', answer: null }; fieldYears = { key: '', status: 'idle', answer: null, used: false }; moreOpen = false;
   askName();
   render({ focus: false });
   setTimeout(() => { const v = $('#view-setup'); if (v && !v.hidden && (document.activeElement === document.body || !document.activeElement)) { const h = $('#wHeading'); if (h) { h.tabIndex = -1; h.focus({ preventScroll: true }); } } }, 160);   // when the setup opens the keyboard goes to its heading (the one h1)
@@ -342,18 +350,15 @@ export function setPlace(chosen) {
 // head is drawn again. from: 'map' sends nothing back; 'outside' tells the map, which then flies there.
 export function movePlace(chosen, { from = 'map' } = {}) {
   if (!chosen || !Number.isFinite(+chosen.lat) || !Number.isFinite(+chosen.lon)) return;
-  const lat = Math.round(chosen.lat * 1e4) / 1e4, lon = Math.round(chosen.lon * 1e4) / 1e4, first = !state.loc;
+  const lat = Math.round(chosen.lat * 1e4) / 1e4, lon = Math.round(chosen.lon * 1e4) / 1e4;
   state.loc = { lat, lon, label: chosen.place ?? chosen.country ?? state.loc?.label ?? '', cc: state.loc?.cc ?? '' };
   if (typeof chosen.name === 'string') state.name = chosen.name;
   if (state.area && !cleanArea(state.area, state.loc)) state.area = null;   // the report's outline must hold the pin; the map sends the moved outline next
+  if (!state.area && pendingArea) state.area = cleanArea({ pts: pendingArea.pts, ha: pendingArea.ha }, state.loc);   // the outline that came first, now that its place is known
   askName();   // a moved pin with no name of its own is named again once it rests
   const headNow = $('#setupPanel .panel-head');
   if (headNow) headNow.outerHTML = head();
-  if (first) {   // the field step can go on now: the Next button and the line under it follow without drawing the panel again (focus stays where it is)
-    const step = steps()[at], need = needFor(step.id, state), next = $('#wNext'), under = $('#ctaNote');
-    if (next) { next.disabled = !!need; if (need) next.setAttribute('aria-disabled', 'true'); else next.removeAttribute('aria-disabled'); }
-    if (under) under.textContent = need;
-  }
+  syncNext();   // the field step can go on now (or stops, when the outline is gone)
   keep();
   readCropMap();   // the crop map is asked for the new place (once for each place); the step is redrawn only while it is the crops step
   if (from === 'outside') document.dispatchEvent(new CustomEvent('crophalo:place', { detail: { lat, lon, name: state.name, country: state.loc.label, from: 'outside' } }));
