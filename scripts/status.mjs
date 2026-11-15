@@ -28,12 +28,13 @@ const LIVE_ASKS = Object.freeze({
   ndvihist: 'https://gibs.earthdata.nasa.gov/wmts/epsg3857/best/1.0.0/WMTSCapabilities.xml', firms: 'https://firms.modaps.eosdis.nasa.gov/data/active_fire/',
   cropsnear: 'https://pdi.scinet.usda.gov/image/rest/services/CDL_WM/ImageServer?f=json', crophist: 'https://pdi.scinet.usda.gov/image/rest/services/CDL_WM/ImageServer?f=json', dem: 'https://elevation.nationalmap.gov/arcgis/rest/services/3DEPElevation/ImageServer?f=json',
   orbits: 'https://celestrak.org/NORAD/elements/gp.php?CATNR=25544&FORMAT=JSON',   // one satellite's elements (the Space Station), the same kind of ask the home makes
+  soilfield: 'https://sdmdataaccess.sc.egov.usda.gov/',   // the front page of Soil Data Access; the cash bids (mnfield) have no small ask without the key, so their row reads the lookup's own real runs
   prices: 'https://www.worldbank.org/en/research/commodity-markets', faostat: 'https://bulks-faostat.fao.org/production/Production_Crops_Livestock_E_All_Data.zip',
 });
 const LOGIN = new Set(['smaproot', 'imergrain', 'gracecell', 'ecopass', 'hlsndvi', 'hlsbox']);   // the satellite parts that need the free NASA Earthdata login: the first five read more with it (the app answers without it), the weak spots (hlsbox) read nothing without it
 // A service that needs a key says so itself: its LIVE entry may carry `key: '<name>'`, a name of the object scripts/keys.mjs answers with (nass, ams, openet, metno), or the table below names it.
 // The server hands in `keys`: a function that answers { name: true | false } (scripts/keys.mjs keysStatus(ROOT, ENV) once that file exists); a value is never asked for, only whether it is there.
-const KEY_OF = Object.freeze({ nass: 'nass', marketnews: 'ams', ams: 'ams', openet: 'openet' });   // lookup id -> key name, for the lookups that need a key (USDA NASS, USDA Market News, OpenET); a lookup the LIVE table does not have never gets a row
+const KEY_OF = Object.freeze({ nass: 'nass', marketnews: 'ams', ams: 'ams', mnfield: 'ams', openet: 'openet' });   // lookup id -> key name, for the lookups that need a key (USDA NASS, USDA Market News, OpenET); a lookup the LIVE table does not have never gets a row
 
 // ---- plain words: a problem is one of these, or a server's own sentence cleaned by plain()
 export const WORDS = Object.freeze({

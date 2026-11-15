@@ -14,6 +14,12 @@ import { isPublic, pagePolicy, scrubReason, allowedHosts, trustHops, rateLimit, 
 import { siteOrigins, originAllowed, corsHeaders, preflight } from './hostmode.mjs';
 import { createStatus } from './status.mjs';   // which data services answer: the answer of /api/sources and its "Check again"   // the website's own pages on another name (ALLOWED_ORIGINS): who may read the answers
 
+// ---- two parts that a copy of the server may be without (a test site): then it has no /api/keys and no cash bids, and still starts.
+//      scripts/keys.mjs: which optional keys this server holds, as true or false only: the answer of /api/keys, the "set" / "not set" of /api/sources, and whether a keyed lookup may run.
+//      scripts/mnargs.mjs: the arguments of the local cash bids lookup.
+const optional = file => import(file).catch(e => (e?.code === 'ERR_MODULE_NOT_FOUND' ? null : (console.error(`${file}: not loaded:`, e?.message || e), null)));
+const keysStatus = (await optional('./keys.mjs'))?.keysStatus ?? null, mnArgs = (await optional('./mnargs.mjs'))?.mnArgs ?? null;
+
 // ---- settings (the environment is read once, here)
 const ENV = process.env, H = 3600e3;
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');   // the folder is the product: its root is the folder above scripts/
@@ -97,11 +103,12 @@ function rateOK(req) {
 }
 
 // ---- live lookups: one Python script per row in scripts/live/, run by the runner below. Health, ready and sources read everything from here.
-const LIVE = { smaproot: { name: 'NASA SMAP root-zone soil moisture', ttl: 6 * H, point: true, snap: 0.01, timeout: 150e3, script: 'smaproot.py' }, dem: { name: 'Land heights (the finest free height map)', ttl: 30 * 24 * H, timeout: 120e3, args: boxArgs, script: 'dem.py' }, imergrain: { name: 'NASA GPM IMERG satellite rain, last 30 days', ttl: 6 * H, point: true, centre: 0.1, timeout: 150e3, script: 'imergrain.py' }, gracecell: { name: 'NASA GRACE-FO regional water storage', ttl: 7 * 24 * H, point: true, centre: 0.5, timeout: 150e3, script: 'gracecell.py' }, ecopass: { name: 'NASA ECOSTRESS ground temperature passes', ttl: 6 * H, point: true, snap: 0.0005, timeout: 150e3, script: 'ecopass.py' }, hlsndvi: { name: 'NASA HLS greenness (Landsat and Sentinel-2)', ttl: 24 * H, timeout: 150e3, args: windowArgs, script: 'hlsndvi.py' }, hlsbox: { name: 'NASA HLS greenness inside the field', ttl: 7 * 24 * H, timeout: 150e3, args: ringArgs, script: 'hlsbox.py' }, cropsnear: { name: 'Crops grown nearby (AAFC and USDA crop maps)', ttl: 30 * 24 * H, timeout: 120e3, args: countryArgs, script: 'cropsnear.py' }, crophist: { name: 'Crops on this field by year (AAFC and USDA crop maps)', ttl: 30 * 24 * H, timeout: 120e3, args: cropHistArgs, script: 'crophist.py' }, prices: { name: 'World crop prices (World Bank Pink Sheet)', ttl: 24 * H, timeout: 300e3, args: () => [], script: 'prices.py' }, faostat: { name: 'National crop yields and farm-gate prices (FAOSTAT)', ttl: 24 * H, timeout: 420e3, args: () => [], script: 'faostat.py' }, ndvihist: { name: 'NASA MODIS greenness since 2001, each season at its greenest', ttl: 30 * 24 * H, point: true, snap: 0.002, timeout: 150e3, script: 'ndvihist.py' }, firms: { name: 'NASA FIRMS fires and hot spots, last 24 hours', ttl: 3 * H, point: true, snap: 0.1, timeout: 150e3, script: 'firms.py' }, osm: { name: 'OpenStreetMap buildings, roads, water, woods and hedges', ttl: 24 * H, timeout: 150e3, args: osmArgs, script: 'osm.py' }, osmextra: { name: 'OpenStreetMap fences, gates, power lines and tanks', ttl: 24 * H, timeout: 150e3, args: osmArgs, script: 'osmextra.py' }, orbits: { name: 'Satellite orbits for the home (U.S. Space Force elements, via CelesTrak)', ttl: 12 * H, timeout: 90e3, args: () => [], quiet: true, script: 'orbits.py' } };   // id → { name, ttl, point?, snap?, timeout?, args?, quiet?, script }. Keep this on one line: test_server.mjs puts test rows into a copy of it.
+const LIVE = { smaproot: { name: 'NASA SMAP root-zone soil moisture', ttl: 6 * H, point: true, snap: 0.01, timeout: 150e3, script: 'smaproot.py' }, dem: { name: 'Land heights (the finest free height map)', ttl: 30 * 24 * H, timeout: 120e3, args: boxArgs, script: 'dem.py' }, imergrain: { name: 'NASA GPM IMERG satellite rain, last 30 days', ttl: 6 * H, point: true, centre: 0.1, timeout: 150e3, script: 'imergrain.py' }, gracecell: { name: 'NASA GRACE-FO regional water storage', ttl: 7 * 24 * H, point: true, centre: 0.5, timeout: 150e3, script: 'gracecell.py' }, ecopass: { name: 'NASA ECOSTRESS ground temperature passes', ttl: 6 * H, point: true, snap: 0.0005, timeout: 150e3, script: 'ecopass.py' }, hlsndvi: { name: 'NASA HLS greenness (Landsat and Sentinel-2)', ttl: 24 * H, timeout: 150e3, args: windowArgs, script: 'hlsndvi.py' }, hlsbox: { name: 'NASA HLS greenness inside the field', ttl: 7 * 24 * H, timeout: 150e3, args: ringArgs, script: 'hlsbox.py' }, cropsnear: { name: 'Crops grown nearby (AAFC and USDA crop maps)', ttl: 30 * 24 * H, timeout: 120e3, args: countryArgs, script: 'cropsnear.py' }, crophist: { name: 'Crops on this field by year (AAFC and USDA crop maps)', ttl: 30 * 24 * H, timeout: 120e3, args: cropHistArgs, script: 'crophist.py' }, prices: { name: 'World crop prices (World Bank Pink Sheet)', ttl: 24 * H, timeout: 300e3, args: () => [], script: 'prices.py' }, faostat: { name: 'National crop yields and farm-gate prices (FAOSTAT)', ttl: 24 * H, timeout: 420e3, args: () => [], script: 'faostat.py' }, ndvihist: { name: 'NASA MODIS greenness since 2001, each season at its greenest', ttl: 30 * 24 * H, point: true, snap: 0.002, timeout: 150e3, script: 'ndvihist.py' }, firms: { name: 'NASA FIRMS fires and hot spots, last 24 hours', ttl: 3 * H, point: true, snap: 0.1, timeout: 150e3, script: 'firms.py' }, osm: { name: 'OpenStreetMap buildings, roads, water, woods and hedges', ttl: 24 * H, timeout: 150e3, args: osmArgs, script: 'osm.py' }, osmextra: { name: 'OpenStreetMap fences, gates, power lines and tanks', ttl: 24 * H, timeout: 150e3, args: osmArgs, script: 'osmextra.py' }, orbits: { name: 'Satellite orbits for the home (U.S. Space Force elements, via CelesTrak)', ttl: 12 * H, timeout: 90e3, args: () => [], quiet: true, script: 'orbits.py' }, soilfield: { name: 'USDA NRCS soil at the field (SSURGO, STATSGO2)', ttl: 30 * 24 * H, point: true, snap: 0.001, timeout: 60e3, script: 'soilfield.py' }, mnfield: { name: 'Local cash bids (USDA AMS Market News)', ttl: 6 * H, timeout: 100e3, args: mnArgs, key: 'ams', needs: 'Local market prices (USDA Market News)', script: 'mnfield.py' } };   // id → { name, ttl, point?, snap?, timeout?, args?, quiet?, key?, needs?, script }. key: the name of the key it needs (scripts/keys.mjs); without it the lookup is never started. Keep this on one line: test_server.mjs puts test rows into a copy of it.
+if (!keysStatus || !mnArgs) delete LIVE.mnfield;   // a copy without scripts/keys.mjs or scripts/mnargs.mjs has no cash bids: never a lookup that could run unchecked
 const liveStats = {}, inFlight = new Map();
-// Two lanes, so one slow lookup cannot hold up the others: the quick lookups (crop map, prices, national yields, fires, the home's satellite orbits) have a place reserved, the satellite and height lookups, which can run for minutes, share the rest.
+// Two lanes, so one slow lookup cannot hold up the others: the quick lookups (crop map, prices, national yields, fires, the home's satellite orbits, the US soil survey, the local cash bids) have a place reserved, the satellite and height lookups, which can run for minutes, share the rest.
 // The total never goes above LIVE_MAX (memory is the limit on a small host); with one place only, the quick lookups go first when it is free.
-const QUICK = new Set(['cropsnear', 'prices', 'faostat', 'firms', 'orbits']), laneOf = id => (QUICK.has(id) ? 'quick' : 'slow');
+const QUICK = new Set(['cropsnear', 'prices', 'faostat', 'firms', 'orbits', 'soilfield', 'mnfield']), laneOf = id => (QUICK.has(id) ? 'quick' : 'slow');
 const lane = { quick: { n: 0, q: [] }, slow: { n: 0, q: [] } };
 const laneMax = l => (LIVE_MAX >= 2 ? (l === 'quick' ? 1 : LIVE_MAX - 1) : 1);
 const mayStart = l => lane[l].n < laneMax(l) && (LIVE_MAX >= 2 || lane.quick.n + lane.slow.n < 1);
@@ -216,11 +223,17 @@ function baseEnv(limitMs) {   // a clean environment for any Python of the serve
     FW_CACHE: CACHE, FW_LIMIT_S: String(limitMs / 1e3), PYTHONWARNINGS: 'ignore', PYTHONDONTWRITEBYTECODE: '1',
     ...(process.platform === 'win32' ? { PYTHONUTF8: '1', PYTHONIOENCODING: 'utf-8' } : {}), ...(trustRoots() ? { SSL_CERT_FILE: trustRoots() } : {}) };
 }
-function childEnv(row) {   // a lookup's environment: the clean one plus the NASA login, looked for again for every lookup
+// The optional keys a lookup may read (scripts/live/groundlib.py): the host's own settings, handed on by name, and the folder of key files when the owner moved it. A lookup that needs none gets none.
+const KEY_ENV = Object.freeze({ ams: ['CROPHALO_AMS_KEY', 'CROPHALO_SECRETS_DIR'] });
+function childEnv(row) {   // a lookup's environment: the clean one plus the NASA login, looked for again for every lookup, plus the one key the lookup needs
   const found = findLogin(ROOT);
   keepLogin(found);
-  return { ...baseEnv(row.timeout || 120e3), ...keep('EARTHDATA_USERNAME'), ...keep('EARTHDATA_PASSWORD'), ...found.env };
+  const own = Object.assign({}, ...(KEY_ENV[row.key] || []).map(keep));
+  return { ...baseEnv(row.timeout || 120e3), ...keep('EARTHDATA_USERNAME'), ...keep('EARTHDATA_PASSWORD'), ...found.env, ...own };
 }
+// A lookup whose key is not set on this server answers in plain words at once: nothing is started, nobody outside is asked, and it is never an error page.
+const notSetUp = row => ({ ok: false, not_set: true, reason: `${row.needs || row.name} are not set up on this server (the owner's free key is not set)` });
+const keyHeld = row => { try { return keysStatus?.(ROOT, ENV)?.[row.key] === true; } catch { return false; } };
 function stopTree(child, signal) { try { process.platform === 'win32' ? spawn('taskkill', ['/pid', String(child.pid), '/T', '/F'], { stdio: 'ignore' }) : process.kill(-child.pid, signal); } catch { /* already gone */ } }
 
 // ---- readiness: worked out once at the start and kept. Health and ready only read these; neither ever starts a program.
@@ -323,6 +336,7 @@ function runScript(id, row, args) {   // always resolves with an answer object
 async function lookup(req, res, id, row, url) {
   let args = row.args ? row.args(url.searchParams) : row.point ? pointArgs(url.searchParams) : [];
   if (!Array.isArray(args)) throw new Fail(400, args.reason);
+  if (row.key && !keyHeld(row)) return json(req, res, 200, notSetUp(row));   // looked at again for every ask, so a key set a minute ago counts at once
   if (!fs.existsSync(PY)) {   // quiet: a lookup every visit asks for (the home's orbits) gets a plain "no", not a server fault, on a copy with no Python
     if (row.quiet) return json(req, res, 200, { ok: false, reason: `${row.name}: this copy of Crophalo has no Python for its live lookups` });
     throw new Fail(500, 'Python environment not found (.venv)');
@@ -401,12 +415,13 @@ function sourcesNow() {
 // The status of every data service (scripts/status.mjs): the run counters, the kept answers per service, whether a login is set, true or false only.
 // kept and the newest kept answer's time read the five-second memo of sources(), so asking /api/sources often never scans the folder of kept answers more than once in five seconds:
 // an answer kept before a restart still gives its service a last answer time. The login is the one the server already holds (LOGIN), so a visitor's ask opens no file.
-// A key list (keys:) is not handed in yet: every lookup that needs a key reads "not set" until scripts/keys.mjs is in the folder.
+// The keys are the true or false of scripts/keys.mjs, never a value: a lookup that needs one (its row's key:) says "set" or "not set".
 const status = createStatus({
   live: LIVE, env: ENV, fetch: globalThis.fetch,
   stats: () => { const out = { ...liveStats }; for (const row of sources()) { const t = Date.parse(row.last_ok_time) || 0; if (t) out[row.id] = { ...(liveStats[row.id] || {}), last_ok_time: Math.max(liveStats[row.id]?.last_ok_time || 0, t) }; } return out; },
   kept: id => sources().find(row => row.id === id)?.cache_items ?? 0,
   loginSet: () => !!LOGIN.where,
+  keys: () => { const held = keysStatus?.(ROOT, ENV) ?? {}; delete held.earthdata; return held; },   // the login is the one the server already holds (loginSet), so this opens no login file a second time
 });
 
 // ---- routes: the one place an /api path is registered.
@@ -415,6 +430,7 @@ const ROUTES = {
   '/api/health': { methods: ['GET', 'HEAD'], open: true, run: (req, res) => json(req, res, 200, health()) },
   '/api/ready': { methods: ['GET', 'HEAD'], open: true, run: (req, res) => json(req, res, ...ready()) },
   '/api/sources': { methods: ['GET'], run: (req, res) => json(req, res, 200, status.list()) },
+  ...(keysStatus ? { '/api/keys': { methods: ['GET'], run: (req, res) => json(req, res, 200, keysStatus(ROOT, ENV)) } } : {}),   // which optional keys and logins are set: true or false each, never a value. On this computer only (scripts/hostmode.mjs): a public server answers 404 and its pages read /api/sources
   '/api/sources/check': { methods: ['POST'], rate: true, run: async (req, res, url) => json(req, res, 200, await status.check((url.searchParams.get('id') || '').split(',').filter(Boolean))) },   // a POST, so a link or a prefetch never starts it; each service is asked at most once in ten minutes
   '/api/login-check': { methods: ['POST'], rate: true, run: async (req, res) => json(req, res, 200, await checkLogin()) },   // asks NASA, so only when someone asks for it
 };

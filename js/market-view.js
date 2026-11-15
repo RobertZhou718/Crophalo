@@ -39,6 +39,12 @@ export function marketLineHTML(market, plan, where = 'card', result = null, near
   if (where === 'detail') return m.failed ? '' : `${regionsFoldHTML(m.regions)}${creditsHTML(m.credits)}`;
   return '';
 }
+// The one plain line under "Crop prices" when there are no bids to show for a United States field: the server holds no Market News key ("not set up"), or Market News did not answer.
+// '' for everything else (no answer yet, still loading, a real answer, a field outside the United States).
+export function bidsStateHTML(market) {
+  if (!market || market.loading || market.ok !== false) return '';
+  return `<div class="lf-bids"><p class="cap mk-state" role="status">${esc(market.notSet === true ? WORDS.notSet : WORDS.failLayer)}</p></div>`;
+}
 // The lines the strategy detail adds to "What evidence supports it" ({ text, sources }), "Where information is missing" and "Risks to check locally" (plain text: the detail escapes them).
 export function marketListsFor(market, plan, result = null, near = null) {
   const m = marketFor(market, plan, result, near);

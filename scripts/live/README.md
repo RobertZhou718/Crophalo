@@ -176,12 +176,14 @@ before it runs the lookup (so every pin inside one coarse pixel shares one answe
 | `imerg` | LAT LON FROM TO | yes | 120 s | 6 h | centre of the 0.1° square |
 | `isda` | LAT LON | no | 30 s | 30 days | no |
 | `landcover` | LAT LON W D NX NY | no | 120 s | 30 days | no |
+| `mnfield` | LAT LON MODE CROPS | no (the owner's free USDA Market News key) | 100 s | 6 h | 0.05° |
 | `ndvi` | LAT LON | no | 240 s | 7 days | 0.002° |
 | `ndvihist` | LAT LON | no | 300 s | 30 days | 0.002° |
 | `orbits` | none | no | 90 s | 12 h | shared by all |
 | `osm` | LAT LON W D | no | 150 s | 30 days | no |
 | `prices` | none | no | 300 s | 12 h | shared by all |
 | `smap` | LAT LON | yes | 420 s | 7 days | 0.01° |
+| `soilfield` | LAT LON | no | 60 s | 30 days | 0.001° |
 | `soilgrids` | LAT LON | no | 120 s | 90 days | 0.002° |
 | `soilsurvey` | LAT LON | no | 150 s | 30 days | no |
 | `water` | LAT LON W D | for the passes since 2023 only | 300 s | 24 h | no |
@@ -887,6 +889,24 @@ against the live service.
 
 *To be written.*
 
+## mnfield
+
+**What it is.** For a field in the United States, what buyers bid for each crop in the newest USDA AMS Market News grain report of the field's state (or of the nearest state with a live report, or a national report for a few crops). It needs the owner's free USDA Market News key on the server and no NASA login. A bid is a price on one day at a place: it is never income and never enters a score.
+
+**Request.** `GET /api/mnfield?lat=41.18&lon=-96.44&mode=now&crops=corn,soy`. `mode` is `now` (the server also accepts `hay` and `cost`, which the lookup answers with "This Market News reading is not on this server yet"); `crops` is up to 16 Crophalo crop ids, and may be empty. The server checks the arguments (`scripts/mnargs.mjs`), snaps the place to 0.05 degrees, sorts the crops, and runs `mnfield.py LAT LON MODE CROPS`.
+
+**The key.** Read by `groundlib.py` only: first the host's setting `CROPHALO_AMS_KEY`, then the file `.secrets/ams-marketnews.key` in the folder (or in the folder `CROPHALO_SECRETS_DIR` names). The server hands the setting to this lookup alone. The key goes only into the request's Authorization header; it is never in an address, an answer, the log or a kept file, and a keyed answer is never recorded. Without the key the server answers at once, starting nothing: `{"ok": false, "not_set": true, "reason": "Local market prices (USDA Market News) are not set up on this server (the owner's free key is not set)"}` with status 200.
+
+**Good answer.** `{"ok": true, "source", "mode": "now", "today", "window": {"from", "to"}, "place": {"state", "state_name"}, "own", "reports": [...], "crops": [{"crop", "status": "own" | "neighbour" | "far" | "none_found" | "not_read", "report", "report_date", "low", "high", "unit", "regions": [...]}], "data_date"}`. The page's reader is `js/market-data.js`.
+
+**Failure answers.** `USDA Market News covers only the United States` (final); `USDA Market News did not accept the key set on this server`; `USDA Market News did not answer just now; try again in a minute`; `USDA Market News took too long to answer; try again in a minute` (the time limit); `USDA Market News sent more bids than this page can show`; the argument refusals of `scripts/mnargs.mjs`.
+
+**Kept.** The server keeps a whole answer 6 hours. The lookup keeps only the National Weather Service's points answer (the state of a place, no key) 30 days under `FW_CACHE/nws`.
+
+**Source and manners.** `https://marsapi.ams.usda.gov/services/v1.2` (the report list once, then one request per report read) and `https://api.weather.gov/points/LAT,LON` for the state. USDA Market News data is a work of the United States Government, in the public domain in the United States; some reports are issued with a state department of agriculture, named in the answer. Not made, reviewed or endorsed by USDA.
+
+**Checked by.** `scripts/test_mnfield.mjs` (offline: hand-made stand-ins in the shape of real answers, each marked as not real, and a made-up key), `scripts/test_field_routes.mjs` (the route, how the key reaches the lookup, the "not set up" answer), `scripts/test_market.mjs` (the page's sentences).
+
 ## ndvihist
 
 **What it is.** How green the land round the field looked at its greenest in every season since 2001, for the "What satellites saw" part of the Land history page: NASA's MODIS Terra 16-day greenness (NDVI, 250 m; the MOD13Q1 product), the median of a patch of 9 by 9 dots (about 2 km) round the point, one value for each season (its greenest composite). It is the greenness of the land round the field, not of the field. No login: NASA GIBS serves the record openly.
@@ -1082,6 +1102,22 @@ against the live service.
 **Checked by.** `scripts/test_live_smaproot.mjs` (offline; NASA's answers hand-made in the real format from real numbers), `scripts/test_smap_route.mjs` (the server's runner with a stand-in Python), `scripts/live_check_smaproot.mjs` (by hand, live).
 
 **Checked against the live service.** The catalogue answers `SPL4SMGP` newest first and gives the OPeNDAP address in the `service#` link. The variable `sm_rootzone` has the shape `[y][x]` (1624 by 3856) with no time axis: the first try with a `[0]` in front was refused. Cells over open water hold -9999. Barrie 0.1013, Iowa 0.35, Kenya 0.27, Konya 0.21, Sydney 0.10, a desert cell 0.14, an Atlantic cell no value.
+
+## soilfield
+
+**What it is.** The soil at a field in the United States from the US soil survey: the map unit under the pin, its main soils and the top layer of each (texture, organic matter, pH). No key, no login.
+
+**Request.** `GET /api/soilfield?lat=41.18&lon=-96.44`; the server snaps the place to 0.001 degrees (about 100 m) and runs `soilfield.py LAT LON`.
+
+**Good answer.** `{"ok": true, "source", "data_date", "units", "survey": "SSURGO" | "STATSGO2", "mapunit": {"key", "symbol", "name", "area", "farmland"}, "soils": [{"name", "percent", "drainage", "hydrologic_group", "slope_pct", "capability_class", "top": {"from_cm", "to_cm", "organic_matter_pct", "ph", "sand_pct", "silt_pct", "clay_pct", "water_cm_per_cm"}}], "citation", "note"}`. A figure the survey leaves blank stays null, never 0. The detailed survey (SSURGO) is asked first; only where it has nothing at the point, the general soil map (STATSGO2), and the note then says it is a guide for the area, not the field. The page's reader is `js/soil-load.js`.
+
+**Failure answers.** `The USDA soil survey covers only the United States: there is no SSURGO or STATSGO2 soil at this place` (final); `The data source did not answer just now; try again in a minute`; `The soil survey sent an answer Crophalo cannot read`; `The US soil survey took too long to answer; try again in a minute (it is closed every night from about midnight to 2 am Mountain time)` (the time limit).
+
+**Kept.** The server keeps a whole answer 30 days. The lookup keeps nothing.
+
+**Source and manners.** USDA NRCS Soil Data Access, `https://sdmdataaccess.sc.egov.usda.gov/Tabular/post.rest`, one SQL request (two where the detailed survey has nothing). Soil Survey Staff, Natural Resources Conservation Service, United States Department of Agriculture: Soil Survey Geographic (SSURGO) Database and U.S. General Soil Map (STATSGO2). US Government work.
+
+**Checked by.** `scripts/test_soilfield.mjs` (offline: the answers Soil Data Access gave for the Mead field on 2026-11-14, and hand-made ones in its documented shape; then the page's own reader on the lookup's answer), `scripts/test_field_routes.mjs` (the route).
 
 ## soilsurvey
 

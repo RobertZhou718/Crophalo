@@ -1,0 +1,2 @@
+# Source: U.S. National Weather Service API (api.weather.gov/points/41.18,-96.44, Mead, Nebraska). Recorded 14 November 2026 (evening, US time) by a plain request with no key. US Government work, public domain. Trimmed to the fields the lookups read.
+{"properties":{"gridId":"OAX","gridX":65,"gridY":57,"forecast":"https://api.weather.gov/gridpoints/OAX/65,57/forecast","county":"https://api.weather.gov/zones/county/NEC155","timeZone":"America/Chicago","relativeLocation":{"properties":{"state":"NE"}}}}

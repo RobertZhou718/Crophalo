@@ -156,6 +156,22 @@ await group('cash bids', async () => {
   }
 });
 
+// No bids to show for a United States field: one plain line under "Crop prices" says why. The public server keeps /api/keys shut (404) and says "not set up" itself when it holds no Market News key; a failed lookup says Market News did not answer.
+await group('cash bids: not set up, not answering', async () => {
+  const NOT_SET = { ok: false, not_set: true, reason: 'Local market prices (USDA Market News) are not set up on this server (the owner\'s free key is not set)' }, DOWN = fxf('market-page/failed_standin.json');
+  for (const [name, keys, answer, want] of [['no key on the server', null, NOT_SET, /Local cash bids from USDA Market News are not set up on this server, so none are shown\./], ['Market News not answering', '{"ok":true,"ams":true}', DOWN, /USDA Market News did not answer just now, so its bids are not read\./]]) {
+    await fresh(1280);
+    await js(`window.fetch = (f => async (url, ...r) => { const u = String(url), json = (t, status = 200) => ({ ok: status === 200, status, json: async () => JSON.parse(t), text: async () => t }); if (/\\/api\\/keys/.test(u)) return ${keys ? `json(${JSON.stringify(keys)})` : `json('{"ok":false,"reason":"Unknown endpoint"}', 404)`}; if (/\\/api\\/mnfield/.test(u)) return json(${JSON.stringify(JSON.stringify(answer))}); if (/\\/api\\//.test(u)) return json('{"ok":false}'); return f(url, ...r); })(window.fetch)`);
+    await js(`import('/js/state.js').then(async st => { const m = await import('/js/report.js'), a = await import('/js/app.js'); a.show('report');
+      await m.renderResult({ ...st.newState(), loc: { lat: ${REGION.lat}, lon: ${REGION.lon}, label: 'Near Mead, Nebraska', cc: 'US' }, name: 'Mead field', soil: { mode: 'assumed', texture: null, om: null, omPct: null }, farm: { ...st.newState().farm, irrigation: 'none' }, rotation: { preset: 'corn-soy-wheat', custom: [], garden: null, second: {} } }, ${FIXTURE}, {}); })`);
+    await until(`!!document.querySelector('#answer')`); await sleep(1500);
+    await js(`document.querySelector('#lfPrices summary').click()`); await sleep(200);
+    const t = await js(`document.querySelector('#lfPrices').textContent.replace(/\\s+/g, ' ')`), page = await js(`document.querySelector('#view-report, main, body').textContent.replace(/\\s+/g, ' ')`);
+    check(`${name}: one plain line under "Crop prices" says so, and no bid or caption is shown`, want.test(t) && !/buyers reported paying|A bid, not your price/.test(t), t.slice(-300));
+    check(`${name}: no strategy says "not read", nothing is announced as new data, and no word of the server's insides is on the page`, !/Market News bids: not read/.test(page) && !/New data has arrived/.test(page) && !/Unknown endpoint|CROPHALO_|\.secrets|undefined/.test(t), page.slice(0, 200));
+  }
+});
+
 // a missing crop map or soil-moisture reading never stops the report: only the weather record is needed
 for (const mode of ['404', 'error answer']) await group(`crop map and soil moisture fail: ${mode}`, async () => {
   const POWER = fxf('power_barrie.json'), FORECAST = fxf('forecast_barrie.json'), REC = JSON.parse(POWER);

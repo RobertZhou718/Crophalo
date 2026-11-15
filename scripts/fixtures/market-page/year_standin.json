@@ -1,0 +1,10 @@
+{
+  "_note": "STAND-IN, NOT REAL DATA. Hand-made in the shape of the /api/mnyear answer, for the checks only. Prices are made up. Not drawn in this tier.",
+  "ok": true,
+  "mode": "year",
+  "report": { "id": 3225, "title": "Nebraska Daily Elevator Grain Bids", "published": "2026-11-13", "live": true, "role": "own", "state": "NE", "co_publisher": "NE Dept. of Ag Market News" },
+  "crop": "corn", "name": "Corn", "region": "East", "unit": "$ per bushel",
+  "days": [ { "date": "2026-11-11", "avg": 1.11, "year_ago_avg": 1.01 }, { "date": "2026-11-12", "avg": 2.22, "year_ago_avg": null }, { "date": "2026-11-13", "avg": 3.33, "year_ago_avg": 3.03 } ],
+  "n_days": 3,
+  "left_out_days": 0
+}

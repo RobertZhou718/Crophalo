@@ -108,7 +108,7 @@ put(SITE, 'scripts/serve.mjs', SOURCE);
 put(SITE2, 'scripts/serve.mjs', SOURCE.replace(LIVE_LINE, TEST_ROWS));   // the server as written, plus test rows in its empty table
 const SITE3 = path.join(TMP, 'site3');   // as SITE2, with a scripts/live folder, so a test row's lookup really starts the stand-in Python
 put(SITE3, 'index.html', FILES['index.html']); put(SITE3, 'scripts/serve.mjs', SOURCE.replace(LIVE_LINE, TEST_ROWS)); fs.mkdirSync(path.join(SITE3, 'scripts', 'live'));
-for (const root of [SITE, SITE2, SITE3]) for (const name of ['earthdata.mjs', 'hostmode.mjs', 'status.mjs', 'portable.sh']) fs.copyFileSync(path.join(HERE, name), path.join(root, 'scripts', name));
+for (const root of [SITE, SITE2, SITE3]) for (const name of ['earthdata.mjs', 'hostmode.mjs', 'status.mjs', 'keys.mjs', 'mnargs.mjs', 'portable.sh']) fs.copyFileSync(path.join(HERE, name), path.join(root, 'scripts', name));
 
 // ---- servers and requests
 const children = [];
@@ -322,8 +322,9 @@ async function statusRoutes(A) {
     ['prices', 'World crop prices (World Bank Pink Sheet)', 24], ['faostat', 'National crop yields and farm-gate prices (FAOSTAT)', 24],
     ['ndvihist', 'NASA MODIS greenness since 2001, each season at its greenest', 720], ['firms', 'NASA FIRMS fires and hot spots, last 24 hours', 3],
     ['osm', 'OpenStreetMap buildings, roads, water, woods and hedges', 24], ['osmextra', 'OpenStreetMap fences, gates, power lines and tanks', 24],   // the 3D view's land details: two lookups added on purpose (the 3D paper, its server rows, kept 24 h)
-    ['orbits', 'Satellite orbits for the home (U.S. Space Force elements, via CelesTrak)', 12]];   // id, name, hours a whole answer is kept
-  same('health: the sixteen lookups the server has, each with how long a whole answer is kept, never run yet', h.live, Object.fromEntries(ROWS.map(([id, , hours]) => [id, { last_ok: null, error: null, ttl_hours: hours }])));
+    ['orbits', 'Satellite orbits for the home (U.S. Space Force elements, via CelesTrak)', 12],
+    ['soilfield', 'USDA NRCS soil at the field (SSURGO, STATSGO2)', 720], ['mnfield', 'Local cash bids (USDA AMS Market News)', 6]];   // id, name, hours a whole answer is kept. The last two: the US soil survey and the USDA cash bids a United States field asks for (scripts/test_field_routes.mjs)
+  same('health: the eighteen lookups the server has, each with how long a whole answer is kept, never run yet', h.live, Object.fromEntries(ROWS.map(([id, , hours]) => [id, { last_ok: null, error: null, ttl_hours: hours }])));
   check('health never holds the login itself', !health.text.includes(USER) && !health.text.includes(WORD));
   const named = await askJson(p, '/api/health', { headers: { host: 'uptime-checker.example', origin: 'https://uptime-checker.example' } });
   same('health answers for any Host name', [named.status, named.json?.ok], [200, true]);

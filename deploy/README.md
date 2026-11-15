@@ -14,3 +14,7 @@ On this computer nothing here is needed: Crophalo starts and works exactly as be
 - `.github/workflows/api-image.yml`: builds, tests and publishes the data server's image (the `Dockerfile` at the top of the folder; `.dockerignore` says what stays out).
 
 Before each push to main: `node deploy/stage-site.mjs . --check --strict`
+
+## The data server's optional secret: USDA cash bids
+
+The report's USDA Market News cash bids for a field in the United States need the owner's free Market News key on the data server. On the container app: **Settings, Secrets**, add a secret holding the key; then **Containers, Environment variables**, add `CROPHALO_AMS_KEY` and point it at that secret; save as a new revision. The key is read by the cash bids lookup only, is sent to USDA only, and is never in an answer, an address or the log. Without it the report says in one line that the bids are not set up on this server; nothing else changes. The API connections page shows the row "Local cash bids (USDA AMS Market News)" with its key "set" or "not set". The US soil survey (`/api/soilfield`) needs no key.

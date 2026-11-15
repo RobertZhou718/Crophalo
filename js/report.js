@@ -21,7 +21,7 @@ import { loadName, FINDING } from './placename.js';
 import { coordText } from './places.js';
 import { hooks } from './hooks.js';
 import { startMarket } from './market-data.js';
-import { marketLineHTML, marketListsFor } from './market-view.js';
+import { marketLineHTML, marketListsFor, bidsStateHTML } from './market-view.js';
 import { hardYearModel } from './hardyear-model.js';
 import { climateFacts, satelliteFacts, priceFacts } from './letter-facts.js';
 import { buildTrends } from './trends-data.js';
@@ -154,8 +154,8 @@ function letterBody() {
   // "Trends on this land": one closed part inside "Weather here since 2001", after its plain lines (its stored water and greenness are asked when it is first opened)
   const trends = wk?.ok && wk.C ? trendsPartHTML(buildTrends({ C: wk.C, series: cur.series, state: cur.state, grace: cur.grace, green: cur.green, lat: wk.lat, lon: wk.lon ?? cur.state.loc?.lon }), { localise: t => localiseText(t, u) }) : '';
   const pr = cur.moneyLookups === undefined ? undefined : cur.moneyLookups ? cur.moneyLookups.prices : { ok: false }, pf = priceFacts({ prices: pr, crops: planCrops(), units: u });
-  // USDA's cash bids: what buyers reported paying, with its date and unit, for each crop of the strategies (a United States field only; nothing when the lookup is absent or has not answered)
-  let bids = '';
+  // USDA's cash bids: what buyers reported paying, with its date and unit, for each crop of the strategies (a United States field only). Without bids, one plain line says why: not set up on this server, or Market News did not answer.
+  let bids = bidsStateHTML(cur.market);
   if (cur.market && !cur.market.loading && cur.market.ok !== false && r?.ok) {
     const plans = strategies(r).first, ev = [];
     for (const p of plans) for (const e of marketListsFor(cur.market, p, r, cur.near).evidence) if (!ev.some(x => x.text === e.text)) ev.push(e);
@@ -313,7 +313,7 @@ export async function openReport(state, { demo = false } = {}) {
   await work();
   if (mine !== run) return;
   if (loaded.backup && cur.result?.ok) lowerSureness(cur.result);   // the back-up record is rougher: the answer says so and is one point less sure
-  startMarket(cur, mine, () => landed('crop prices', () => {})).catch(() => { if (cur) cur.market = undefined; });   // USDA's cash bids for a field in the United States: asked after the answer, never in its way
+  startMarket(cur, mine, () => { if (mine !== run) return; if (cur.market?.ok === false) redrawKeep(); else landed('crop prices', () => {}); }).catch(() => { if (cur) cur.market = undefined; });   // USDA's cash bids for a field in the United States: asked after the answer, never in its way; only real bids are announced as new data
   startMoney(mine);   // the rough money line under each option; the report does not wait for it
   await new Promise(r => setTimeout(r, motionOff() || loaded.allCached || first === 'now' ? 0 : 150));   // answers that were kept need no pause; fresh ones keep a moment so the rows are seen to finish
   if (mine !== run) return;

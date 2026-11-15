@@ -145,8 +145,9 @@ run by hand, never by `check.sh`.
 | `js/farm3d.js`, `farm3d-data.js`, `farm3d-draw.js`, `farm3d-orbit.js`, `farm3d-rule.js`, `farm3d-shell.js`, `farm3d-worker.js`, `land3d-load.js`, `land3d-mesh.js`, `shade3d.js`, `layers3d.js`, `layers3d-load.js`, `picture3d.js`, `farmlayers.js`, `shade.js`, `shade-worker.js`, `moon.js` | the 3D view (one field, one plan, one date, built on a worker), the camera, when it opens by itself, the land's details, the shade, the sun's and moon's place |
 | `js/objects3d-data.js`, `objects3d-shapes.js` | written and tested, but no screen shows them yet (only a suite reads them) |
 | `data/regions.json` | the three demo fields (Mead, Beltsville, Barrie), each with its outline and its answers already chosen |
-| `scripts/serve.mjs`, `push.mjs`, `drought.mjs`, `earthdata.mjs` | the server (no packages): the app's files, `/api/health`, `/api/ready`, `/api/sources` and `POST /api/sources/check` (the API connections page), the 16 lookups (among them the satellites' orbits for the home, OpenStreetMap's land details for the 3D view, what a field grew year by year and the greenness inside a field), `/api/push/*`, `/api/drought`; finding the NASA login |
-| `scripts/live/` | the Python lookups: `smaproot.py`, `imergrain.py`, `gracecell.py`, `ecopass.py`, `hlsndvi.py`, `hlsbox.py`, `dem.py`, `cropsnear.py`, `crophist.py`, `firms.py`, `prices.py`, `faostat.py`, `ndvihist.py`, `orbits.py`, `osm.py`, `osmextra.py`; helpers `common.py`, `dap4.py`, `heights.py`, `flock_compat.py`, `faostat_items.py`; code lists; `README.md` |
+| `scripts/serve.mjs`, `push.mjs`, `drought.mjs`, `earthdata.mjs` | the server (no packages): the app's files, `/api/health`, `/api/ready`, `/api/sources` and `POST /api/sources/check` (the API connections page), the 18 lookups (among them the satellites' orbits for the home, OpenStreetMap's land details for the 3D view, what a field grew year by year, the greenness inside a field, the US soil survey at the field and the USDA cash bids), `/api/keys` (on this computer only: which optional keys are set, yes or no), `/api/push/*`, `/api/drought`; finding the NASA login |
+| `scripts/keys.mjs`, `mnargs.mjs` | which optional keys the server holds, as yes or no only (never a key); the argument check of the cash bids lookup |
+| `scripts/live/` | the Python lookups: `smaproot.py`, `imergrain.py`, `gracecell.py`, `ecopass.py`, `hlsndvi.py`, `hlsbox.py`, `dem.py`, `cropsnear.py`, `crophist.py`, `firms.py`, `prices.py`, `faostat.py`, `ndvihist.py`, `orbits.py`, `osm.py`, `osmextra.py`, `soilfield.py`, `mnfield.py`; helpers `common.py`, `dap4.py`, `heights.py`, `flock_compat.py`, `faostat_items.py`, `groundlib.py` (the optional keys), `mnlib.py` (the cash bids' rules); code lists; `README.md` |
 | `scripts/run.sh`, `start-windows.ps1`, `preflight.mjs`, `portable.sh`, `pack-runtimes.sh`, `vendor.mjs`, `requirements.txt`, `WINDOWS-CHECKLIST.md` | the starters, the start check-up, the pinned Node and Python, the bundled libraries |
 | `scripts/check.sh`, `test*.mjs`, `e2e*.mjs`, `live_check_*.mjs`, `check_live_money.mjs`, `record_*.mjs`, shared test code (`e2e_lib.mjs`, `live_testlib.mjs` and others), `wordguard.mjs` | the suites, the one check, the recorders; `scripts/fixtures/` holds recorded answers of the outside services and four hand-made test helpers |
 | `vendor/`, `scripts/vendor-test/` | Leaflet, MapLibre, three.js and satellite.js, kept in the folder; axe-core for the suites only |
@@ -161,8 +162,9 @@ Git leaves these out, and `.userdata/` too.
 ## What is not built yet
 
 - The SMAP soil water reading has no 12-month view yet.
-- The report's USDA cash bids line needs the server's USDA Market News lookup and its key; this server has no such lookup yet, so the
-  line does not show.
+- The report's USDA cash bids need the owner's free USDA Market News key on the server (the setting `CROPHALO_AMS_KEY`, or the file
+  `.secrets/ams-marketnews.key` in the folder). Without it the report says in one line that the bids are not set up on this server.
+  Only the newest bids are read (`mode=now`); hay, costs and a year of bids are not read yet.
 - Units and currency are not yet used for every figure of the report and My Farm.
 - Look ahead is written and tested, but no screen opens it. The land history's greenness record is written and tested in `js/greenness.js`, but My farm does not hand the page the field's position yet.
 - The server's `prices` lookup (World Bank Pink Sheet), `faostat` (FAO's FAOSTAT files), `ndvihist` (NASA MODIS greenness

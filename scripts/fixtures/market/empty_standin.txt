@@ -1,0 +1,2 @@
+# STAND-IN, NOT REAL DATA. Hand-made in the shape of a USDA Market News MARS API v1.2 answer, for the checks only.
+{"reportSection":"Report Detail","reportSections":["Report Header","Report Detail"],"stats":{"returnedRows":0,"userAllowedRows":100000,"totalRows":0},"results":[]}

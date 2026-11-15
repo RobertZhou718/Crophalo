@@ -40,10 +40,15 @@ export const WORDS = Object.freeze({
   cover: 'The cover crop is grown to protect the soil, not to sell.',
   oneDay: 'These are bids on one day at elevators in a region, not what you will be paid. Your price, yield and costs differ.',
   takes: 'A bid shows a buyer. It does not say how much they will take.',
+  notSet: 'Local cash bids from USDA Market News are not set up on this server, so none are shown.',
 });
 // The server's own refusals that mean "this piece is absent here", not "it failed": no key on the server, and a place outside the United States.
-export const ABSENT_REASONS = Object.freeze([/needs the owner[’']s free key on this server, and none is set/, /^USDA Market News covers only the United States/]);
+const NOT_SET_REASONS = [/\bnot set up on this server\b/, /needs the owner[’']s free key on this server, and none is set/];
+export const ABSENT_REASONS = Object.freeze([...NOT_SET_REASONS, /^USDA Market News covers only the United States/]);
 const absentReason = reason => typeof reason === 'string' && ABSENT_REASONS.some(x => x.test(reason));
+// The server said the Market News key is not set: by its flag, or by its sentence. The page then says so in one plain line (WORDS.notSet) and shows no bid.
+const notSetAnswer = a => !!a && a.ok === false && (a.not_set === true || (typeof a.reason === 'string' && NOT_SET_REASONS.some(x => x.test(a.reason))));
+export const NOT_SET = Object.freeze({ ok: false, notSet: true });
 
 // ---- rounding and dates
 // Round half up on the decimal value: 3.945 gives 3.95 (plain Math.round(x * 100) gives 3.94, because 3.945 × 100 is 394.49999999999994 in binary).
@@ -89,19 +94,23 @@ export function cropsToAsk(result) {
 }
 
 // ---- asking our server (never Market News itself: the key stays on the server and never appears in an address)
-// Answers: null when the piece is absent here (not the United States, no key); { ok: false } on any failure; else the server's answer.
+// Answers: null when the piece is absent here (not the United States, a server that cannot be reached); NOT_SET when the server holds no Market News key; { ok: false } on any failure; else the server's answer.
+// The yes-or-no question (/api/keys) is answered only by a copy on the farmer's own computer; the public server keeps it shut, so there the bids are asked for at once
+// and the server itself says "not set up" without asking Market News: it never asks Market News without the key, whoever asks it.
 export async function loadMarket(place, crops, fetcher = globalThis.fetch?.bind(globalThis)) {
   if (String(place?.cc ?? '').toUpperCase() !== 'US' || !fin(place?.lat) || !fin(place?.lon) || typeof fetcher !== 'function') return null;
-  let keys = null;
-  try { const r = await fetcher(apiUrl('/api/keys'), { signal: AbortSignal.timeout(15e3) }); keys = r?.ok ? await r.json() : null; } catch { keys = null; }
-  if (!keys) return null;   // the server did not say it holds the key: the piece is absent, as without the key
-  if (!marketWanted({ cc: place.cc }, keys)) return null;
+  let keys = null, shut = false;
+  try { const r = await fetcher(apiUrl('/api/keys'), { signal: AbortSignal.timeout(15e3) }); if (r?.ok) keys = await r.json(); else shut = r?.status === 404 || r?.status === 403; } catch { keys = null; shut = false; }
+  if (!keys && !shut) return null;   // the server could not be reached, or its answer could not be read: the piece is absent
+  if (keys && !marketWanted({ cc: place.cc }, keys)) return NOT_SET;
   const list = (Array.isArray(crops) ? crops : []).filter(c => typeof c === 'string' && /^[a-z]{2,12}$/.test(c));
   const url = apiUrl(`/api/mnfield?lat=${encodeURIComponent(place.lat)}&lon=${encodeURIComponent(place.lon)}&mode=now&crops=${[...new Set(list)].sort().slice(0, 16).join(',')}`);   // through apiUrl by hand: the address is kept in a name first
   try {
     const r = await fetcher(url, { signal: AbortSignal.timeout(100e3) });
     let a = null; try { a = await r.json(); } catch { a = null; }
+    if (notSetAnswer(a)) return NOT_SET;
     if (a && a.ok === false && absentReason(a.reason)) return null;
+    if (r?.status === 404) return null;   // a server without this lookup: the piece is absent
     if (!r?.ok || !a || a.ok !== true || a.mode !== 'now') return { ok: false };
     return a;
   } catch { return { ok: false }; }
@@ -185,7 +194,7 @@ const crops = n => (n === 1 ? 'crop' : 'crops');
 // Everything one plan shows: { card, cell, evidence: [{ text, sources: ['ams'] }], gaps, risks, regions: [{ crop, heading, lines }], credits, counts: { k, n } }.
 // null: nothing at all (no answer yet, the piece is absent, a plan that does not suit, a plan with no cash crop).
 export function marketFor(answer, plan, result, near) {
-  if (!answer || answer.loading || !plan || plan.flag === 'fails') return null;
+  if (!answer || answer.loading || answer.notSet === true || !plan || plan.flag === 'fails') return null;   // not set up: said once under the prices, never on a strategy
   const ids = planCashCrops(plan);
   if (!ids.length) return null;
   const empty = { card: '', cell: '', evidence: [], gaps: [], risks: [], regions: [], credits: [], counts: { k: 0, n: ids.length } };

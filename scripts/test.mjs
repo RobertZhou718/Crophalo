@@ -133,6 +133,8 @@ await group('the folder', async () => {
     'scripts/e2e_data.mjs': ['2026-10-05', '2026-11-12'], 'scripts/e2e_notes.mjs': ['2026-10-05', '2026-11-12'], 'scripts/e2e_remind.mjs': ['2026-10-05', '2026-11-12'], 'scripts/e2e_share.mjs': ['2026-10-05', '2026-11-12'], 'scripts/e2e_soil.mjs': ['2026-10-05', '2026-11-12'],   // the same stand-in report as e2e_reportux: winter wheat sown in October, and the newest day of a stand-in record
     'scripts/e2e_macro_report.mjs': ['2026-11-13'],   // the day of a stand-in soil-moisture reading
     'scripts/e2e_macro_turn.mjs': ['2026-11-13'],   // the day of a stand-in soil-moisture reading, as in e2e_macro_report
+    'scripts/test_market.mjs': ['2026-11-13'], 'scripts/test_mnfield.mjs': ['2026-11-13'],   // the day of a stand-in USDA Market News report: a bid is always some days older than the day it is read, and the suites check that its age is said
+    'scripts/test_soilfield.mjs': ['2026-09-11', '2016-10-13'],   // the days USDA NRCS last published the two soil surveys of the Mead field (the detailed survey of Saunders County, and the general soil map): the surveys' own dates, read from the recorded answers and said beside the soil
     'scripts/test_prices_cards.mjs': ['2025-10-31'],   // the year-ago month of a stand-in world price, said beside the change
     'scripts/test_notes.mjs': ['2026-08-01', '2026-08-31', '2026-10-01', '2026-10-02', '2026-10-05', '2026-11-01'], 'scripts/test_sharemodel.mjs': ['2026-04-20', '2026-05-01', '2026-08-01', '2026-09-01', '2026-09-02', '2026-10-05'],   // notes written on past days of this season, and the sowing and harvest days of a plan's first season this year
   };
