@@ -32,10 +32,10 @@ export function answerHTML(result, ctx = {}) {
   if (!result || result.ok === false || !result.recommended) return `${head}<div class="rv-notread" role="status"><p>${esc(result?.reason || NOT_READ)}</p></div></section>`;
   const cur = result.current, keep = isKeepAnswer(result), alt = proposedPlan(result, ctx.chosen), chosen = alt.why === 'chosen' && !ctx.preselected;
   const other = chosen ? alt.plan : keep ? (alt.plan && alt.plan !== cur ? alt.plan : null) : result.recommended;   // the plan set against what you grow now: the one you chose, or our suggestion, or (on a keep answer) the best other option
-  const pickNow = ctx.pick === 'now' || !other;
+  const pickNow = !other || ctx.pick === 'now' || (keep && !chosen && ctx.pick == null);   // on a keep answer the card opens on what you grow now: that IS our suggestion
   const shown = pickNow ? cur : other;
   const noFit = !chosen && pickNow && noFitNow(result, keep);   // what is grown now does not suit here: the page says so with the engine's reason, never "Keep ..."
-  const eyebrow = pickNow ? 'What you grow now' : chosen ? 'You chose' : 'Our suggestion';
+  const eyebrow = pickNow ? (keep && !chosen ? 'Our suggestion' : 'What you grow now') : chosen ? 'You chose' : keep ? 'An option worth a look' : 'Our suggestion';   // one plan only is ever called our suggestion
   const headline = noFit ? NO_FIT_WORDS : pickNow ? `Keep ${planName(cur)}` : `Try ${optionLabel(shown, result)}`;
   const reason = noFit ? first(result.reason) : pickNow ? (keep ? 'What you grow now suits this field well.' : 'This is what you grow now. Crophalo compares the others with it.') : first(chosen ? (shown.why || result.reason) : keep ? (shown.why || result.reason) : result.reason);
   const card = (value, role, plan) => `<label class="rv-pickcard${(value === 'now') === pickNow ? ' is-on' : ''}"><input type="radio" class="sr" name="rvpick" value="${value}" id="pick-${value}"${(value === 'now') === pickNow ? ' checked' : ''}><span class="rv-pick-tag">${(value === 'now') === pickNow ? '<svg class="ic" aria-hidden="true"><use href="#i-tick"/></svg> ' : ''}${esc(role)}</span>${cropsRow(plan)}</label>`;
