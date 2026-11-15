@@ -68,10 +68,11 @@ jobs:
           docker run -d --name api -p 8080:8080 crophalo-api:test
           ok=""
           for i in $(seq 1 60); do
-            if curl -fsS http://127.0.0.1:8080/api/health -o health.json 2>/dev/null; then ok=1; break; fi
+            if curl -fsS http://127.0.0.1:8080/api/ready -o /dev/null 2>/dev/null; then ok=1; break; fi   # ready waits for the one Python start check; health answers before it
             sleep 1
           done
-          if [ -z "$ok" ]; then echo "The server did not answer /api/health within 60 s"; docker logs api; exit 1; fi
+          if [ -z "$ok" ]; then echo "The server was not ready (/api/ready) within 60 s"; curl -s http://127.0.0.1:8080/api/ready; docker logs api; exit 1; fi
+          curl -fsS http://127.0.0.1:8080/api/health -o health.json
           cat health.json; echo
           jq -e '.ok == true and .python == true' health.json > /dev/null || { echo "health: not ok, or the Python tools are missing"; exit 1; }
           test "$(curl -s -o /dev/null -w '%{http_code}' http://127.0.0.1:8080/api/ready)" = 200 || { echo "/api/ready is not 200"; exit 1; }
