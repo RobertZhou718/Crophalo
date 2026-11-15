@@ -24,6 +24,9 @@ export const SWITCHES = [
   { id: 'wet', name: 'Wet spots', needs: ['heights'], line: 'Low places where rain would collect.' },
 ];
 const BY_ID = new Map(SWITCHES.map(s => [s.id, s]));
+// The switches a farmer is offered: a switch whose source this version has no lookup for (the soil map, the land cover) is left out of the list and never drawn, so no row can say it has nothing.
+export const NO_LOOKUP = Object.freeze(['soil', 'cover']);
+export const LISTED = SWITCHES.filter(s => !s.needs.some(n => NO_LOOKUP.includes(n)));
 export const switchOf = id => (typeof id === 'string' && BY_ID.has(id) ? BY_ID.get(id) : null);
 
 // ---- the farmer's choice: only "Scale, high, low" is on at first; the rest of what was saved is cleaned

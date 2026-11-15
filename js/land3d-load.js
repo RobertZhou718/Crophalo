@@ -1,7 +1,7 @@
 // The land details of the 3D view, from the server to the layers: asks the OpenStreetMap lookups once for each block of land (the answers are kept for a day on the device and the server keeps them too),
 // checks that an answer is about the land that was asked, and turns the switches that are on into layers. It runs in the 3D worker (or on the page where there is none); a failure is an answer too.
 // Fetch and the cache are handed in, so a test needs no server. Checked by scripts/test_land3d_load.mjs and scripts/e2e_land3d.mjs.
-import { SWITCHES, sourcesNeeded, layerOf, osmCredit } from './land3d-data.js';
+import { LISTED, sourcesNeeded, layerOf, osmCredit } from './land3d-data.js';
 import { frameAt } from './farm3d-data.js';
 import { plainReason } from './satellites2-data.js';
 
@@ -49,8 +49,7 @@ export function deviceCache(name = 'crophalo-land-v1') {
 }
 
 // ---- the controller: one per view. It asks for what the switches need (once for each block), and answers the layers for a scene.
-// say(): told when a source arrives, so the view draws again. The sources a copy has no lookup for are said plainly, never filled in.
-const NOT_CONNECTED = { soil: 'The soil map is not connected in this copy yet', cover: 'The land-cover map is not connected in this copy yet' };
+// say(): told when a source arrives, so the view draws again. Only the listed switches are drawn (LISTED of js/land3d-data.js): a source with no lookup has no row at all.
 export function createLand({ fetchImpl, base = '', cache = deviceCache(), now = Date.now, say = () => {} } = {}) {
   let block = null, got = {}, asked = new Set(), closed = false;
   const need = choice => sourcesNeeded(choice);
@@ -67,9 +66,9 @@ export function createLand({ fetchImpl, base = '', cache = deviceCache(), now = 
   // the layers of the switches that are on, for this scene (sc: groundScene's answer)
   function layers(choice, sc, phone) {
     const frame = frameAt(sc.slab.lat, sc.slab.lon), fields = [{ id: sc.field.id, name: sc.field.name, polygon: sc.field.polygon }];
-    const ctx = { span: sc.slab.span, frame, fields, phone, chosen: fields[0], heights: sc.heights.model ?? undefined, osm: got.osm, osmx: got.osmx, soil: { failed: NOT_CONNECTED.soil }, cover: { failed: NOT_CONNECTED.cover } };
+    const ctx = { span: sc.slab.span, frame, fields, phone, chosen: fields[0], heights: sc.heights.model ?? undefined, osm: got.osm, osmx: got.osmx };
     if (!sc.heights.model && sc.heights.status === 'missing') ctx.heights = undefined;
-    return SWITCHES.filter(s => choice?.[s.id] === true).map(s => layerOf(s.id, ctx));
+    return LISTED.filter(s => choice?.[s.id] === true).map(s => layerOf(s.id, ctx));
   }
   return { want, layers, credit: list => osmCredit(list), state: () => ({ ...got }), dispose() { closed = true; } };
 }

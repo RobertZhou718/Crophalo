@@ -3,7 +3,7 @@
 // Pure: no page, no network. Checked by scripts/e2e_3d_open.mjs (a skeleton within 100 ms of the tap; it shimmers only under Full) and scripts/e2e_farm3d.mjs.
 import { esc } from './words.js';
 import { SWITCH_ON } from './shade3d.js';
-import { SWITCHES, OSM_CREDIT } from './land3d-data.js';
+import { LISTED, OSM_CREDIT } from './land3d-data.js';
 
 export const LEGEND = Object.freeze([
   { id: 'standing', name: 'Standing plants', mark: '<path d="M6 20V6M12 20V3M18 20V7" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" fill="none"/>' },
@@ -41,7 +41,7 @@ export function landHTML(ids, choice = {}) {
   return `<section class="f3d-land" aria-labelledby="${ids}-land-h">
       <h3 id="${ids}-land-h">Details on the land</h3>
       <p class="f3d-land-hint">Switch on what you want to see. Each one is read from its map only when you switch it on, and says so when it cannot be read.</p>
-      <ul class="f3d-switches">${SWITCHES.filter(s => s.id !== 'shade').map(s => `<li><label class="f3d-sw"><input type="checkbox" data-land="${s.id}"${choice[s.id] === true ? ' checked' : ''}><span>${esc(s.name)}</span></label><small class="f3d-lw-words" data-land-words="${s.id}">${esc(s.line)}</small></li>`).join('')}</ul>
+      <ul class="f3d-switches">${LISTED.filter(s => s.id !== 'shade').map(s => `<li><label class="f3d-sw"><input type="checkbox" data-land="${s.id}"${choice[s.id] === true ? ' checked' : ''}><span>${esc(s.name)}</span></label><small class="f3d-lw-words" data-land-words="${s.id}">${esc(s.line)}</small></li>`).join('')}</ul>
       <p class="f3d-land-credit" hidden><a href="${esc(OSM_CREDIT.href)}" target="_blank" rel="noopener noreferrer">${esc(OSM_CREDIT.text)}</a></p>
       <p class="sr f3d-land-say" role="status" aria-live="polite"></p>
     </section>`;
