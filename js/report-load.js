@@ -7,10 +7,8 @@ import { computeClimate, notFarmlandWords } from './climate.js';
 import { once, spotKey, isKept } from './memo.js';
 import { loadImerg } from './satellites-data.js';
 import { loadGrace, loadEcoUntilDone, loadHls, plainReason } from './satellites2-data.js';
-import { fetchCropMap } from './near-load.js';
-import { spotFields } from './nearby.js';
+import { fetchCropMap, nearbyFrom } from './near-load.js';
 import { loadSoilSurvey } from './soil-load.js';
-import { loadDem } from './field-data.js';
 import { apiUrl } from './api.js';
 
 export const ROWS = Object.freeze([
@@ -131,10 +129,14 @@ export function getEco(loc, onUpdate) {
 export const getHls = loc => once(spotKey('hls', loc), () => loadHls(loc, get()));
 // One request serves the setup's crop step and the report: the raw crop-map answer is kept, and the engine's fields are made from it.
 export const getCropMap = loc => once(spotKey('cropmap', loc), () => fetchCropMap(loc, get()), { good: r => r?.ok === true });
-export const getNearby = loc => once(spotKey('near', loc), async () => spotFields(await getCropMap(loc)), { good: r => r?.read !== false || r?.absent !== undefined });
+// the kept crop-map answer and the country's own national lists (FAOSTAT areas) together: where the map says nothing, or only a wide class, the country's list decides (js/near-load.js nearbyFrom)
+export const getNearby = loc => once(spotKey('near', loc), () => nearbyFrom(getCropMap(loc), loc, get()), { good: r => r?.read !== false || r?.absent !== undefined });
 // The US soil survey for a field in the United States (asked once, kept like the others); a field elsewhere is not asked.
 export const getSoilSurvey = loc => once(spotKey('soilsurvey', loc), () => loadSoilSurvey(loc, get()), { good: r => r?.ok === true });
-export const getDem = (loc, outline) => once(spotKey('dem', loc, outline?.pts ? `${outline.pts.length}:${outline.ha}` : 'none'), () => loadDem(loc, outline));
+// The key holds the outline's own corners (rounded to about a metre), so an outline edited to the same size and number of corners never gets the old slope answer.
+export const outlineKey = outline => (Array.isArray(outline?.pts) ? `${outline.pts.length}:${outline.ha}:${outline.pts.map(p => `${(+p[0]).toFixed(5)},${(+p[1]).toFixed(5)}`).join(';')}` : 'none');
+// the height map's code (js/field-data.js, with its 3D data) is fetched only when the height is asked, so My farm, which reads this file for the weather, does not load it at start
+export const getDem = (loc, outline) => once(spotKey('dem', loc, outlineKey(outline)), async () => (await import('./field-data.js')).loadDem(loc, outline));
 // Start everything the report and its tabs will ask for, for the place just chosen. Answers nothing to the screen. A drawn outline also starts the height map.
 export function prefetchPlace(loc, env = {}, outline = null) {
   const place = cleanPlace(loc?.lat, loc?.lon);

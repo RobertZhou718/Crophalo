@@ -3,6 +3,7 @@
 // Every number in a sentence is read from the server's answer (GET /api/mnfield, mode now) at run time; none is typed here. Prices are rounded half up to the cent (money()).
 // Pure but for loadMarket() and startMarket(), which ask our own server only (the key stays on the server). The markup is js/market-view.js. Checked by scripts/test_market.mjs.
 import { cropOf, cropName } from './crops.js';
+import { plainReason } from './satellites2-data.js';
 import { apiUrl } from './api.js';
 
 // ---- small helpers
@@ -96,7 +97,7 @@ export async function loadMarket(place, crops, fetcher = globalThis.fetch?.bind(
   if (!keys) return null;   // the server did not say it holds the key: the piece is absent, as without the key
   if (!marketWanted({ cc: place.cc }, keys)) return null;
   const list = (Array.isArray(crops) ? crops : []).filter(c => typeof c === 'string' && /^[a-z]{2,12}$/.test(c));
-  const url = apiUrl(`/api/mnfield?lat=${encodeURIComponent(place.lat)}&lon=${encodeURIComponent(place.lon)}&mode=now&crops=${[...new Set(list)].sort().slice(0, 16).join(',')}`);
+  const url = apiUrl(`/api/mnfield?lat=${encodeURIComponent(place.lat)}&lon=${encodeURIComponent(place.lon)}&mode=now&crops=${[...new Set(list)].sort().slice(0, 16).join(',')}`);   // through apiUrl by hand: the address is kept in a name first
   try {
     const r = await fetcher(url, { signal: AbortSignal.timeout(100e3) });
     let a = null; try { a = await r.json(); } catch { a = null; }
@@ -228,7 +229,7 @@ export function marketFor(answer, plan, result, near) {
 // { lines, bid, credits } or { failed: true, line } or null (nothing to add: the card keeps its own coverage words).
 export function layerFor(answer) {
   if (!answer) return null;
-  if (answer.ok === false && absentReason(answer.reason)) return { failed: true, line: answer.reason.replace(/\.?$/, '.') };   // the server's own words for "no key" and "not the United States"
+  if (answer.ok === false && absentReason(answer.reason)) return { failed: true, line: plainReason(answer.reason, 'The cash bids did not answer.').replace(/\.?$/, '.') };   // the server's own words for "no key" and "not the United States"
   if (!okAnswer(answer)) return { failed: true, line: WORDS.failLayer };
   const list = (answer.crops ?? []).filter(c => c && typeof c.crop === 'string' && cropOf(c.crop)?.type === 'cash').map(c => cropStatus(answer, c.crop));
   const lines = [], stopped = ownStoppedLine(answer, list.some(c => c.status === 'neighbour'));

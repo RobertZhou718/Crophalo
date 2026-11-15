@@ -2,6 +2,7 @@
 // Pure: turnOf() finds the turn (the crops that repeat), afterCorn() the share of what the fields around grew after corn, grewHTML() the card. loadGrew() asks the server's /api/crophist once per field and keeps the answer.
 // Checked by scripts/test_grew.mjs on the answers recorded from the live services on 15 November 2026 (scripts/fixtures/crophist-mead.json and crophist-oxford.json).
 import { esc } from './words.js';
+import { skeleton } from './skeleton.js';
 import { cropName, cropColor } from './crops.js';
 import { apiUrl } from './api.js';
 
@@ -67,8 +68,8 @@ export function grewModel({ state, answer = null, country = 'US', pinOnly = fals
 }
 // The card for Land history (the title is the card's own; this is its body).
 export function grewHTML(model) {
-  const p = model.lines.map(l => `<p>${esc(l)}</p>`).join('');
-  if (model.state !== 'ok') return `<div class="h-grew" data-state="${esc(model.state)}"${model.state === 'reading' ? ' role="status"' : ''}>${p}</div>`;
+  const reading = model.state === 'reading', p = model.lines.map(l => reading ? `<p aria-hidden="true">${esc(l)}</p>` : `<p>${esc(l)}</p>`).join('');
+  if (model.state !== 'ok') return `<div class="h-grew" data-state="${esc(model.state)}">${p}${reading ? skeleton('list', model.lines.join(' ')) : ''}</div>`;
   const strip = `<ol class="h-years" aria-label="Crops by year">${model.strip.map(y => `<li class="h-year${y.mixed ? ' is-mixed' : ''}"${y.color ? ` style="--crop:${esc(y.color)}"` : ''}><b>${y.year}</b><span>${esc(y.word)}</span></li>`).join('')}</ol>`;
   return `<div class="h-grew" data-state="ok">${p}${strip}<details class="h-fold"><summary>Show more</summary>${model.more.map(l => `<p class="cap">${esc(l)}</p>`).join('')}<p class="cap"><a href="${esc(model.link[1])}" target="_blank" rel="noopener">${esc(model.link[0])}</a></p></details></div>`;
 }

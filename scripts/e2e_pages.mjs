@@ -119,17 +119,22 @@ await group('look', async () => {
 });
 
 await group('status', async () => {
-  const rows = [{ id: 'a', name: 'NASA POWER weather', state: 'answering', last_ok_time: new Date().toISOString(), last_ms: 1300, last_problem: null, kept: 3, ttl_hours: 24, needs_key: false, key_set: false, needs_login: false, login_set: false, checked_at: null, can_check: true },
-    { id: 'b', name: 'USDA NASS crop data', state: 'not_answering', last_ok_time: null, last_ms: null, last_problem: 'The service did not answer in time.', kept: 0, ttl_hours: 24, needs_key: true, key_set: false, needs_login: false, login_set: false, checked_at: null, can_check: true }];
+  const rows = [{ id: 'power', name: 'NASA POWER weather', state: 'answering', last_ok_time: new Date().toISOString(), last_ms: 1300, last_problem: null, kept: 3, ttl_hours: 24, needs_key: false, key_set: false, needs_login: false, login_set: false, checked_at: null, can_check: true },
+    { id: 'smaproot', name: 'NASA SMAP soil moisture', state: 'not_answering', last_ok_time: null, last_ms: null, last_problem: 'The service did not answer in time.', kept: 0, ttl_hours: 24, needs_key: true, key_set: false, needs_login: false, login_set: false, checked_at: null, can_check: true }];
   await size(1440); await go('/'); await js(`localStorage.setItem('crophalo.welcome.v1', ${JSON.stringify(WELCOME)})`); await go('/');   // a second load: the welcome of the first visit is not on the page
   await js(`window.__posts = 0; const real = window.fetch.bind(window); window.fetch = (u, o) => String(u).includes('/api/sources/check') ? (window.__posts++, Promise.resolve(new Response(JSON.stringify(${JSON.stringify(rows.map(r => ({ ...r, state: 'answering', last_problem: null })))}), { status: 200 }))) : String(u).includes('/api/sources') ? Promise.resolve(new Response(JSON.stringify(${JSON.stringify(rows)}), { status: 200 })) : real(u, o)`);
-  await js(`location.hash = '#admin'`); await until(`document.querySelector('.ad-card')`);
+  await js(`location.hash = '#admin'`); await until(`document.querySelector('.adm-table tr[data-state]')`);
   const t = await js(`document.querySelector('#view-admin').innerText`);
-  check('status: the page is called Service status, one card for each service with its state, last answer and plain problem', /Service status/.test(t) && /NASA POWER weather/.test(t) && /Answering/.test(t) && /Not answering/.test(t) && /did not answer in time/.test(t) && /Needs a key: not set/.test(t), t.slice(0, 300));
+  check('status: the page is called API connections with its Admin chip, one table row for each service with its state as a word, and the tabs', /API connections/.test(t) && /Admin/.test(t) && /NASA POWER weather/.test(t) && /Online/.test(t) && /Not set up/.test(t) && /Not checked here/.test(t) && /Services/.test(t) && /Live data/.test(t) && /Recent requests/.test(t) && !/3D objects/.test(t) && (await js(`document.querySelectorAll('.adm-table tr[data-state]:not([data-state=no_check])').length`)) === 2 && (await js(`document.querySelectorAll('.adm-table tr[data-state=no_check]').length`)) > 15, t.slice(0, 300));
+  check('status: NASA POWER is one row, not two, and the rows the server cannot check sit under their own title, with no Esri, GBIF or drought row', await js(`[...document.querySelectorAll('.adm-svc b')].filter(b => /^NASA POWER/.test(b.textContent)).length === 1 && /Read straight from your browser/.test(document.querySelector('.adm-group')?.textContent || '') && !/Esri|GBIF|Drought Monitor/.test(document.querySelector('#view-admin').innerText)`));
   check('status: no key, no password, no file path anywhere on the page', !/sk-|password|netrc|\/Users\//i.test(t));
-  check('status: the cards are in a grid on a wide screen (two or more columns)', await js(`new Set([...document.querySelectorAll('.ad-card')].map(c => Math.round(c.getBoundingClientRect().left))).size >= 2`), await js(`({ vw: innerWidth, lefts: [...document.querySelectorAll('.ad-card')].map(c => Math.round(c.getBoundingClientRect().left)), cols: getComputedStyle(document.querySelector('.ad-grid')).gridTemplateColumns })`));
+  check('status: the page has the same left and right edges as the top bar', await js(`(() => { const b = document.querySelector('.brand, header a')?.getBoundingClientRect(), w = document.querySelector('.adm-head').getBoundingClientRect(), t = document.querySelector('.adm-tablewrap').getBoundingClientRect(), n = document.querySelector('.nav-in').getBoundingClientRect(); return Math.abs(w.left - (n.left + 16)) <= 2 && Math.abs(t.right - (n.right - 16)) <= 2; })()`), await js(`JSON.stringify([document.querySelector('.adm-head').getBoundingClientRect().left, document.querySelector('.nav-in').getBoundingClientRect().left, document.querySelector('.adm-tablewrap').getBoundingClientRect().right, document.querySelector('.nav-in').getBoundingClientRect().right])`));
+  check('status: the chosen tab is filled blue with white bold words', await js(`(() => { const c = getComputedStyle(document.querySelector('.pg-tabs [aria-selected=true]')); return c.color === 'rgb(255, 255, 255)' && Number(c.fontWeight) >= 600 && c.backgroundColor !== 'rgba(0, 0, 0, 0)'; })()`));
+  check('status: the four tiles are there', (await js(`document.querySelectorAll('.adm-tile').length`)) === 4, t.slice(0, 200));
+  check('status: the table runs the whole width on a wide screen', await js(`(() => { const w = document.querySelector('.adm-tablewrap').getBoundingClientRect(), h = document.querySelector('#view-admin .wrap').getBoundingClientRect(); return h.right - w.right <= 40; })()`));
   await tap('#adCheck'); await until(`window.__posts === 1`); await sleep(300);
-  check('status: Check again asks the server once and the new states show', /2 of 2 answering/.test(await js(`document.querySelector('#adSum')?.textContent || ''`)) && await js('window.__posts') === 1);
+  check('status: Check now asks the server once and the new states show', /Checked/.test(await js(`document.querySelector('#view-admin').innerText`)) && await js('window.__posts') === 1);
+  await sleep(300); await run.shot?.('admin-1440.png'); await run.shot?.('admin-1440.png'); await js('window.scrollTo(0, 500)'); await sleep(200); await run.shot?.('admin-1440b.png'); await js('window.scrollTo(0, 0)'); await size(390); await sleep(500); await run.shot?.('admin-390.png'); await js('window.scrollTo(0, 700)'); await sleep(200); await run.shot?.('admin-390b.png'); await size(1440);
   await open('#settings'); check('status: Settings has a quiet link to it at the foot', await js(`!!document.querySelector('a[href="#admin"]')`));
 });
 
@@ -156,19 +161,44 @@ await group('axe', async () => {
   }
 });
 
+await group('focus', async () => {   // the keyboard stays on the same button when a page is drawn again
+  await open('#settings', 1280);
+  await js(`document.querySelector('[data-quick="imperial"]').focus(); document.querySelector('[data-quick="imperial"]').click()`); await sleep(300);
+  check('focus: choosing a units preset draws Settings again and the keyboard is on the same preset button, not on a box', await js(`document.activeElement?.dataset?.quick === 'imperial' && document.activeElement.tagName === 'BUTTON'`), await js(`document.activeElement?.tagName + ' ' + (document.activeElement?.className || '')`));
+});
+
+await group('skeleton', async () => {   // the owner's house rule: grey lines in the shape of what will come while a page waits, never a bare spinner or an empty white area
+  await size(1280); await go('/'); await js(`localStorage.setItem('crophalo.welcome.v1', ${JSON.stringify(WELCOME)})`); await go('/');
+  await js(`window.fetch = ((real) => (u, o) => String(u).includes('/api/sources') ? new Promise(done => setTimeout(() => done(new Response('[]', { status: 200 })), 1500)) : real(u, o))(window.fetch.bind(window))`);
+  await js(`location.hash = '#admin'`); await sleep(500);
+  check('skeleton: while the list of services is read the status page shows grey table rows in the shape of its rows, no spinner, and says what it waits for to a screen reader', await js(`document.querySelectorAll('.adm-table tr.adm-sk').length >= 4 && !document.querySelector('#adminBody .dot.busy') && !!document.querySelector('#adminBody [role=status]') && !!document.querySelector('.adm-sk .sk')`));
+  await sleep(2000);
+  check('skeleton: when the answer is in the grey rows are gone', await js(`!document.querySelector('.adm-sk')`));
+});
+
 await group('wide', async () => {
   const four = ['NASA POWER weather', 'USDA NASS crop data', 'Open-Meteo forecast', 'SMAP soil moisture'].map((name, i) => ({ id: 'abcd'[i], name, state: ['answering', 'not_answering', 'answering', 'slow'][i], last_ok_time: '2026-11-15T01:00:00Z', last_ms: 900, last_problem: i === 1 ? 'The service did not answer in time.' : null, kept: 0, ttl_hours: 24, needs_key: false, key_set: false, needs_login: false, login_set: false, checked_at: null, can_check: true }));   // the owner's rule: a page uses the whole width. At 1440 and 1920 the last card of the first row ends within 40 px of the container's right edge, and the cards of a row grow with the screen
-  for (const width of [1440, 1920]) for (const hash of ['#settings', '#privacy', '#privacy/sent', '#limits', '#data', '#admin']) {
-    if (hash === '#admin') { await size(width); await go('/'); await js(`localStorage.setItem('crophalo.welcome.v1', ${JSON.stringify(WELCOME)})`); await go('/'); await js(`window.fetch = ((real) => (u, o) => String(u).includes('/api/sources') ? Promise.resolve(new Response(JSON.stringify(${JSON.stringify(four)}), { status: 200 })) : real(u, o))(window.fetch.bind(window))`); await js(`location.hash = '#admin'`); await until(`document.querySelector('.ad-card')`); await sleep(300); }
+  for (const width of [1440, 1920, 2000]) for (const hash of ['#settings', '#privacy', '#privacy/sent', '#limits', '#data', '#admin']) {
+    if (hash === '#admin') { await size(width); await go('/'); await js(`localStorage.setItem('crophalo.welcome.v1', ${JSON.stringify(WELCOME)})`); await go('/'); await js(`window.fetch = ((real) => (u, o) => String(u).includes('/api/sources') ? Promise.resolve(new Response(JSON.stringify(${JSON.stringify(four)}), { status: 200 })) : real(u, o))(window.fetch.bind(window))`); await js(`location.hash = '#admin'`); await until(`document.querySelector('.adm-table tr[data-state]')`); await sleep(300); }
     else await open(hash, width);
-    const m = await js(`(() => { const box = [...document.querySelectorAll('#view-admin .sec, #infoBody')].find(e => e.getBoundingClientRect().width > 0), grid = document.querySelector('#view-admin:not([hidden]) .ad-grid, .st, .lim-grid, .pgpanel.cards, [role=tabpanel]:not([hidden]) .data-sources'), cards = grid ? [...grid.children].filter(c => c.getBoundingClientRect().width > 0) : [...document.querySelectorAll('.pgpanel > .tbl')];
+    const m = await js(`(() => { const box = [...document.querySelectorAll('#view-admin .sec, #infoBody')].find(e => e.getBoundingClientRect().width > 0), grid = document.querySelector('#view-admin:not([hidden]) .adm-tablewrap, .st, .lim-grid, .pgpanel.cards, [role=tabpanel]:not([hidden]) .data-sources'), cards = grid ? [...grid.children].filter(c => c.getBoundingClientRect().width > 0) : [...document.querySelectorAll('.pgpanel > .tbl')];
       if (!box || !cards.length) return null;
       const top = cards[0].getBoundingClientRect().top, row = cards.filter(c => Math.abs(c.getBoundingClientRect().top - top) < 4), edge = box.getBoundingClientRect().right, last = row[row.length - 1].getBoundingClientRect();
       return { title: document.title, row: row.length, lastRight: Math.round(last.right), edge: Math.round(edge), gap: Math.round(edge - last.right), cardW: Math.round(last.width), vw: innerWidth }; })()`);
+    if (width === 2000) console.log(`wide-measure ${hash} at ${width}: ${JSON.stringify(m)}`);
     check(`wide: ${hash} at ${width} px: the first row of cards runs to within 40 px of the container's right edge`, !!m && m.gap <= 40 && m.gap >= -1, m);
   }
-  await size(1440); await go('/'); await js(`localStorage.setItem('crophalo.welcome.v1', ${JSON.stringify(WELCOME)})`); await js(`location.hash = '#admin'`); await until(`document.title === 'Service status · Crophalo'`, 6000).catch(() => {});
-  check('wide: the status page is called Service status in the tab too', await js('document.title') === 'Service status · Crophalo', await js('document.title'));
+  await open('#data', 2000);
+  const full = await js(`(() => { const box = document.querySelector('#infoBody').getBoundingClientRect(), r = sel => { const e = document.querySelector(sel); return e ? e.getBoundingClientRect() : null; }, near = (e) => !!e && Math.abs(e.right - box.right) <= 2;
+    return { boxW: Math.round(box.width), vw: innerWidth, note: near(r('#nasaLine')), search: near(r('#srcFilter')), tabs: !!r('.pg-tabs'), folds: !document.querySelector('#explain') || near(r('#explain .ex-folds')), cards: (() => { const c = [...document.querySelectorAll('[role=tabpanel]:not([hidden]) .data-sources > .row')]; return c.length ? Math.round(c.at(-1).getBoundingClientRect().right - box.right) : null; })() }; })()`);
+  console.log(`wide-measure #data at 2000: ${JSON.stringify(full)}`);
+  check('wide: the Data page at 2000 px uses the whole row: the page is the width of the top bar, the note, the search and the folds reach its right edge', full.boxW >= 1200 && full.note && full.search && full.folds, full);
+  await open('#privacy', 2000);
+  const priv = await js(`(() => { const cards = [...document.querySelectorAll('.pgpanel.cards > .st-card')].map(c => { const b = c.getBoundingClientRect(); return { l: Math.round(b.left), w: Math.round(b.width), h: Math.round(b.height), t: Math.round(b.top) }; }), box = document.querySelector('#infoBody').getBoundingClientRect(); const row = cards.filter(c => c.t === cards[0].t); return { row, boxRight: Math.round(box.right), last: row.length ? row.at(-1).l + row.at(-1).w : 0 }; })()`);
+  console.log(`wide-measure #privacy at 2000: ${JSON.stringify(priv)}`);
+  check('wide: Privacy at 2000 px: its cards are equal columns across the full row, equal in height', priv.row.length >= 3 && priv.row.every(c => Math.abs(c.w - priv.row[0].w) <= 2 && c.h === priv.row[0].h) && priv.boxRight - priv.last <= 2, priv);
+  await size(1440); await go('/'); await js(`localStorage.setItem('crophalo.welcome.v1', ${JSON.stringify(WELCOME)})`); await js(`location.hash = '#admin'`); await until(`document.title === 'API connections · Crophalo'`, 6000).catch(() => {});
+  check('wide: the status page is called API connections in the tab too', await js('document.title') === 'API connections · Crophalo', await js('document.title'));
 });
 
 await group('touch', async () => {   // the main suite's two measures, on the pages only: no two visible controls closer than 2 px, and on a phone every control 44 px (a link inside a sentence is as tall as its line)
@@ -192,6 +222,10 @@ await group('touch', async () => {   // the main suite's two measures, on the pa
     check(`touch: ${where} with the folds open: no two controls touch`, o.touching.length === 0, o.touching.slice(0, 5));
     await js(`import('/js/settings.js').then(m => m.saveSettings({ text: 'default' }))`);
   }
+});
+
+await group('eye', async () => {   // pictures for the owner's eye, at 1440 and 390: the pages as a farmer sees them
+  for (const width of [1440, 2000, 390]) for (const [hash, name] of [['#data', 'data'], ['#settings', 'settings'], ['#limits', 'limitations'], ['#privacy', 'privacy']]) { await open(hash, width); await sleep(400); await run.shot?.(`eye-${name}-${width}.png`); }
 });
 
 await group('welcome: axe and heading levels', async () => {

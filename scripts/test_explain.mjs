@@ -44,8 +44,10 @@ const wd = read('js/weather-data.js'), wv = read('js/weather-view.js'), s1 = rea
 check('weather facts write data-fact on an article with its h3 first', /data-fact="\$\{esc\(f\.id\)\}"><h3>/.test(wv) && /data-tile="\$\{esc\(t\.id\)\}"><h3>/.test(wv));
 for (const id of ['frost', 'free', 'dry', 'dryyears']) check(`weather fact "${id}" exists`, wd.includes(`add('${id}'`));
 for (const id of ['warm', 'soil']) check(`weather tile "${id}" exists`, wd.includes(`id: '${id}'`));
-check('Satellites: smap card with its h3', s1.includes('data-card="smap"><h3>'));
-check('Satellites: hls and ecostress cards with their h3', s2.includes("card('hls'") && s2.includes("card('ecostress'") && /data-card="\$\{esc\(id\)\}"><h3>/.test(s2));
+// Changed on purpose with the satellite cards (staging/round3/satcards bb7e1bf): each card is one closed line drawn by js/satcard.js, so the word's "i" sits on the card's first line inside.
+const sc = read('js/satcard.js');
+check('Satellites: the smap card is drawn by the card frame', s1.includes("satCard({ id: 'smap'") && s1.includes("satWaiting({ id: 'smap'"));
+check('Satellites: hls and ecostress cards are drawn by the card frame, which writes a paragraph first inside the card', s2.includes("satCard({ id: 'hls'") && s2.includes("satCard({ id: 'ecostress'") && sc.includes('data-card="${esc(id)}"') && sc.includes('<details class="fold sat-fold"') && sc.includes('</summary>${body}</details>') && /const body = `\$\{first \? `<p /.test(sc));
 same('an unknown word gets no button and no card', [wordButton('nope'), wordCardHTML('toString')], ['', '']);
 
 // ---- banned words, promises, and sources on the agronomy lines

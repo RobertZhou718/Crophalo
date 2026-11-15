@@ -10,6 +10,7 @@ import { busy, watchTiles } from './mapbusy.js';
 import { motionOff, motionLess, motionQuiet } from './motion.js';
 import { PLAY, PLAY_WORDS, frames, coversDays, holdFor, parseColormap, valueAt, palettePixel, hereWords, HERE_WHY, pixelOf, fireOrder, inView, countWords, shortDay } from './layeranim.js';
 import { loadLeaflet } from './leaflet-load.js';
+import { plainReason } from './satellites2-data.js';
 
 const L = globalThis.window?.L ?? (globalThis.document ? await loadLeaflet() : undefined);   // on a page every way in waits for the map library (js/leaflet-load.js); a test with no page loads the file as before
 const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[c]);
@@ -185,7 +186,7 @@ export function initLayers(ui, env) {
     try {
       const a = await net.fires(c.lat, c.lng);
       if (!keep.on.includes(FIRES.id)) return;
-      if (!a || a.ok === false) { clearFires(); fireAnswer = null; countFires(); noteOf(FIRES.id, a?.reason ? `${a.reason}.` : fireWords(a)); env.say?.(`${FIRES.name}: ${a?.reason ?? FIRE_WHY.other}`); }
+      if (!a || a.ok === false) { clearFires(); fireAnswer = null; countFires(); const said = plainReason(a?.reason, ''); noteOf(FIRES.id, said ? `${said.replace(/[.\s]+$/, '')}.` : fireWords(a)); env.say?.(`${FIRES.name}: ${said || FIRE_WHY.other}`); }
       else { fireAnswer = a; drawFires(a); noteOf(FIRES.id, fireWords(a)); env.say?.(`${FIRES.name}: ${a.count} spots`); }
     } catch { if (keep.on.includes(FIRES.id)) { noteOf(FIRES.id, `${FIRE_WHY.other}.`); env.say?.(`${FIRES.name}: ${FIRE_WHY.other}`); } }   // no answer from our own server (offline, or it took too long): the fires come from NASA FIRMS through it, not from NASA's image server
     finally { fireBusy = false; busy('fires', false); card()?.querySelector('[data-look]')?.removeAttribute('disabled'); }

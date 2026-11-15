@@ -15,7 +15,7 @@ No logo, insignia, flag or mission patch appears in these pictures (each checked
 
 Checked on 15 November 2026: NASA's own record of both artist's pictures (PIA17898, PIA22441) gives the credit "NASA/JPL-Caltech" and names no other owner, so the policy's standard credit line is used. The SMAP picture was looked at at full size (1920 px): no NASA insignia, no NASA logotype and no JPL logo; the round mark on the front GRACE-FO craft is a metal opening, not an emblem.
 
-NOAA-20, NOAA-21 and Sentinel-2 have no picture here: their cards show a simple mark drawn by Crophalo, and say that no free picture was found.
+NOAA-20, NOAA-21 and Sentinel-2 have no picture of theirs here. Their cards show a DRAWING made by Crophalo (js/home-craft-art.js): a spacecraft with a body, one large solar wing on a boom, instruments and a dish, in the style of the pictures beside it, with the caption "Drawing: Crophalo, a simplified picture of the craft; not the agency's picture and not to scale." The pictures NOAA, NASA and ESA publish of these craft were not used: their use words were not read and written down in the time, so nothing of theirs is copied. When a licence is read and found clear (NOAA and NASA pictures are US government work; ESA's Sentinel-2 picture is ESA standard licence or CC BY-SA 3.0 IGO with a credit line) the picture can replace the drawing and its row goes in this file.
 
 Crophalo is not made, reviewed or endorsed by NASA, ESA or NOAA.
 
@@ -54,3 +54,9 @@ echo "total bytes: $(cat "$OUT"/terra.webp "$OUT"/gpm.webp "$OUT"/landsat8.webp 
 ```
 
 The home's own Earth pictures (img/earth/) are listed in img/earth/README.md and follow the same terms: NASA imagery, used with credit.
+
+
+## NOAA-20, NOAA-21 and Sentinel-2: why a drawing and not a picture (read 15 November 2026)
+- NOAA's JPSS pictures (NESDIS galleries "JPSS-2 beauty renders"): each artist's rendition carries "Artist's renditions credit: Lamont W. Harvey", a named artist, not NOAA. A NASA release gives the same credit. NOAA's own image-use words were not found on those pages, and one listing says "Public Domain" for a different (Orbital ATK) photograph. So the right to use a render is not clear from what is published: not used.
+- ESA's pictures (esa.int/ESA_Multimedia/Terms_and_Conditions and Copyright_Notice_Images): the ESA copyright must always be credited; only SOME images carry CC BY-SA 3.0 IGO (credit like "ESA/author, CC BY-SA 3.0 IGO", a link to the licence, changes noted); "a commercial use requires a separate written authorisation by ESA". Crophalo is a real business, so an image would need its own notice to say CC BY-SA 3.0 IGO. No Sentinel-2 picture with that notice was checked: not used.
+- So the cards keep Crophalo's own drawings (js/home-craft-art.js), captioned as drawings. When a specific picture is found whose own page says it may be used (NASA media guidelines for NASA material; CC BY-SA 3.0 IGO with credit for ESA), add it here with its page address and its credit line, and swap it in js/home-craft.js (PICS).

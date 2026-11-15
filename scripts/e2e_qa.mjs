@@ -6,7 +6,7 @@ import { fileURLToPath } from 'node:url';
 import { openRun } from './e2e_lib.mjs';
 
 const run = await openRun('e2e_qa');
-await run.send('Page.addScriptToEvaluateOnNewDocument', { source: `window.fetch = (f => async (url, ...r) => /\\/api\\/(cropsnear|smaproot)/.test(String(url)) ? { ok: true, status: 200, json: async () => ({ ok: false, reason: 'stand-in' }), text: async () => '{"ok":false}' } : f(url, ...r))(window.fetch);` });   // the throwaway server has no crop-map or soil-moisture route: a demo field asks for them at once, so they are answered here, quietly
+await run.send('Page.addScriptToEvaluateOnNewDocument', { source: `window.fetch = (f => async (url, ...r) => /\\/api\\//.test(String(url)) ? { ok: true, status: 200, json: async () => ({ ok: false, reason: 'stand-in' }), text: async () => '{"ok":false}' } : f(url, ...r))(window.fetch);` });   // the throwaway server has no crop-map or soil-moisture route: a demo field asks for them at once, so they are answered here, quietly
 const { js, until, size, go, check, same, group, finish, sleep } = run;
 const POWER = fs.readFileSync(path.join(path.dirname(fileURLToPath(import.meta.url)), 'fixtures', 'power_barrie.json'), 'utf8'), REC = JSON.parse(POWER);
 const WELCOME = JSON.stringify(JSON.stringify({ v: '2026-11-14', at: 'test' }));

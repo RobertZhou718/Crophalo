@@ -471,6 +471,15 @@ def _recorded(method, url, data, headers, status, got_headers, body):
     key = net_key(method, url, data, headers)
     keep = {k.lower(): v for k, v in got_headers.items() if k.lower() in ("content-type", "last-modified", "cmr-search-after", "cmr-hits", "retry-after", "content-length")}
     meta = {"method": method, "url": url, "recorded": iso_now(), "hand_made": False, "replies": [{"status": status, "headers": keep}]}
+    if "overpass" in url:   # the OpenStreetMap lookups: a recording never holds the tags that name a person or a business (it is committed to a public place)
+        try:
+            sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
+            import clean_osm_tags
+            body, removed = clean_osm_tags.clean_body(body)
+            if removed:
+                meta["edited"] = clean_osm_tags.NOTE
+        except Exception:
+            pass
     Path(RECORD).mkdir(parents=True, exist_ok=True)
     Path(RECORD, key + ".body").write_bytes(body)
     Path(RECORD, key + ".json").write_text(json.dumps(meta, indent=1, ensure_ascii=False) + "\n", encoding="utf-8")

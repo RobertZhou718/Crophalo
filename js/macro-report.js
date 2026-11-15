@@ -79,7 +79,7 @@ function ready(update) {
   drawn?.scene.skip();   // the data landed first: the band is finished at once
   const from = drawn?.canvas?.isConnected ? drawn.canvas.getBoundingClientRect() : null, built = drawn?.built ?? null;
   const box = from && from.width > 0 ? { x: from.left, y: from.top, w: from.width, h: from.height } : null;
-  become(update, { scene: 'fold' }).then(() => { announce(); if (box && built) startCurl(box, built); });
+  become(update, { scene: 'fold' }).then(() => { announce(); if (box && built) startCurl(box, built); else { const ring = doc().querySelector('#answer .chip.score'); if (ring && may('score-roll').level === 'full') rollScore(ring); } });   // no band on the loading screen any more (owner's rule 17): the fold, then the score rolls to its real value
   return true;
 }
 function finish() { record = null; since = 0; shown = null; }
@@ -126,6 +126,23 @@ function rollScore(ring) {
   roll(b, to, { decimals: 0, ms: SCENES['score-roll'].ms });
 }
 
+// YOUR HARDEST YEAR: when a year chip is tapped, the twelve months of each strategy fill from left to right over 1.2 s, one strategy after the other, and the results appear when they are full.
+// Less only fades the card in (T.QUICK); Still shows it at once. The first drawing of the card plays nothing: it plays after a tap.
+let hyYear = null;
+function hardYear() {
+  const card = doc()?.getElementById?.('hardYear');
+  if (!card) { hyYear = null; return; }
+  const year = card.dataset.year;
+  if (year === hyYear) return;
+  const first = hyYear === null; hyYear = year;
+  if (first || !visible(card)) return;
+  const rows = [...card.querySelectorAll('.hy-row')].map(r => ({ cells: [...r.querySelectorAll('.hy-c')], res: r.querySelector('.hy-res') })), MS = 1200, share = MS / Math.max(1, rows.length);
+  const clear = () => { for (const r of rows) { for (const c of r.cells) c.style.opacity = ''; if (r.res) r.res.style.opacity = ''; } };
+  const sc = scene({ name: 'three-futures', host: card, ms: MS,
+    paint(k) { const ms = k * MS; rows.forEach((r, i) => { const rk = Math.max(0, Math.min(1, (ms - i * share) / share)); r.cells.forEach((c, j) => { c.style.opacity = j / r.cells.length < rk ? '' : '0.15'; }); if (r.res) r.res.style.opacity = rk >= 1 ? '' : '0'; }); },
+    end: clear, stop: clear });
+  sc.play();
+}
 // A caption under the score that says where the number comes from, as real text (not animated, always there).
 function captionScore() {
   const d = doc(), card = d?.querySelector?.('#answer'), at = card?.querySelector?.('.rv-chiprow');
@@ -153,7 +170,7 @@ export function start() {
   d.addEventListener('crophalo:report-drawn', e => {
     const x = e.detail ?? {};
     if (x.loading) { if (since && record && !shown && spot()) onRecord({ detail: record }); }   // the loading screen is painted: a record that came first is drawn now
-    else if (!x.failed && x.result?.ok) captionScore();
+    else if (!x.failed && x.result?.ok) { captionScore(); hardYear(); }
   });
   setHook('report', (update, info = {}) => {
     if (info.to === 'loading') return opening(update);

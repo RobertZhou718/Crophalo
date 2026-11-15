@@ -2,6 +2,7 @@
 // The order is the farmer's own soil test first, then the soil survey, then an assumed average loam; this file is only the second. A figure the survey leaves blank stays unknown, never 0. Only a field in the United States is asked.
 // Pure but for the one fetch: surveyToSoil(), soilLine(), loadSoilSurvey(). Checked by scripts/test_soilload.mjs (answers in the shape of the server's soil lookup, a blank layer, a place with no survey, a failed lookup).
 import { omBand } from './soiltest.js';
+import { plainReason } from './satellites2-data.js';
 import { apiUrl } from './api.js';
 
 const fin = v => typeof v === 'number' && Number.isFinite(v);
@@ -10,7 +11,7 @@ const textureOf = (clay, sand, silt) => (!fin(clay) || !fin(sand) && !fin(silt) 
 // answer: { ok, survey: 'SSURGO'|'STATSGO2', mapunit: { name }, soils: [{ name, percent, top: { organic_matter_pct, sand_pct, silt_pct, clay_pct } }] } or { ok: false, reason }.
 // The soil taken is the main soil of the map unit (the largest share) that has a top layer with texture; the farmer is told which survey and which soil.
 export function surveyToSoil(answer) {
-  if (!answer || answer.ok !== true || !Array.isArray(answer.soils)) return { ok: false, reason: typeof answer?.reason === 'string' && answer.reason ? answer.reason : 'The soil survey was not read.' };
+  if (!answer || answer.ok !== true || !Array.isArray(answer.soils)) return { ok: false, reason: plainReason(answer?.reason, 'The soil survey did not answer.') };
   const main = [...answer.soils].filter(s => s && s.top).sort((a, b) => (fin(b.percent) ? b.percent : -1) - (fin(a.percent) ? a.percent : -1)).find(s => textureOf(s.top.clay_pct, s.top.sand_pct, s.top.silt_pct));
   if (!main) return { ok: false, reason: 'The soil survey has no soil texture at this place, so an average loam is assumed.' };
   const t = main.top, texture = textureOf(t.clay_pct, t.sand_pct, t.silt_pct), om = fin(t.organic_matter_pct) ? t.organic_matter_pct : null;

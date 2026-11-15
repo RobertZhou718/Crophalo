@@ -4,6 +4,7 @@
 import { esc } from './words.js';
 import { cropName } from './crops.js';
 import { monthWords } from './sales.js';
+import { plainReason } from './satellites2-data.js';
 
 const fin = v => typeof v === 'number' && Number.isFinite(v);
 const name = id => { try { return cropName(id, true) || String(id); } catch { return String(id); } };
@@ -11,7 +12,7 @@ const usd = v => `US$${Math.round(v).toLocaleString('en-US')}`;
 const million = v => `${(v / 1e6).toFixed(v >= 1e8 ? 0 : 1).replace(/\.0$/, '')} million`;
 export const DOWN = 'The lookup did not answer just now, so nothing is shown here. Nothing was filled in.';
 const reading = '<p class="cap" role="status" aria-live="polite">Reading this from the world price and crop lookups…</p>';
-const bad = (after, reason) => `<p class="rv-notread"><b>Could not be read.</b> ${esc(reason || DOWN)}${after ? ` ${esc(after)}` : ''}</p>`;
+const bad = (after, reason) => `<p class="rv-notread"><b>Could not be read.</b> ${esc(plainReason(reason, DOWN))}${after ? ` ${esc(after)}` : ''}</p>`;
 const quiet = text => `<p class="cap">${esc(text)}</p>`;
 
 // 1. The world price of each crop of the plan: the newest month, the same month a year ago, and the change. A series marked stale says so.

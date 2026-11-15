@@ -30,7 +30,7 @@ check('a refusal keeps its reason', cleanGrace({ ok: false, reason: 'No GRACE da
 check('nothing read is a refusal, not a number', !cleanGrace({ ok: true, months: [['2020-01', null, null]] }).ok);
 for (const bad of [null, 5, 'x', [], { ok: true }, { ok: true, months: 'x' }]) check(`a hostile GRACE answer ${brief(bad)} is refused`, !cleanGrace(bad).ok);
 { const h = cleanGrace({ ...GOOD, months: [['2020-13', 5, 1], ['2020-01', '5', 1], ['2020-02', 1e9, 1], ['2020-03', -3.456, -2], ['2020-03', 4, 1], [null], 7] }); same('hostile months: only the usable one stays, the later duplicate wins', h.months.map(m => [m.month, m.cm]), [['2020-01', null], ['2020-02', null], ['2020-03', 4]]); }
-{ const html = graceCardHTML(g); check('GRACE card: NASA "i", the DOI, the region, the table, the means sentence', html.includes('srci') && html.includes('10.5067/TEMSC-3JC634') && html.includes('about 300 km') && html.includes('<table') && html.includes('not a well in your field'), html.slice(0, 200));
+{ const html = graceCardHTML(g); check('GRACE card: one source link, the DOI, the region, the table, the means sentence', /class="sat-src"><a href="https:/.test(html) && html.includes('10.5067/TEMSC-3JC634') && html.includes('about 300 km') && html.includes('<table') && html.includes('not a well in your field'), html.slice(0, 200));
   const svg = graceChartSVG(g); check('the chart breaks its line at the gap: one path per unbroken run', (svg.match(/class="gr-line"/g) ?? []).length === 2, (svg.match(/class="gr-line"/g) ?? []).length);
   check('the chart marks the gap and draws the trend', svg.includes('class="gr-gap"') && svg.includes('class="gr-trend"'));
   check('the chart is a labelled image', /role="img" aria-label="Water stored/.test(svg));
@@ -46,7 +46,7 @@ check('the words show "local solar time", never "local time"', ecoWords(e).lines
 { const html = ecoCardHTML(e); check('day and night are in separate lists, never one', html.includes('Daytime passes') && html.includes('Night passes') && html.indexOf('Daytime passes') < html.indexOf('14.2') && html.indexOf('Night passes') > html.indexOf('17.9'));
   check('it says they are never compared', ecoWords(e).lines.some(l => /never compared/.test(l)));
   check('the ground-not-air sentence and the 70 m dot', html.includes('seen from space at about 70 m, not the air temperature') && html.includes('class="eco-dot"') && ECO_MEANS.includes('70 m'));
-  check('NASA "i" and the product name', html.includes('srci') && html.includes('ECO_L2T_LSTE') && html.includes('LP DAAC'));
+  check('one source link and the product name', html.includes('class="sat-src"') && html.includes('ECO_L2T_LSTE') && html.includes('LP DAAC'));
   check('the reasons passes were not used', ecoWords(e).lines.some(l => /4 for cloud/.test(l) && /1 for poor quality/.test(l))); }
 { const none = cleanEco({ ok: true, passes: [], clear_passes: 0, passes_checked: 5, not_usable: { cloud: 5 }, why_none: 'All 5 passes in the last 60 days were under cloud.', pixel_m: 70 }); const html = ecoCardHTML(none);
   check('no clear pass: the reason is shown, never a number', html.includes('All 5 passes in the last 60 days were under cloud.') && !/°C/.test(html) && html.includes('No clear pass')); }
@@ -78,7 +78,7 @@ const HG = { ok: true, passes: [HP(`${YR}-08-12`, 0.71), HP(`${YR}-07-02`, 0.52)
 const hh = cleanHls(HG);
 same('HLS: usable photos only, oldest first', hh.passes.map(p => p.date), [`${YR}-07-02`, `${YR}-08-12`, `${YR}-09-30`]);
 check('HLS: the newest clear photo and its greenness', hh.newest.date === `${YR}-09-30` && hh.newest.ndvi === 0.28 && hh.gaps === 2);
-{ const html = hlsCardHTML(hh); check('HLS card: NASA "i", the scale, the credit, one dot for each photo, no line', html.includes('srci') && html.includes(HLS_SCALE) && html.includes('LP DAAC') && html.includes('NASA/USGS Harmonized Landsat Sentinel-2') && (html.match(/class="hl-dot"/g) ?? []).length === 3 && !html.includes('<path'));
+{ const html = hlsCardHTML(hh); check('HLS card: one source link, the scale, the credit, one dot for each photo, no line', html.includes('class="sat-src"') && html.includes(HLS_SCALE) && html.includes('LP DAAC') && html.includes('NASA/USGS Harmonized Landsat Sentinel-2') && (html.match(/class="hl-dot"/g) ?? []).length === 3 && !html.includes('<path'));
   check('HLS words: empty days are left empty, never joined', hlsWords(hh).lines.some(l => /left empty, never joined/.test(l))); }
 { const none = cleanHls({ ok: true, passes: [], why_none: 'All 6 photos in the last 90 days were under cloud.' }), html = hlsCardHTML(none); check('HLS: no clear photo shows the reason and no number', html.includes('All 6 photos in the last 90 days were under cloud.') && !/class="hl-dot"/.test(html) && !/greenness \d/.test(html)); }
 check('HLS: a refusal and hostile answers', cleanHls({ ok: false, reason: 'No.' }).reason === 'No.' && [null, 5, [], { ok: true }, { ok: true, passes: 'x' }].every(b => !cleanHls(b).ok));
@@ -130,7 +130,7 @@ same('the clear days are counted by day, the hot ones by day, night never', ey.s
 same('the line at 45.0 counts, 44.9 does not', [ecoSummary([{ dn: 'day', solarDate: 'a', c: 45 }]).hotDays, ecoSummary([{ dn: 'day', solarDate: 'a', c: 44.9 }]).hotDays], [1, 0]);
 { const w = ecoWords(ey), html = ecoCardHTML(ey);
   check('the card says "N of M clear days" in the note\'s words', w.lines[0] === `Ground hot enough to hurt seedlings (45 °C or more) on 2 of 4 clear days. The hottest was 49 °C on 20 Jul ${YR}.` && w.head === '2 of 4', w.lines[0]);
-  check('the big number and its label are on the card', html.includes('data-eco="hot"') && html.includes('>2 of 4<') && /clear days with the ground at 45 °C or more/.test(html));
+  check('the big number and its label are on the card', html.includes('sat-first') && /2 of 4 clear days at 45 °C or more/.test(html));
   check('the cloud caveat and the source of the 45 are on the card', html.includes(ECO_CLOUD) && html.includes(ECO_WHY45) && /Crop Science 1990/.test(html) && /sorghum/.test(html) && /Other crops differ/.test(html));
   check('the numbers of the whole year are in a table, the lists show only the newest few', html.includes('<summary>The numbers</summary>') && (html.match(/<tr><td>/g) ?? []).length === 6 && html.includes('(45 °C or more)'));
   check('a long year does not fill the card: only six day passes and three night passes are listed above the table', (ecoCardHTML(cleanEco({ ...EG, passes: Array.from({ length: 40 }, (_, i) => P(`${YR}-0${1 + i % 9}-${String(1 + i % 28).padStart(2, '0')}`, i % 2 ? 'night' : 'day', 20 + i / 10, '13:00')) })).match(/class="eco-pass"/g) ?? []).length === 9);
@@ -152,7 +152,7 @@ const cutAnswer = (examined, complete = false) => ({ ...EG, passes: COOL7, windo
   same('a part-read year: the big number says "so far"', w.head, '0 of 7 so far');
   check('the sentence says so far and names what was read: the newest 54 of 297 passes, back to the day', w.lines[0].startsWith('Ground never reached 45 °C on 7 clear days so far') && w.lines.includes(`Read so far: the newest 54 of 297 passes, back to 1 September; the rest are still being read.`), w.lines.slice(0, 3));
   check('the card never says "a year" for a part of a year: its pass line gives the days actually read', !/last year|a year|12 months/.test(w.lines.join(' ')) && /clear passes, 1 September to 14 November/.test(w.lines.join(' ')), w.lines.join(' | '));
-  check('the card shows the big number, its "so far" label and what is still being read', html.includes('>0 of 7 so far<') && /clear days so far: the ground never reached 45 °C/.test(html) && html.includes('data-eco="part"') && /Read so far: the newest 54 of 297 passes/.test(html));
+  check('the card shows the big number, its "so far" label and what is still being read', /0 of 7 clear days so far at 45 °C or more/.test(html) && /never reached 45 °C on 7 clear days so far/.test(html) && /Read so far: the newest 54 of 297 passes/.test(html));
   check('the server\'s own sentence is kept', w.lines.includes(`so far the newest 54 of 297 passes were read, back to ${YR}-09-01; the rest are read on the next ask`));
   const hot = cleanEco({ ...cutAnswer(54), passes: [P(`${YR}-07-20`, 'day', 47, '13:00'), ...COOL7] }), wh = ecoWords(hot);
   check('a hot day in the part read is counted "so far" too', wh.head === '1 of 8 so far' && /on 1 of 8 clear days so far\. The hottest so far was 47 °C/.test(wh.lines[0]), wh.lines[0]);
@@ -174,5 +174,42 @@ const cutAnswer = (examined, complete = false) => ({ ...EG, passes: COOL7, windo
   check('a refusal is not asked again (nothing to go on from) and says the farmer sentence', asks === 1 && failed.ok === false && failed.reason === NOT_HERE, [asks, failed.reason]);
   same('the words for what was read', readSoFar({ examined: 54, found: 297, backTo: `${YR}-09-01` }), 'the newest 54 of 297 passes, back to 1 September; the rest are still being read'); }
 
+
+// the owner's rules for a card: at most four sentences before Show more; one source link; no "not read yet"
+{ const shown = h => h.split('Show more')[0].replace(/<[^>]+>/g, ' ').split(/(?<=[.!?])\s+(?=[A-Z])/).filter(x => x.trim().length > 12).length;
+  for (const [n, h] of [['GRACE', graceCardHTML(g)], ['ECOSTRESS', ecoCardHTML(e)], ['HLS', hlsCardHTML(hh)], ['ECOSTRESS, a year', ecoCardHTML(ey)]]) {
+    check(`${n}: at most five lines of words before Show more (the big line and four sentences), one source link, no "not read yet"`, shown(h) <= 5 && (h.match(/class="sat-src"/g) ?? []).length === 1 && !/not read yet/i.test(h), shown(h)); } }
+// ---- No server word on a farmer's card: every card that says why a lookup failed passes the reason through plainReason (this file), so a farmer never reads a folder name, a file name,
+// a program word, a status code or an address. Each card is fed the reason the tester saw ("Python environment not found (.venv)") and one holding a folder path, through the code the page uses.
+{
+  const RAW = ['Python environment not found (.venv)', 'Could not open /Users/someone/Crophalo/.cache/cdl/2025.tif: [Errno 2] No such file or directory', 'spawn python3 ENOENT at 127.0.0.1:5173', 'HTTP Error 500: Internal Server Error from https://example.invalid/api'];
+  const LEAK = /\.venv|python|\/Users|\.tif\b|\.cache|errno|ENOENT|127\.0\.0\.1|:5173|HTTP Error|\b500\b|https?:|example\.invalid/i;
+  const plainText = h => String(h).replace(/<[^>]*>/g, ' ');   // the words on the card, not its markup (a source link's own address is allowed)
+  const S2 = await import('../js/satellites2-data.js');
+  const { priceCards } = await import('../js/prices-cards.js'), { roughValue } = await import('../js/sales.js');
+  const { cleanRain } = await import('../js/satellites-data.js'), { rainCardHTML, moistureCardHTML } = await import('../js/satellites-view.js');
+  const { loadSmap } = await import('../js/report-load.js'), { surveyToSoil } = await import('../js/soil-load.js'), { fetchCropMap } = await import('../js/near-load.js'), { gateFrom } = await import('../js/nearby.js');
+  const { whyWords } = await import('../js/grace.js'), { cleanGreenness, greenItemHTML } = await import('../js/greenness.js'), { decodeHeights } = await import('../js/heights3d.js'), { decodeOsm } = await import('../js/land3d-load.js');
+  const { observedFor } = await import('../js/farmobserved.js'), { loadingHTML } = await import('../js/report-view.js'), { shareBlockHTML } = await import('../js/letter-view.js');
+  for (const reason of RAW) {
+    const bad = { ok: false, reason }, row = [{ key: 'smap', label: 'Soil moisture round the roots · NASA SMAP', state: 'fail', reason }];
+    const cards = {
+      'the price cards': priceCards({ prices: bad, faostat: bad, country: 'US', crops: ['corn'] }).map(c => c.body).join(' '),
+      'the money line': roughValue('corn', 'US', { prices: bad, faostat: bad }).reason,
+      'the satellite rain card': rainCardHTML(cleanRain(bad)),
+      'the GRACE-FO card': graceCardHTML(S2.cleanGrace(bad)), 'the ECOSTRESS card': ecoCardHTML(S2.cleanEco(bad)), 'the greenness card': hlsCardHTML(S2.cleanHls(bad)),
+      'the soil moisture card': moistureCardHTML(await loadSmap({ lat: 41.18, lon: -96.44 }, async () => ({ json: async () => bad }))),
+      'the US soil survey line': surveyToSoil(bad).reason,
+      'the crop map line': gateFrom(await fetchCropMap({ lat: 41.18, lon: -96.44, cc: 'US' }, async () => ({ json: async () => bad }))).nearby.gap,
+      'the GRACE-FO layer legend': whyWords(bad), 'the greenness history card': greenItemHTML({ status: 'error', reason: cleanGreenness(bad).reason }),
+      'the 3D heights line': decodeHeights(bad, { lat: 41.18, lon: -96.44, w: 400, d: 400 }).failed, 'the 3D land details line': decodeOsm('osm', bad, { lat: 41.18, lon: -96.44, w: 400, d: 400 }).failed,
+      'My farm\'s NASA picture card': observedFor(bad, '2026-11-15').detail,
+      'the loading list': loadingHTML(row), 'the report\'s sources': shareBlockHTML(row),
+    };
+    for (const [name, card] of Object.entries(cards)) check(`no server word: ${name}, fed "${reason.slice(0, 40)}"`, typeof card === 'string' && !LEAK.test(plainText(card)), plainText(card).match(LEAK)?.[0]);
+  }
+  const fs = await import('node:fs'), src = f => fs.readFileSync(new URL(`../js/${f}`, import.meta.url), 'utf8');
+  check('no server word: the setup map\'s weather card and the fires legend pass the reason through plainReason', /esc\(plainReason\(got\.reason, ''\)\)/.test(src('spotcard.js')) && /const said = plainReason\(a\?\.reason, ''\)/.test(src('maplayers.js')));
+}
 console.log(`satellites2: ${passed} passed, ${failed} failed`);
 process.exit(failed ? 1 : 0);

@@ -98,5 +98,30 @@ same('deep walk copies', deep.reason, 'about 20 mm');
 // ---- hostile input
 for (const bad of [undefined, null, 5, {}, [], '']) check(`hostile ${brief(bad)}`, typeof localiseText(bad, US) === 'string');
 check('a long text is fast', (() => { const t0 = performance.now(); localiseText('35 °C and 20 mm. '.repeat(20000), US); return performance.now() - t0 < 2000; })());
+
+// ---- the wiring: the screens call the module (the weather row, the calendar, the reminders, the land history, the report's answer and its assumptions)
+{
+  const fs = await import('node:fs'), src = f => fs.readFileSync(new URL(`../js/${f}`, import.meta.url), 'utf8');
+  const { IMPERIAL, METRIC } = await import('../js/units.js');
+  const { forecastHTML } = await import('../js/weather-view.js'), { calendarHTML } = await import('../js/calendar-view.js'), { jobsFor } = await import('../js/remind-wire.js'), { wrongHTML } = await import('../js/letter-view.js');
+  const week = { days: [{ name: 'Sun', icon: 'frost', hi: 11, lo: -1, rain: 0, rainText: 'dry', calm: false }], week: null };
+  const fUS = forecastHTML(week, IMPERIAL), fCA = forecastHTML(week, METRIC), head = h => /<h3 id="wk7">[^]*?<\/h3>/.exec(h)?.[0] ?? '';
+  check('the week\'s weather row of a US field reads in °F and its heading says so (the tester saw "Sun Frost 11° −1° dry")', /in °F/.test(head(fUS)) && /wk-hi num">52°/.test(fUS) && /wk-lo num">30°/.test(fUS) && metricLeft(fUS, US).length === 0, metricLeft(fUS, US).join(' '));
+  check('the same row in Celsius names °C in its heading', /in °C/.test(head(fCA)) && /wk-hi num">11°/.test(fCA) && /wk-lo num">−?-?1°/.test(fCA));
+  const cal = { climate: { rain: Array(12).fill(76.2), frost: Array(12).fill(2), hot: Array(12).fill(3), years: 25, first: 2001, last: 2025 }, hasPlans: false, sowing: [] };
+  const cUS = calendarHTML(cal, IMPERIAL), cMet = calendarHTML(cal);
+  check('the calendar of a US field gives rain in inches and hot days above 90 °F; with no units it stays as before', /Rain \(in\)/.test(cUS) && /about 3 in of rain/.test(cUS) && /above 90 °F/.test(cUS) && !/\d\s?mm\b|°C/.test(cUS) && /Rain \(mm\)/.test(cMet) && /about 76 mm of rain/.test(cMet) && /above 32 °C/.test(cMet));
+  const jobs = jobsFor({ result: null, climate: null, forecastDays: [{ date: '2026-11-20', tmin: -1, tmax: 5, rain: 0, wind: 0, code: 0 }], today: '2026-11-15', now: '2026-11-15T10:00', units: IMPERIAL }), frost = jobs.find(j => j.kind === 'frost');
+  check('a frost reminder of a US field says its figure in °F', frost?.value === '30 °F', frost?.value);
+  check('with no units the reminder keeps its own figure', jobsFor({ result: null, climate: null, forecastDays: [{ date: '2026-11-20', tmin: -1, tmax: 5, rain: 0, wind: 0, code: 0 }], today: '2026-11-15', now: '2026-11-15T10:00' }).find(j => j.kind === 'frost')?.value === '-1 °C');
+  const wr = wrongHTML({ ok: true, recommended: { seasons: [] } }, { state: { loc: { lat: 41.18, lon: -96.44 }, soil: { mode: 'assumed' }, farm: {} }, units: IMPERIAL });
+  check('the report\'s assumptions of a US field give the estimated outline in acres', /24\.7 acres/.test(wr) && !/\b10 ha\b/.test(wr));
+  const rp = src('report.js'), hv = src('history-view.js'), fm = src('farm.js');
+  check('the report turns its answer into the farmer\'s units once for each answer and each choice of units, and draws from that', /if \(cur\.viewOf !== cur\.result \|\| cur\.viewKey !== key\) \{ cur\.view = localiseDeep\(cur\.result, u\);/.test(rp) && /const r = viewOf\(\)/.test(rp) && !/cur\.result = localiseDeep/.test(rp));
+  check('the report hands its units to the calendar, the hardest year, the cards and the reminders', rp.includes('calendarHTML(namedCalendar(), unitsNow())') && rp.includes('localiseDeep(hardYearModel(cur), unitsNow())') && rp.includes('localiseText(cards, u)') && /jobsFor\(\{[^}]*units: unitsNow\(\) \}\)/.test(rp));
+  check('the land history says every line in the farmer\'s units on screen, on paper and in the copied text, and My farm hands it its units', /container\.innerHTML = say\(/.test(hv) && /const text = say\(asText/.test(hv) && /sheet\.innerHTML = say\(printHTML/.test(hv) && /openHistory\([^\n]*units: farmUnits\(/.test(fm));
+  const { localiseDeep: deep } = await import('../js/unitstext.js'), answer = { reason: 'Needs 35 °C and 20 mm.', recommended: { id: 'a', why: 'About 450 mm in a normal year.' } }, before = JSON.stringify(answer), seen = deep(answer, US);
+  check('the answer the report keeps is not changed by the screen\'s copy', JSON.stringify(answer) === before && seen.reason === 'Needs 95 °F and 0.8 in.' && seen.recommended.id === 'a');
+}
 console.log(`${passed} passed, ${failed} failed`);
 process.exit(failed ? 1 : 0);

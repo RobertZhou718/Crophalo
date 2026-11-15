@@ -57,7 +57,8 @@ export const WORD_SPOTS = Object.freeze([
   { sel: '[data-fact="frost"] > h3', id: 'frost' }, { sel: '[data-fact="free"] > h3', id: 'frost' },
   { sel: '[data-tile="warm"] > h3', id: 'gdd' }, { sel: '[data-tile="soil"] > h3', id: 'anomaly' },
   { sel: '[data-fact="dry"] > h3', id: 'et' }, { sel: '[data-fact="dryyears"] > h3', id: 'balance' },
-  { sel: '[data-card="smap"] > h3', id: 'rootzone' }, { sel: '[data-card="hls"] > h3', id: 'ndvi' }, { sel: '[data-card="ecostress"] > h3', id: 'lst' },
+  // a satellite card is one closed line whose heading sits in its summary (js/satcard.js): the word's "i" goes on the first line inside the card, never into the summary itself
+  { sel: '[data-card="smap"] .sat-fold > p:first-of-type', id: 'rootzone' }, { sel: '[data-card="hls"] .sat-fold > p:first-of-type', id: 'ndvi' }, { sel: '[data-card="ecostress"] .sat-fold > p:first-of-type', id: 'lst' },
 ]);
 
 // ---- (3) one field, many square sizes: each dataset's square, how Crophalo brings it to the field (the lookups of scripts/live/ and js/data.js), its source key

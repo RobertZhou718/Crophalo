@@ -19,7 +19,8 @@ const draw = async (eco, width = 1280) => {
   await js(`(async () => { const [d, v, w, s] = await Promise.all([import('/js/satellites2-data.js'), import('/js/satellites-view.js'), import('/js/sources.more.js'), import('/js/srci.js')]);
     for (const h of ['css/app.css', 'css/satellites.css']) if (!document.querySelector('link[href="' + h + '"]')) { const l = document.createElement('link'); l.rel = 'stylesheet'; l.href = h; document.head.append(l); }
     document.querySelector('#infoBody').innerHTML = v.satellitesHTML({ grace: d.cleanGrace(${JSON.stringify(GRACE)}), eco: d.cleanEco(${JSON.stringify(eco)}), hls: d.cleanHls(${JSON.stringify(HLS)}) }); s.initSources?.(); })()`);
-  await until(`document.querySelector('[data-card=grace] svg') && document.querySelector('[data-card=ecostress]') && document.querySelector('[data-card=hls] svg')`); await sleep(200);
+  await until(`document.querySelector('[data-card=grace] svg') && document.querySelector('[data-card=ecostress]') && document.querySelector('[data-card=hls] svg')`);
+  await js(`for (const d of document.querySelectorAll('.sat-fold, .sat-more')) d.open = true`); await sleep(200);   // each card is one closed line (js/satcard.js): opened here, with its Show more, so what is inside is measured too
 };
 const wideBy = () => js(`document.documentElement.scrollWidth - document.documentElement.clientWidth`);
 
@@ -28,7 +29,8 @@ await group('fit', async () => {
     for (const big of [false, true]) { await js(`import('/js/settings.js').then(m => m.saveSettings({ text: ${big ? "'xlarge'" : "'default'"} }))`); await sleep(100); const by = await wideBy(); check(`fit: GRACE and ECOSTRESS at ${width} px${big ? ' with largest text' : ''}${eco === NONE ? ' (no clear pass)' : ''}: no sideways scroll`, by <= 0, `${by} px too wide`); }
     await js(`import('/js/settings.js').then(m => m.saveSettings({ text: 'default' }))`); }
   await draw(ECO, 375);
-  const small = await js(`[...document.querySelectorAll('[data-card=grace] button, [data-card=ecostress] button, [data-card=hls] button, [data-card=grace] summary, [data-card=ecostress] summary, [data-card=hls] summary')].filter(e => e.offsetParent && !e.classList.contains('srci')).map(e => [e.getBoundingClientRect(), e]).filter(([b]) => b.height < 43.5).map(([b, e]) => e.tagName + ' ' + Math.round(b.width) + 'x' + Math.round(b.height))`);
+  // the cards' controls are now the closed line's own summary, the Show more and The numbers summaries (no "i" button any more; the one source link is a link in the text)
+  const small = await js(`[...document.querySelectorAll(['grace', 'ecostress', 'hls'].map(id => '[data-card=' + id + '] summary, [data-card=' + id + '] button').join(', '))].filter(e => e.offsetParent).map(e => [e.getBoundingClientRect(), e]).filter(([b]) => b.height < 43.5).map(([b, e]) => e.tagName + ' ' + Math.round(b.width) + 'x' + Math.round(b.height))`);
   check('fit: the controls in the two cards are at least 44 px high at 375', small.length === 0, small);
 });
 await group('axe', async () => {

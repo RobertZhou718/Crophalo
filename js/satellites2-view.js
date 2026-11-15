@@ -3,10 +3,9 @@
 // Pure: functions of plain data (js/satellites2-data.js) that return text. Every card carries NASA's "i".
 // Checked by scripts/test_satellites2.mjs (each state, the chart's gaps and trend, day and night apart, plain-text escaping).
 import { esc } from './words.js';
-import { infoButton } from './report-view.js';
-import { readSoFar, graceWords, ecoWords, hlsWords, monthWords, dayShort, clock, graceDirection, GRACE_TILE, GRACE_PUMPING, GRACE_NO_DECLINE, GRACE_RULE, GRACE_DOI, HLS_CREDIT, HOT_C } from './satellites2-data.js';
+import { satCard, satWaiting, satPlain } from './satcard.js';
+import { readSoFar, graceWords, ecoWords, hlsWords, monthWords, dayShort, clock, graceDirection, GRACE_TILE, GRACE_PUMPING, GRACE_NO_DECLINE, GRACE_MEANS, ECO_CLOUD, ECO_WHY45, GRACE_RULE, GRACE_DOI, HLS_CREDIT, HOT_C } from './satellites2-data.js';
 
-const card = (id, title, keys, body, figure = '') => `<article class="card pad sat-card" data-card="${esc(id)}"><h3>${esc(title)} ${infoButton(keys, figure || title)}</h3>${body}</article>`;
 const monthIndex = m => +m.slice(0, 4) * 12 + (+m.slice(5) - 1);
 
 // The series as one path per unbroken run (a gap is an empty stretch, never a joined line), a dot for each month, and the trend as a straight line over its own years.
@@ -43,13 +42,13 @@ export function graceTile(g) {
   return `<p class="sat-tile" data-dir="${d.word === 'Falling' ? 'fall' : d.word === 'Rising' ? 'rise' : 'flat'}"><b>${esc(d.word)}</b> <span>${esc(GRACE_TILE(g, g.km))}</span></p>`;
 }
 export function graceCardHTML(g) {
-  const T = 'Regional water storage';
-  if (!g || g.loading) return card('grace', T, ['grace'], '<p class="cap" role="status" aria-live="polite">Reading NASA’s GRACE-FO water-storage record for your region…</p>');
-  if (!g.ok) return card('grace', T, ['grace'], `<p class="rv-notread">${esc(g.reason)}</p>`);
-  const w = graceWords(g);
-  return card('grace', T, ['grace'], `<div class="gr-head"><p class="wk-big num">${esc(w.head)}</p>${regionDiagram(g.km)}</div>${graceChartSVG(g)}
-    <p class="ch-legend"><span><i class="ch-key rain" aria-hidden="true"></i>Month read</span>${g.trend ? '<span><i class="ch-key trend" aria-hidden="true"></i>Trend</span>' : ''}${g.gaps.length ? '<span><i class="ch-key gap" aria-hidden="true"></i>No data</span>' : ''}</p>
-    ${graceTile(g)}${w.lines.map(l => `<p class="cap">${esc(l)}</p>`).join('')}<p class="cap">NASA GRACE-FO, DOI ${esc(GRACE_DOI)}.</p><details class="disc"><summary>The numbers</summary>${graceTable(g)}</details>`, `Water stored over a region about ${g.km} km wide, ${monthWords(g.newest.month)}.`);
+  const name = 'How much water is stored under your region';
+  if (!g || g.loading) return satWaiting({ id: 'grace', name, line: 'Reading NASA\u2019s GRACE and GRACE-FO water-storage record for your region\u2026', source: 'grace' });
+  if (!g.ok) return satPlain({ id: 'grace', name, line: g.reason, source: 'grace' });
+  const w = graceWords(g), d = graceDirection(g), n = g.newest;
+  const lines = [w.lines[0], ...(g.trend ? [w.lines[1]] : [])];
+  const more = `<p class="ch-legend"><span><i class="ch-key rain" aria-hidden="true"></i>Month read</span>${g.trend ? '<span><i class="ch-key trend" aria-hidden="true"></i>Trend</span>' : ''}${g.gaps.length ? '<span><i class="ch-key gap" aria-hidden="true"></i>No data</span>' : ''}</p>${regionDiagram(g.km)}${[GRACE_MEANS, ...w.lines.filter(l => !lines.includes(l) && l !== GRACE_MEANS)].map(l => `<p class="cap">${esc(l)}</p>`).join('')}<p class="cap">NASA GRACE and GRACE-FO, DOI ${esc(GRACE_DOI)}.</p><details class="fold"><summary>The numbers</summary>${graceTable(g)}</details>`;
+  return satCard({ id: 'grace', name, one: `${d.word ? `${d.word}, ` : ''}${w.head}, ${monthWords(n.month)}`, first: d.word ? `${d.word}: ${w.head}` : w.head, chart: graceTile(g) + graceChartSVG(g), lines, more, source: 'grace' });
 }
 
 // ---- ECOSTRESS
@@ -57,16 +56,17 @@ const passRow = p => `<li class="eco-pass"><b class="num">${esc(String(p.c))} °
 export const pixelDot = m => `<svg class="eco-dot" viewBox="0 0 60 60" width="44" height="44" role="img" aria-label="${esc(`One reading covers a square about ${m} metres wide, drawn here as a dot.`)}" focusable="false"><circle cx="30" cy="30" r="5" class="eco-pix"/></svg>`;
 const ecoTable = e => `<div class="tbl" tabindex="0" role="region" aria-label="The numbers: every clear pass of the year"><table><caption class="sr">Clear passes of the year, newest first</caption><thead><tr><th scope="col">Day</th><th scope="col">Local solar time</th><th scope="col">Day or night</th><th scope="col">Ground temperature</th></tr></thead><tbody>${e.passes.map(p => `<tr><td>${esc(dayShort(p.solarDate))}</td><td>${esc(p.solar || '')}</td><td>${p.dn === 'day' ? 'Day' : 'Night'}</td><td class="num">${esc(String(p.c))} °C${p.dn === 'day' && p.c >= HOT_C ? ' (45 °C or more)' : ''}</td></tr>`).join('')}</tbody></table></div>`;
 export function ecoCardHTML(e) {
-  const T = 'Ground surface temperature';
-  if (!e || e.loading) return card('ecostress', T, ['ecostress'], '<p class="cap" role="status" aria-live="polite">Looking for clear passes of NASA’s heat camera over your field, over the last year. The first time this can take a minute.</p>');
-  if (!e.ok) return card('ecostress', T, ['ecostress'], `<p class="rv-notread">${esc(e.reason)}</p>`);
+  const name = 'How hot the ground gets';
+  if (!e || e.loading) return satWaiting({ id: 'ecostress', name, line: 'Looking for clear passes of NASA\u2019s heat camera over your field, over the last year. The first time this can take a minute.', source: 'ecostress' });
+  if (!e.ok) return satPlain({ id: 'ecostress', name, line: e.reason, source: 'ecostress' });
   const w = ecoWords(e), day = e.passes.filter(p => p.dn === 'day'), night = e.passes.filter(p => p.dn === 'night'), sm = e.summary;
-  const group = (label, list, more) => list.length ? `<section aria-label="${esc(label)}"><h4>${esc(label)}</h4><ul class="eco-list">${list.slice(0, more).map(passRow).join('')}</ul>${list.length > more ? `<p class="cap">The newest ${more} of ${list.length}; every pass is in “The numbers”.</p>` : ''}</section>` : '';
   const part = e.coverage && !e.coverage.complete && e.coverage.found > 0, so = part ? ' so far' : '';
-  const big = sm.dayDays ? `<p class="wk-big num" data-eco="hot">${esc(w.head)}</p><p class="cap">${sm.hotDays ? `clear days${so} with the ground at ${HOT_C} °C or more` : `clear days${so}: the ground never reached ${HOT_C} °C`}</p>${part ? `<p class="cap" data-eco="part" role="status" aria-live="polite">${e.again ? `Reading more passes (ask ${e.again.n} of ${e.again.of})… ` : ''}${esc(`Read so far: ${readSoFar(e.coverage)}.`)}</p>` : ''}` : '';
-  const body = e.passes.length ? `${big}${group('Daytime passes', day, 6)}${group('Night passes', night, 3)}` : `<p class="rv-notread"><b>No clear pass.</b> ${esc(w.lines[0])}</p>`;
-  return card('ecostress', T, ['ecostress'], `<div class="eco-head">${pixelDot(e.pixel)}<p class="cap eco-means">${esc(`Ground temperature seen from space at about ${e.pixel} m, not the air temperature.`)}</p></div>${body}
-    ${w.lines.slice(e.passes.length ? 0 : 1).filter(l => !/seen from space at about/.test(l)).map(l => `<p class="cap">${esc(l)}</p>`).join('')}<p class="cap">NASA ECOSTRESS, ECO_L2T_LSTE, LP DAAC.</p>${e.passes.length ? `<details class="disc"><summary>The numbers</summary>${ecoTable(e)}</details>` : ''}`, e.newest ? `Newest clear pass: ${dayShort(e.newest)}.` : '');
+  const group = (label, list, more) => list.length ? `<section aria-label="${esc(label)}"><h4>${esc(label)}</h4><ul class="eco-list">${list.slice(0, more).map(passRow).join('')}</ul>${list.length > more ? `<p class="cap">The newest ${more} of ${list.length}; every pass is in \u201cThe numbers\u201d.</p>` : ''}</section>` : '';
+  if (!e.passes.length) return satPlain({ id: 'ecostress', name, line: `No clear pass. ${w.lines[0]}`, source: 'ecostress' });
+  const reading = sm.dayDays ? (sm.hotDays ? `The ground reached ${HOT_C} \u00b0C or more on ${sm.hotDays} of ${sm.dayDays} clear days${so}.` : `The ground never reached ${HOT_C} \u00b0C on ${sm.dayDays} clear days${so}.`) : w.lines[0];
+  const lines = [reading, ...(part ? [`${e.again ? `Reading more passes (ask ${e.again.n} of ${e.again.of})\u2026 ` : ''}Read so far: ${readSoFar(e.coverage)}.`] : []), `This is the temperature of the ground seen from space at about ${e.pixel} m, not the air temperature.`, ECO_CLOUD];
+  const more = `<div class="eco-head">${pixelDot(e.pixel)}</div>${group('Daytime passes', day, 6)}${group('Night passes', night, 3)}<p class="cap">${esc(ECO_WHY45)}</p>${w.lines.filter(l => !/seen from space at about|Cloudy days are missing/.test(l) && !lines.includes(l) && l !== ECO_WHY45 && !/^Ground (hot enough|never reached)/.test(l)).map(l => `<p class="cap">${esc(l)}</p>`).join('')}<p class="cap">NASA ECOSTRESS, ECO_L2T_LSTE, LP DAAC.</p><details class="fold"><summary>The numbers</summary>${ecoTable(e)}</details>`;
+  return satCard({ id: 'ecostress', name, one: sm.dayDays ? `${w.head} hot days${so}${e.newest ? `, ${dayShort(e.newest)}` : ''}` : (e.newest ? dayShort(e.newest) : ''), first: sm.dayDays ? `${sm.hotDays} of ${sm.dayDays} clear days${so} at ${HOT_C} \u00b0C or more` : '', lines, more, source: 'ecostress' });
 }
 
 // ---- HLS greenness: one dot for each clear photo on a 0 to 1 scale, no line across days with no photo
@@ -78,12 +78,14 @@ export function hlsChartSVG(h, { w = 320, h: ht = 150 } = {}) {
   const lab = [h.passes[0].date, h.passes.at(-1).date].map((d, i) => `<text class="ch-tick" x="${i ? w - pad.r : pad.l}" y="${ht - 6}" text-anchor="${i ? 'end' : 'start'}">${esc(dayShort(d))}</text>`).join('');
   return `<svg class="ch hl-chart" viewBox="0 0 ${w} ${ht}" width="${w}" height="${ht}" role="img" aria-label="${esc(`Greenness of your field on ${h.passes.length} clear days, from ${dayShort(h.passes[0].date)} to ${dayShort(h.passes.at(-1).date)}. 0 is bare ground and about 0.8 is thick green crop.`)}" focusable="false">${ticks}${dots}${lab}</svg>`;
 }
+const hlsTable = h => `<details class="fold"><summary>The numbers</summary><div class="tbl" tabindex="0" role="region" aria-label="The numbers: greenness by clear day"><table><caption class="sr">Greenness by clear day</caption><thead><tr><th scope="col">Day</th><th scope="col">Greenness</th><th scope="col">Clear part of the photo</th></tr></thead><tbody>${[...h.passes].reverse().map(p => `<tr><th scope="row">${esc(dayShort(p.date))}</th><td>${p.ndvi}</td><td>${p.clear !== null && p.of ? `${p.clear} of ${p.of} pixels` : ''}</td></tr>`).join('')}</tbody></table></div></details>`;
 export function hlsCardHTML(h) {
-  const T = 'Greenness of your field';
-  if (!h || h.loading) return card('hls', T, ['hls'], '<p class="cap" role="status" aria-live="polite">Looking for clear satellite photos of your field…</p>');
-  if (!h.ok) return card('hls', T, ['hls'], `<p class="rv-notread">${esc(h.reason)}</p>`);
+  const name = 'How green your field is';
+  if (!h || h.loading) return satWaiting({ id: 'hls', name, line: 'Looking for clear satellite photos of your field\u2026', source: 'hls' });
+  if (!h.ok) return satPlain({ id: 'hls', name, line: h.reason, source: 'hls' });
   const w = hlsWords(h);
-  if (!h.passes.length) return card('hls', T, ['hls'], `<p class="rv-notread"><b>No clear photo.</b> ${esc(w.lines[0])}</p><p class="cap">${esc(w.lines.at(-1))}</p><p class="cap">${esc(HLS_CREDIT)}</p>`);
-  return card('hls', T, ['hls'], `<p class="wk-big num">${esc(w.head)}</p>${hlsChartSVG(h)}${w.lines.map(l => `<p class="cap">${esc(l)}</p>`).join('')}<p class="cap">${esc(HLS_CREDIT)}</p>
-    <details class="disc"><summary>The numbers</summary><div class="tbl" tabindex="0" role="region" aria-label="The numbers: greenness by clear day"><table><caption class="sr">Greenness by clear day</caption><thead><tr><th scope="col">Day</th><th scope="col">Greenness</th><th scope="col">Clear part of the photo</th></tr></thead><tbody>${[...h.passes].reverse().map(p => `<tr><th scope="row">${esc(dayShort(p.date))}</th><td>${p.ndvi}</td><td>${p.clear !== null && p.of ? `${p.clear} of ${p.of} pixels` : ''}</td></tr>`).join('')}</tbody></table></div></details>`, h.newest ? `Newest clear photo: ${dayShort(h.newest.date)}.` : '');
+  if (!h.passes.length) return satPlain({ id: 'hls', name, line: `No clear photo. ${w.lines[0]}`, source: 'hls' });
+  const lines = [`Newest clear photo: ${dayShort(h.newest.date)}, greenness ${h.newest.ndvi}.`, w.lines.at(-1)];
+  const more = `${w.lines.slice(1, -1).map(l => `<p class="cap">${esc(l)}</p>`).join('')}<p class="cap">${esc(HLS_CREDIT)}</p>${hlsTable(h)}`;
+  return satCard({ id: 'hls', name, one: `${h.newest.ndvi}, ${dayShort(h.newest.date)}`, first: `Greenness ${h.newest.ndvi}`, chart: hlsChartSVG(h), lines, more, source: 'hls' });
 }

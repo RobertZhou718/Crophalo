@@ -2,8 +2,8 @@
    Only the app's own tokens; no motion of its own (the folds' arrow follows the app's motion switch). Checked by scripts/e2e_explain.mjs (fit at 320 and 1280, axe). */
 .ex { margin: var(--space-24, 24px) 0; }
 .ex > h2 { margin-bottom: var(--space-8); }
-.ex-remind { max-width: var(--lead-w); margin: var(--space-12) 0 var(--space-16); padding: var(--space-12) var(--space-16); border-radius: var(--r2); background: var(--card); box-shadow: var(--shadow); }
-.ex-folds { max-width: var(--lead-w); }
+.ex-remind { margin: var(--space-12) 0 var(--space-16); padding: var(--space-12) var(--space-16); border-radius: var(--r2); background: var(--card); box-shadow: var(--shadow); }
+.ex-folds { }
 .ex-b { padding-left: var(--space-16); overflow-wrap: anywhere; }
 .ex-b > * + *, .ex-b section > * + * { margin-top: var(--space-8); }
 .ex-b h3 { margin-top: var(--space-16); font-size: var(--fs-headline); }
@@ -15,7 +15,6 @@
 .ex-src { line-height: 2; }   /* sources in a sentence: lines far enough apart that two links never touch */
 .ex-src a { display: inline; min-height: 0; }
 .ex-first a { display: inline-flex; align-items: center; min-height: var(--touch, 44px); }   /* a link alone on its line is a target of its own */
-.ex-fold + .ex-fold { margin-top: var(--space-8); }
 .ex-more { margin-top: var(--space-8); }
 .ex-more > summary { display: flex; align-items: center; min-height: var(--touch, 44px); }
 .ex-b { padding-bottom: var(--space-8); }
@@ -38,7 +37,7 @@
 .ex-lab { fill: var(--ink); font-size: 13px; font-weight: 600; }
 .ex-key { margin: 4px 0 0; padding-left: 1.6em; font-size: var(--fs-small); }
 .ex-key .ex-size { color: var(--ink2); }
-.ex, .ex-folds, .ex-fold, .ex-b { min-width: 0; max-width: 100%; }
+.ex, .ex-folds, .ex-fold, .ex-b { min-width: 0; max-width: none; }
 .ex .tbl { contain: inline-size; }   /* the table's own width never widens the page: it scrolls inside its box */
 .ex-table caption { text-align: left; padding: var(--space-8) 0; font-weight: var(--fw-semi); }
 .ex-table th[scope=row] { min-width: 8em; }
@@ -58,3 +57,9 @@
 .ex-more { margin-top: var(--space-8); border-top: .5px solid var(--sep); }
 .ex-more > summary { display: flex; align-items: center; min-height: var(--touch); color: var(--link); font-size: var(--fs-small); font-weight: var(--fw-medium); cursor: pointer; }
 .ex-more > summary:focus-visible { outline: 3px solid var(--sel); outline-offset: 2px; border-radius: var(--r2); }
+
+/* the folds under "How to read Crophalo": one tidy column inside one card, a thin line between them, whatever else lays them out */
+#explain .ex-folds { display: block; columns: auto; column-count: 1; }
+#explain .ex-folds > .ex-fold { display: block; width: auto; max-width: none; flex: none; margin: 0; }
+#explain .ex-folds > .ex-fold + .ex-fold { border-top: .5px solid var(--sep); }
+#explain .ex-fold > summary { min-height: var(--touch, 44px); }

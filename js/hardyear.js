@@ -10,7 +10,7 @@ import { SEASON } from './season.js';
 export const WATER_HOLD = Object.freeze({ sand: 80, loam: 150, silt: 185, clay: 140 }), IRRIGATION_MM = Object.freeze({ none: 0, limited: 200, full: 500 });   // the same tables My farm uses
 export const WORDS = Object.freeze({
   title: 'Your hardest year',
-  lead: 'Pick a hard year from this land’s real weather. We play your three strategies on that year. This is past weather, not a forecast.',
+  lead: n => `Pick a hard year from this land’s real weather. We play your ${n === 1 ? 'strategy' : n === 2 ? 'two strategies' : n === 3 ? 'three strategies' : `${n} strategies`} on that year. This is past weather, not a forecast.`,
   pick: 'Pick another year', footer: 'Past weather on this land, not a forecast.',
   hurt: 'Hurt', close: 'Close call', fine: 'No hard day found', nodata: 'Not judged',
   fineWhy: 'Under this plan, our rules found no hard day that year.',

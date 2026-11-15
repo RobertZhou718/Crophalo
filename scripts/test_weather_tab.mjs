@@ -9,6 +9,7 @@ import { computeClimate } from '../js/climate.js';
 import { hotTile, buildWeather, isCalm, rainWords, dayIcon, longDay, CALM } from '../js/weather-data.js';
 import { loadSmap, SMAP_LABEL } from '../js/report-load.js';
 import { weatherHTML, forecastHTML, chartSVG, chartTable, chartCard, chartZoomHTML } from '../js/weather-view.js';
+import { moistureCardHTML } from '../js/satellites-view.js';
 const YR = 2026;   // the year of the recorded answer's newest days: the dates below are written from it
 
 let passed = 0, failed = 0;
@@ -63,14 +64,16 @@ same('the limits are the published ones', CALM, { rain: 1, chance: 40, wind: 20,
 // the page
 const html = weatherHTML(w);
 const at = s => html.indexOf(s);
-check('sections in order: the line "weather through", the next 7 days, this year so far, the climate record, the regional reading', at('Weather through') > 0 && at('Weather through') < at('The next 7 days') && at('The next 7 days') < at('This year so far') && at('This year so far') < at('Your climate, 2001') && at('Your climate, 2001') < at('A regional reading'));
+// Changed on purpose (the satellite cards' paper, staging/round3/satcards bb7e1bf): the soil moisture is shown once, on the satellite cards; the weather part ends with one line that links there.
+check('sections in order: the line "weather through", the next 7 days, this year so far, the climate record, the link line to the soil moisture', at('Weather through') > 0 && at('Weather through') < at('The next 7 days') && at('The next 7 days') < at('This year so far') && at('This year so far') < at('Your climate, 2001') && at('Your climate, 2001') < at('How wet the soil is around your field'));
 check('"weather through" names the date, with NASA POWER\'s "i"', new RegExp(`Weather through <b>12 November ${YR}</b>\\s*<button[^>]*class="srci nasa"`).test(html));
 check('the forecast\'s "i" is the outlined one, with its date', /The next 7 days <button[^>]*class="srci"[^>]*data-src="forecast"/.test(html) && /For 7 days from 14 November 2026/.test(html));
 const buttons = (html.match(/<button[^>]*class="srci/g) ?? []).length;
-check('every tile, every fact and every chart has an "i"', buttons >= w.tiles.length + w.facts.length + w.charts.length + 3, `${buttons} buttons`);
+// Changed on purpose with the line above: the regional reading's "i" went with the reading, so the fixed "i" are two (the weather record and the forecast), not three.
+check('every tile, every fact and every chart has an "i"', buttons >= w.tiles.length + w.facts.length + w.charts.length + 2, `${buttons} buttons`);
 check('every "i" names its sources and starts closed', (html.match(/<button[^>]*class="srci[^>]*aria-expanded="false"[^>]*data-src="[a-z0-9,]+"/g) ?? []).length === buttons);
-// The region card never says "not read yet" (the owner's rule: no empty promise): with no value it says "No value for this area" and why.
-check('the regional reading says "No value for this area", and shows the square, not a pattern in the field', /No value for this area/.test(html) && /region-pic/.test(html) && /not a reading inside your field|Crophalo has no reading/.test(html));
+// The weather part never says "not read yet" (the owner's rule: no empty promise). Changed on purpose with the satellite cards: it holds no soil moisture card of its own, only the one link line.
+check('the weather part shows the soil moisture only as one link line to the satellite part, with no card of its own and no empty promise', /class="cap wk-sat">How wet the soil is around your field[^<]*<a href="#satTitle"/.test(html) && !/region-pic/.test(html) && !/not read yet/i.test(html));
 check('the lead says a rain gauge can differ and should be trusted over these totals', /A rain gauge near you can read quite differently/.test(html) && /trust it over these totals/.test(html));
 check('each tile has a status word and a shape, never colour alone', (html.match(/class="mark (good|watch|risk|unclear)"/g) ?? []).length === 4 && (html.match(/class="wk-status"><span class="mark [a-z]+" aria-hidden="true"><\/span><b>[^<]+<\/b>/g) ?? []).length === 4);
 check('a calm day is tagged in words', !html.includes('is-calm') || /Calm, dry/.test(html));
@@ -83,7 +86,8 @@ check('a forecast answer that cannot be read is the same', buildWeather({ series
 same('no daily record: not read, and nothing is made up', [weatherHTML(null).includes('could not be worked out'), buildWeather({ series: null, climate: null, loc, now: NOW }).ok], [true, false]);
 check('a reason from buildWeather is shown', weatherHTML({ ok: false, reason: 'No weather.' }).includes('No weather.'));
 check('words from outside are plain text', !/<img src=x/.test(weatherHTML({ ...w, note: '<img src=x onerror=1>' }, {})) && !/<img src=x>/.test(chartCard({ ...w.charts[0], title: '<img src=x>', words: '<b>x</b>' })));
-check('a custom reading replaces the empty slot', weatherHTML(w, { reading: { label: 'Root-zone soil moisture', value: 0.31, date: `${YR}-11-12`, km: 9, lat: loc.lat, lon: loc.lon, source: 'smap' } }).includes('31% water by volume'));
+// Changed on purpose with the satellite cards: a reading given to the weather part is not drawn there a second time (it is on the satellite card).
+check('a reading given to the weather part is not drawn a second time; the link line stays', (h => !h.includes('31% water by volume') && /class="cap wk-sat"/.test(h))(weatherHTML(w, { reading: { label: 'Root-zone soil moisture', value: 0.31, date: `${YR}-11-12`, km: 9, lat: loc.lat, lon: loc.lon, source: 'smap' } })));
 const OLD_TR = new RegExp('\\b' + 'Tur' + 'key' + '\\b');   // the old English spelling, written in pieces so this file never holds it
 check('no old spelling of Türkiye and no key names but crophalo.* in the markup', !OLD_TR.test(html) && !/\bfw\./.test(html));
 
@@ -93,12 +97,14 @@ let asked = '';
 const live = await loadSmap(loc, async url => { asked = url; return { json: async () => ({ ok: true, value: 0.31, date: `${YR}-11-12`, cell: { km: 9 } }) }; });
 check('the route is asked for the field\'s own position', new RegExp(`^/api/smaproot\\?lat=${loc.lat.toFixed(4)}&lon=${loc.lon.toFixed(4)}$`).test(asked), asked);
 check('a good answer is a reading with its value, date, footprint and source', live.value === 0.31 && live.date === `${YR}-11-12` && live.km === 9 && live.source === 'smap' && live.label === 'Moisture around the roots' && live.why === '');
-check('the card shows it as one regional value for the whole area it covers', (() => { const h = weatherHTML(w, { reading: live }); return h.includes('31% water by volume') && h.includes(`12 November ${YR}`) && /one figure for the whole area, a square about 9 km wide/.test(h) && h.includes('Moisture around the roots'); })());
+// The reading's card is the satellite card now (js/satellites-view.js moistureCardHTML), checked here on the same answer.
+check('the card shows it as one regional value for the whole area it covers', (() => { const h = moistureCardHTML(live); return h.includes('31% water by volume') && h.includes(`12 November ${YR}`) && /one figure for the whole area, a square about 9 km wide/.test(h) && h.includes('Moisture around the roots'); })());
 const refused = await loadSmap(loc, answer({ ok: false, reason: 'NASA has no SMAP reading for this day yet.' }));
-check('a refusal says why under "No value for this area"', refused.value === null && refused.why === 'NASA has no SMAP reading for this day yet.' && /No value for this area/.test(weatherHTML(w, { reading: refused })) && weatherHTML(w, { reading: refused }).includes('NASA has no SMAP reading for this day yet.'));
+// Changed on purpose with the satellite cards: a refused reading keeps its plain reason, and its card says one plain line (no value, nothing guessed), never "not read yet".
+check('a refusal keeps its reason, and the card says plainly that there is no value and none is guessed', refused.value === null && refused.why === 'NASA has no SMAP reading for this day yet.' && (h => /There is no soil moisture value for the area round your field/.test(h) && /It will not guess one/.test(h) && !/not read yet/i.test(h))(moistureCardHTML(refused)));
 same('the failures give no value', (await Promise.all([async () => { throw new Error('down'); }, async () => ({ json: async () => { throw new SyntaxError('x'); } }), answer({ ok: true, value: 4 }), null].map(g => loadSmap(loc, g)))).map(r => [r.value, /did not answer/.test(r.why)]), Array(4).fill([null, true]));
 same('a place that is not a place is not asked', (await loadSmap({ lat: 'x', lon: 1 }, async () => { throw new Error('asked'); })).value, null);
-check('the reading names SMAP, so its "i" is NASA\'s', live.source === 'smap' && /srci nasa/.test(weatherHTML(w, { reading: live }).split('A regional reading')[1]));
+check('the reading names SMAP, so its "i" is NASA\'s and its one source link is SMAP\'s page', live.source === 'smap' && /srci nasa/.test(moistureCardHTML(live)) && /class="sat-src"><a href="https:\/\/nsidc\.org\//.test(moistureCardHTML(live)));
 // ---- the hot-days tile follows the comparison with the usual, honestly
 {
   const base = { status: 'Good', text: 'Heat stress is rare here. So far in 2026: 11 (normal by now 6).' };

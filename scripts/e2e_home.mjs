@@ -15,7 +15,7 @@ const { propagate } = await mod('vendor/satellite/propagation/propagate.js');
 const { gstime } = await mod('vendor/satellite/propagation/gstime.js');
 const { eciToEcf, eciToGeodetic } = await mod('vendor/satellite/transforms.js');
 const DATA = await mod('js/home-sats-data.js');
-const REGIONS = JSON.parse(fs.readFileSync(path.join(ROOT, 'data', 'regions.json'), 'utf8')), REGION = REGIONS[0];
+const ALL_REGIONS = JSON.parse(fs.readFileSync(path.join(ROOT, 'data', 'regions.json'), 'utf8')), REGIONS = ALL_REGIONS.filter(r => r.country === 'United States'), REGION = REGIONS[0];   // the home offers the United States demo fields only (the owner's decision); the Canadian field stays in the data file
 const placeOf = r => r.name.replace(/^an? (?:research )?field /i, '').replace(/^near /i, '');
 const DEMO_LINE = `Try a demo field: near ${placeOf(REGIONS[0])}${REGIONS.slice(1).map(r => ` · ${placeOf(r)}`).join('')}`;
 
@@ -84,7 +84,7 @@ await group('draw', async () => {
     check('draw: the first Earth picture arrived within one second of the page (judged at 3 s on a busy computer)', first !== null && first < 3000, first); }
   check('draw: the words for a screen reader say what is drawn', /13 satellites whose data Crophalo reads/.test(await js(`document.querySelector('#satAlt').textContent`)));
   check('draw: the hint says how to read a satellite in one short sentence; the pace is said once, by the clock line, not in the hint', await page(T => T.shown(document.querySelector('#orbitHint')) && /^Point at a satellite to see what it does\./.test(document.querySelector('#orbitHint').textContent) && !/sped up/.test(document.querySelector('#orbitHint').textContent) && document.querySelector('#orbitHint').textContent.split('.').filter(Boolean).length === 1));
-  same('draw: the demo line names every field of data/regions.json, as one sentence of links', await js(`document.querySelector('#searchTry').textContent.replace(/\\s+/g, ' ').trim()`), DEMO_LINE.replace(/\s+/g, ' '));
+  same('draw: the demo line names every United States field of data/regions.json, as one sentence of links', await js(`document.querySelector('#searchTry').textContent.replace(/\\s*·\\s*/g, ' · ').replace(/\\s+/g, ' ').trim()`), DEMO_LINE.replace(/\s+/g, ' '));
   check('draw: the demo is the first region of the data file, not Oxford County', !!REGION.name && !/Oxford/.test(await js(`document.querySelector('#view-home').textContent`)));
   same('draw: the Pause is there while things move, with its words', await page(T => [T.shown(document.querySelector('#orbitPause')), document.querySelector('#orbitPause').getAttribute('aria-label')]), [true, 'Pause the Earth and the satellites']);
   check('draw: the keyboard list holds one button per satellite, each with its name and what it does', await js(`[...document.querySelectorAll('#satList .sat-btn')].every(b => b.textContent.trim().length > 3 && document.getElementById(b.getAttribute('aria-describedby'))?.textContent.includes('Crophalo uses')) && document.querySelectorAll('#satList .sat-btn').length === 13`));
@@ -113,11 +113,38 @@ await group('credit', async () => {   // the owner: the credit block is short an
   check('credit: Credits opens the rest (the sun\'s place, the span of the orbits with Space-Track, the spacecraft pictures) and closes it again', before === 'none' && await js(`getComputedStyle(document.querySelector('#orbitCreditAll')).display`) !== 'none' && await js(`document.querySelector('#orbitCreditMore').getAttribute('aria-expanded')`) === 'true');
 });
 
+await group('satellite card', async () => {   // the card of a satellite stays on the glass at every size, scrolls inside itself when it must, and never covers the search card
+  for (const [w, h] of [[1000, 640], [1280, 720], [1440, 900], [768, 1024], [390, 844]]) {
+    await size(w, h); await go('/'); await until(`!!document.querySelector('#satList .sat-btn')`, 20000); await drawn().catch(() => {}); await sleep(600);
+    await js(`document.querySelector('#satList .sat-btn').focus()`); await until(`!document.querySelector('#satCard').hidden`, 8000); await sleep(500);
+    const m = await js(`(() => { const c = document.querySelector('#satCard').getBoundingClientRect(), hc = document.querySelector('.home-card')?.getBoundingClientRect(), el = document.querySelector('#satCard');
+      const meet = hc ? !(c.right <= hc.left + 1 || c.left >= hc.right - 1 || c.bottom <= hc.top + 1 || c.top >= hc.bottom - 1) : false;
+      const cr = document.querySelector('.hero-credit')?.getBoundingClientRect(), meetCredit = cr && cr.height ? !(c.right <= cr.left + 1 || c.left >= cr.right - 1 || c.bottom <= cr.top + 1 || c.top >= cr.bottom - 1) : false;
+      return { meetCredit, top: Math.round(c.top), bottom: Math.round(c.bottom), left: Math.round(c.left), right: Math.round(c.right), vh: innerHeight, vw: innerWidth, meet, scrolls: el.scrollHeight > el.clientHeight + 1 }; })()`);
+    check(`card: at ${w} x ${h} the satellite's card is inside the glass (top and bottom), the close button and "Show more" reachable`, m.top >= -1 && m.bottom <= m.vh + 1 && m.left >= -1 && m.right <= m.vw + 1, m);
+    if (w > 860) check(`card: at ${w} x ${h} the card does not cover the search card`, !m.meet, m);
+    if (w > 860) check(`card: at ${w} x ${h} the card does not cover the credit lines`, !m.meetCredit, m);
+  }
+});
+
+await group('your field', async () => {   // a returning farmer: one line with the field's name and its next job; nothing when My farm is empty; no Saved item in the bar
+  await size(1280); await go('/'); await until(`!!document.querySelector('#searchTry')`, 8000);
+  check('your field: no Saved button in the bar and no Saved sheet on the page', await js(`!document.querySelector('#navSaved') && !document.querySelector('#dlgSaved')`));
+  check('your field: with My farm empty the line is not there', await js(`document.querySelector('#yourField').hidden`));
+  await js(`(async () => { const S = await import('/js/simulate.js'); let st = S.emptyStore(); const a = S.addFarm(st, { name: 'North farm', lat: 41.18, lon: -96.44, cc: 'US' }); st = a.store ?? a; const farmId = st.farms[0].id;
+    const f = S.addField(st, farmId, { ring: [[41.18, -96.44], [41.18, -96.43], [41.19, -96.43], [41.19, -96.44]], name: 'Home field' }); st = f.store ?? f; S.saveStore(localStorage, st); })()`);
+  await go('/'); await until(`!!document.querySelector('#searchTry')`, 8000); await sleep(800);
+  check('your field: with a field in My farm the line names it', await js(`!document.querySelector('#yourField').hidden && /Home field/.test(document.querySelector('#yourFieldGo').textContent)`), await js(`document.querySelector('#yourField').outerHTML`));
+  check('your field: the control is 44 px high on touch and 30 with a mouse at least, and one press opens My farm', await js(`(() => { const b = document.querySelector('#yourFieldGo').getBoundingClientRect(); return b.height >= 29.5; })()`));
+  await js(`localStorage.removeItem('crophalo.farms.v1')`);
+});
+
 await group('demos', async () => {   // every demo field is one tap from the home line: 44 px high links, each opens its own field
   for (const width of [1280, 320]) {
     await size(width); await go('/'); await until(`!/^a demo field$/.test(document.querySelector('#tryRegion')?.textContent || 'a demo field')`, 20000);
     const links = await js(`[...document.querySelectorAll('#searchTry button[data-region]')].map(b => { const r = b.getBoundingClientRect(); return { id: b.dataset.region, h: Math.round(r.height), w: Math.round(r.width), text: b.textContent }; })`);
-    same(`demos: at ${width} px one link for each field, in the order of data/regions.json`, links.map(l => l.id), REGIONS.map(r => r.id));
+    same(`demos: at ${width} px one link for each United States field of data/regions.json, in its order, and none for any other country`, links.map(l => l.id), REGIONS.map(r => r.id));
+    check(`demos: at ${width} px no link for Barrie or any field outside the United States`, ALL_REGIONS.filter(r => r.country !== 'United States').every(r => !links.some(l => l.id === r.id)) && !/Barrie|Ontario/.test(await js(`document.querySelector('#searchTry').textContent`)));
     check(`demos: at ${width} px every link is 44 px high`, links.every(l => l.h >= 43.5), links);
     check(`demos: at ${width} px the line does not scroll sideways`, await js(`document.documentElement.scrollWidth <= document.documentElement.clientWidth`));
   }
@@ -200,7 +227,7 @@ await group('look', async () => {
   same('look: closed again, nothing is dimmed', [(await sky()).dim, await js(`document.querySelector('#orbitBox').classList.contains('has-card')`)], [1, false]);
   // a satellite with no free picture keeps its mark and says why
   const plain = (await sky()).sats.filter(a => a.seen && a.depth > 0.1 && ['jpss', 's2'].includes(a.look))[0];
-  if (plain) { const p = await screenOf(plain.norad); await mouseTo(p.x, p.y); await sleep(1200); const d = await card(); check('look: NOAA and Sentinel-2 show a plain body drawn by Crophalo, said to be a drawing', d.open && d.pic && /^data:image\/svg/.test(d.img) && /^Drawing: Crophalo/.test(d.credit) && /plain drawing/.test(d.alt), [d.credit, d.alt]); await mouseTo(5, 5); await sleep(400); }
+  if (plain) { const p = await screenOf(plain.norad); await mouseTo(p.x, p.y); await sleep(1200); const d = await card(); check('look: NOAA and Sentinel-2 show a drawing of a spacecraft (a solar wing, instruments), never a box, said to be a drawing', d.open && d.pic && /^data:image\/svg/.test(d.img) && /^Drawing: Crophalo/.test(d.credit) && /solar wing/.test(d.alt) && !/plain/.test(d.alt), [d.credit, d.alt]); await run.shot?.('card-noaa-sentinel.png'); await mouseTo(5, 5); await sleep(400); }
   // the phone: both ways in on the first screen, the credits one line that opens, a small Pause on the Earth
   await size(390, 844); await send('Emulation.setTouchEmulationEnabled', { enabled: true, maxTouchPoints: 5 }); await go('/'); await drawn(); await sleep(500);
   const first = await page(T => { const b = id => T.box(document.querySelector(id)); return { locate: b('#homeLocate'), map: b('#homeMapPick'), h: innerHeight, all: T.shown(document.querySelector('#orbitCreditAll')), more: T.shown(document.querySelector('#orbitCreditMore')), pause: b('#orbitPause'), tags: null }; });

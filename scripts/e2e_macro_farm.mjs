@@ -12,7 +12,7 @@ await send('Page.addScriptToEvaluateOnNewDocument', { source: `(() => { for (con
 const { report: REAL } = await realReport();
 const text = sel => js(`document.querySelector(${JSON.stringify(sel)})?.textContent.trim().replace(/\\s+/g, ' ') ?? null`);
 const open = async () => {
-  await js(`import('/js/farm.js').then(m => { window.__farm = m; window.__res = m.addFromReport(${JSON.stringify(REAL)}); })`);
+  await js(`import('/js/farm.js').then(m => { window.__farm = m; m.setStartView?.('map'); window.__res = m.addFromReport(${JSON.stringify(REAL)}); document.getElementById("navFarm").click(); })`);
   await until(`document.querySelector('#fwFinding')?.textContent.length > 5 && !document.querySelector('#view-farm').hidden`, 15000); await sleep(300);
 };
 // a 3D look that builds in a moment, as the page's own function would, and two scene stand-ins that write down what they were asked

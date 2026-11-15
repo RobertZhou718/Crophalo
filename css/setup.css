@@ -136,3 +136,15 @@ html[data-motion=reduce] .rcard, html[data-motion=reduce] .rc-check, html[data-m
 /* the soil-test boxes: a gap between one box and the next, in a row and between rows */
 .st-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: var(--space-12); margin: 0 0 var(--space-12); }
 @media (max-width: 420px) { .st-grid { grid-template-columns: minmax(0, 1fr); } }
+
+/* the cards of a row start at the same height: the titles sit on one line whatever the small words under them (Rainfed, Limited irrigation, Irrigated as needed) */
+.tiles3 .tile, .tiles4 .tile { justify-content: flex-start; }
+
+/* ---- the area block under "Your field" (js/areablock.js) and the grey skeletons (js/skeleton.js) */
+.area-host:empty { display: none; }
+.ab { display: grid; gap: var(--space-4); padding: var(--space-12); border-radius: var(--r2); background: var(--card2); box-shadow: inset 0 0 0 .5px var(--sep); }
+.ab p { margin: 0; }
+.ab .spot-big { font-size: 28px; font-weight: 700; font-variant-numeric: tabular-nums; }
+.ab .spot-second { color: var(--ink2); }
+.ab-fig { margin: var(--space-8) 0 0; max-width: 240px; }
+.sk-block { display: block; } .sk-lines { display: grid; gap: 10px; padding: var(--space-4) 0; }

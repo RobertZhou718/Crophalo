@@ -65,5 +65,7 @@ check('no chance, money or order-giving word in what the farmer reads', !BANNED.
   check('a pin on an almond orchard: the phase is garden, with no suggested rotation and no rotation card', g.phase === 'garden' && g.suggested === null && g.cards.length === 0 && g.garden[0] === 'almond', JSON.stringify(g));
   check('its sentence is the plain one, and the class and the year are under Show more', /^The USDA crop map shows an orchard, vineyard or other crop that stays for years at your field\. Crophalo does not plan rotations for these\. It will show your weather, frost, rain, slope and soil\.$/.test(g.message) && g.more === 'Crop map class 75, Almonds, USDA Cropland Data Layer 2025.', g.more);
   check('a vineyard names the grape; a field pin is not a garden', grape.garden[0] === 'grape' && field.phase !== 'garden');
+  // the lookup's own answer names the standing crops pin.crops (scripts/live/cropsnear.py, the usa-crops step), so the standing crop is chosen from it
+  check('the lookup\'s own pin (crops: [...]) gives the standing crop to choose', stepPlan({ crop: { status: 'read', answer: { ...answer, pin: { kind: 'garden', code: 75, name: 'Almonds', crops: ['almond'] } } } }).garden[0] === 'almond');
   check('the crops of the standing-crop list exist in the app (almond and grape)', ['almond', 'grape'].every(id => GARDENS[id])); }
 console.log(`cropstep: ${passed} passed, ${failed} failed`); process.exit(failed ? 1 : 0);

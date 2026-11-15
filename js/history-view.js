@@ -4,6 +4,7 @@
 // Pure markup: historyHTML(), stripSVG(), printHTML(). openHistory() and the print and copy buttons are the only parts that touch the page. Checked by scripts/test_history.mjs and scripts/e2e_history.mjs.
 import { esc } from './words.js';
 import { toast } from './toast.js';
+import { localiseText } from './unitstext.js';
 import { winterOnly, countWords, buildHistory, inShort, spokenLine, moreLine, yearsOf, notCountedWords, gapsWords, asText, cropsLines, causesOf, rowNotes, yearLabel, ORDER, LINES, NOT_READ, CHECKLIST, checklistFor, NO_MONEY, CLOSING, HOW, FIRST_YEAR_NOTE } from './history.js';
 import { infoButton } from './report-view.js';
 import { greenItemHTML, loadGreenness } from './greenness.js';
@@ -87,19 +88,21 @@ export function printHTML(model) {
 let styled = false;
 function ensureStyle() { if (styled || typeof document === 'undefined') return; styled = true; if (!document.querySelector('link[href="css/history.css"]')) { const l = document.createElement('link'); l.rel = 'stylesheet'; l.href = 'css/history.css'; document.head.append(l); } }
 const stamp = (now = new Date()) => now.toLocaleDateString('en-CA');
-export function openHistory(container, { heading = 'h1', farm = null, fields = [], series = null, climate = null, extras = {}, crops = null, now = new Date(), greenness = loadGreenness, onAhead = null, onYear = null } = {}) {
+// units (js/units.js), when given: every line is said in the farmer's units ("35 °C" becomes "95 °F") at the last moment, on screen, on paper and in the copied text; the model keeps its metric figures
+export function openHistory(container, { heading = 'h1', farm = null, fields = [], series = null, climate = null, extras = {}, crops = null, now = new Date(), greenness = loadGreenness, onAhead = null, onYear = null, units = null } = {}) {
   ensureStyle();
+  const say = text => (units ? localiseText(text, units) : text);
   const open = new Set(), model = { h: buildHistory(series, { today: stamp(now) }), farm: farm?.name || 'Your farm', place: farm?.place || '', fields: Array.isArray(fields) ? fields : [], extras, crops, onAhead, onYear, date: stamp(now) };
-  const draw = () => { const y = scrollY, f = document.activeElement?.dataset?.more; container.innerHTML = asHeading(historyHTML(model, open), heading); if (f) container.querySelector(`[data-more="${CSS.escape(f)}"]`)?.focus(); scrollTo(0, y); };
+  const draw = () => { const y = scrollY, f = document.activeElement?.dataset?.more; container.innerHTML = say(asHeading(historyHTML(model, open), heading)); if (f) container.querySelector(`[data-more="${CSS.escape(f)}"]`)?.focus(); scrollTo(0, y); };
   const onClick = async event => {
     const m = event.target.closest('[data-more]'), a = event.target.closest('[data-hist]');
     if (m) { const id = m.dataset.more; if (open.has(id)) open.delete(id); else open.add(id); draw(); return; }
     if (!a) return;
     if (a.dataset.hist === 'ahead' && model.onAhead) { model.onAhead(); return; }
     if ((a.dataset.hist === 'year' || a.dataset.hist === 'play') && model.onYear) { model.onYear(a.dataset.hist === 'play' ? 'play' : 'choose'); return; }
-    if (a.dataset.hist === 'copy') { const text = asText(model.h, model); try { await navigator.clipboard.writeText(text); document.dispatchEvent(new CustomEvent('crophalo:did', { detail: { what: 'copied', button: a } })); toast('The land history was copied as text'); } catch { toast('This browser would not copy. Use Print or save as PDF.'); } }
+    if (a.dataset.hist === 'copy') { const text = say(asText(model.h, model)); try { await navigator.clipboard.writeText(text); document.dispatchEvent(new CustomEvent('crophalo:did', { detail: { what: 'copied', button: a } })); toast('The land history was copied as text'); } catch { toast('This browser would not copy. Use Print or save as PDF.'); } }
     if (a.dataset.hist === 'print') {
-      const sheet = document.createElement('div'); sheet.id = 'printRoot'; sheet.innerHTML = printHTML(model); document.body.append(sheet); document.body.classList.add('printing-history');
+      const sheet = document.createElement('div'); sheet.id = 'printRoot'; sheet.innerHTML = say(printHTML(model)); document.body.append(sheet); document.body.classList.add('printing-history');
       const done = () => { document.body.classList.remove('printing-history'); sheet.remove(); removeEventListener('afterprint', done); }; addEventListener('afterprint', done); print();
     }
   };

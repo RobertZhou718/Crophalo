@@ -10,3 +10,12 @@ export function pageStyle(href, node) {
   const show = () => { if (node.style.visibility === 'hidden') node.style.visibility = was; };
   link.addEventListener('load', show, { once: true }); link.addEventListener('error', show, { once: true }); setTimeout(show, 1500);
 }
+
+// A grid of cards is as many columns as there are cards, up to what fits: the number of cards is told to the style (--cards), so a card that spans the whole row cannot keep empty columns open.
+export function countCards(root) {
+  if (!root?.querySelectorAll) return;
+  for (const g of root.querySelectorAll('.st, .lim-grid, .pgpanel.cards, .ad-grid')) {
+    const n = [...g.children].filter(c => /(^| )(st-card|lim-card|ad-card)( |$)/.test(c.className)).length;
+    g.style.setProperty('--cards', String(Math.max(1, n)));
+  }
+}

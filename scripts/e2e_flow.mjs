@@ -200,7 +200,7 @@ await group('report', async () => {
   check('report: the assumptions are on the screen once the fold is open', await js(`/average loam is assumed/.test(document.body.textContent) && /estimated as a 10 ha square/.test(document.body.textContent) && /Water: rain only/.test(document.body.textContent)`));
   check('report: three strategy rows, the suggestion first among the others, each closed', await js(`document.querySelectorAll('.srow').length === 3 && document.querySelector('#sr-wheat')?.open === false && document.querySelector('#sr-wheat .srow-tag').textContent.includes('Our suggestion')`));
   await js(`document.querySelector('#sr-wheat summary').click()`);
-  check('report: one tap on a row opens its five parts', await js(`/Why it was suggested/.test(document.querySelector('#sr-wheat').textContent) && /Risks to check locally/.test(document.querySelector('#sr-wheat').textContent)`));
+  check('report: one tap on a row opens its parts', await js(`/Why it was suggested/.test(document.querySelector('#sr-wheat').textContent) && !/None listed yet/.test(document.querySelector('#sr-wheat').textContent)`));
   await js(`document.querySelector('#sr-now summary').click()`);
   check('report: what you grow now says it is the yardstick', await js(`/compares the others with it/.test(document.querySelector('#sr-now').textContent)`));
   // the "i"
@@ -257,6 +257,7 @@ await group('report fit', async () => {
     if (width <= 600) same(`fit: every control on the page is 44 px or more ${where}`, await smallOnes(), []);
     await js(`document.querySelectorAll('#view-report details > summary').forEach(s => s.parentElement.open || s.click())`); await sleep(250);
     same(`fit: with every fold open the page does not scroll sideways ${where}`, await wideBy() <= 0, true);
+    same(`fit: no word in a drawing comes out under 12 px ${where}`, await js(`[...document.querySelectorAll('#view-report svg text')].filter(t => t.getClientRects().length).map(t => { const s = t.ownerSVGElement, vb = s.viewBox.baseVal, k = vb && vb.width ? s.getBoundingClientRect().width / vb.width : 1; return Math.round(parseFloat(getComputedStyle(t).fontSize) * k * 10) / 10; }).filter(px => px < 11.9)`), []);
     if (width <= 600) same(`fit: with every fold open every control is 44 px or more ${where}`, await smallOnes(), []);
   }
 });

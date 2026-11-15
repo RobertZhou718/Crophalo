@@ -4,9 +4,8 @@
 // Checked by scripts/e2e.mjs, scripts/e2e_flow.mjs (the list and its keys, the messages, the demo card, the Saved sheet) and scripts/e2e_home.mjs.
 import { esc } from './words.js';
 import { parseCoords, coordText, matchRegions, loadRegions, geocode } from './places.js';
-import { readSaved, removeSaved, restoreSaved, savedDate } from './saved.js';
 import { initListen } from './listen.js';
-import { toast, hideToast, runToastAction } from './toast.js';
+import { toast, hideToast } from './toast.js';
 
 const $ = (sel, root = document) => root.querySelector(sel), $$ = (sel, root = document) => [...root.querySelectorAll(sel)];
 
@@ -24,14 +23,12 @@ const WORDS = {
   down: 'The place-search service is unreachable. You can still paste coordinates or pick on the map.',
   coords: 'Coordinates', useCoords: 'Use these coordinates', demo: 'Demo regions', demoSub: 'Demo region: a ready starting point', places: 'Places',
   noRegions: 'Demo regions could not load. Search for your own place above, or reload the page.',
-  openRegion: 'Open this region', openReport: 'Open report', saved: 'Saved', open: 'Open', del: 'Delete',
-  nothing: 'Nothing saved yet. Open a report and choose Save to keep a field here. Saved fields live only in this browser.',
-  deleted: 'Saved field deleted', undo: 'Undo', savedLabel: 'Saved fields',
+  openRegion: 'Open this region', openReport: 'Open report',
   micOff: 'Voice typing could not start. Type the place instead.',
 };
-const LOCATE_MS = 12e3, UNDO_MS = 15e3, HOME_SAVED = 6;
+const LOCATE_MS = 12e3;
 
-let go = { place() {}, mapPick() {}, saved() {} };   // where a choice leads; the page shell says where, in initHome
+let go = { place() {}, mapPick() {} };   // where a choice leads; the page shell says where, in initHome
 let regions = [];
 
 // ---- the search and its list
@@ -164,7 +161,7 @@ export function fieldShape(ring, lat) {
 async function initRegions() {   // the demo is one line on the card: "Try a demo field: near Mead, Nebraska · Beltsville, Maryland · Barrie, Ontario"; each name is a link that opens its field
   try { regions = await loadRegions(); } catch { regions = []; }
   const line = $('#searchTry'), first = $('#tryRegion'); if (!line || !first) return;
-  const list = regions.filter(r => r?.name);
+  const list = regions.filter(r => r?.name && r.country === 'United States');   // the demo fields are the United States ones (the owner's decision); a field of another country stays in the data file but is not offered here
   if (!list.length) { line.hidden = true; return; }
   const place = r => r.name.replace(/^an? (?:research )?field /i, '').replace(/^near /i, '');   // "A research field near Mead, Nebraska" -> "Mead, Nebraska"
   first.textContent = `near ${place(list[0])}`; first.dataset.region = list[0].id;
@@ -178,44 +175,19 @@ async function initRegions() {   // the demo is one line on the card: "Try a dem
   line.removeAttribute('data-wait');
 }
 
-// ---- saved fields: the cards on the home, the count in the bar, the sheet
-function drawSaved() {
-  const all = readSaved(), n = all.length;
-  $('#savedCount').textContent = n ? String(n) : '';
-  if (n) $('#navSaved').removeAttribute('aria-label'); else $('#navSaved').setAttribute('aria-label', WORDS.savedLabel);   // with a count its name is its words, "Saved 2", so the spoken name holds what is on the screen
-  $('#savedList').innerHTML = !n ? `<p>${esc(WORDS.nothing)}</p>` : `<ul class="gl saved-list">${all.map(field => `
-    <li class="row saved-row" data-key="${esc(field.key)}">
-      <div class="saved-t"><b>${esc(field.name)}</b><small>${esc([field.place, savedDate(field.at)].filter(Boolean).join(' · '))}</small>${field.summary ? `<p>${esc(field.summary)}</p>` : ''}</div>
-      <div class="btnrow"><button type="button" class="btn" data-do="open" aria-label="${esc(`${WORDS.open} ${field.name}`)}">${WORDS.open}</button><button type="button" class="btn danger" data-do="delete" aria-label="${esc(`${WORDS.del} ${field.name}`)}">${WORDS.del}</button></div>
-    </li>`).join('')}</ul>`;
-}
-function openSaved(key) {
-  const field = readSaved().find(f => f.key === key);
-  if (!field) return;
-  $('#dlgSaved').close();
-  go.saved(field);
-}
-function deleteSaved(key) {
-  const order = $$('#savedList .saved-row').map(row => row.dataset.key), at = order.indexOf(key), gone = removeSaved(key);
-  if (!gone) return;
-  drawSaved();
-  const next = order[at + 1] ?? order[at - 1];   // focus goes to the next row's button, so the keyboard keeps its place
-  ($(`#savedList .saved-row[data-key="${CSS.escape(next ?? '')}"] .btn`) ?? $('#dlgSavedDone')).focus();
-  toast(WORDS.deleted, { action: WORDS.undo, ms: UNDO_MS, onAction: () => { restoreSaved(gone); drawSaved(); } });
-}
-function initSaved() {
-  drawSaved();
-  $('#navSaved').addEventListener('click', drawSaved);   // another tab may have saved or deleted since
-  $('#savedList').addEventListener('click', event => {
-    const button = event.target.closest('[data-do]'), key = button?.closest('.saved-row')?.dataset.key;
-    if (key) (button.dataset.do === 'open' ? openSaved : deleteSaved)(key);
-  });
-  document.addEventListener('keydown', event => {   // Ctrl or Cmd with Z brings a deleted field back while its line still shows
-    if (event.key.toLowerCase() !== 'z' || !(event.ctrlKey || event.metaKey) || event.shiftKey || event.altKey) return;
-    if (event.target.closest?.('input, textarea, select, [contenteditable]')) return;   // in a field the keys undo the typing
-    if (runToastAction()) event.preventDefault();
-  });
-  addEventListener('storage', event => { if (event.key === null || event.key === 'crophalo.saved.v1') drawSaved(); });
+// ---- "Your field": for a farmer who has a field in My farm, one line at the head of the demo line: its name and its next job, and one press opens My farm. Nothing when My farm is empty; the store is read only when there is one.
+async function initYourField() {
+  const line = $('#yourField'), go = $('#yourFieldGo'); if (!line || !go) return;
+  let raw = null; try { raw = localStorage.getItem('crophalo.farms.v1'); } catch { /* blocked storage: no line */ }
+  if (!raw || !/"fields":\s*\[\s*\{/.test(raw)) return;
+  try {
+    const S = await import('./simulate.js'), store = S.loadStore(localStorage), field = (store.farms ?? []).flatMap(f => f.fields ?? [])[0]; if (!field?.name) return;
+    const today = new Date().toISOString().slice(0, 10), next = S.planDates(field).filter(d => d.date >= today).sort((a, b) => (a.date < b.date ? -1 : 1))[0];
+    const when = next ? `${new Date(next.date + 'T00:00:00Z').toLocaleDateString('en-GB', { day: 'numeric', month: 'long', timeZone: 'UTC' })}` : '';
+    go.textContent = next ? `${field.name} · next: ${next.label}, ${when}` : field.name;
+    line.hidden = false;
+    go.addEventListener('click', () => $('#navFarm')?.click());
+  } catch { /* a store that cannot be read: no line, never an error */ }
 }
 
 // ---- the Earth and its satellites: loaded after the first paint, and only once the home is the screen in front, so no other screen
@@ -235,6 +207,6 @@ export function initHome(where) {
   $('#homeMapPick').addEventListener('click', () => go.mapPick());
   initSearch();
   initRegions();
-  initSaved();
+  initYourField();
   requestAnimationFrame(() => setTimeout(startEarth, 0));
 }

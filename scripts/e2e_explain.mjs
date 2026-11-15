@@ -56,6 +56,7 @@ await group('words', async () => {
   check('the card fits on the screen', await js(`(() => { const b = document.querySelector('#wordPop').getBoundingClientRect(); return b.left >= 0 && b.right <= innerWidth && b.top >= 0; })()`));
   await press('Escape'); await sleep(100);
   check('Escape closes it and gives focus back', await js(`document.querySelector('#wordPop').hidden && document.activeElement === document.querySelector('[data-tile="warm"] .wordi') && document.activeElement.getAttribute('aria-expanded') === 'false'`));
+  await js(`document.querySelector('[data-card="hls"] .sat-fold').open = true`);   // a satellite card is one closed line (js/satcard.js): opened before its word is pressed
   await tap('[data-card="hls"] .wordi'); await sleep(150);
   check('another word opens its own card', await js(`/NDVI/.test(document.querySelector('#wordPopTitle').textContent)`));
   await click('#wordPop [data-word-go]'); await until(`document.querySelector('#ex-words')?.open === true`, 4000);

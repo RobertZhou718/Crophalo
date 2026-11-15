@@ -7,7 +7,7 @@ import { fileURLToPath } from 'node:url';
 import { openRun } from './e2e_lib.mjs';
 
 const run = await openRun('e2e_money');
-await run.send('Page.addScriptToEvaluateOnNewDocument', { source: `window.fetch = (f => async (url, ...r) => /\\/api\\/(cropsnear|smaproot)/.test(String(url)) ? { ok: true, status: 200, json: async () => ({ ok: false, reason: 'stand-in' }), text: async () => '{"ok":false}' } : f(url, ...r))(window.fetch);` });   // the throwaway server has no crop-map or soil-moisture route: a demo field asks for them at once, so they are answered here, quietly
+await run.send('Page.addScriptToEvaluateOnNewDocument', { source: `window.fetch = (f => async (url, ...r) => /\\/api\\//.test(String(url)) ? { ok: true, status: 200, json: async () => ({ ok: false, reason: 'stand-in' }), text: async () => '{"ok":false}' } : f(url, ...r))(window.fetch);` });   // the throwaway server has no crop-map or soil-moisture route: a demo field asks for them at once, so they are answered here, quietly
 const { ROOT, js, until, size, go, check, same, group, finish, sleep, press, tap } = run;
 const HERE = path.dirname(fileURLToPath(import.meta.url)), rec = n => JSON.parse(fs.readFileSync(path.join(HERE, 'fixtures', 'live', n, 'recording.json'), 'utf8')).answer;
 const PRICES = rec('prices-live'), FAO = rec('faostat-live');

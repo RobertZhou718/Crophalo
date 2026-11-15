@@ -4,7 +4,7 @@
 // Checked by scripts/e2e_myfarm_simple.mjs and scripts/e2e_farm.mjs (the browser) and scripts/test_sim.mjs (the logic).
 import { esc, FARM_WORDS as FW } from './words.js';
 import * as S from './simulate.js';
-import { areaWords, areaUnit, setCountry } from './farmunits.js';
+import { areaWords, areaUnit, setCountry, unitsNow, unitsNow as farmUnits } from './farmunits.js';
 import * as crops from './crops.js';
 import * as FE from './fieldedit.js';
 import { renderFields } from './fieldstable.js';
@@ -12,7 +12,7 @@ import { startFarm } from './farmstart.js';
 import { renderFarms, renderSettings } from './farmlist.js';
 import { loadObserved, observedFor, forgetObserved, dayShort } from './farmobserved.js';
 import { fitHeight } from './data.js';
-import { stressOf, engineAdapter, dataFetch, readingsFor, whenSeries, planFigures, weatherNow, sheetFor, setDataEnv, setEngineClient, forgetReadings } from './farmchips.js';
+import { stressOf, weekModel, engineAdapter, dataFetch, readingsFor, whenSeries, planFigures, weatherNow, sheetFor, setDataEnv, setEngineClient, forgetReadings } from './farmchips.js';
 import { alertJobs } from './remind-plan.js';
 import { srcButton, initSources } from './srci.js';
 import { cropsFor } from './farmhistory.js';
@@ -24,7 +24,9 @@ import { weakModel, weakSpotsHTML, loadWeakSpots, drawWeakSpots } from './weaksp
 export { setDataEnv, setEngineClient, forgetReadings, forgetObserved };
 import { renderDrawer, resetDrawer, drawerState, startPlant, startCopy, ADDED_WORDS } from './fielddrawer.js';
 import { shellHTML } from './farm3d-shell.js';
-import { firstView, remember, recall, WORDS as RULE_WORDS } from './farm3d-rule.js';   // when 3D opens by itself, and what the board says when it does not
+import { firstView as ruleView, remember, recall, WORDS as RULE_WORDS } from './farm3d-rule.js';   // when 3D opens by itself, and what the board says when it does not
+import { skeleton } from './skeleton.js';
+import { layersModel, layersHTML, buttonWords } from './farmlayers.js';
 export { ADDED_WORDS };
 
 const $ = (sel, node = document) => node.querySelector(sel);
@@ -71,6 +73,24 @@ let go = null;
 export function setGo(fn) { go = typeof fn === 'function' ? fn : null; if (root) render(); }
 export function setOpener(fn) { opener = typeof fn === 'function' ? fn : null; }
 export function setView3d(fn) { view3dFn = typeof fn === 'function' ? fn : null; }
+// Where My farm opens the first time: on 3D when the field has a real outline and this device can draw it with the motion the farmer chose, else on the Map with one line saying 3D is one press away.
+// 'auto' is the rule; a caller (the checks) may hand in 'map' or '3d'.
+let startPolicy = 'auto', started = false;
+export function setStartView(v) { startPolicy = v === 'map' || v === '3d' ? v : 'auto'; }
+const canDraw3d = () => { try { const c = document.createElement('canvas'); return !!(c.getContext('webgl2') || c.getContext('webgl')); } catch { return false; } };
+function firstView() {
+  if (started) return; started = true;
+  const f = field(); if (!f || startPolicy === 'map') return;
+  if (startPolicy === '3d') { ui.view = '3d'; return; }
+  const outline = Array.isArray(f.ring) && f.ring.length >= 3 && !f.estimated;
+  if (!outline) return;
+  if (typeof view3dFn !== 'function') return;
+  // the 3D rule (js/farm3d-rule.js): the farmer's own last press of Map stands; high contrast colours or a weak device give the Map with their sentence
+  const rule = ruleView(deviceFacts(), recall(globalThis.localStorage));
+  if (rule.view !== '3d') { if (rule.say) ui.startNote = rule.say; return; }
+  if (motionNow() === 'reduce' || !canDraw3d()) { ui.startNote = '3D is one press away: press 3D to see this field in 3D.'; return; }
+  ui.view = '3d';
+}
 // What covers the ground on a day under a plan, checked: only a state the engine really answered, else null ("not read yet").
 export function groundOf(plan, date) {
   if (!groundFn || !plan || !date) return null;
@@ -88,13 +108,22 @@ export function addFromReport(payload) {
   const res = S.applyReport(store, payload, { now: Date.now() });
   if (res.refused) return { refused: res.refused };
   store = rotationOfReport(res.store, res, payload); write();
-  Object.assign(ui, { farmId: res.farmId, fieldId: res.fieldId, planKind: 'proposed', view: 'map', panel: '', date: payload.date && S.isDay(payload.date) ? payload.date : '' });
+  Object.assign(ui, { farmId: res.farmId, fieldId: res.fieldId, planKind: 'proposed', panel: '', date: payload.date && S.isDay(payload.date) ? payload.date : '' });
   const f = S.getField(S.getFarm(store, res.farmId), res.fieldId), dates = keyDates(f);
   if (!dates.some(d => d.date === ui.date)) ui.date = dates[0]?.date || '';   // the day the report arrives is rarely a day of the plan: start on the first of its dates
   loadEngine();
   if (root) render();
-  if (opener) opener(); else document.getElementById('navFarm')?.click();
+  watchShown();
+  // The farmer opens My farm with their own press; the page is told with one event, so it can mark the bar.
+  try { document.dispatchEvent(new CustomEvent('crophalo:farm-added', { detail: { farmId: res.farmId, fieldId: res.fieldId, name: f?.name || '', created: !!res.created } })); } catch { /* no page */ }
   return { farmId: res.farmId, fieldId: res.fieldId };
+}
+// The quiet mark on the bar (data-new on #navFarm) goes when My farm is shown.
+let shownWatch = false;
+function watchShown() {
+  const view = document.getElementById('view-farm'); if (!view || shownWatch) return; shownWatch = true;
+  const clear = () => { if (!view.hidden) document.getElementById('navFarm')?.removeAttribute('data-new'); };
+  new MutationObserver(clear).observe(view, { attributes: true, attributeFilter: ['hidden'] }); clear();
 }
 
 // The engine lists a rotation over three seasons or more ("corn, soybeans, corn" for corn and soybeans in turn). The report hands over the crops it really repeats
@@ -111,7 +140,6 @@ function rotationOfReport(st, res, payload) {
 
 // ---- the three dates a judge steps through: the harvest before, the fall the next crop is sown, the spring after
 export const keyDates = f => S.planDates(f, { keyFn, cropName, addDays });
-const dateIndex = f => keyDates(f).findIndex(d => d.date === ui.date);   // -1 when the date is a month of the slider, not one of the plan's days
 
 // ---- words on screen
 function say(text) { const n = $('#fwSay'); if (n) { n.textContent = ''; setTimeout(() => { n.textContent = text; }, 30); } }
@@ -155,7 +183,6 @@ function decision(f, date) {
   const tight = daysFrom(prev.harvest, w.latest) < TIGHT;   // the report's own line for "only just suits"
   return `${name} is sown ${when}, ${tight || left < 1 ? `so a late ${before} harvest squeezes it` : `so a ${before} harvest up to ${left} day${left === 1 ? '' : 's'} late still leaves time to sow it`}`;
 }
-const chipFor = f => { const g = groundOf(f?.report?.[ui.planKind], ui.date); return g ? (g.state === null ? 'outside the plan' : g.label) : ''; };
 
 // ---- the page
 // The first view: the farm's name over the field picker, Compare plans, the one date line, the one finding, Map | 3D and More, then the map with its key and the time bar.
@@ -173,17 +200,17 @@ function build(node) {
     <p class="fw-headsub" id="fwSub"></p>
     <p class="fw-plan" id="fwPlan"></p>
     <p class="fw-next" id="fwNextJob"></p>
-    <p class="fw-date" id="fwDate"><b class="fw-planname" id="fwPlanName"></b><span class="fw-dot" aria-hidden="true">·</span><time id="fwTime"></time><b id="fwLabel" class="fw-label"></b> <b id="fwObs" class="fw-label fw-obs" role="status" hidden></b></p>
     <p class="fw-finding" id="fwFinding"></p>
+    <p class="fw-reportlink" id="fwReportLink" hidden><button type="button" class="fw-linkbtn" id="fwOpenReport">Open the field report</button></p>
   </header>
   <div class="fw-bar" id="fwBar">
-    <button type="button" class="btn primary lg fw-compare" id="fwCompare" aria-controls="fwPanel" aria-expanded="false">Compare plans</button>
     <button type="button" class="btn lg fw-tool" id="fwDetailsBtn" aria-controls="fwPanel" aria-expanded="false">${esc(FW.details)}</button>
     <div class="fw-seg" role="group" aria-label="View">
       <button type="button" class="fw-segb" id="fwMapBtn" aria-pressed="true">Map</button><button type="button" class="fw-segb" id="fwThreeBtn" aria-pressed="false">3D</button>
     </div>
+    <button type="button" class="btn lg fw-tool" id="fwLayersBtn" aria-controls="fwLayers" aria-expanded="false" hidden>Layers</button>
     <div class="fw-menuwrap fw-morewrap"><button type="button" class="btn lg fw-tool fw-more" id="fwMoreBtn" aria-haspopup="menu" aria-expanded="false" aria-controls="fwMoreMenu">${esc(FW.more)}<i class="chev" aria-hidden="true"></i></button>
-      <div class="fw-menu" id="fwMoreMenu" role="menu" aria-labelledby="fwMoreBtn" hidden>
+      <div class="fw-menu" id="fwMoreMenu" tabindex="-1" role="menu" aria-labelledby="fwMoreBtn" hidden>
         <div role="group" aria-labelledby="fwMoreH2"><p class="fw-menuh" id="fwMoreH2">${esc(FW.moreMap)}</p>${item('role="menuitemradio" data-look="photo" aria-checked="false"', FW.photo)}${item('role="menuitemradio" data-look="board" aria-checked="true"', FW.board)}</div>
         <div role="group" aria-labelledby="fwMoreH3"><p class="fw-menuh" id="fwMoreH3">${esc(FW.moreFarm)}</p>${item('role="menuitem" id="fwFieldsBtn"', FW.fields)}${item('role="menuitem" data-edit="add"', FW.add)}${item('role="menuitem" id="fwToolsBtn"', FW.tools)}</div>
       </div></div>
@@ -192,17 +219,10 @@ function build(node) {
   <div class="fw-stage" id="fwStage">
     <div id="fwMap" class="fw-map" tabindex="-1"></div>
     <div id="fw3d" class="fw-3d" hidden></div>
-    <details class="fw-key" id="fwKey" hidden><summary class="fw-keyh" id="fwKeyH">What the colours mean</summary><ul aria-labelledby="fwKeyH">
-      <li data-k="crop"><i aria-hidden="true"></i><span>${esc(FW.keyPlants)}</span></li><li data-k="residue"><i aria-hidden="true"></i><span>${esc(FW.keyResidue)}</span></li><li data-k="bare"><i aria-hidden="true"></i><span>${esc(FW.keyBare)}</span></li></ul></details>
+    <section class="mapx-panel fw-layers" id="fwLayers" aria-labelledby="fwLayersTitle" hidden></section>
     <p class="fw-status" id="fwStatus" role="status" hidden></p>
     <div class="fw-empty" id="fwEmpty" hidden><h2>No field yet</h2><p>Your fields and their plans show here. Find your field, then choose Add to My farm on its report.</p><div class="fw-emptybtns"><button type="button" class="btn lg primary" id="fwEmptyFind" hidden>Find your field</button><button type="button" class="btn lg" id="fwEmptyAdd">Draw a field by hand</button></div></div>
     <div class="fw-editbar" id="fwEditBar" role="group" aria-label="Edit the field" hidden></div>
-    <div class="fw-strip" id="fwStrip" role="group" aria-label="Time on the board" hidden>
-      <button type="button" class="btn lg fw-stepm" id="fwMonthPrev" aria-label="Previous month"><span aria-hidden="true">‹</span></button>
-      <input type="range" id="fwMonthSlider" min="0" max="11" step="1" value="0" list="fwKeyDays" aria-label="${esc(FW.timeLine)}" aria-describedby="fwTimeHelp"><datalist id="fwKeyDays"></datalist>
-      <button type="button" class="btn lg fw-stepm" id="fwMonthNext" aria-label="Next month"><span aria-hidden="true">›</span></button>
-      <p class="sr" id="fwTimeHelp">${esc(FW.timeHelp)}</p>
-    </div>
     <p class="fw-ribbon" id="fwRibbon" hidden></p>
     <div class="fw-strip fw-yearbar" id="fwYear" role="group" aria-label="One year on the map" hidden>
       <div class="fw-yrow"><button type="button" class="btn lg" id="fwYearBack"><span aria-hidden="true">‹</span> Back to the board</button><button type="button" class="btn lg" id="fwYearPrev"><span aria-hidden="true">‹</span> Earlier</button><label class="fw-yearpick" for="fwYearPick">Year of harvest</label><select id="fwYearPick" class="fw-sel"></select><button type="button" class="btn lg" id="fwYearNext">Later <span aria-hidden="true">›</span></button><button type="button" class="btn lg" id="fwYearPlay">Play the years</button></div>
@@ -218,20 +238,28 @@ function wire() {
   new MutationObserver(() => behind()).observe($('#fwPanel', root), { attributes: true, attributeFilter: ['hidden', 'class'] });   // whatever opens or lowers a sheet, what it covers is put out of reach
   const on = (sel, ev, fn) => $(sel, root).addEventListener(ev, fn);
   on('#fwField', 'change', e => select(e.target.value));
-  on('#fwMonthPrev', 'click', () => moveMonth(-1)); on('#fwMonthNext', 'click', () => moveMonth(1));
-  on('#fwMonthSlider', 'input', e => { const f = field(); if (f && ui.date) { ui.date = dateAt(span(), +e.target.value); ui.dayOnly = true; render(); } });
-  on('#fwMonthSlider', 'change', () => announceDay(`${S.monthWord(ui.date)}. `));
-  on('#fwMonthSlider', 'keydown', e => { if ((e.key === 'PageUp' || e.key === 'PageDown') && !e.altKey && !e.ctrlKey && !e.metaKey) { e.preventDefault(); moveSeason(e.key === 'PageUp' ? 1 : -1); } });   // a season at a time
   on('#fwYearBack', 'click', () => exitYear()); on('#fwYearCard', 'toggle', () => sizeYear()); on('#fwYearPrev', 'click', () => stepBy(-1)); on('#fwYearNext', 'click', () => stepBy(1)); on('#fwYearPlay', 'click', () => (yearTimer ? stopPlay(true) : playYears()));
   on('#fwYearPick', 'change', e => { stopPlay(); setYear(+e.target.value); });
   on('#fwHistoryBack', 'click', () => closeHistory());
-  on('#fwCompare', 'click', () => togglePanel('compare')); on('#fwFarmBtn', 'click', () => togglePanel('farms')); on('#fwEmptyAdd', 'click', () => edit('newfarm')); on('#fwEmptyFind', 'click', () => go?.('setup'));
+  on('#fwOpenReport', 'click', () => go?.('report')); on('#fwFarmBtn', 'click', () => togglePanel('farms')); on('#fwEmptyAdd', 'click', () => edit('newfarm')); on('#fwEmptyFind', 'click', () => go?.('setup'));
+  on('#fwLayersBtn', 'click', () => { layersOpen = !layersOpen; renderLayers(); if (layersOpen) $('#fwLayers input', root)?.focus(); });
+  on('#fwLayers', 'change', e => {
+    const box = e.target.closest?.('[data-layer]'); if (!box || !handle3d?.setLayer) return; const id = box.dataset.layer;
+    try {
+      if (box.type === 'radio') { for (const r of layersModel(handle3d.layers())) if (r.group === 'one' && r.on && r.id !== id) handle3d.setLayer(r.id, false); if (id) handle3d.setLayer(id, true); }   // one at a time over the picture
+      else handle3d.setLayer(id, box.checked);
+    } catch { /* the 3D look says it in the row */ }
+    renderLayers();
+  });
+  on('#fwLayers', 'click', e => {
+    if (e.target.closest?.('#fwLayersClose')) { layersOpen = false; renderLayers(); $('#fwLayersBtn', root).focus(); }
+    else if (e.target.closest?.('[data-ask=greenness]')) findWeak();   // the greenness layer waits for the weak-spots answer: asking for it is the farmer's own press
+  });
+  on('#fw3d', 'f3d-layer', () => renderLayers());   // the 3D look tells when a layer has loaded or failed
   on('#fwMapBtn', 'click', () => press('map')); on('#fwThreeBtn', 'click', () => press('3d'));   // the farmer's own press is remembered (an automatic fallback never writes it)
   on('#fw3d', 'click', e => { if (e.target.closest?.('.f3d-boot [data-act="back"]')) setView('map'); });   // Back to the Map on the skeleton, before the 3D look has loaded
-  // the room the time bar takes at the foot of the board, measured as it is drawn (bigger text makes it taller): the 3D picture and its words stay above it
-  if (typeof ResizeObserver === 'function') new ResizeObserver(([e]) => { const h = e.borderBoxSize?.[0]?.blockSize ?? 0, st = $('#fwStage', root).style; if (h > 0) st.setProperty('--strip-room', `${Math.ceil(h + 16)}px`); else st.removeProperty('--strip-room'); }).observe($('#fwStrip', root));   // a hidden bar takes no room
   // More: the field's, the map's and the farm's occasional tools, one tap away
-  on('#fwMoreBtn', 'click', () => toggleMenu());
+  on('#fwMoreBtn', 'click', e => toggleMenu(e.detail > 0));
   on('#fwMoreMenu', 'keydown', menuKey);
   on('#fwMoreMenu', 'focusout', e => { if (e.relatedTarget && !$('.fw-morewrap', root).contains(e.relatedTarget)) closeMenus(); });   // the keyboard left the menu
   const pick = (sel, fn) => on(sel, 'click', () => { closeMenus(); fn(); });
@@ -244,12 +272,13 @@ function wire() {
   document.addEventListener('keydown', e => {
     if (e.key !== 'Escape' || !root || root.closest('[hidden]')) return;
     if (!$('#fwMoreMenu', root).hidden) { closeMenus(); focusOn('#fwMoreBtn'); }
+    else if (layersOpen) { layersOpen = false; renderLayers(); focusOn('#fwLayersBtn'); }
     else if (ui.year) { exitYear(); }
     else if (ui.history) { closeHistory(); }
     else if (ui.panel === 'field' && drawerState.sheet) { resetDrawer(); renderPanel(); $('#fwPanelTitle', root)?.focus(); }
     else if (ui.panel === 'field' && ui.opener === 'token') { const id = ui.fieldId; closePanel(); $(`.fw-token[data-field="${CSS.escape(id)}"]`, root)?.focus({ preventScroll: true }); }
     else if ((ui.panel === 'rename' || ui.panel === 'delete') && ui.editFrom === 'field') { const what = ui.panel; closePanel(); toField(what); }   // a field's tool goes back to the field's details
-    else if (ui.panel) { const back = ui.panel === 'compare' ? '#fwCompare' : ui.panel === 'field' ? '#fwDetailsBtn' : ui.panel === 'farms' || ui.panel === 'settings' ? farmOpener() : '#fwMoreBtn'; closePanel(); focusOn(back); }
+    else if (ui.panel) { const back = ui.panel === 'field' ? '#fwDetailsBtn' : ui.panel === 'farms' || ui.panel === 'settings' ? farmOpener() : '#fwMoreBtn'; closePanel(); focusOn(back); }
   });
   document.addEventListener('click', e => { if (root && !e.target.closest?.('.fw-morewrap')) closeMenus(); });
 }
@@ -264,11 +293,11 @@ function toField(what) {   // back to the field's details, with the keyboard on 
 }
 const afterEdit = what => { if (ui.editFrom === 'field' && field()) toField(what); else focusOn('#fwMoreBtn'); };
 const afterTool = () => { if (ui.editFrom === 'field' && field()) focusOn(`.fw-token[data-field="${CSS.escape(ui.fieldId)}"]`); else focusOn('#fwMoreBtn'); };   // after an outline tool the keyboard is on the field that changed
-function toggleMenu() {
+function toggleMenu(byPointer = false) {
   const m = $('#fwMoreMenu', root), was = !m.hidden; closeMenus();
   if (was) return;
   m.hidden = false; $('#fwMoreBtn', root).setAttribute('aria-expanded', 'true'); menuBehind(m); placeMenu(m);
-  m.querySelector('[role^=menuitem]:not(:disabled)')?.focus();
+  if (byPointer) m.focus({ preventScroll: true }); else m.querySelector('[role^=menuitem]:not(:disabled)')?.focus();   // a press opens the menu with nothing looking chosen; the keyboard lands on the first row
 }
 // Up and down move through the menu's items, Home and End go to the first and the last; Escape closes it (the board's own Escape handler).
 function menuKey(e) {
@@ -281,9 +310,9 @@ function menuKey(e) {
 // when it is longer, so it never lies over the bar's controls. Boxes are read on the screen and written in the page's own pixels (the text size zooms the page).
 function placeMenu(m) {
   m.style.left = ''; m.style.right = ''; m.style.maxHeight = '';
-  const z = parseFloat(getComputedStyle(document.documentElement).getPropertyValue('--tz')) || 1, r = m.getBoundingClientRect(), strip = $('#fwStrip', root);
+  const z = parseFloat(getComputedStyle(document.documentElement).getPropertyValue('--tz')) || 1, r = m.getBoundingClientRect();
   if (r.left < 8) { m.style.right = 'auto'; m.style.left = '0'; }
-  const end = strip && !strip.hidden && strip.getClientRects().length ? strip.getBoundingClientRect().top : innerHeight;
+  const end = innerHeight;
   m.style.maxHeight = `${Math.max(176, Math.floor((end - 8 - r.top) / z))}px`;
 }
 // An open menu lies over the board: until it closes only the menu can be reached, and a tap anywhere else closes it (on a phone it covers the top rows too).
@@ -293,35 +322,6 @@ function menuBehind(open) {
 }
 const closeMenus = () => { const m = root && $('#fwMoreMenu', root); if (!m) return; m.hidden = true; $('#fwMoreBtn', root).setAttribute('aria-expanded', 'false'); menuBehind(null); behind(); };
 
-// ---- time: one line of months over every season of both plans moves the ONE date of the board; ‹ and › step a month, Page Up and Page Down a season,
-// and the Compare days are marks on the same line. The date itself is written once, in the date line at the top.
-function moveSeason(n) { const f = field(); if (!f || !ui.date) return; ui.date = S.shiftSeason(ui.date, n); ui.dayOnly = true; render(); const lat = farm().pin.lat; announceDay(`${S.seasonLabel(lat, S.seasonOfDate(lat, ui.date))} season. `); }
-function span() {   // the seasons the line covers: every sowing and harvest of both plans, and the day shown
-  const fm = farm(), f = field(), lat = fm?.pin.lat ?? 0, days = [ui.date];
-  for (const k of ['current', 'proposed']) for (const s of f?.report?.[k]?.seasons || []) days.push(s.sow, s.harvest);
-  const ys = days.filter(S.isDay).map(d => S.seasonOfDate(lat, d));
-  return { lat, from: ys.length ? Math.min(...ys) : 0, to: ys.length ? Math.max(...ys) : 0 };
-}
-const indexIn = (sp, iso) => (S.seasonOfDate(sp.lat, iso) - sp.from) * 12 + S.monthIndexOf(sp.lat, iso);
-const dateAt = (sp, i) => S.monthDate(sp.lat, sp.from + Math.floor(i / 12), ((i % 12) + 12) % 12);
-function moveMonth(n) {
-  const f = field(); if (!f || !ui.date) return;
-  const lat = farm().pin.lat; let sy = S.seasonOfDate(lat, ui.date), i = S.monthIndexOf(lat, ui.date) + n;
-  if (i > 11) { i = 0; sy++; } else if (i < 0) { i = 11; sy--; }
-  ui.date = S.monthDate(lat, sy, i); ui.dayOnly = true; render(); announceDay(`${S.monthWord(ui.date)}. `);
-}
-function renderStrip() {
-  const strip = $('#fwStrip', root), fm = farm(), f = field(), show = !!(fm && f && ui.date && !ui.mode && !ui.history && !ui.year && ui.panel === 'compare' && !$('#fwPanel', root).hidden);
-  strip.hidden = !show; $('#fwStage', root).classList.toggle('has-strip', show); $('#fw', root).classList.toggle('has-strip', show);
-  if (!show) return;
-  const sp = span(), slider = $('#fwMonthSlider', root);
-  slider.max = String((sp.to - sp.from + 1) * 12 - 1); slider.value = String(indexIn(sp, ui.date)); slider.setAttribute('aria-valuetext', S.monthWord(ui.date));
-  const marks = keyDates(f).filter(d => S.isDay(d.date)).map(d => `<option value="${indexIn(sp, d.date)}" label="${esc(d.label)}"></option>`).join(''), list = $('#fwKeyDays', root);
-  if (list.innerHTML !== marks) list.innerHTML = marks;
-  sizeStrip();
-}
-const sizeStrip = () => { const s = $('#fwStrip', root); if (s && !s.hidden && s.offsetHeight) $('#fw', root).style.setProperty('--striph', `${s.offsetHeight}px`); };   // the map's own buttons, the toast and the 3D view keep clear of the bar
-addEventListener('resize', () => { if (root) sizeStrip(); });
 // ---- the field tokens by keyboard: one in the Tab order; arrows go to the nearest field that way (within 60 degrees), Home and End to the first and last by name, Enter or Space opens the field's drawer
 function tokenKey(e, t) {
   if (e.altKey || e.ctrlKey || e.metaKey) return;
@@ -346,20 +346,12 @@ const announceDay = (prefix = '') => { const f = field(); if (f) say(`${prefix}$
 // ---- choosing
 function select(id) { if (ui.mode || !S.getField(farm(), id)) return; ui.fieldId = id; const f = field(), ds = keyDates(f); if (!ui.date) ui.date = ds[0]?.date || ''; render(true); say(`${f.name} chosen.`); }
 function setLook(look) { ui.look = look === 'photo' ? 'photo' : 'board'; applyLook(); render(); }
-function setDate(i) { const ds = keyDates(field()); if (!ds[i]) return; ui.date = ds[i].date; render(); announceDay(); }
 export function setPlanKind(k) { ui.planKind = k === 'current' ? 'current' : 'proposed'; render(); announceDay(`${KINDS[ui.planKind]} shown. `); }
 
-// The farmer's press of Map or 3D is kept (js/farm3d-rule.js). My farm opens on the board, as its design says; it opens in 3D by itself only when the farmer's own last press was 3D
-// and the device allows it, never because the device is strong. High contrast, or a weak device, gives the board with its sentence.
+// The farmer's press of Map or 3D is kept (js/farm3d-rule.js) and read by firstView() above: a last press of Map stands; high contrast, or a weak device, gives the Map with its sentence.
 const press = v => { remember(globalThis.localStorage, v); return setView(v); };
 const deviceFacts = () => ({ webgl: typeof globalThis.WebGLRenderingContext === 'function' || typeof globalThis.WebGL2RenderingContext === 'function', memoryGB: globalThis.navigator?.deviceMemory || 0,
   forcedColors: !!globalThis.matchMedia?.('(forced-colors: active)').matches, highContrast: document.documentElement.dataset.contrast === 'high', software: false, caveat: false });   // software and caveat are found out when 3D starts, and then the board is shown by the fallback
-let ruleDone = false;
-function openByRule() {   // once for each visit, when there is a field to show
-  if (ruleDone || !field()) return; ruleDone = true;
-  const v = firstView(deviceFacts(), recall(globalThis.localStorage));
-  if (v.view === '3d' && !v.auto) ui.view = '3d'; else if (v.view !== '3d' && v.say) showStatus(v.say);
-}
 // ---- 3D: only when asked; the board never depends on it. The toolbar and a skeleton of the scene answer in the same moment as the tap, the scene is built
 // without holding the page (a worker draws it where the browser can), Map and Back to the Map stop a build at any moment, and a failure is said in words on the Map.
 const NO_3D = { 'no-webgl': 'This device cannot draw 3D. The board shows the same things.', 'context-lost': '3D paused: the device needed its graphics memory. The board is shown.', 'lost-twice': RULE_WORDS.twice, other: 'The 3D view could not load. The board is shown.' };
@@ -393,6 +385,7 @@ async function setView(v) {
       if (scenes) sceneModule('sun').then(m => { if (m?.playDay && handle3d === h) sunFx = m.playDay(h, node); });   // once the 3D view is ready
       node.querySelector(':scope > .f3d-boot')?.remove();   // a 3D look that draws nothing of its own leaves no skeleton behind
       push3d();   // a date or plan chosen while it was built
+      renderLayers(); h.onLayer?.(renderLayers);
       say('3D view ready.');
     } catch (e) { if (build3d === mine) back3d(e?.message); }
   } else {
@@ -413,15 +406,15 @@ function showStatus(text) { const n = $('#fwStatus', root); n.textContent = text
 
 // ---- the drawer: Compare plans
 function togglePanel(which) { ui.panel === which ? closePanel() : openPanel(which); }
-function openPanel(which) { if (ui.year) exitYear({ quiet: true }); closeMenus(); ui.panel = which; $('#fwStage', root).classList.toggle('panel-wide', which === 'fields'); $('#fwPanel', root).classList.toggle('wide', which === 'fields'); renderPanel(); const p = $('#fwPanel', root); p.hidden = false; p.classList.remove('is-low'); $('#fwStage', root).classList.add('has-panel'); setTimeout(() => map?.invalidateSize(), 30); addLower(); renderStrip(); renderKey(); renderHead(); $('#fwDetailsBtn', root).setAttribute('aria-expanded', String(which === 'field')); $('#fwCompare', root).setAttribute('aria-expanded', String(which === 'compare')); $('#fwFarmBtn', root).setAttribute('aria-expanded', String(which === 'farms')); $('#fwPanelTitle', root)?.focus(); }
+function openPanel(which) { if (ui.year) exitYear({ quiet: true }); closeMenus(); ui.panel = which; $('#fwStage', root).classList.toggle('panel-wide', which === 'fields'); $('#fwPanel', root).classList.toggle('wide', which === 'fields'); renderPanel(); const p = $('#fwPanel', root); p.hidden = false; p.classList.remove('is-low'); $('#fwStage', root).classList.add('has-panel'); setTimeout(() => map?.invalidateSize(), 30); addLower(); renderHead(); $('#fwDetailsBtn', root).setAttribute('aria-expanded', String(which === 'field')); $('#fwFarmBtn', root).setAttribute('aria-expanded', String(which === 'farms')); $('#fwPanelTitle', root)?.focus(); }
 // On a phone the open sheet covers the board and the top rows, so what it covers is out of reach for the finger, the keyboard and a screen reader until the sheet is lowered or closed.
 const phone = () => matchMedia('(max-width: 700px)').matches;
 function behind() {
   const cover = !!ui.panel && !$('#fwPanel', root).hidden && phone() && !$('#fwPanel', root).classList.contains('is-low');
-  for (const sel of ['.fw-hud', '.fw-bar', '#fwStage > .fw-map', '#fwStage > .fw-3d', '#fwStrip']) { const n = $(sel, root); if (n) n.inert = cover; }
+  for (const sel of ['.fw-hud', '.fw-bar', '#fwStage > .fw-map', '#fwStage > .fw-3d']) { const n = $(sel, root); if (n) n.inert = cover; }
 }
 addEventListener('resize', () => { if (root) behind(); });
-function closePanel() { ui.panel = ''; ui.opener = ''; resetDrawer(); $('#fwPanel', root).hidden = true; $('#fwStage', root).classList.remove('has-panel'); setTimeout(() => map?.invalidateSize(), 30); $('#fwCompare', root).setAttribute('aria-expanded', 'false'); $('#fwDetailsBtn', root).setAttribute('aria-expanded', 'false'); $('#fwFarmBtn', root).setAttribute('aria-expanded', 'false'); renderStrip(); renderKey(); renderHead(); behind(); }
+function closePanel() { ui.panel = ''; ui.opener = ''; resetDrawer(); $('#fwPanel', root).hidden = true; $('#fwStage', root).classList.remove('has-panel'); setTimeout(() => map?.invalidateSize(), 30); $('#fwDetailsBtn', root).setAttribute('aria-expanded', 'false'); $('#fwFarmBtn', root).setAttribute('aria-expanded', 'false'); renderHead(); behind(); }
 // On a phone the sheet can be lowered to a short bar so the 3D picture and the map can be seen while comparing.
 function addLower() {
   const p = $('#fwPanel', root), head = p.querySelector('.fw-panel-head'); if (!head || head.querySelector('#fwLower')) return;
@@ -444,55 +437,16 @@ function drawerEnv() {
   return { node: $('#fwPanel', root), get: () => ({ store, farm: farm(), field: field() }), cropName, crops, reminders, forecast: forecastOf, today: isoToday, year: () => S.seasonNow(farm().pin.lat),
     weather: () => { const x = readingsNow(); return x ? weatherNow(x.r, x.f) : null; },   // the weather that was a chip on the first view: today's words, with their "i"
     sales: () => { const x = readingsNow(); return x ? sheetFor('sales', x.r, x.f, ui.planKind).lines.filter(l => !/^Not worked out/.test(l)) : []; },
-    edit: what => { ui.editFrom = 'field'; edit(what); }, history: () => openHistoryTab(), weakHTML: f => weakSpotsHTML(weakModelFor(f)), weakOpen: f => ['reading', 'ok'].includes(weak.get(f.id)?.state), findWeak, settings: go ? () => go('info', 'settings') : null,
+    edit: what => { ui.editFrom = 'field'; edit(what); }, history: () => openHistoryTab(), weakHTML: f => weakSpotsHTML(weakModelFor(f)), weakOpen: f => ['reading', 'ok'].includes(weak.get(f.id)?.state), findWeak, settings: go ? () => go('info', 'settings') : null, week: () => { const x = readingsNow(); return x?.r.forecast ? weekModel(x.r.forecast, unitsNow()) : null; },
     toast, say, close: () => { const back = ui.opener === 'token' ? `.fw-token[data-field="${CSS.escape(ui.fieldId)}"]` : '#fwDetailsBtn'; closePanel(); focusOn(back); },
     commit: (next, words) => { const before = store; undo.push(before, words); store = next; later(); render(); toast(words, () => { store = before; later(); render(); if (ui.panel === 'field') renderPanel(); say('Undone'); }); } };
-}
-// A plan's card: its crops, what covers the ground on the day, then its figures (the score in the report's words, bare soil, past years), each with its "i".
-const figCache = new WeakMap();
-function figuresHTML(f, kind) {
-  const r = readingsFor(farm(), f, readingsChanged), key = `${kind}|${f.report?.[kind]?.id || ''}`, mine = figCache.get(r) || figCache.set(r, {}).get(r);
-  const figs = r.state === 'ok' ? (mine[key] ||= planFigures(r, f, kind)) : planFigures(r, f, kind), score = figs.find(x => x.id === 'score');   // worked out once for a settled reading: a month step draws the card again and must stay light   // the card shows the score chip only; bare soil and past years are under Show more
-  if (score?.state === 'ok') return `<p class="fw-figline"><span class="fw-scorechip">${esc(score.value)}</span> ${score.src.length ? srcButton(score.src, score.note) : ''}</p>`;
-  return figs.some(x => x.state === 'wait') ? `<p class="fw-muted fw-reading" role="status">Reading your field's figures…</p>` : '';
-}
-function groundCard(f, kind) {
-  const plan = f.report?.[kind], name = KINDS[kind];
-  if (!plan) return `<section class="fw-card" data-plan="${kind}" aria-labelledby="fwc-${kind}"><h3 id="fwc-${kind}">${name}</h3><p class="fw-muted">The report sent no plan here.</p></section>`;
-  const g = groundOf(plan, ui.date), crops = [...new Set(plan.seasons.map(x => cropName(x.crop)))].join(' › '), role = kind === 'proposed' ? (plan.role === 'suggest' ? 'Our suggestion' : plan.role === 'chosen' ? 'You chose' : '') : '';
-  const body = g && g.state === null ? `<p class="fw-state"><b>Outside this plan's years</b></p><p>${esc(g.note)}</p>` : g ? `<p class="fw-state"><span class="fw-swatch" data-state="${g.state}" aria-hidden="true"></span><b>${esc(GROUND_WORDS[g.state][0].toUpperCase() + GROUND_WORDS[g.state].slice(1))}</b> <span class="fw-label">${g.label}</span></p>`
-    : `<p class="fw-state"><b>The ground could not be read for this day.</b></p>`;
-  return `<section class="fw-card" data-plan="${kind}" aria-labelledby="fwc-${kind}"><h3 id="fwc-${kind}">${name}</h3>${role ? `<p class="fw-role">${role}</p>` : ''}<p class="fw-crops">${esc(crops)}</p>${body}${figuresHTML(f, kind)}</section>`;
-}
-function caveat(f) {
-  const p = f.report?.proposed; if (!p?.seasons?.length) return '';
-  const last = p.seasons[p.seasons.length - 1], prev = p.seasons[p.seasons.length - 2], w = last.window, name = cropName(last.crop).toLowerCase(), prevName = prev ? cropName(prev.crop).toLowerCase().replace(/beans$/, 'bean') : 'earlier';
-  if (!w) return '';
-  const late = prev && prev.harvest > w.latest, tail = late ? `The ${esc(prevName)} harvest is planned for ${dayWords(prev.harvest)}, so it may be too late.` : `A late ${esc(prevName)} harvest squeezes it.`;
-  return `<p class="fw-window">Sowing window for ${esc(name)}: ${dayWords(w.earliest)} to ${dayWords(w.latest)}. ${tail} ${srcButton(['power'], 'From the crop guide and this field\'s own frost and heat record.')}</p>`;
-}
-const assumedLine = f => `Assumed: ${f.soil?.assumed ? 'loam' : f.soil?.texture ? esc(f.soil.texture) : 'loam'} soil, ${farm().practice.irrigation === 'none' ? 'rain only' : farm().practice.irrigation === 'limited' ? 'a little watering' : 'watering as needed'}${f.estimated ? ', outline estimated' : ''}.`;
-// Under "Show more": one sentence each, only the ones that have something to say.
-function moreLines(f) {
-  const cur = f.report?.current, pro = f.report?.proposed, out = [], num = v => Number.isFinite(v) ? String(Math.round(v * 10) / 10).replace(/\.0$/, '') : '', st = stressOf(pro);
-  if (pro?.why) out.push(`Why try it: ${esc(pro.why)}`);
-  if (Number.isFinite(cur?.bareMonths) && Number.isFinite(pro?.bareMonths)) out.push(`Bare soil: about ${num(cur.bareMonths)} months a year now, ${num(pro.bareMonths)} with the plan to try.`);
-  if (st) out.push(`Past years: no crop stress in ${st.ok} of ${st.of} years with the plan to try.`);
-  const o = observedNow(); if (o?.state === 'ok') out.push(`Seen from space: ${esc(o.line.replace(/^Seen from space on /, 'the newest clear NASA picture is from '))}`);
-  out.push(assumedLine(f));
-  return out;
-}
-function updateCompareDay() {
-  const p = $('#fwPanel', root), f = field(), cards = p && $('.fw-cards', p); if (!f || !cards) { renderPanel(); return; }
-  cards.innerHTML = `${groundCard(f, 'current')}${groundCard(f, 'proposed')}`;
-  const i = dateIndex(f); for (const b of p.querySelectorAll('.fw-step')) b.setAttribute('aria-pressed', String(+b.dataset.i === i));
 }
 function renderPanel() {
   const p = $('#fwPanel', root), f = field(), had = document.activeElement, fig = had?.closest?.('.fw-card[data-plan] [data-fig]');
   const keep = p.contains(had) ? (had.id ? '#' + had.id : had.dataset?.i != null ? `.fw-step[data-i="${had.dataset.i}"]` : had.dataset?.edit ? `[data-edit="${had.dataset.edit}"]` : fig && had.classList.contains('srci') ? `.fw-card[data-plan="${fig.closest('.fw-card').dataset.plan}"] [data-fig="${fig.dataset.fig}"] .srci` : '') : '';
   try { renderPanelNow(p, f); } finally { if (keep) $(`#fwPanel ${keep}`, root)?.focus(); }
 }
-const readingsChanged = () => { if (root && ['compare', 'field', 'fields'].includes(ui.panel) && !$('#fwPanel', root).hidden && !(ui.panel === 'field' && drawerState.sheet)) renderPanel(); };   // the figures and the weather arrive after the first view; a sheet being filled in is left alone
+const readingsChanged = () => { if (root && ['field', 'fields'].includes(ui.panel) && !$('#fwPanel', root).hidden && !(ui.panel === 'field' && drawerState.sheet)) renderPanel(); };   // the figures and the weather arrive after the first view; a sheet being filled in is left alone
 // Farm tools: what is used now and then, one level in. Each button does what its menu item did.
 function renderTools(p) {
   const fm = farm(), f = field(), tool = (id, label, off) => `<button type="button" class="btn lg fw-row" data-tool="${id}"${off ? ' disabled' : ''}>${esc(label)}</button>`;
@@ -507,21 +461,7 @@ function renderPanelNow(p, f) {
   if (ui.panel === 'tools') { renderTools(p); return; }
   if (ui.panel === 'farms') { renderFarms(farmsEnv()); return; }
   if (ui.panel === 'settings') { renderSettings(farmsEnv()); return; }
-  if (ui.panel !== 'compare' || !f) { if (!['rename', 'delete', 'recent', 'import', 'add', 'confirm', 'newfarm', 'farms', 'settings'].includes(ui.panel)) p.innerHTML = ''; return; }
-  const ds = keyDates(f), i = dateIndex(f), r = readingsFor(farm(), f, readingsChanged), last = f.report?.proposed?.seasons?.at(-1), lastName = last ? cropName(last.crop) : '';
-  const dayLabel = d => d.id === 'establish' ? `${lastName} sown` : d.id === 'spring' ? `${lastName} in spring` : d.label;   // the engine's labels, in plain words
-  p.innerHTML = `<div class="fw-panel-head"><h2 id="fwPanelTitle" tabindex="-1">Compare plans · ${esc(f.name)}</h2><button type="button" class="btn lg" id="fwClose" aria-label="Close compare plans">Close</button></div>
-  <div class="fw-show" role="group" aria-labelledby="fwShowL"><p class="fw-showl" id="fwShowL" aria-label="${esc(FW.showPlan)}">Show on the map:</p><div class="fw-seg">${['current', 'proposed'].map(k => `<button type="button" class="fw-segb" id="${k === 'current' ? 'fwCurBtn' : 'fwPropBtn'}" data-kind="${k}" aria-pressed="${ui.planKind === k}"${f.report?.[k] ? '' : ' disabled'}>${KINDS[k]}</button>`).join('')}</div></div>
-  <div class="fw-stepper" role="group" aria-label="Key days"><div class="fw-steps">${ds.map((d, k) => `<button type="button" class="fw-step" data-i="${k}" aria-pressed="${k === i}"><span>${esc(dayLabel(d))}</span><small>${dayWords(d.date)}</small></button>`).join('')}</div></div>
-  <div class="fw-cards">${groundCard(f, 'current')}${groundCard(f, 'proposed')}</div>${r.state === 'failed' && r.reason ? `<p class="fw-muted fw-figwhy">The plan figures could not be read. Try again later.</p>` : ''}
-  <div class="fw-caveat">${caveat(f)}</div>
-  <details class="fw-fold fw-moreplan"><summary>Show more</summary>${moreLines(f).map(l => `<p>${l}</p>`).join('')}</details>
-  <p class="fw-note">Crophalo is a guide. You decide what to plant.</p>
-  <p class="fw-muted fw-changeplan">To change the plan, pick another strategy in the field report.</p>${go ? `<p><button type="button" class="btn lg" id="fwChangePlan">Open the field report</button></p>` : ''}`;
-  $('#fwClose', root).onclick = () => { closePanel(); $('#fwCompare', root).focus(); };
-  $('#fwChangePlan', root)?.addEventListener('click', () => go?.('report'));
-  for (const b of p.querySelectorAll('.fw-step')) b.onclick = () => setDate(+b.dataset.i);
-  for (const b of p.querySelectorAll('button[data-kind]')) b.onclick = () => setPlanKind(b.dataset.kind);   // the plan the map and 3D show is chosen here, beside the two plans
+  if (!['rename', 'delete', 'recent', 'import', 'add', 'confirm', 'newfarm', 'farms', 'settings'].includes(ui.panel)) p.innerHTML = '';
 }
 
 // ---- editing the field (the occasional tools)
@@ -537,13 +477,13 @@ function editEnv() {
 }
 function enterMode(mode, start) {
   if (ui.view === '3d') { toast('Go back to the map to change the outline.'); return; }
-  closePanel(); ui.mode = mode; renderStrip(); start(editEnv());
+  closePanel(); ui.mode = mode; start(editEnv());
 }
 const fm0 = () => farm();
 // ---- Observed beside Planned: what NASA's pictures of this field saw, on the day shown
 function observedNow() {
   const fm = farm(), f = field(); if (!fm || !f) return null;
-  const [lat, lon] = S.interiorPoint(f.ring), entry = loadObserved(lat, lon, { fetchFn: dataFetch(), onDone: () => { renderObs(); if (ui.panel === 'compare') renderPanel(); } });
+  const [lat, lon] = S.interiorPoint(f.ring), entry = loadObserved(lat, lon, { fetchFn: dataFetch(), onDone: () => { if (ui.panel === 'field' && !drawerState.sheet) renderPanel(); } });
   const o = observedFor(entry.answer, ui.date, { waiting: entry.waiting }), w = entry.answer?.window;
   if (o.state === 'outside' && S.isDay(w?.last) && ui.date > w.last) {   // after the pictures: name the newest clear picture there is, never the end of the days searched
     const newest = (Array.isArray(entry.answer.passes) ? entry.answer.passes : []).filter(x => S.isDay(x?.date) && Number.isFinite(x.ndvi)).map(x => x.date).sort().at(-1);
@@ -552,10 +492,6 @@ function observedNow() {
   return o;
 }
 // "Observed" is answered in Compare plans: the card "Observed from space" says it, on every day (a clear picture, looking, not read, not yet, none).
-function renderObs() {
-  const n = $('#fwObs', root), o = ui.date ? observedNow() : null;
-  n.hidden = true; if (o) { n.textContent = o.chip; n.dataset.state = o.state; n.title = o.line; }   // the badge no longer stands beside the date (less to read): the answer is in Compare plans' "Observed from space" card
-}
 // The replay of a field's crops on the field's own recorded weather: the same one the History page shows, so the board and the page cannot disagree.
 async function buildCrops(fm, f, r) {
   const [fit, season] = await Promise.all([import('./fit.js'), import('./season.js')]);
@@ -569,7 +505,7 @@ async function openHistoryTab() {
   const fm = farm(), f = field(); if (!fm || !f) return;
   if (ui.year) exitYear({ quiet: true });
   closeMenus();
-  const body = $('#fwHistoryBody', root); body.innerHTML = '<p class="fw-muted">Reading the weather record of this field…</p>';
+  const body = $('#fwHistoryBody', root); body.innerHTML = `<p class="fw-muted" aria-hidden="true">Reading the weather record of this field…</p>${skeleton('list', 'Reading the weather record of this field…')}`;
   hooks.farmView(() => { closePanel(); ui.history = true; render(); $('#fwHistory', root).hidden = false; $('#fwHistoryBack', root).focus(); }, { to: 'history', from: 'board', stage: $('#fwStage', root), mapEl: $('#fwMap', root), pane: $('#fwHistory', root) });   // Land history is the past: a motion module brings it in from the left
   say('Land history.');
   const r = await whenSeries(readingsFor(fm, f));
@@ -610,7 +546,7 @@ function showHistory() {
   const c = historyCtx; if (!c || !ui.history) return;
   const body = $('#fwHistoryBody', root);
   historyHandle?.destroy?.();
-  historyHandle = c.view.openHistory(body, { farm: { name: c.fm.name, place: c.fm.pin.label || '', lat: c.fm.pin.lat, lon: c.fm.pin.lon }, fields: c.fields, series: c.series, climate: c.climate, crops: c.crops, onAhead: aheadFn ? showAhead : null, onYear: enterYear });
+  historyHandle = c.view.openHistory(body, { farm: { name: c.fm.name, place: c.fm.pin.label || '', lat: c.fm.pin.lat, lon: c.fm.pin.lon }, fields: c.fields, series: c.series, climate: c.climate, crops: c.crops, onAhead: aheadFn ? showAhead : null, onYear: enterYear, units: farmUnits(String(c.fm?.pin?.cc || '')) });
   $('#fwHistoryBar', root)?.removeAttribute('hidden');
 }
 let aheadFn = null;   // the Look ahead page is a separate piece: it hands in one function that opens it (setAhead), and its button shows only then
@@ -694,7 +630,7 @@ function renderYear() {
   requestAnimationFrame(sizeYear);
   rib.textContent = loading || !yearData.years.length ? Y.RIBBON : `${Y.RIBBON} · seasons harvested in ${ui.year}`;
   for (const id of ['#fwYearPrev', '#fwYearNext', '#fwYearPick', '#fwYearPlay']) $(id, root).disabled = loading || !yearData.years.length;
-  if (loading) { $('#fwYearSum', root).textContent = 'Reading the weather of each field…'; $('#fwYearBody', root).innerHTML = ''; return; }
+  if (loading) { $('#fwYearSum', root).textContent = 'Reading the weather of each field…'; $('#fwYearBody', root).innerHTML = skeleton('list', 'Reading the weather of each field…'); return; }
   if (!yearData.years.length) { $('#fwYearSum', root).textContent = 'No year to show'; $('#fwYearBody', root).innerHTML = `<p>No season of this farm could be judged on the weather record. ${esc(yearData.fieldCrops.find(f => f.crops?.reason)?.crops.reason || '')}</p>`; return; }
   const order = Y.playOrder(yearData.years);
   $('#fwYearPick', root).value = String(ui.year); $('#fwYearPrev', root).disabled = ui.year === order[0]; $('#fwYearNext', root).disabled = ui.year === order.at(-1);
@@ -877,15 +813,25 @@ function initMap() {
   applyLook();
 }
 
-// ---- the ground-cover key of the board: growing crop, crop residue, bare soil, in the colours the field and Compare's cards use; what the chosen field shows is marked
-function renderKey() {
-  const k = $('#fwKey', root), f = field(), g = f ? groundOf(f.report?.[ui.planKind], ui.date) : null;
-  k.hidden = !f || ui.view !== 'map' || !!ui.year || !!ui.mode || ui.history || !(ui.panel === 'compare' && !$('#fwPanel', root).hidden);
-  if (k.hidden) return;
-  const plants = k.querySelector('[data-k=crop]');
-  plants.querySelector('i').style.background = g?.state === 'cover' ? STATE_FILL.cover : STATE_FILL.crop;
-  plants.querySelector('span').textContent = g?.state === 'cover' ? 'Cover crop' : FW.keyPlants;
-  for (const li of k.querySelectorAll('li')) { const on = !!g?.state && (li.dataset.k === g.state || (li.dataset.k === 'crop' && g.state === 'cover')); li.classList.toggle('is-on', on); if (on) li.setAttribute('aria-current', 'true'); else li.removeAttribute('aria-current'); }
+// ---- the Layers of the 3D view: the button shows only when the 3D look offers layers; the panel is the map's own Layers look
+let layersOpen = false, erosionFn = null;
+export function setErosionInput(fn) { erosionFn = typeof fn === 'function' ? fn : null; }   // fn(field) -> { soil: { sand, silt, clay, carbon }, mfi } | { factor } | null, from the soil and rain record the page has read
+// What a layer of the 3D waits for, handed over from My farm's own data, once for each answer: the weak-spots answer for the greenness layer, the soil and rain figures for erosion.
+const handed = new WeakMap();
+function giveTo3d(h) {
+  const f = field(); if (!f || !h) return; const sent = handed.get(h) || handed.set(h, {}).get(h), g = weak.get(f.id);
+  if (typeof h.setGreenness === 'function' && g?.state === 'ok' && g.answer && sent.green !== g.answer) { sent.green = g.answer; try { h.setGreenness(g.answer); } catch { /* the row says it */ } }
+  if (typeof h.setErosion === 'function' && erosionFn) { let e = null; try { e = erosionFn(f); } catch { e = null; } const k = e ? JSON.stringify(e) : ''; if (e && sent.erosion !== k) { sent.erosion = k; try { h.setErosion(e); } catch { /* the row says it */ } } }
+}
+function renderLayers() {
+  const btn = $('#fwLayersBtn', root), host = $('#fwLayers', root), model = ui.view === '3d' && typeof handle3d?.layers === 'function' ? layersModel(handle3d.layers()) : [];
+  btn.hidden = !model.length; if (!model.length) { layersOpen = false; host.hidden = true; return; }
+  giveTo3d(handle3d);
+  btn.textContent = buttonWords(model); btn.setAttribute('aria-expanded', String(layersOpen)); host.hidden = !layersOpen;
+  if (!layersOpen) return;
+  const had = document.activeElement?.closest?.('#fwLayers') ? document.activeElement.dataset?.layer : null;
+  const f = field(), g = f && weak.get(f.id)?.state, ask = { greenness: f && !f.estimated && g !== 'reading' ? FW.askWeak : '' };
+  host.innerHTML = layersHTML(model, { ask }); if (had) host.querySelector(`[data-layer="${CSS.escape(had)}"]`)?.focus();
 }
 
 // ---- drawing the whole screen
@@ -899,7 +845,7 @@ function subLine(f, fm) {
 function planLine(f) {
   const p = f.report?.proposed; if (!p) return null;
   const chip = SCORE_WORDS(p.score, p.flag);
-  return { html: `Plan to try: ${esc(planNames(p) || '')}${chip ? ` <span class="fw-scorechip">${esc(chip)}</span> ${srcButton(['power'], 'The score from your field report, from 0 to 100. It shows how well this plan fits your field. It is a guide, not a yield.')}` : ''}` };
+  return { html: `Plan to try: ${esc(planNames(p) || '')}${chip ? ` <span class="fw-chipi"><span class="fw-scorechip">${esc(chip)}</span> ${srcButton(['power'], 'The score from your field report, from 0 to 100. It shows how well this plan fits your field. It is a guide, not a yield.')}</span>` : ''}` };
 }
 // The next job of the plan to try after today, in one sentence.
 function nextLine(f, today = new Date().toISOString().slice(0, 10)) {
@@ -911,12 +857,12 @@ function nextLine(f, today = new Date().toISOString().slice(0, 10)) {
   const last = p.seasons.at(-1)?.harvest;
   return `No job planned. The plan ends in ${S.isDay(last) ? last.slice(0, 4) : 'a later year'}.`;
 }
-// What shows in the head depends on whether Compare plans is open: the next job on its own, or the day and the sentence about the day.
+// The head: the next job on its own; with no field the one sentence says how to add one; the report link only when the page can show the report.
 function renderHead() {
-  const f = field(), cmp = ui.panel === 'compare' && !$('#fwPanel', root).hidden;
-  $('#fwNextJob', root).hidden = !f || cmp || !$('#fwNextJob', root).textContent;
-  $('#fwDate', root).hidden = !(f && ui.date) || !cmp;
-  $('#fwFinding', root).hidden = (!!f && !cmp) || !$('#fwFinding', root).textContent;   // with no field the sentence says how to add one
+  const f = field();
+  $('#fwNextJob', root).hidden = !f || !$('#fwNextJob', root).textContent;
+  $('#fwFinding', root).hidden = !!f || !$('#fwFinding', root).textContent;
+  $('#fwReportLink', root).hidden = !f?.report || !go;
 }
 export function render(refit = false) {
   if (!root) return;
@@ -933,13 +879,10 @@ export function render(refit = false) {
   // the head: size and place, the plan to try with the report's score, and the next job; the day and the long sentence belong to Compare plans
   $('#fwSub', root).textContent = f ? subLine(f, fm) : '';
   { const pl = f ? planLine(f) : null, pe = $('#fwPlan', root); pe.innerHTML = pl ? pl.html : ''; pe.hidden = !pl; }
-  $('#fwNextJob', root).textContent = f ? nextLine(f) : ''; $('#fwPlanName', root).textContent = f?.report?.[ui.planKind] ? KINDS[ui.planKind] : '';
-  $('#fwTime', root).textContent = ui.date ? dayWords(ui.date) : ''; $('#fwTime', root).setAttribute('datetime', ui.date || '');
-  $('#fwLabel', root).textContent = f && ui.date ? chipFor(f) : '';
+  $('#fwNextJob', root).textContent = f ? nextLine(f) : '';
   { const full = finding(f), n = $('#fwFinding', root); n.textContent = full; n.dataset.full = full; }
   renderHead();
-  $('#fwCompare', root).disabled = !f?.report;
-  for (const q of ['#fwHud', '#fwBar']) $(q, root).hidden = !fm;   // with no field there is nothing to pick, compare, turn or open: only the one message shows
+  for (const q of ['#fwHud', '#fwBar']) $(q, root).hidden = !fm;   // with no field there is nothing to pick, turn or open: only the one message shows
   $('#fwEmptyFind', root).hidden = !go;
   $('#fwEmpty', root).hidden = !!fm || ui.mode === 'pick'; $('#fwMap', root).hidden = ui.view === '3d' || (!fm && ui.mode !== 'pick'); $('#fw3d', root).hidden = ui.view !== '3d';
   for (const b of root.querySelectorAll('button[data-kind]')) { b.setAttribute('aria-pressed', String(b.dataset.kind === ui.planKind)); b.disabled = !f?.report?.[b.dataset.kind]; }
@@ -951,9 +894,8 @@ export function render(refit = false) {
   for (const b of root.querySelectorAll('#fwMoreMenu [data-edit=add]')) b.disabled = !fm;
   if (map && fm && ui.view === 'map' && !ui.mode) { drawMap(refit); map.invalidateSize() }
   if (fm && f) readingsFor(fm, f, readingsChanged);   // the plans' figures and the weather are asked for at once, so Compare plans and the field's details have them when opened
-  renderKey(); renderStrip(); renderObs(); renderYear();
-  if (ui.dayOnly && ui.panel === 'compare') updateCompareDay();   // a step of the time bar changes the day, not the plans: only the two cards and the pressed key day are drawn again
-  else if (['compare', 'field', 'fields', 'farms', 'settings'].includes(ui.panel)) { renderPanel(); addLower(); }
+  renderYear(); renderLayers();
+  if (['field', 'fields', 'farms', 'settings'].includes(ui.panel)) { renderPanel(); addLower(); }
   ui.dayOnly = false;
   behind();
   push3d();   // the farmer's camera angle is kept by the 3D view
@@ -971,7 +913,8 @@ export async function mountFarm(node) {
   render(true);
   document.dispatchEvent(new CustomEvent('crophalo:farm-ready', { detail: { root: node, map, fieldLayer: layer, slider: $('#fwMonthSlider', node) } }));   // the big animations lay the field's outline over the board
   setTimeout(() => { map?.invalidateSize(); if (field()) drawMap(true); }, 60);
-  openByRule();   // after render(true), so the field and the status line exist; before the 3D line, which builds the 3D view when the rule chose it
+  firstView();   // after render(true), so the field and the status line exist; before the 3D line, which builds the 3D view when the rule chose it
+  if (ui.startNote) { showStatus(ui.startNote); ui.startNote = ''; }
   if (ui.view === '3d') setView('3d');
   $('#fwTitle', node).focus?.();
 }

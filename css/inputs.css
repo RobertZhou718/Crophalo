@@ -1,0 +1,15 @@
+/* Crophalo: step 4's extra choices (js/inputs-step.js). It only uses the tokens and classes of css/app.css and never restates a token value. */
+.in-does { margin-top: calc(-1 * var(--space-4)); }
+.in-group { display: grid; gap: var(--space-4); }
+.in-row { align-items: flex-start; padding: var(--space-8) 0; }
+.in-row > span { flex: 1 1 auto; min-width: 0; overflow-wrap: anywhere; }
+.in-row b { display: block; font-weight: var(--fw-semi); }
+.in-row small { margin-top: 2px; }
+.in-row .cbx, .in-row .sw { margin-top: 2px; }
+.in-limits .q { margin: var(--space-8) 0 0; }
+.in-limits .seg button, .in-avoid-pick select { min-height: var(--touch); }
+.in-avoid-pick { display: grid; gap: var(--space-4); }
+.in-avoid-pick select { width: 100%; max-width: 100%; }
+.in-avoid { display: flex; flex-wrap: wrap; gap: var(--space-8); margin: 0; padding: 0; list-style: none; }
+button.in-chip { min-height: var(--touch); padding: 4px var(--space-12); overflow-wrap: anywhere; text-align: left; }
+.in-about { display: grid; gap: var(--space-8); margin: var(--space-8) 0 0; padding-left: 1.1em; }

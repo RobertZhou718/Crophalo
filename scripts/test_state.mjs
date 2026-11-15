@@ -93,5 +93,25 @@ same('the letters of every language survive a link', fromLink('#s=' + serialize(
 for (const [name, hash] of [['nothing', ''], ['a plain hash', '#data'], ['broken text', '#s=%%%'], ['not base64', '#s=!!!!'], ['not JSON', '#s=' + btoa('hello').replace(/=+$/, '')], ['a number', '#s=' + btoa('42')], ['another version', '#s=' + btoa(JSON.stringify({ v: 9, loc: here })).replace(/=+$/, '')], ['no place', '#s=' + btoa(JSON.stringify({ v: 1 })).replace(/=+$/, '')]])
   check(`a link that cannot be read is refused, not thrown: ${name}`, fromLink(hash).ok === false);
 
+
+// ---- step 4's goals and limits: a small whitelisted list and two safe limits; old states and old links still load
+same('a new state has no goal and no limit', [fresh.goals, fresh.limits], [[], { noDrill: false, sell: [] }]);
+same('an old state without them gets the safe defaults', [ok({ loc: here }).goals, ok({ loc: here }).limits], [[], { noDrill: false, sell: [] }]);
+same('an old "I keep animals" becomes the goal "Feed for my animals"', ok({ loc: here, farm: { livestock: true } }).goals, ['forage']);
+check('the goal "Feed for my animals" keeps "I keep animals" for the other screens', ok({ loc: here, goals: ['forage'] }).farm.livestock === true);
+same('goals: known keys only, once each, in a fixed order', ok({ loc: here, goals: ['market', 'zzz', 'market', '__proto__', 7, 'nitrogen'] }).goals, ['nitrogen', 'market']);
+same('goals that are not a list are none', [ok({ loc: here, goals: 'forage' }).goals, ok({ loc: here, goals: { 0: 'forage' } }).goals], [[], []]);
+same('limits: the drill is a real true only, markets from the list only', ok({ loc: here, limits: { noDrill: 'yes', sell: ['veg', 'veg', 'cars', 'grain'], extra: 1 } }).limits, { noDrill: false, sell: ['grain', 'veg'] });
+same('limits that are not an object are none', [ok({ loc: here, limits: [true] }).limits, ok({ loc: here, limits: 'x' }).limits], [{ noDrill: false, sell: [] }, { noDrill: false, sell: [] }]);
+same('an old cover-crop answer is not changed by the new fields', [ok({ loc: here, farm: { coverOK: false } }).farm.coverOK, ok({ loc: here, farm: { coverOK: false } }).limits.noDrill], [false, false]);
+const hostile2 = checkSerialized(JSON.parse('{"loc":{"lat":44.4,"lon":-79.78},"goals":["__proto__","constructor","toString"],"limits":{"__proto__":{"noDrill":true},"sell":["constructor"]}}'));
+same('a hostile link puts no goal and no limit in', [hostile2.state.goals, hostile2.state.limits], [[], { noDrill: false, sell: [] }]);
+const withNew = ok({ loc: { ...here, label: 'Barrie, Ontario', cc: 'CA' }, name: 'North field', rotation: { preset: 'corn-soy', custom: [], garden: null, second: {} }, farm: { irrigation: 'none', tillage: 'reduced', livestock: true, coverOK: false, labor: false },
+  avoid: ['rye'], goals: ['forage', 'nitrogen'], limits: { noDrill: true, sell: ['grain'] }, prio: [3, 4, 3, 3, 3], prioPreset: 'balanced' });
+const back2 = fromLink('#s=' + serialize(withNew));
+check('a link carries the goals and the limits back', back2.ok && JSON.stringify(back2.state) === JSON.stringify(withNew), brief(back2));
+const oldLink = '#s=' + btoa(JSON.stringify({ v: 1, loc: here, name: 'Old', farm: { irrigation: 'limited', livestock: false }, prio: [5, 3, 2, 2, 4], prioPreset: 'moisture' })).replace(/=+$/, '').replace(/\+/g, '-').replace(/\//g, '_');
+check('a link written before these fields still opens, with nothing added', (() => { const r = fromLink(oldLink); return r.ok && r.state.goals.length === 0 && !r.state.limits.noDrill && r.state.prioPreset === 'moisture'; })());
+
 console.log(`state: ${passed} passed, ${failed} failed`);
 process.exit(failed ? 1 : 0);

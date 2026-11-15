@@ -43,6 +43,11 @@ const p4 = pins(a); check('R6: the block is one pin, numbered 1, with its area (
 const blocks = grid(14, 6, Array(5).fill((c) => { const x = col(c), y = row(c); return (y < 2 && (x < 2 || (x >= 4 && x < 7) || (x >= 8 && x < 11) || x >= 12)) ? 0.4 : 0.8 + (c.id % 5) * 0.001; }));
 const bg = greenSpots(blocks), bp = pins(bg);
 check('R6: at most three pins, the biggest groups first', bp.length === 3 && bp[0].squares >= bp[1].squares && bp[1].squares >= bp[2].squares, bp.map(p => p.squares));
+// R7: an even field has no weak spots, however the squares are numbered
+const even = greenSpots(grid(6, 5, Array(5).fill(() => 0.6)));
+same('R7: 30 squares all at 0.6 over five pictures: nothing is weak, the field is even', [even.ok, even.state, even.cells.length], [true, 'none', 0]);
+same('R7: a spread under 0.05 (0.6 to 0.64) flags nothing either', greenSpots(grid(6, 5, Array(5).fill(c => 0.6 + (c.id % 5) * 0.01))).state, 'none');
+same('R7: a real spread of 0.05 or more still finds the low patch', greenSpots(grid(6, 6, Array(5).fill(low))).state, 'found');
 // the recorded (hand-made test data) answer
 const mead = fix('hlsbox-mead.json'), cloudy2 = fix('hlsbox-mead-cloudy.json');
 const m = greenSpots(mead);

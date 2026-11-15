@@ -23,9 +23,10 @@
 .fc-key.is-crop { background: var(--c-g); } .fc-key.is-cover { background: #8fc678; } .fc-key.is-residue { background: #cdbd7a radial-gradient(rgba(0,0,0,.35) 1px, transparent 1.4px) 0 0 / 5px 5px; } .fc-key.is-bare { background: #b08060 repeating-linear-gradient(135deg, rgba(255,255,255,.7) 0 2px, transparent 2px 6px); } .fc-key.in-window { background: var(--card); box-shadow: inset 0 0 0 2px var(--accent); }
 .fc-when { margin-top: var(--space-24); } .fc-when h3 { font-size: var(--fs-headline); margin-bottom: var(--space-8); }
 .fc-sow h4 { font-size: var(--fs-body); }
-.tl { display: block; width: 100%; height: auto; margin: var(--space-8) 0; }
+.tl { display: block; width: 100%; max-width: 420px; height: auto; margin: var(--space-8) 0; }
+#lfMonths .grid.tiles { grid-template-columns: minmax(0, 1fr); }
 .tl-window { fill: var(--accent-soft); stroke: var(--accent); stroke-width: 1.5; } .tl-left { fill: var(--warn-soft); stroke: var(--warn); stroke-width: 1.5; stroke-dasharray: 4 2; }
-.tl-harvest { stroke: var(--warn); stroke-width: 2; } .tl-sow { stroke: var(--good); stroke-width: 2; } .tl-t { fill: var(--ink2); font-size: 9.5px; }
+.tl-harvest { stroke: var(--warn); stroke-width: 2; } .tl-sow { stroke: var(--good); stroke-width: 2; } .tl-t { fill: var(--ink2); font-size: 16px; }   /* the drawing is 320 units wide and shows at about 260 px on the smallest phone: 15 units come out at 12 px or more */
 .fc-squeeze { display: flex; gap: var(--space-8); align-items: flex-start; font-size: var(--fs-row); }
 .fc-squeeze .mark { margin-top: 5px; }
 @media (max-width: 620px) { .fcal { --lab: 0px; } .fc-labels > :first-child, .fc-lab { display: none; }   /* the year of each ground row stays: it is the only label the row has */ .fc-labels { display: none; } .fc-grid, .fc-yearrow { grid-template-columns: minmax(0, 1fr); } .fc-grid .fc-row { grid-column: 1; } }

@@ -17,6 +17,8 @@ for (const width of [1440, 390]) for (const [i, r] of REGIONS.entries()) await g
   await until(`document.querySelectorAll('#homeRegions .cover').length >= ${REGIONS.length}`);
   await js(`document.querySelectorAll('#homeRegions .cover')[${i}].click()`);
   await until(`!document.querySelector('#view-setup').hidden && document.querySelector('#wNext')`); await sleep(250);
+  check('"Your field" is not an empty panel: the demo field\'s area is there (acres for a field in the United States), its corners and "Used in report"', await js(`(h => !!h && /\\d/.test(h.querySelector('#abFigure')?.textContent ?? '') && /corners/.test(h.textContent) && /Used in report/.test(h.textContent) && !!h.querySelector('svg.outline') && ${JSON.stringify(/canada/i.test(REGIONS[0].country) ? 'hectares' : 'acres')} !== '')(document.querySelector('#areaHost'))`));
+  check('the setup has exactly one h1 and the place name is not said twice', await js(`document.querySelectorAll('#view-setup h1').length === 1 && !(document.querySelector('.panel-place').textContent.toLowerCase().includes(document.querySelector('.panel-name').textContent.toLowerCase()))`));
   same('the setup opens on the field, named, with the coordinates as the small line', await js(`[document.querySelector('.panel-name').textContent, /\\d\\.\\d{5}, -?\\d+\\.\\d{5}/.test(document.querySelector('.panel-place').textContent), /\\d\\.\\d/.test(document.querySelector('.panel-name').textContent)]`), [r.name, true, false]);
   const passed = [];
   for (let n = 0; n < 3; n++) {

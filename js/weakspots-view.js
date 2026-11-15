@@ -1,6 +1,7 @@
 // The "Weak spots in this field" card of This field, and the squares and numbered pins on the board map. Nothing is asked until the farmer presses "Find weak spots":
 // the first look reads two summers of satellite pictures (about a minute and a half), so the card says so at once; the answer is kept, so a second look is instant.
 // Pure words: weakModel(), weakSpotsHTML(). Page parts: loadWeakSpots() (the ask and its keeping) and drawWeakSpots() (a Leaflet layer). Checked by scripts/test_weakspots.mjs and scripts/e2e_farm.mjs (group weak).
+import { skeleton } from './skeleton.js';
 import { esc } from './words.js';
 import { greenSpots, pins, classify } from './weakspots.js';
 import { apiUrl } from './api.js';
@@ -28,22 +29,22 @@ export function weakModel({ state, answer = null }) {
   const found = pins(green), n = green.passes.length;
   const more = [
     'Every field has a less green part. This shows where it stays, not why.',
-    `What we counted: each square is 30 m. In each clear picture we took the fifth of the field that was least green. A weak spot is a square in that fifth in at least 2 of every 3 clear pictures, and in 5 or more.`,
+    `What we counted: each square is 30 m. In each clear picture we took the fifth of the field that was least green. A weak spot is a square in that fifth in at least 2 of every 3 clear pictures, and in 5 or more. A picture where the field is even, with less than 0.05 between its greenest and least green tenth, marks nothing.`,
     'Why it can be: less green can be wet ground, thin soil, packed soil, pests, a different seed or a headland. A picture cannot say which.',
     ...green.passes.map(p => `${p.date} · ${p.sensor}`),
     `The pictures: NASA HLS, 30 m squares, ${n} clear ${n === 1 ? 'picture' : 'pictures'} in the summers of ${[...new Set(green.passes.map(p => p.date.slice(0, 4)))].join(' and ')}.`,
   ];
-  if (!found.length) return { state: 'none', lines: [`No place stayed less green on ${plural(n, 'clear picture', 'clear pictures')}.`], pins: [], more, green };
+  if (!found.length) return { state: 'none', lines: ['No weak spots found: the field is even.'], pins: [], more, green };
   const said = found.map((p, k) => k ? `spot ${p.n} on ${p.weak} of ${p.of}` : `Spot ${p.n} stayed less green than the rest on ${p.weak} of ${p.of} clear pictures`).join(', ');
   return { state: 'found', lines: [`We found ${plural(found.length, 'weak spot', 'weak spots')} in this field.`, `${said}.`, 'Walk there and look: it can be wet ground, thin soil, compaction or a headland.'], pins: found, more, green };
 }
 // The card: a button before the first look, one waiting line while reading, then the words; the details are under Show more with one source link.
 export function weakSpotsHTML(model) {
-  const p = model.lines.map(l => `<p>${esc(l)}</p>`).join('');
+  const reading = model.state === 'reading', p = model.lines.map(l => reading ? `<p aria-hidden="true">${esc(l)}</p>` : `<p>${esc(l)}</p>`).join('') + (reading ? skeleton('list', model.lines.join(' ')) : '');
   const idle = model.state === 'idle' ? `<p><button type="button" class="btn lg primary" data-act="weak">Find weak spots</button></p>` : '';
   const again = ['down', 'nologin'].includes(model.state) ? `<p><button type="button" class="btn lg" data-act="weak">Try again</button></p>` : '';
   const more = model.more.length ? `<details class="fw-fold"><summary>Show more</summary>${model.more.map(l => `<p class="cap">${esc(l)}</p>`).join('')}<p class="cap"><a href="${esc(LINK[1])}" target="_blank" rel="noopener">${esc(LINK[0])}</a></p></details>` : '';
-  return `<div class="fw-weakbody" data-state="${esc(model.state)}"${model.state === 'reading' ? ' role="status"' : ''}>${p}${idle}${again}${more}</div>`;
+  return `<div class="fw-weakbody" data-state="${esc(model.state)}">${p}${idle}${again}${more}</div>`;
 }
 
 // The ask: only when the farmer presses the button. ring: [[lat, lon], ...]. One ask per field and outline; a failed ask is not kept.

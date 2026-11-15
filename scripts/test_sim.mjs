@@ -844,7 +844,9 @@ await group('observed beside planned', async () => {
   check('a day before the pictures start says so', OB.observedFor(HLS_SHAPE, day(400)).state === 'outside' && /start/.test(OB.observedFor(HLS_SHAPE, day(400)).line));
   same('while the lookup is on its way it says so', [OB.observedFor(null, day(6), { waiting: true }).state, OB.observedFor(null, day(6), { waiting: true }).chip], ['wait', 'Looking…']);
   const bad = OB.observedFor({ ok: false, reason: 'NASA did not let this computer\'s Earthdata login read the HLS files.' }, day(6));
-  check('a lookup that failed says so in plain words, with its reason kept for Show more', bad.state === 'unread' && bad.chip === 'Not seen' && /could not be read just now/.test(bad.line) && /Earthdata login/.test(bad.detail), bad.line);
+  // Changed on purpose: the satellite cards' paper (reports/satcards.md, "Failed cards say why in a farmer's words") never tells a visitor that the server's NASA login failed, and every card's reason
+  // now goes through that one plain-reason function (js/satellites2-data.js plainReason), so the reason kept for Show more is the plain NASA sentence, not the server's login words.
+  check('a lookup that failed says so in plain words, with its plain reason kept for Show more', bad.state === 'unread' && bad.chip === 'Not seen' && /could not be read just now/.test(bad.line) && bad.detail === 'This NASA reading is not available right now.' && !/Earthdata|login/i.test(bad.detail), bad.detail);
   same('no answer at all is not read yet, never green', OB.observedFor(null, day(6)).state, 'unread');
   same('a pass without a number is not used', OB.observedFor({ ...HLS_SHAPE, passes: [{ date: day(9), ndvi: null }] }, day(6)).state, 'none');
   same('an empty window gives the lookup\'s own reason', OB.observedFor({ ...HLS_SHAPE, passes: [], why_none: 'Only clouds and snow were seen.' }, day(6)).detail, 'Only clouds and snow were seen.');
@@ -964,6 +966,16 @@ await group('a field that arrives with its real outline and its own name', async
   const pin = S.applyReport(S.emptyStore(), { ...report, place: { lat: 41.1795, lon: -96.4398, name: 'Mead, Nebraska', cc: 'US' } }, { now: NOW, random: () => 0.4 });
   const g = S.getField(S.getFarm(pin.store, pin.farmId), pin.fieldId);
   check('with a pin only the field is an estimated square and keeps the default name', g.estimated === true && g.name === 'Home field', [g.estimated, g.name]);
+});
+
+await group('the next 7 days on This field', async () => {
+  const day = (n, hi, lo, rain) => ({ date: ['2029', '03', String(10 + n)].join('-'), tmax: hi, tmin: lo, rain });
+  const fc = { today: ['2029', '03', '10'].join('-'), days: [day(0, 10, -1, 0), day(1, 12, 0, 2), day(2, 8, 1, 0.2), day(3, 9, 2, 12), day(4, 11, 3, 0), day(5, 13, 4, 0), day(6, 15, 5, 1)] };
+  const f = K.weekModel(fc, { temp: 'F', rain: 'in' }), c = K.weekModel(fc, { temp: 'C', rain: 'mm' });
+  same('a United States field reads in degrees Fahrenheit and inches, the unit named once in the heading', [f.title, f.first, f.rows[1].line, f.rows[3].line], ['The next 7 days, °F', 'Today: high 50, low 30, dry', 'Sun: high 54, low 32, 0.1 in', 'Tue: high 48, low 36, 0.5 in']);
+  same('the same week in degrees C and millimetres', [c.title, c.first, c.rows[1].line, c.rows[3].line], ['The next 7 days, °C', 'Today: high 10, low -1, dry', 'Sun: high 12, low 0, 2 mm', 'Tue: high 9, low 2, 12 mm']);
+  check('no row prints a bare degree sign', f.rows.every(r => !/°/.test(r.line)) && c.rows.every(r => !/°/.test(r.line)));
+  same('no forecast, no part', [K.weekModel(null, {}), K.weekModel({ days: [] }, {}), K.weekModel({ today: fc.today, days: [{ date: fc.today, tmax: NaN, tmin: NaN }] }, {})], [null, null, null]);
 });
 
 console.log(`${passed} passed, ${failed} failed`);

@@ -3,6 +3,7 @@
 // Fetch and the cache are handed in, so a test needs no server. Checked by scripts/test_land3d_load.mjs and scripts/e2e_land3d.mjs.
 import { SWITCHES, sourcesNeeded, layerOf, osmCredit } from './land3d-data.js';
 import { frameAt } from './farm3d-data.js';
+import { plainReason } from './satellites2-data.js';
 
 export const KEEP_MS = 24 * 3600e3;
 const WHERE = { osm: 'api/osm', osmx: 'api/osmextra' };
@@ -16,7 +17,7 @@ export const keyOf = (kind, b) => `${kind}:${b.lat}:${b.lon}:${b.w}:${b.d}`;
 // An answer of the lookup -> what the layers read, or { failed: sentence }. It must be ok, in the shape of its kind, and about this block.
 export function decodeOsm(kind, answer, block) {
   if (!answer || typeof answer !== 'object') return { failed: DOWN };
-  if (answer.ok !== true) return { failed: String(answer.reason || DOWN) };
+  if (answer.ok !== true) return { failed: plainReason(answer.reason, DOWN) };
   const lists = kind === 'osm' ? ['buildings', 'roads', 'water', 'trees'] : ['fences', 'gates', 'power', 'poles', 'things'];
   if (!lists.every(k => Array.isArray(answer[k]))) return { failed: BAD };
   const at = answer.box;

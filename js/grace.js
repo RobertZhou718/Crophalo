@@ -2,6 +2,7 @@
 // the answer rebuilt from known parts only, the classes and their colours, where a value stands on the colour bar, the region's disc in map pixels, the months a time-lapse plays and every sentence.
 // Pure: nothing here asks the network or reads the page. Checked by scripts/test_grace.mjs (answers in the lookup's own shape, a month with no measurement, open water, hostile input, the colours for every kind of colour sight).
 import { PLAY } from './layeranim.js';
+import { plainReason } from './satellites2-data.js';
 import { apiUrl } from './api.js';
 
 export const GRACE = Object.freeze({ id: 'grace', kind: 'region', name: 'Regional water storage', plain: 'Water stored across a wide region.', sub: 'GRACE / GRACE-FO 2002 to now · very coarse, about 300 km',
@@ -133,6 +134,7 @@ export const monthLine = (g, month) => (month === g?.newest ? `${monthWords(mont
 export function whyWords(answer, status = 200) {
   if (status === 404) return GRACE_WORDS.noroute;
   if (status === 429) return GRACE_WORDS.busy;
-  if (answer?.reason) return /[.!?]$/.test(answer.reason) ? answer.reason : `${answer.reason}.`;
+  const said = plainReason(answer?.reason, '');
+  if (said) return /[.!?]$/.test(said) ? said : `${said}.`;
   return answer?.final ? GRACE_WORDS.final : GRACE_WORDS.down;
 }

@@ -21,6 +21,13 @@ const MM_PER_IN = 25.4, FT_PER_M = 3.280839895, MPH_PER_KMH = 0.621371192, ACRES
 export const BUSHEL_LB = Object.freeze({ corn: 56, sorghum: 56, soy: 60, wheat: 60, swheat: 60, durum: 60, barley: 48 });
 const fin = v => typeof v === 'number' && Number.isFinite(v);
 const plain = (v, digits) => { const t = Math.abs(v).toFixed(digits); return (v < 0 && /[1-9]/.test(t) ? '−' : '') + t.replace(/\B(?=(\d{3})+(?!\d))/g, ','); };   // never "−0"
+// A sentence with metric figures in it, said in the farmer's units (°C to °F, mm to inches): for lines that come from the engine's own words. A text with none of them is left as it is.
+export function localiseText(text, u) {
+  let t = String(text ?? '');
+  if (u?.temp === 'F') t = t.replace(/(-?\d+(?:\.\d+)?) ?°C/g, (m, v) => `${Math.round(Number(v) * 9 / 5 + 32)} °F`);
+  if (u?.rain === 'in') t = t.replace(/(\d+(?:\.\d+)?) ?mm\b/g, (m, v) => { const x = Number(v) / 25.4; return `${x.toFixed(x < 10 ? 1 : 0).replace(/\.0$/, '')} in`; });
+  return t;
+}
 export const fmtRain = (mm, u) => !fin(mm) ? '' : u.rain === 'in' ? `${plain(mm / MM_PER_IN, mm / MM_PER_IN < 10 ? 1 : 0).replace(/\.0$/, '')} in` : `${plain(mm, 0)} mm`;
 export const fmtTemp = (c, u) => !fin(c) ? '' : u.temp === 'F' ? `${plain(c * 9 / 5 + 32, 0)} °F` : `${plain(c, 0)} °C`;
 export const fmtTempChange = (dc, u) => !fin(dc) ? '' : u.temp === 'F' ? `+${plain(dc * 1.8, 1)} °F` : `+${plain(dc, 1).replace(/\.0$/, '')} °C`;   // a change of temperature has no 32 to add

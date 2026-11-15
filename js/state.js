@@ -4,6 +4,7 @@
 // Checked by scripts/test_state.mjs (defaults, every range, a hostile link, the round trip through a link).
 import { own } from './words.js';
 import { isCrop, isGarden, isPreset } from './crops.js';
+import { cleanGoals, cleanLimits, newLimits } from './inputs.js';
 
 export const STATE_VERSION = 1;
 export const IRRIGATION = ['none', 'limited', 'full'], TILLAGE = ['conventional', 'reduced', 'notill'], SOIL_MODES = ['auto', 'manual', 'assumed', 'map'];   // map: a soil map's texture that a demo field comes with
@@ -15,13 +16,14 @@ export const PRIORITY_SETS = {   // the weights for Water fit, Soil health, Soil
 export const MAX_CUSTOM = 12, MAX_AVOID = 60, LABEL_MAX = 200, NAME_MAX = 120, PRESET_MAX = 40;
 
 // A new state: nothing is chosen that the farmer did not choose. Soil and rotation start empty; only the farm habits and the priorities have defaults.
+// goals (what else matters: 'forage', 'nitrogen', 'market') start empty and limits start with no limit (js/inputs.js).
 export function newState() {
   return {
     loc: null, area: null, name: '',
     rotation: { preset: null, custom: [], garden: null, second: {} },
     farm: { irrigation: null, tillage: 'reduced', livestock: false, coverOK: true, labor: false },
     soil: { mode: null, texture: null, om: null, omPct: null },
-    soilTest: null, avoid: [], prio: [...PRIORITY_SETS.balanced], prioPreset: 'balanced',
+    soilTest: null, avoid: [], prio: [...PRIORITY_SETS.balanced], prioPreset: 'balanced', goals: [], limits: newLimits(),
     sc: { rainPct: 0, tempC: 0 }, touched: { rotation: false, farm: false }, timing: {},
   };
 }
@@ -115,13 +117,14 @@ export function checkSerialized(raw) {
   const sc = raw.sc && typeof raw.sc === 'object' ? raw.sc : {};
   const rain = within(sc.rainPct, -40, 30), temp = within(sc.tempC, 0, 4);
   const prio = Array.isArray(raw.prio) && raw.prio.length === PRIORITIES.length && raw.prio.every(v => Number.isInteger(v) && v >= 0 && v <= 5) ? [...raw.prio] : base.prio;
+  const livestock = flag(farm.livestock, false), goals = cleanGoals(raw.goals, livestock);   // an old state's "I keep animals" is the goal "Feed for my animals"
   const state = {
     loc, area: cleanArea(raw.area, loc), name: text(raw.name, NAME_MAX),
     rotation: cleanRotation(raw.rotation),
-    farm: { irrigation: oneOf(IRRIGATION, farm.irrigation), tillage: oneOf(TILLAGE, farm.tillage, base.farm.tillage), livestock: flag(farm.livestock, false), coverOK: flag(farm.coverOK, true), labor: flag(farm.labor, false) },
+    farm: { irrigation: oneOf(IRRIGATION, farm.irrigation), tillage: oneOf(TILLAGE, farm.tillage, base.farm.tillage), livestock: livestock || goals.includes('forage'), coverOK: flag(farm.coverOK, true), labor: flag(farm.labor, false) },
     soil: { mode: oneOf(SOIL_MODES, soil.mode), texture: oneOf(TEXTURES, soil.texture), om: oneOf(ORGANIC, soil.om), omPct: within(soil.omPct, 0, 30) },
     soilTest: cleanSoilTest(raw.soilTest), avoid: ids(raw.avoid, isCrop, MAX_AVOID), prio,
-    prioPreset: own(PRIORITY_SETS, raw.prioPreset) ? raw.prioPreset : null,
+    prioPreset: own(PRIORITY_SETS, raw.prioPreset) ? raw.prioPreset : null, goals, limits: cleanLimits(raw.limits),
     sc: { rainPct: rain !== null && rain % 5 === 0 ? rain : 0, tempC: temp !== null && temp * 2 === Math.round(temp * 2) ? temp : 0 },
     touched: { rotation: false, farm: false }, timing: {},   // timing is rebuilt by the module that owns it; here it can only be empty
   };
@@ -131,8 +134,8 @@ export function checkSerialized(raw) {
 // ---- the share link: the state as it travels after "#s=", base64url of JSON
 const toUrl = b64 => b64.replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, ''), fromUrl = s => s.replace(/-/g, '+').replace(/_/g, '/') + '='.repeat((4 - s.length % 4) % 4);
 export function serialize(state, { withSoilTest = false } = {}) {
-  const { loc, area, name, rotation, farm, soil, avoid, prio, prioPreset, sc, timing } = state;
-  const body = { v: STATE_VERSION, loc, area, name, rotation, farm, soil, avoid, prio, prioPreset, sc, timing, ...(withSoilTest && state.soilTest ? { soilTest: state.soilTest } : {}) };
+  const { loc, area, name, rotation, farm, soil, avoid, prio, prioPreset, goals, limits, sc, timing } = state;
+  const body = { v: STATE_VERSION, loc, area, name, rotation, farm, soil, avoid, prio, prioPreset, goals, limits, sc, timing, ...(withSoilTest && state.soilTest ? { soilTest: state.soilTest } : {}) };
   const bytes = new TextEncoder().encode(JSON.stringify(body));
   let binary = ''; for (const b of bytes) binary += String.fromCharCode(b);
   return toUrl(btoa(binary));

@@ -170,3 +170,46 @@
 .hy-res { margin: 0; }
 @media (min-width: 1000px) { .hy-rows { grid-template-columns: repeat(3, minmax(0, 1fr)); } }
 .hy-card .hy-chip.chip { min-height: 44px; }
+
+/* ---- one calm page: the same gaps everywhere (the house steps), one stack in a card, the three cards on one top line */
+.rv-block { display: grid; gap: var(--space-12); align-content: start; }
+.rv-block > h2, .rv-block > p, .rv-block > .lead { margin: 0; }
+.rv-answer { display: grid; gap: var(--space-8); padding: var(--space-24); }
+.rv-answer > * { margin: 0; }
+.rv-answer .rv-headline { font-size: 26px; line-height: 1.2; }
+.rv-answer .rv-actions { margin-top: var(--space-8); }
+@media (min-width: 1000px) { .rv-answer { display: grid; grid-template-columns: minmax(0, 1fr); } .rv-answer > * { grid-column: auto; } .rv-answer .rv-actions { grid-column: auto; grid-row: auto; align-self: start; } .srows { align-items: stretch; } }
+.srow > summary { gap: var(--space-8); }
+.srow-body { gap: var(--space-12); }
+.sd-sec { display: grid; gap: 4px; }
+.sd-sec h3, .sd-sec ul, .sd-sec p { margin: 0; }
+.rv-adviser { margin: 0; }
+.hy-card { margin: 0; }
+.rb-title h1 { margin: 0; line-height: 1.25; }
+.rb-meta { margin: 2px 0 0; line-height: 1.4; }
+
+/* ---- the loading list: the words and the source on the left, the state in its own column on the right, the consequence under them */
+.rv-src { display: grid; grid-template-columns: auto minmax(0, 1fr); align-items: start; gap: var(--space-8); }
+.rv-src-main { display: grid; grid-template-columns: minmax(0, 1fr) auto; column-gap: var(--space-16); row-gap: 2px; align-items: baseline; }
+.rv-src-text { min-width: 0; } .rv-src-name { color: var(--ink2); margin-left: 4px; }
+.rv-src-state { text-align: right; white-space: nowrap; color: var(--ink2); }
+.rv-lose { grid-column: 1 / -1; color: var(--ink2); }
+@media (max-width: 420px) { .rv-src-main { grid-template-columns: minmax(0, 1fr); } .rv-src-state { text-align: left; } }
+
+/* ---- the two-way choice in the answer card: what you grow now, or our suggestion */
+.rv-pick { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: var(--space-12); margin: var(--space-4) 0; }
+.rv-pickcard { display: grid; gap: var(--space-8); align-content: start; padding: var(--space-12) var(--space-16); border-radius: var(--r2); background: var(--card); box-shadow: inset 0 0 0 1px var(--fill2); cursor: pointer; min-height: 44px; }
+.rv-pickcard.is-on, .rv-pickcard:has(input:checked) { box-shadow: inset 0 0 0 2px var(--accent); background: var(--accent-soft); }
+.rv-pickcard:has(input:focus-visible) { outline: 3px solid var(--accent); outline-offset: 2px; }
+.rv-pick-tag { font-size: var(--fs-small); font-weight: 700; display: inline-flex; align-items: center; gap: 4px; }
+@media (max-width: 600px) { .rv-pick { grid-template-columns: minmax(0, 1fr); } }
+
+/* ---- the row of the page's parts: part of the fixed bar, solid, one line, scrolling sideways inside itself on a phone */
+.rv-parts { border-top: 1px solid var(--fill2); background: var(--bar); }
+.rv-parts ul { list-style: none; margin: 0 auto; padding: 0 20px; max-width: var(--nav-w); display: flex; gap: var(--space-4); overflow-x: auto; scrollbar-width: none; }
+.rv-parts li { flex: none; }
+.rv-parts a { display: inline-flex; align-items: center; min-height: 44px; padding: 0 var(--space-12); color: var(--ink2); text-decoration: none; font-size: var(--fs-small); border-bottom: 3px solid transparent; white-space: nowrap; }
+.rv-parts a[aria-current=true] { color: var(--ink); font-weight: 700; border-bottom-color: var(--accent); }
+html:has(.rv-parts) { scroll-padding-top: calc(var(--navh) + var(--rbh) + 8px); }   /* a part opened by its link, or a focused control, stays clear of the top bar and the report's bar with its row of parts */
+
+.hy-months { display: grid; grid-template-columns: repeat(12, minmax(0, 1fr)); gap: 2px; font-size: 12px; color: var(--ink2); text-align: center; line-height: 1.2; }

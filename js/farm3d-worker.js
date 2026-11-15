@@ -5,6 +5,7 @@ import { createDrawer, makeContext } from './farm3d-draw.js';
 import { groundScene } from './farm3d-data.js';
 import { shadeFor } from './shade3d.js';
 import { createLand, attachLand, landMessage } from './land3d-load.js';
+import { createLayers } from './layers3d-load.js';
 
 const THREE_URL = new URL('../vendor/three/three.module.js', import.meta.url).href;
 const UTILS_URL = new URL('../vendor/three/addons/utils/BufferGeometryUtils.js', import.meta.url).href;
@@ -19,6 +20,7 @@ let lastInput = null;
 const shadeView = shadeFor({ say: () => { if (lastInput && !closed) { sunDirty = true; if (!showing) relight(); } } });   // the shade job runs in its own worker; an answer that arrives paints the ground again (nothing is rebuilt)
 const BASE = new URL('../', import.meta.url).href;   // the lookups are at /api/osm and /api/osmextra of the same site
 const land = createLand({ fetchImpl: (u, o) => fetch(u, o), base: BASE, say: () => { if (lastInput && !closed) display(lastInput); } });   // an answer that arrives draws the details again
+const layers = createLayers({ fetchImpl: (u, o) => fetch(u, o), makeCanvas: (w, h) => new OffscreenCanvas(w, h), say: () => { if (lastInput && !closed) display(lastInput); } });   // the picture and the layers over it: an answer that arrives draws the ground again
 let drawer = null, pending = null, ready = false, closed = false, scenes = 0, shownAt = 0, size = null, pose = null;   // a size or a camera that comes before the drawer is kept for it
 // Only the newest scene is drawn: a newer one makes the one being built stop at its next pause.
 // sunMs: a time of day the page asked for (message 'sun'); it stands over the scene's own hour until the page asks for none (null).
@@ -27,7 +29,7 @@ const withSun = input => (sunMs == null ? input : { ...input, hourMs: sunMs });
 function display(input) {
   if (!drawer || closed) { pending = input; return; }
   lastInput = input;
-  const use = withSun(input), mine = ++shownAt, sc = attachLand(land, shadeView.attach(groundScene({ ...use, plantLimit: drawer.budget.plants }), use), use);
+  const use = withSun(input), mine = ++shownAt, sc = layers.attach(attachLand(land, shadeView.attach(groundScene({ ...use, plantLimit: drawer.budget.plants }), use), use));
   showing++;
   drawer.show(sc).then(done => {
     showing--;
@@ -35,6 +37,7 @@ function display(input) {
     scenes++;
     post(shadeView.message(sc));
     post(landMessage(sc, drawer.stats().details, land));
+    post({ type: 'layers', layers: layers.layers(sc) });
     if (!ready) { ready = true; post({ type: 'ready', stats: drawer.stats() }); } else post({ type: 'shown', scenes });
     if (sunDirty) relight();
   }, e => { showing--; failed(e); });
@@ -46,7 +49,7 @@ async function relight() {
   try {
     while (sunDirty && drawer && lastInput && !closed && !showing) {
       sunDirty = false;
-      const use = withSun(lastInput), sc = shadeView.attach(groundScene({ ...use, plantLimit: drawer.budget.plants }), use);
+      const use = withSun(lastInput), sc = layers.attach(shadeView.attach(groundScene({ ...use, plantLimit: drawer.budget.plants }), use));
       if (await drawer.relight(sc) && !closed) { post(shadeView.message(sc)); post({ type: 'sunshown', ms: sc.momentMs }); }
     }
   } catch (e) { failed(e); } finally { relighting = false; }
@@ -75,12 +78,15 @@ self.onmessage = event => {
   try {
     if (m.type === 'start') start(m).catch(failed);
     else if (m.type === 'scene') display(m.input);
+    else if (m.type === 'layer') layers.setLayer(m.id, m.on);
+    else if (m.type === 'greenness') layers.setGreenness(m.answer);
+    else if (m.type === 'erosion') layers.setErosion(m.input);
     else if (m.type === 'sun') { sunMs = Number.isFinite(m.ms) ? m.ms : null; sunDirty = true; if (!showing) relight(); }
     else if (m.type === 'pose') { pose = m.pose; drawer?.pose(m.pose); }
     else if (m.type === 'size') { size = { width: m.width, height: m.height, dpr: m.dpr }; drawer?.size(m.width, m.height, m.dpr); }
     else if (m.type === 'ask') {
       const value = !drawer ? null : m.what === 'stats' ? { ...drawer.stats(), drawn: drawer.drawn(), lights: drawer.lightCount() } : m.what === 'drawn' ? drawer.drawn() : m.what === 'lights' ? drawer.lightCount() : null;
       post({ type: 'answer', id: m.id, value });
-    } else if (m.type === 'dispose') { closed = true; shadeView.dispose(); land.dispose(); drawer?.dispose(); drawer = null; self.close(); }
+    } else if (m.type === 'dispose') { closed = true; shadeView.dispose(); land.dispose(); layers.dispose(); drawer?.dispose(); drawer = null; self.close(); }
   } catch (e) { failed(e); }
 };

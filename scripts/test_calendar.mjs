@@ -88,7 +88,7 @@ check('When to sow: the window, the planned day, the squeeze and its words, with
 check('the timeline says what it shows, in words', /<svg class="tl"[^>]*role="img" aria-label="Winter wheat sowing window 25 Sep to 15 Oct; the harvest before it is on 2 Oct; sowing is planned for 5 Oct\."/.test(html), html.match(/<svg class="tl"[^>]*>/)?.[0]);
 check('the timeline draws the window, what is left of it, the harvest and the sowing', ['tl-window', 'tl-left', 'tl-harvest', 'tl-sow'].every(c => timelineSVG(w).includes(c)) && !timelineSVG({ ...w, squeeze: { kind: 'open' } }).includes('tl-left'));
 check('the guide line is there: dates can differ by a few weeks', /Local dates and varieties can differ by a few weeks/.test(html));
-check('no plans read: the tab says so and draws no ground', (() => { const h = calendarHTML(none); return /have not been read yet/.test(h) && !/fc-ground/.test(h) && !/When to sow/.test(h) && /fc-rain/.test(h); })());
+check('no plans read: the tab says so and draws no ground', (() => { const h = calendarHTML(none); return /The plans are not ready, so the ground is not drawn/.test(h) && !/fc-ground/.test(h) && !/When to sow/.test(h) && /fc-rain/.test(h); })());
 check('no data at all: not read', calendarHTML(null).includes('could not be worked out'));
 check('words from outside are plain text', !/<img src=x/.test(calendarHTML(buildCalendar({ result: { current: { ...current, name: '<img src=x onerror=1>' }, recommended: { ...proposed, name: '<b>x</b>' } }, climate }))));
 check('the record never says a chance or a forecast', !/\b(chance|probability|forecast)\b/i.test(html.replace(/probab/g, '')), html.match(/\b(chance|probability|forecast)\b/i)?.[0]);

@@ -4,6 +4,7 @@
 import { esc } from './words.js';
 import { askNotifications, testNotification, NOTIFY_WORDS, readReminders, writeReminders, addReminder, remindDialogHTML, remindListHTML, remindButton, markDone, markSeen, toAnnounce, dueMessage, icsFile, icsName, pushSupport, notifyState, showDue, ERRORS, KEY } from './remind.js';
 import { reportJobs, alertJobs, dayWords } from './remind-plan.js';
+import { localiseText } from './unitstext.js';
 import { toast } from './toast.js';
 
 export const nowLocal = (d = new Date()) => { const p = n => String(n).padStart(2, '0'); return `${d.getFullYear()}-${p(d.getMonth() + 1)}-${p(d.getDate())}T${p(d.getHours())}:${p(d.getMinutes())}`; };
@@ -22,8 +23,10 @@ export function jobsHTML(jobs) {
   if (!jobs.length) return `<p class="cap">${WORDS.noJobs}</p>`;
   return `<ul class="rm-jobs">${jobs.map(j => `<li class="rm-job"><span><b>${esc(j.title)}</b>${j.when ? ` <span class="cap">${esc(dayWords(j.when.slice(0, 10)))}</span>` : ' <span class="cap">pick a day</span>'}</span>${remindButton(j)}</li>`).join('')}</ul>`;
 }
-export function jobsFor({ result, climate, forecastDays, today, now }) {
-  return [...reportJobs(timingOf(result, climate), today), ...alertJobs(Array.isArray(forecastDays) ? forecastDays : [], now ?? `${today}T00:00`)];
+// units (js/units.js), when given: the alert's figure and words in the farmer's units ("−1 °C" becomes "30 °F"), once, as the job is built
+export function jobsFor({ result, climate, forecastDays, today, now, units = null }) {
+  const alerts = alertJobs(Array.isArray(forecastDays) ? forecastDays : [], now ?? `${today}T00:00`).map(j => (units ? { ...j, value: localiseText(j.value, units), note: localiseText(j.note, units), hint: localiseText(j.hint, units) } : j));
+  return [...reportJobs(timingOf(result, climate), today), ...alerts];
 }
 const saveFile = (doc, text, name) => { const blob = new Blob([text], { type: 'text/calendar;charset=utf-8' }), url = URL.createObjectURL(blob), a = doc.createElement('a'); a.href = url; a.download = name; doc.body.append(a); a.click(); a.remove(); setTimeout(() => URL.revokeObjectURL(url), 2000); };
 

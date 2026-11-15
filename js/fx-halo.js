@@ -54,12 +54,12 @@ export function describeRotation(plan, names = id => id) {
 // ---- the rotation halo
 // plans: {current, proposed}; show: 'current' | 'proposed'. names(cropId) -> words; pictures(cropId) -> an SVG string for the little picture, or null for a plain disc.
 export function rotationHalo(node, { plans, show = 'proposed', names = id => id, pictures = () => null, size = 112 } = {}) {
-  const compact = size < 72, c = size / 2, R = size * (compact ? 0.38 : 0.3), w = size * 0.085;   // the ring leaves room round it for the year numbers
+  const compact = size < 72, pad = compact ? 0 : Math.round(size * 0.17), c = size / 2, R = size * (compact ? 0.38 : 0.3), w = size * 0.085;   // the ring leaves room round it for the year numbers
   node.classList.add('fx-halo'); node.classList.toggle('is-compact', compact);
   let shown = null, arcs = [], pics = [], years = [];
   const arcOf = (cls, r, sw, from, to) => { const p = el('path', { d: arcPath(c, c, r, from, to), class: `fx-arc ${cls}`, 'stroke-width': sw, fill: 'none' }); p.dataset.len = String(arcLength(r, from, to)); return p; };
   function build(plan, animate) {
-    const svg = el('svg', { viewBox: `0 0 ${size} ${size}`, width: size, height: size, role: 'img', 'aria-label': describeRotation(plan, names), class: 'fx-halo-art' });
+    const svg = el('svg', { viewBox: `${-pad} ${-pad} ${size + 2 * pad} ${size + 2 * pad}`, width: size + 2 * pad, height: size + 2 * pad, role: 'img', 'aria-label': describeRotation(plan, names), class: 'fx-halo-art' });
     svg.append(el('circle', { cx: c, cy: c, r: R, class: 'fx-halo-track', 'stroke-width': w, fill: 'none' }));
     const seasons = plan?.seasons || [], ang = arcAngles(seasons.length), tl = haloTimeline(seasons), made = [];
     seasons.forEach((s, i) => {
@@ -70,11 +70,17 @@ export function rotationHalo(node, { plans, show = 'proposed', names = id => id,
       if (s.second) { second = arcOf('second', R - w * 2.2, w * 0.6, a.from + 2, a.to - 2); g.append(second); }
       if (!compact) {
         const p = pointAt(c, c, R, a.mid), pic = el('g', { class: 'fx-pic', transform: `translate(${p.x.toFixed(2)} ${p.y.toFixed(2)})` });
-        const svgText = pictures(s.crop);
-        if (svgText) { const holder = el('g', { class: 'fx-pic-art' }); holder.innerHTML = svgText; pic.append(el('circle', { r: w * 1.35, class: 'fx-pic-disc' }), holder); }
-        else pic.append(el('circle', { r: w * 1.25, class: 'fx-pic-disc plain' }));
+        const svgText = pictures(s.crop), disc = w * 1.35, side = disc * 1.4;   // the picture sits centred in its disc and is scaled to fit inside it
+        if (svgText) {
+          const holder = el('g', { class: 'fx-pic-art' }); holder.innerHTML = svgText;
+          const inner = holder.querySelector('svg'); if (inner) { for (const [k, v] of Object.entries({ x: -side / 2, y: -side / 2, width: side, height: side })) inner.setAttribute(k, String(+v.toFixed(2))); }
+          pic.append(el('circle', { r: disc, class: 'fx-pic-disc' }), holder);
+        } else pic.append(el('circle', { r: w * 1.25, class: 'fx-pic-disc plain' }));
         const t = el('title'); t.textContent = names(s.crop); pic.append(t);
-        const yp = pointAt(c, c, R + w * 1.35 + size * 0.07, a.mid), yr = el('text', { x: yp.x.toFixed(2), y: yp.y.toFixed(2), class: 'fx-year', 'text-anchor': 'middle', 'dominant-baseline': 'middle' }); yr.textContent = String(s.year);
+        // the year stands just outside its disc on the line from the ring's centre: far enough that the box of the number never touches the disc
+        const hw = 14, hh = 6, sn = Math.abs(Math.sin(a.mid * RAD)), cs = Math.abs(Math.cos(a.mid * RAD)), away = disc + 4 + sn * hw + cs * hh;
+        const yp = { x: p.x + away * Math.sin(a.mid * RAD), y: p.y - away * Math.cos(a.mid * RAD) };
+        const yr = el('text', { x: yp.x.toFixed(2), y: yp.y.toFixed(2), class: 'fx-year', 'text-anchor': 'middle', 'dominant-baseline': 'middle' }); yr.textContent = String(s.year);
         g.append(pic, yr); made.push({ outer, cover, second, pic, yr, tl: tl.parts[i] });
       } else made.push({ outer, cover, second, pic: null, yr: null, tl: tl.parts[i] });
       svg.append(g);

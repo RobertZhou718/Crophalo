@@ -118,8 +118,14 @@ same('seven tabs, in order', TABS.map(t => t.id), ['overview', 'options', 'weath
 check('each of the three later tabs says plainly it is not built and what it will hold', ['field', 'satellites', 'notes'].every(id => laterHTML(id).includes('Not built yet.') && laterHTML(id).includes(WILL_HOLD[id])));
 const rows = [{ key: 'power', label: 'Weather · NASA POWER', state: 'ok', reason: '' }, { key: 'forecast', label: 'Forecast', state: 'fail', reason: 'The service took too long to answer.' }, { key: 'x', label: 'Hidden', state: 'skip' }];
 const ld = loadingHTML(rows);
-check('the loading screen says what is happening and counts the answers', ld.includes('Building your full report') && ld.includes('1 of 2 sources answered') && !ld.includes('Hidden'));
-check('a source that failed says why, and each row has its "i"', ld.includes('The service took too long to answer.') && (ld.match(/class="srci/g) ?? []).length >= 1);
+check('the loading screen is a plain list: one heading, one count line, one row for each thing read, no picture', ld.includes('Reading your field’s data') && /\d of \d read/.test(ld) && !ld.includes('Hidden') && !/<svg|<canvas|<progress|<img/.test(ld), ld.slice(0, 200));
+check('a source that failed says it could not be read and what the report loses, in one plain sentence, and never the service\'s own words', ld.includes('Could not be read') && /Without it/.test(ld) && !ld.includes('The service took too long to answer.') && !/Unknown endpoint/.test(loadingHTML([{ key: 'crops', label: 'Crops · map', state: 'fail', reason: 'What farmers grow (Unknown endpoint)' }])), ld);
+{ const rows = [{ key: 'power', label: 'Weather record · NASA POWER', state: 'wait' }, { key: 'smap', label: 'Soil moisture · NASA SMAP', state: 'wait' }];
+  const quick = loadingHTML(rows, { elapsed: 2000 }), slow = loadingHTML(rows, { elapsed: 12000 }), late = loadingHTML(rows, { elapsed: 21000 }), see = loadingHTML([{ ...rows[0], state: 'ok' }, rows[1]], { elapsed: 6000, canSee: true });
+  check('a row says Reading… and, after five seconds, Taking longer than usual…; the weather record names its seconds in words', /Reading…/.test(quick) && !/Taking longer/.test(quick) && /Taking longer than usual…/.test(slow) && /NASA’s weather record is taking longer than usual: 12 s\./.test(slow) && !/Try again/.test(slow), slow);
+  check('after 20 seconds on the weather record: Try again beside Keep waiting; "Keep waiting" hides them again', /Try again/.test(late) && /Keep waiting/.test(late) && !/Try again/.test(loadingHTML(rows, { elapsed: 21000, hideRetry: true })));
+  check('the button "See the report now" and its quiet line show only when offered', />See the report now</.test(see) && /The rest keeps loading and you can add it when it arrives\./.test(see) && !/See the report now/.test(quick));
+  check('no row ever says "not read yet"', ![quick, slow, late, see, ld].some(h => /not read yet|Not read/i.test(h))); }
 check('the loading screen is marked busy until all answered', /aria-busy="true"/.test(ld) && /aria-busy="false"/.test(loadingHTML([{ key: 'power', label: 'a', state: 'ok' }])));
 
 // ---- assumptions and the estimated outline
@@ -322,6 +328,72 @@ check('a note from outside is plain text on the Data page', !/<img src=x/.test(d
   check('one page: its row is not tagged as our suggestion', !/Our suggestion/.test(row) && /What you grow now/.test(row));
   const fine = answerHTML({ ...RESULT, recommended: now }, {});
   check('one page: a plan that suits and is kept still reads "Keep"', /Keep /.test(fine) && !fine.includes(esc0(NO_FIT_WORDS)));
+}
+// The one page reads the ground temperature from the cleaned ECOSTRESS answer (js/satellites2-data.js cleanEco names it c), so the line under Show more shows in the farmer's units.
+{
+  const SY = 2026;   // the year of the hand-made satellite answers' days below (stand-in days, written from it)
+  const { satelliteFacts } = await import('../js/letter-facts.js');
+  const { cleanEco } = await import('../js/satellites2-data.js');
+  const eco = cleanEco({ ok: true, passes: [{ date: `${SY}-11-10`, utc: '15:00', solar_time: '13:12:00', solar_date: `${SY}-11-10`, day_night: 'day', lst_c: 21, lst_k: 294.15, error_k: 1.5, orbit: 1, version: '002', granule: 'g' }], passes_checked: 9, not_usable: { cloud: 4 }, newest_clear: `${SY}-11-10`, window: { first: `${SY}-09-20`, last: `${SY}-11-14` }, pixel_m: 70 });
+  check('one page: the ground temperature of a cleaned ECOSTRESS answer shows under Show more, in the farmer\'s units', /id="lfSatMore"[^]*Ground temperature from space: 70 °F, 10 Nov/.test(satelliteFacts({ eco }, { temp: 'F' }).body) && /21 °C/.test(satelliteFacts({ eco }, { temp: 'C' }).body));
+}
+// The one page's fold "What NASA satellites see": the satellite cards (js/satcard.js) sit inside it after the plain lines and before its Show more, each its own closed line, never a card folded twice.
+{
+  const SY = 2026;   // as above
+  const { satelliteFacts } = await import('../js/letter-facts.js');
+  const { rainCardHTML, moistureCardHTML } = await import('../js/satellites-view.js');
+  const { graceCardHTML, hlsCardHTML, ecoCardHTML } = await import('../js/satellites2-view.js');
+  const reading = { value: 0.31, date: `${SY}-11-12`, label: 'Moisture around the roots', km: 9, lat: 43.1, lon: -80.7, source: 'smap' };
+  const { cleanEco } = await import('../js/satellites2-data.js');
+  const eco = cleanEco({ ok: true, passes: [{ date: `${SY}-11-10`, utc: '15:00', solar_time: '13:12:00', solar_date: `${SY}-11-10`, day_night: 'day', lst_c: 21, lst_k: 294.15, error_k: 1.5, orbit: 1, version: '002', granule: 'g' }], passes_checked: 9, not_usable: { cloud: 4 }, newest_clear: `${SY}-11-10`, window: { first: `${SY}-09-20`, last: `${SY}-11-14` }, pixel_m: 70 });
+  const cards = `${rainCardHTML({ ok: false, reason: 'NASA did not let this login read the rain files.' })}${moistureCardHTML(reading)}${graceCardHTML({ loading: true })}${hlsCardHTML({ loading: true })}${ecoCardHTML(eco)}`;
+  const sf = satelliteFacts({ reading, imerg: { ok: false }, hls: { loading: true }, grace: { loading: true }, eco }, { temp: 'C', rain: 'mm' }, { cards }), b = sf.body;
+  check('one page: the satellite fold holds the five cards, each one closed line with its own summary', (b.match(/<details class="fold sat-fold"/g) ?? []).length === 5 && (b.match(/<summary><h3 class="sat-name">/g) ?? []).length === 5);
+  check('one page: the cards come after the plain lines and before the fold\'s Show more', b.indexOf('Water in the top soil') < b.indexOf('lf-satcards') && b.indexOf('lf-satcards') < b.indexOf('id="lfSatMore"'));
+  check('one page: no card is folded inside another card, and a card that could not be read is said once, by the card', !/sat-fold"[^]*?<details class="fold sat-fold"[^]*?<\/details><\/article>[^]*?<\/details><\/article>/.test(cards.slice(0, cards.indexOf('</article>'))) && !b.includes('The satellite rain did not answer.') && !/not read yet/i.test(b));
+  const plain = satelliteFacts({ reading, imerg: { ok: false } }, {});
+  check('one page: without cards the fold keeps its plain lines and says what is missing', plain.body.includes('The satellite rain did not answer.') && !plain.body.includes('lf-satcards'));
+  const src = fs.readFileSync(new URL('../js/report.js', import.meta.url), 'utf8');
+  check('one page: the report draws the five cards into that fold', /satelliteFacts\([^)]*\}, u, \{ cards(: localiseText\(cards, u\))? \}\)/.test(src) && ['rainCardHTML(cur.imerg)', 'graceCardHTML(cur.grace)', 'hlsCardHTML(cur.hls)', 'ecoCardHTML(cur.eco)', 'moistureCardHTML('].every(x => src.includes(x)));
+}
+// The report's crop-map loader reads the country's national lists beside the kept crop-map answer (js/near-load.js nearbyFrom), so a crop the country hardly grows is not offered.
+{
+  const { getNearby } = await import('../js/report-load.js');
+  const was = globalThis.fetch, asked = [];
+  globalThis.fetch = async url => { asked.push(String(url)); return { json: async () => (/faostat/.test(url) ? { ok: true, countries: {} } : { ok: false, reason: 'stand-in' }) }; };
+  try { forgetAll(); await getNearby({ lat: 41.1795, lon: -96.4398, cc: 'US' }); check('the report\'s crop-map loader asks the national lists and the crop map once each', asked.filter(u => u.startsWith('/api/faostat')).length === 1 && asked.filter(u => u.startsWith('/api/cropsnear')).length === 1, asked.join(' '));
+  } finally { globalThis.fetch = was; forgetAll(); }
+}
+// Compare strategies says what the ranking used: the goals the farmer ticked in the setup's last step (state.goals), and nothing when none was ticked.
+{
+  const { compareBlockHTML, goalsLine } = await import('../js/letter-view.js');
+  same('one page: no goal ticked, no "Ranked for" line', [goalsLine([]), goalsLine(undefined), goalsLine(['zzz'])], ['', '', '']);
+  same('one page: one goal is named in the farmer\'s words', goalsLine(['nitrogen']), 'Ranked for what matters most to you: less fertiliser to buy.');
+  same('one page: the goals are named in the setup\'s order', goalsLine(['market', 'forage', 'nitrogen']), 'Ranked for what matters most to you: feed for your animals, less fertiliser to buy and selling what you already sell.');
+  const withGoal = compareBlockHTML(RESULT, { state: { goals: ['forage'] } }), none = compareBlockHTML(RESULT, { state: { goals: [], prio: [5, 1, 1, 1, 1] } });
+  check('one page: the line stands under the heading Compare strategies', /<h2 id="bkCompare">Compare strategies<\/h2><p class="lead">Ranked for what matters most to you: feed for your animals\.<\/p>/.test(withGoal));
+  check('one page: with no goal the block has no ranking line, whatever the weights', !/Ranked for/.test(none) && !/class="lead"/.test(none));
+}
+// Every strategy of the demo fields, opened: each of the five parts holds real lines, and no part says it has nothing yet ("listed yet").
+// The engine runs on the recorded NASA POWER answers of Mead and Beltsville (no crop map in this check); a part with nothing in it is not drawn at all.
+{
+  const fsr = await import('node:fs'), { buildSeries } = await import('../js/data.js'), { computeClimate } = await import('../js/climate.js'), { optionsFor } = await import('../js/engine.js');
+  const { newState } = await import('../js/state.js'), { readyAnswers } = await import('../js/steps.js'), { strategyRowHTML } = await import('../js/letter-view.js'), { strategies: firstOf } = await import('../js/report-view.js');
+  const regions = JSON.parse(fsr.readFileSync(new URL('../data/regions.json', import.meta.url), 'utf8'));
+  const PARTS = ['Why it was suggested', 'What evidence supports it', 'What benefits it may offer', 'Where information is missing', 'Risks to check locally'];
+  for (const [id, file] of [['mead-field', 'power_mead.json'], ['beltsville-field', 'power_beltsville.json']]) {
+    const r = regions.find(x => x.id === id), ans = JSON.parse(fsr.readFileSync(new URL(`./fixtures/${file}`, import.meta.url), 'utf8'));
+    const S = buildSeries(ans, { lat: r.lat, lon: r.lon }), C = computeClimate(S, S.lat, { today: '2026-11-14' });
+    const base = { ...newState(), loc: { lat: r.lat, lon: r.lon, label: r.country, cc: 'US' } }, st = { ...base, ...readyAnswers(base, r) };
+    const res = optionsFor(st, C, { lat: r.lat, lon: r.lon, country: 'US' }, { today: '2026-11-14' }), rows = firstOf(res).first;
+    same(`one page, ${id}: three strategies to compare`, rows.length, 3);
+    const html = rows.map(p => strategyRowHTML(p, res, null));
+    check(`one page, ${id}: no opened strategy says a part is "listed yet"`, html.every(h => !/listed yet|gave no reason/i.test(h)));
+    check(`one page, ${id}: every strategy holds all five parts, each with a real line`, html.every(h => PARTS.every(t => new RegExp(`<h3>${t}</h3><ul><li>[^<]{8,}`).test(h))), html.map(h => PARTS.filter(t => !h.includes(`<h3>${t}</h3><ul>`))));
+  }
+  const bare = { ...RESULT.others[0], evidence: [], benefits: [], gaps: [], review: [], whyLines: [], why: 'A short reason for this plan.' };
+  const row = strategyRowHTML(bare, { ...RESULT, others: [bare, ...RESULT.others.slice(1)] }, null);
+  check('one page: a part with nothing in it is not drawn, and no row says it has nothing', !/What evidence supports it|Where information is missing|Risks to check locally|listed yet/.test(row) && /Why it was suggested/.test(row), row.replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ').slice(0, 300));
 }
 console.log(`report: ${passed} passed, ${failed} failed`);
 process.exit(failed ? 1 : 0);

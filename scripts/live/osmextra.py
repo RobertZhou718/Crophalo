@@ -43,7 +43,7 @@ def radius(pts, lat):
 def sort_out(elements, lat):
     lists = {name: [] for name in CAPS}
     left_out = 0
-    for e in elements:
+    for e in osm.scrub(elements):
         tags = e.get("tags") if isinstance(e.get("tags"), dict) else {}
         barrier, power, made = tags.get("barrier"), tags.get("power"), tags.get("man_made")
         if e.get("type") == "node":

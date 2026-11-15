@@ -28,6 +28,7 @@ const name = id => { try { return cropName(id, true) || String(id); } catch { re
 
 // ---- the "i" button: the shared one (js/srci.js), beside every figure; its card lists the sources, NASA first. This file adds the report's own notes to the table.
 import { srcButton } from './srci.js';
+import { plainReason } from './satellites2-data.js';
 export function sourceNotes(keys) {
   return [...new Set(Array.isArray(keys) ? keys : [])].filter(k => Object.hasOwn(ALL_SOURCES, k)).map(key => ({ key, ...ALL_SOURCES[key] })).sort((a, b) => Number(b.nasa) - Number(a.nasa));
 }
@@ -347,7 +348,7 @@ export function optionsHTML(result, selectedId, chosenId = null) {
   if (!result || result.ok === false || !result.recommended) return `${head}<div class="rv-notread" role="status"><p>${esc(result?.reason || NOT_READ)}</p></div></section>`;
   const { first, more, fewWhy } = strategies(result), plans = allPlans(result), chosen = plans.find(p => p.id === selectedId) ?? result.recommended, labels = optionLabels(result);
   const card = p => optionCardHTML(p, result, p === chosen, chosenId, labels.get(p));
-  return `${head}${supportHTML()}<p class="lead">${first.length === 1 ? 'One strategy: what you grow now' : `${['', '', 'Two', 'Three'][first.length] ?? first.length} strategies, the one you grow now first`}. Tap one to see why, the evidence, the benefits, what is missing and what to check locally.</p>
+  return `${head}${supportHTML()}<p class="lead">Three strategies, the one you grow now first. Tap one to see why, the evidence, the benefits, what is missing and what to check locally.</p>
     <div class="grid opts" role="group" aria-label="Strategies">${first.map(card).join('')}</div>${fewWhy ? `<p class="cap rv-few" role="note">${esc(fewWhy)}</p>` : ''}
     ${more.length ? `<h3 class="sub">More options</h3><div class="grid opts" role="group" aria-label="More options">${more.map(card).join('')}</div>` : ''}
     ${compareHTML(result, labels)}${optionDetailHTML(chosen, result, chosenId, labels.get(chosen))}${scoresFoldHTML(result)}</section>`;
@@ -367,15 +368,27 @@ export const WILL_HOLD = Object.freeze({
 });
 export const laterHTML = id => `<section class="rv-sec" aria-labelledby="lt-${id}"><h2 id="lt-${id}">${esc(TABS.find(t => t.id === id)?.label ?? '')}</h2><div class="rv-notread"><p><b>Not built yet.</b> This part will hold: ${esc(WILL_HOLD[id] ?? '')}</p></div></section>`;
 
-// ---- the loading screen: the sources answering one by one
-// rows: [{ key, label, state: 'wait' | 'ok' | 'fail' | 'skip', reason }]
-export function loadingHTML(rows) {
-  const done = rows.filter(r => r.state === 'ok').length, asked = rows.filter(r => r.state !== 'skip').length;
-  return `<section class="rv-loading" aria-labelledby="ldTitle" aria-busy="${done < asked}"><h1 id="ldTitle">Building your full report</h1>
-    <div class="rv-macro"></div>
-    <p class="lead">Crophalo is asking NASA and partner services about this exact spot. A new place can take a minute the first time; it is faster afterwards.</p>
-    <p class="rv-meter"><span class="sr">Sources answered</span><progress max="${asked || 1}" value="${done}" aria-label="Sources answered">${done} of ${asked}</progress></p><p class="cap" role="status">${done} of ${asked} ${asked === 1 ? 'source' : 'sources'} answered</p>
-    <ul class="rv-sources">${rows.filter(r => r.state !== 'skip').map(r => `<li class="rv-src is-${r.state}"><span class="dot ${r.state === 'ok' ? 'good' : r.state === 'fail' ? 'warn' : 'busy'}" aria-hidden="true"></span><span><b>${esc(r.label)}</b>${r.state === 'fail' ? `<br><small>${esc(r.reason ?? '')}</small>` : ''}${r.state === 'ok' ? '<br><small>Answered</small>' : r.state === 'wait' ? '<br><small>Waiting…</small>' : ''}</span>${infoButton([r.key], r.label)}</li>`).join('')}</ul></section>`;
+// ---- the loading screen: a plain list of what is being read, each row with its state in words (never a picture)
+// rows: [{ key, label ("the farmer's words · the source"), state: 'wait' | 'ok' | 'fail' | 'skip', reason }]. ctx: { elapsed (ms since the report was asked for), weatherIn, canSee }.
+export const SLOW_MS = 5000, WEATHER_RETRY_MS = 20000;
+export const LOSES = Object.freeze({
+  power: 'Without it there is no report.', forecast: 'Without it the report has no weather for this week.', cold: 'Without it the coldest night rests on one record.',
+  smap: 'Without it the report cannot say how wet the soil is.', crops: 'Without it the report cannot check what grows near you.', soil: 'Without it an average soil is used.',
+});
+export function loadingHTML(rows, ctx = {}) {
+  const shown = rows.filter(r => r.state !== 'skip'), done = shown.filter(r => r.state === 'ok').length, asked = shown.length, elapsed = Number(ctx.elapsed) || 0, secs = Math.floor(elapsed / 1000);
+  const slow = elapsed >= SLOW_MS, power = shown.find(r => r.key === 'power'), weatherSlow = power?.state === 'wait' && slow;
+  const row = r => {
+    const [words, ...src] = String(r.label).split(' · '), name = src.join(' · ');
+    const state = r.state === 'ok' ? ['Read', 'good'] : r.state === 'fail' ? ['Could not be read', 'warn'] : slow ? ['Taking longer than usual…', 'busy'] : ['Reading…', 'busy'];
+    const extra = r.state === 'fail' ? `<small class="rv-lose">${esc(LOSES[r.key] ?? '')}</small>` : '';   // one plain sentence of what the report loses; the service's own words (an endpoint, a status) never reach the farmer
+    return `<li class="rv-src is-${r.state}${r.state === 'wait' && slow ? ' is-slow' : ''}"><span class="dot ${state[1]}" aria-hidden="true"></span><span class="rv-src-main"><span class="rv-src-text"><b>${esc(words)}</b>${name ? ` <small class="rv-src-name">${esc(name)}</small>` : ''}</span><span class="rv-src-state">${esc(state[0])}</span>${extra}</span></li>`;
+  };
+  const slowWords = weatherSlow ? `<p class="rv-slow" role="status">NASA’s weather record is taking longer than usual: ${secs} s.</p>${elapsed >= WEATHER_RETRY_MS && !ctx.hideRetry ? '<p class="rv-actions"><button type="button" class="btn primary" data-act="retry">Try again</button> <button type="button" class="btn" data-act="keepwaiting">Keep waiting</button></p>' : ''}` : '';
+  const see = ctx.canSee ? '<p class="rv-actions"><button type="button" class="btn primary" data-act="seenow" id="seeNow">See the report now</button></p><p class="cap">The rest keeps loading and you can add it when it arrives.</p>' : '';
+  return `<section class="rv-loading" aria-labelledby="ldTitle" aria-busy="${done < asked}"><h1 id="ldTitle">Reading your field’s data</h1>
+    <p class="cap rv-count" role="status">${done} of ${asked} read</p>
+    <ul class="rv-rows rv-sources">${shown.map(row).join('')}</ul><div id="ldAction">${slowWords}${see}</div></section>`;
 }
 
 // ---- what the one-page report (js/letter-view.js) reads from here

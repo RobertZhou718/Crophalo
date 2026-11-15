@@ -59,9 +59,9 @@ const group = (label, body) => groupRaw(label, async () => { await js(`localStor
 const { report: REAL } = await realReport();
 const open = async () => {
   await js(`localStorage.setItem('crophalo.farm3d.v1', 'board')`);   // an earlier press of 3D in this run is remembered (the first-open rule): the farmer starts from the board again, so the 3D is built only when the tap asks for it
-  await js(`import('/js/farm.js').then(m => { window.__farm = m; window.__res = m.addFromReport(${JSON.stringify(REAL)}); })`);
+  await js(`import('/js/farm.js').then(m => { window.__farm = m; m.setStartView?.('map'); window.__res = m.addFromReport(${JSON.stringify(REAL)}); document.getElementById("navFarm").click(); })`);
   await until(`document.querySelector('#fwFinding')?.textContent.length > 5 && !document.querySelector('#view-farm').hidden`, 15e3);
-  await until(`/^(Planned|Observed)$/.test(document.querySelector('#fwLabel')?.textContent || '')`, 15e3);   // the crop engine has said what covers the ground: 3D has a state to draw
+  await until(`(() => { const f = JSON.parse(localStorage.getItem('crophalo.farms.v1')).farms[0].fields[0]; return !!window.__farm.groundOf(f.report.proposed, window.__farm._ui.date); })()`, 15e3);   // the crop engine has said what covers the ground: 3D has a state to draw
   await sleep(400);
 };
 const marks = () => js(`JSON.parse(JSON.stringify(window.__3d.marks))`);
@@ -76,6 +76,8 @@ const now = () => js('performance.now()');
 const stats = () => js(`(async () => { const v = window.__farm?._view3d?.(); return v && typeof v.stats === 'function' ? await v.stats() : null; })()`);
 
 const SLOW_CPU = Math.max(1, +(process.env.E2E_CPU || 1));   // E2E_CPU=4 runs the opening on a processor four times slower, as a cheap laptop or a busy one
+// Retired on 15 November 2026 at the owner's order: Compare plans is gone from My farm (panel, time bar, colour key, key days, two cards), so its groups do not run.
+const retired = label => console.log(`retired: ${label}`);
 await group('open: a skeleton at once, no frozen page, then the scene', async () => {
   await size(1280); await open();
   if (SLOW_CPU > 1) { await send('Emulation.setCPUThrottlingRate', { rate: SLOW_CPU }); console.log(`e2e_3d_open: the opening below runs on a processor ${SLOW_CPU} times slower`); }
@@ -237,7 +239,7 @@ await group('fit: the picture, its buttons, the legend and the words fit above t
   }
 });
 
-await group('changes: a new date or plan in 3D is light', async () => {
+retired('changes: a new date or plan in 3D is light', async () => {
   await size(1280); await open();
   await tap('#fwThreeBtn'); check('changes: the scene appears', await ready());
   await tap('#fwCompare'); await sleep(600);   // the time bar is part of Compare plans; opening it is not the change being measured

@@ -12,6 +12,7 @@ import { createDrawer, makeContext, STEPS } from './farm3d-draw.js';
 import { firstView, firstViewFacts, createOrbit } from './farm3d-orbit.js';
 import { shellHTML, legendFor } from './farm3d-shell.js';
 import { createLand, attachLand, landMessage } from './land3d-load.js';
+import { createLayers } from './layers3d-load.js';
 import { cleanChoice, STORAGE_KEY as LAND_KEY, toggleWords, sourcesNeeded } from './land3d-data.js';
 import { sunEvents, clock } from './sun.js';
 import { shadeFor } from './shade3d.js';
@@ -68,6 +69,9 @@ function workerDrawer(canvas, say) {
     scene: input => worker.postMessage({ type: 'scene', input }),
     pose: pose => worker.postMessage({ type: 'pose', pose }),
     sun: ms => worker.postMessage({ type: 'sun', ms }),
+    layer: (id, on) => worker.postMessage({ type: 'layer', id, on }),
+    greenness: answer => worker.postMessage({ type: 'greenness', answer }),
+    erosion: input => worker.postMessage({ type: 'erosion', input }),
     size: (width, height, dpr) => worker.postMessage({ type: 'size', width, height, dpr }),
     ask: what => gone ? Promise.resolve(null) : new Promise(done => { const id = ++n; asks.set(id, done); worker.postMessage({ type: 'ask', id, what }); setTimeout(() => { if (asks.has(id)) { asks.delete(id); done(null); } }, 8000); }),
     dispose() { if (gone) return; gone = true; for (const done of asks.values()) done(null); asks.clear(); try { worker.postMessage({ type: 'dispose' }); } catch { /* it had ended */ } setTimeout(() => worker.terminate(), 50); },
@@ -76,14 +80,15 @@ function workerDrawer(canvas, say) {
 function pageDrawer(canvas, say, refuseSoftware) {
   const shadeView = shadeFor({ say: () => { if (last && !gone) { sunDirty = true; if (!showing) relight(); } } });
   const land = createLand({ fetchImpl: (u, o) => fetch(u, o), base: new URL('../', import.meta.url).href, say: () => { if (last && !gone) display(last); } });
+  const layers = createLayers({ fetchImpl: (u, o) => fetch(u, o), makeCanvas: (w, h) => Object.assign(document.createElement('canvas'), { width: w, height: h }), say: () => { if (last && !gone) display(last); } });
   let last = null, drawer = null, gone = false, shownAt = 0, ready = false, scenes = 0, pending = null, size = null, pose = null, sunMs = null, showing = 0, relighting = false, sunDirty = false;
   const withSun = input => (sunMs == null ? input : { ...input, hourMs: sunMs });
   const display = input => {
     if (!drawer) { pending = input; return; }
     last = input;
-    const use = withSun(input), mine = ++shownAt, sc = attachLand(land, shadeView.attach(groundScene({ ...use, plantLimit: drawer.budget.plants }), use), use);
+    const use = withSun(input), mine = ++shownAt, sc = layers.attach(attachLand(land, shadeView.attach(groundScene({ ...use, plantLimit: drawer.budget.plants }), use), use));
     showing++;
-    drawer.show(sc).then(done => { showing--; if (!done || gone || mine !== shownAt) return; scenes++; say(shadeView.message(sc)); say(landMessage(sc, drawer.stats().details, land)); if (!ready) { ready = true; say({ type: 'ready' }); } else say({ type: 'shown', scenes }); if (sunDirty) relight(); },
+    drawer.show(sc).then(done => { showing--; if (!done || gone || mine !== shownAt) return; scenes++; say(shadeView.message(sc)); say(landMessage(sc, drawer.stats().details, land)); say({ type: 'layers', layers: layers.layers(sc) }); if (!ready) { ready = true; say({ type: 'ready' }); } else say({ type: 'shown', scenes }); if (sunDirty) relight(); },
       e => { showing--; say({ type: 'fail', why: 'error', message: String(e?.message || e).slice(0, 200) }); });
   };
   async function relight() {   // only the sun moved: the ground and the light again, nothing rebuilt; asks that come meanwhile fold into the newest
@@ -92,7 +97,7 @@ function pageDrawer(canvas, say, refuseSoftware) {
     try {
       while (sunDirty && drawer && last && !gone && !showing) {
         sunDirty = false;
-        const use = withSun(last), sc = attachLand(land, shadeView.attach(groundScene({ ...use, plantLimit: drawer.budget.plants }), use), use);
+        const use = withSun(last), sc = layers.attach(attachLand(land, shadeView.attach(groundScene({ ...use, plantLimit: drawer.budget.plants }), use), use));
         if (await drawer.relight(sc) && !gone) { say(shadeView.message(sc)); say({ type: 'sunshown', ms: sc.momentMs }); }
       }
     } catch (e) { say({ type: 'fail', why: 'error', message: String(e?.message || e).slice(0, 200) }); } finally { relighting = false; }
@@ -119,12 +124,15 @@ function pageDrawer(canvas, say, refuseSoftware) {
       if (!gone) display(pending);
     },
     scene: display,
+    layer: (id, on) => { layers.setLayer(id, on); },
+    greenness: answer => layers.setGreenness(answer),
+    erosion: input => layers.setErosion(input),
     sun: ms => { sunMs = Number.isFinite(ms) ? ms : null; sunDirty = true; if (!showing) relight(); },
     pose: p => { pose = p; drawer?.pose(p); },
     size: (width, height, dpr) => { size = { width, height, dpr }; drawer?.size(width, height, dpr); },
     ask: async what => !drawer ? null : what === 'stats' ? { ...drawer.stats(), drawn: drawer.drawn(), lights: drawer.lightCount() } : what === 'drawn' ? drawer.drawn() : drawer.lightCount(),
     sync: what => !drawer ? 0 : what === 'drawn' ? drawer.drawn() : drawer.lightCount(),
-    dispose() { gone = true; shadeView.dispose(); land.dispose(); drawer?.dispose(); drawer = null; },
+    dispose() { gone = true; shadeView.dispose(); land.dispose(); layers.dispose(); drawer?.dispose(); drawer = null; },
   };
 }
 
@@ -213,6 +221,7 @@ export async function view3d(input, node, options = {}) {
     else if (m.type === 'shown') view.scenes = m.scenes;
     else if (m.type === 'shade') showShade(m);
     else if (m.type === 'land') showLand(m);
+    else if (m.type === 'layers') showLayers(m.layers);
     else if (m.type === 'fail') fail(m.why);
     else if (m.type === 'lost') {   // the graphics memory was taken back: the first time 3D is paused and can be tried again, the second time the board is shown (js/farm3d-rule.js)
       losses++;
@@ -255,10 +264,10 @@ export async function view3d(input, node, options = {}) {
   // ---- heights: the caller may hand them over, or a loader to ask for them once
   let heightsToken = 0;
   async function wantHeights(inp) {
-    const loader = typeof inp.loadHeights === 'function' ? inp.loadHeights : sourcesNeeded({ ...choice, scale: false }).includes('heights') ? async req => (await import('./heights3d.js')).loadHeights(req) : null;   // the shade needs the heights: asked once, only when it is switched on
+    const loader = typeof inp.loadHeights === 'function' ? inp.loadHeights : async req => (await import('./heights3d.js')).loadHeights(req);   // the land is the real land: its heights are always asked, once for each block, and the view is drawn at once without waiting for them
     if (inp.heights !== undefined || !loader) return;
     const token = ++heightsToken;
-    waitEl.hidden = false; waitEl.textContent = "Reading the land's heights…";
+    waitEl.hidden = false; waitEl.innerHTML = '<span class="sk" aria-hidden="true" style="display:inline-block;width:11em;vertical-align:middle"></span><span class="sr">Reading the land’s heights…</span>';   // a grey line in the shape of the words, never bare text or a spinner
     let grid = null; try { grid = await loader(sc.heightRequest); } catch { grid = null; }
     if (disposed || token !== heightsToken) return;
     waitEl.hidden = true;
@@ -287,7 +296,7 @@ export async function view3d(input, node, options = {}) {
     if (m.state === 'off') return;
     shadeWords.replaceChildren(...lines.map(t => Object.assign(document.createElement('p'), { className: 'f3d-sw-words', textContent: t })));
     shadeWords.dataset.state = m.state;
-    view.shade = m;
+    view.shade = m; announce?.();
   }
   view.shade = { state: choice.shade === true ? 'waiting' : 'off', words: [] };
   const onShade = e => {
@@ -308,11 +317,59 @@ export async function view3d(input, node, options = {}) {
   };
   root.addEventListener('input', onShade); root.addEventListener('change', onShade);
   if (choice.shade === true) fillHour();
+  // ---- the layers: the picture of the ground and the facts draped over it. layers() lists them with their state; setLayer(id, on) turns one on or off and answers when its state is settled (a layer never holds the view back).
+  // Worked out in the drawing worker: the picture, Slope, Erosion exposure, Frost pockets, Greenness, and the Plants switch. Of the view itself: Sun and shade (the shade of the land at an hour) and Buildings, roads and trees (the OpenStreetMap shapes).
+  let layerList = [], layerWaits = [], lastAnnounced = new Map();
+  const picCredit = root.querySelector('.f3d-pic-credit'), legendEl = root.querySelector('.f3d-drape-legend');
+  const DRAPES_OF_WORKER = ['slope', 'erosion', 'frost', 'greenness'], OBJECTS = ['buildings', 'roads', 'hedges'];
+  const tickBox = (sel, on) => { const box = root.querySelector(sel); if (box && box.checked !== !!on) { box.checked = !!on; box.dispatchEvent(new Event('change', { bubbles: true })); } return !!box; };
+  const shadeLayer = () => { const st = view.shade?.state ?? 'off', on = choice.shade === true; return { id: 'sunshade', name: 'Sun and shade', line: on ? ['Where the hills and the land cast shade at the hour shown.', ...(view.shade?.words ?? []).slice(0, 1)].join(' ') : 'Where the hills and the land cast shade, at any hour of the day.', on, state: !on ? 'off' : st === 'ready' ? 'ready' : st === 'waiting' ? 'loading' : 'failed', credit: '', date: '', legend: on ? [{ colour: 'rgba(11,37,69,0.55)', label: 'in the shade of the land at the hour shown' }] : [] }; };
+  const objectsLayer = () => {
+    const on = OBJECTS.some(id => choice[id] === true), got = (view.land?.layers ?? []).filter(l => OBJECTS.includes(l.id)), failed = got.find(l => l.state === 'cannot');
+    return { id: 'objects', name: 'Buildings, roads and trees', line: on ? got.map(l => l.words?.[0]).filter(Boolean).join(' ') || 'Reading what OpenStreetMap has drawn here.' : 'The buildings, roads, hedges and woods that OpenStreetMap has drawn here.', on, state: !on ? 'off' : failed ? 'failed' : got.length && got.every(l => l.state === 'ready') ? 'ready' : 'loading', credit: view.land?.credit ? String(view.land.credit.text ?? view.land.credit) : '', date: '', legend: [] };
+  };
+  const merged = () => {
+    const w = new Map(layerList.map(l => [l.id, l])), order = ['picture', 'slope', 'sunshade', 'erosion', 'frost', 'greenness', 'objects', 'plants'];
+    const plants = w.get('plants') ?? { id: 'plants', name: 'Plants', line: 'The crop on the field, drawn as symbols. Switch it off to see what lies under it.', on: plantsOn, state: 'ready', credit: '', date: '', legend: [] };
+    return order.map(id => id === 'sunshade' ? shadeLayer() : id === 'objects' ? objectsLayer() : id === 'plants' ? { ...plants, on: plantsOn } : w.get(id)).filter(Boolean);
+  };
+  let plantsOn = true;
+  function announce() {
+    const list = merged();
+    for (const l0 of list) { const l = shaped(l0), k = JSON.stringify([l.on, l.state, l.line]); if (lastAnnounced.get(l.id) !== k) { lastAnnounced.set(l.id, k); tell('f3d-layer', { id: l.id, state: l.state, on: l.on, layer: l }); for (const fn of [...listeners]) { try { fn(l); } catch { /* a listener failing never stops the rest */ } } } }
+    layerWaits = layerWaits.filter(w => { const l = list.find(x => x.id === w.id); if (l && l.state !== 'loading') { w.done(shaped(l)); return false; } return true; });
+  }
+  function showLayers(list) {
+    layerList = list;
+    const pic = list.find(l => l.id === 'picture'); if (picCredit) { picCredit.hidden = !(pic?.on && pic.state === 'ready'); picCredit.textContent = pic?.credit || ''; }
+    const lit = merged().find(l => l.on && l.legend?.length && l.id !== 'picture');
+    if (legendEl) { legendEl.hidden = !lit; legendEl.innerHTML = lit ? `<li class="f3d-lg-name">${esc(lit.name)}</li>${lit.legend.map(k => `<li><i style="background:${esc(k.colour)}"></i><span>${esc(k.label)}</span></li>`).join('')}` : ''; }
+    announce();
+  }
+  // The rows the page's Layers control reads: { id, name, line, on, state 'idle' | 'loading' | 'ready' | 'failed', source, date, needs, legend }. 'idle' is a layer that is off, or that waits for something My farm hands over (then needs is true and the line says what).
+  const shaped = l => ({ ...l, state: l.state === 'off' || l.state === 'needs' ? 'idle' : l.state, needs: l.state === 'needs', source: l.credit || '' });
+  view.layers = () => merged().map(shaped);
+  const listeners = new Set();
+  view.onLayer = fn => { if (typeof fn !== 'function') return () => false; listeners.add(fn); return () => listeners.delete(fn); };
+  view.setLayer = (id, on) => new Promise(done => {
+    if (disposed) return done(null);
+    on = !!on;
+    const known = merged().find(l => l.id === id); if (!known) return done(null);
+    const waiting = { id, done }; layerWaits.push(waiting);
+    if (id === 'sunshade') { if (on) for (const d of DRAPES_OF_WORKER) drawer?.layer?.(d, false); if (!tickBox('[data-shade]', on)) { layerWaits = layerWaits.filter(w => w !== waiting); return done(null); } }
+    else if (id === 'objects') { for (const o of OBJECTS) tickBox(`[data-land="${o}"]`, on); }
+    else if (id === 'plants') { plantsOn = on; drawer?.layer?.('plants', on); }
+    else { if (on && DRAPES_OF_WORKER.includes(id)) tickBox('[data-shade]', false); drawer?.layer?.(id, on); }
+    setTimeout(announce, 0);
+    setTimeout(() => { if (layerWaits.includes(waiting)) { layerWaits = layerWaits.filter(w => w !== waiting); done(shaped(merged().find(l => l.id === id) ?? {}) ?? null); } }, 15000);
+  });
+  view.setGreenness = answer => drawer?.greenness?.(answer ?? null);   // the weak-spots answer of My farm: the 30 m squares of the field (asked only when the farmer presses Find weak spots, never here)
+  view.setErosion = input => drawer?.erosion?.(input ?? null);         // what the erosion index needs besides the land: { factor } or { soil: { sand, silt, clay, carbon }, mfi }
   // ---- the details on the land: the switches, their words as the maps answer, the credit; the choice is kept on this device
   const landSay = root.querySelector('.f3d-land-say'), creditEl = root.querySelector('.f3d-land-credit');
   view.land = { layers: [], report: [], credit: null };
   function showLand(m) {
-    view.land = m;
+    view.land = m; setTimeout(() => announce?.(), 0);
     for (const l of m.layers) { const el = root.querySelector(`[data-land-words="${l.id}"]`); if (el) { const note = m.report.find(r => r.id === l.id)?.note; el.textContent = [...l.words, note].filter(Boolean).join(' '); el.dataset.state = l.state; } }
     for (const sw of root.querySelectorAll('[data-land]')) if (choice[sw.dataset.land] !== true) { const el = root.querySelector(`[data-land-words="${sw.dataset.land}"]`); if (el && el.dataset.state) { el.textContent = el.dataset.line || el.textContent; delete el.dataset.state; } }
     if (creditEl) creditEl.hidden = !m.credit;

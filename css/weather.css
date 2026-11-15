@@ -16,7 +16,7 @@
 .chart-card figcaption { margin-bottom: var(--space-8); } .chart-card .cz-open { margin-top: var(--space-8); }
 .ch { display: block; width: 100%; height: auto; }
 .ch-bar.rain { fill: var(--c-rain); } .ch-bar.hi { fill: var(--c-hi); } .ch-bar.lo { fill: var(--c-lo); }
-.ch-grid { stroke: var(--sep); stroke-width: .5; } .ch-tick { fill: var(--ink2); font-size: 9px; } .ch-median { stroke: var(--ink); stroke-width: 1.5; stroke-dasharray: 4 3; }
+.ch-grid { stroke: var(--sep); stroke-width: .5; } .ch-tick { fill: var(--ink2); font-size: 12px; } .ch-median { stroke: var(--ink); stroke-width: 1.5; stroke-dasharray: 4 3; }
 .ch-legend { display: flex; flex-wrap: wrap; gap: var(--space-12); margin-top: var(--space-8); font-size: var(--fs-caption); color: var(--ink2); }
 .ch-key { display: inline-block; width: 10px; height: 10px; margin-right: 4px; border-radius: 2px; background: var(--c-rain); } .ch-key.hi { background: var(--c-hi); } .ch-key.lo { background: var(--c-lo); }
 dialog.chart-sheet { width: min(1040px, calc(100vw / var(--tz) - 24px)); }

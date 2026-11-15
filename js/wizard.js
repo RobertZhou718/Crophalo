@@ -5,9 +5,10 @@
 import { hooks } from './hooks.js';
 import { esc } from './words.js';
 import { SOIL_MAP_WORDS, countryCode, hasRotation, hasSoil, isGarden, stepsFor, needFor, canGo, rotationSlots, readyAnswers } from './steps.js';
-import { STEPS, WATER, FEEL, COLOUR, MATTERS, TILLAGE, HABITS, WORDS } from './words.js';
-import { newState, checkSerialized, cleanArea, PRIORITY_SETS } from './state.js';
-import { coordText } from './places.js';
+import { STEPS, WATER, FEEL, COLOUR, WORDS } from './words.js';
+import { newState, checkSerialized, cleanArea } from './state.js';
+import { mattersHTML, inputsChange, inputsClick } from './inputs-step.js';
+import { coordText, loadRegions } from './places.js';
 import { PRESETS, GARDENS, presetIds, gardenIds, pickerGroups, cropName, cropOf, gardenOf, isPreset } from './crops.js';
 import { cropRow, waterPic, soilPic, cropPic } from './pics.js';
 import { foldHTML as soilFoldHTML, bindSoilTest } from './soiltestui.js';
@@ -19,6 +20,8 @@ import { toast } from './toast.js';
 import { motionOff } from './motion.js';
 import { SAY as MAPSAY } from './mapwords.js';
 import { loadName, SETTLE_MS, FINDING, PLACE_UNKNOWN } from './placename.js';
+import { mountAreaBlock } from './areablock.js';
+import { readUnits, unitsFor } from './units.js';
 import { fieldYearsModel, fieldYearsHTML, loadFieldYears, rotationFor, countryOk } from './fieldyears.js';
 
 const $ = (sel, root = document) => root.querySelector(sel), $$ = (sel, root = document) => [...root.querySelectorAll(sel)];
@@ -46,12 +49,29 @@ const radio = (name, value, checked, inner, cls = '') => `<label class="choice $
 const tile = (name, item, checked, pic = '') => radio(name, item.value, checked, `${pic}<b>${esc(item.title)}</b>${item.sub ? `<small>${esc(item.sub)}</small>` : ''}`, 'tile');
 const fold = (id, title, body) => `<details class="fold-card" id="${id}"><summary><span class="t">${title}</span></summary><div class="fold-b">${body}</div></details>`;
 
+// The field's area under "Your field": the size in the farmer's unit, the corners, "Used in report" and the small outline, from the outline the map holds (the join gives the map's own source with setOutlineSource);
+// grey skeleton lines while the field's data load, never an empty area.
+let outlineSource = null, areaBlock = null, demoOutline = null;
+export const setOutlineSource = fn => { outlineSource = typeof fn === 'function' ? fn : null; };
+const fallbackOutline = () => {
+  const own = Array.isArray(state.area?.pts) && state.area.pts.length >= 3 ? state.area.pts : null;
+  if (own) return { ring: own, used: true };
+  const raw = Array.isArray(spot?.outline) && spot.outline.length >= 3 ? spot.outline : demoOutline, demoRing = raw ? raw.map(([lo, la]) => [la, lo]) : null;   // a demo field's outline is lon,lat
+  return demoRing ? { ring: demoRing, used: !!spot?.demo } : null;
+};
+function mountArea() {
+  areaBlock?.destroy(); areaBlock = null;
+  const host = $('#areaHost'); if (!host) return;
+  areaBlock = mountAreaBlock(host, { order: () => (unitsFor(readUnits(), state.loc?.cc).area === 'imperial' ? 'acres' : 'hectares'), now: () => (outlineSource ? outlineSource() : null) ?? fallbackOutline() });
+  if (naming) areaBlock.setLoading(true);
+  if (spot?.demo && !spot.outline && spot.region && !demoOutline) loadRegions().then(list => { const r = list.find(x => x.id === spot.region); if (r?.outline) { demoOutline = r.outline; areaBlock?.redraw(); } }).catch(() => {});   // the demo field's outline comes from its region
+}
 // The top line is the place's name; the coordinates are the small line under it, never the same thing twice.
 let naming = false, nameTimer = null;
 function head() {
   const loc = state.loc, label = loc?.label ?? '';
   const title = !loc ? WORDS.placeLoading : state.name || label || (naming ? FINDING : PLACE_UNKNOWN);
-  const small = loc ? [state.name && label ? label : '', coordText(loc.lat, loc.lon)].filter(Boolean).join(' · ') : WORDS.placeLoading;
+  const same = !!label && !!state.name && (state.name.toLowerCase().includes(label.toLowerCase()) || label.toLowerCase().includes(state.name.toLowerCase())), small = loc ? [state.name && label && !same ? label : '', coordText(loc.lat, loc.lon)].filter(Boolean).join(' · ') : WORDS.placeAsk;   // the name once on top; the country and the coordinates under it, never the name again
   return `<div class="panel-head"><h2 class="panel-name">${esc(title)}</h2>
     <p class="panel-place"><svg class="ic" aria-hidden="true"><use href="#i-pin"/></svg><span>${esc(small)}</span>${spot?.demo ? `<span class="chip">${WORDS.demoChip}</span>` : ''}</p></div>`;
 }
@@ -59,13 +79,13 @@ function head() {
 function askName(now = false) {
   clearTimeout(nameTimer); nameTimer = null;
   if (!state.loc || state.name || state.loc.label || spot?.demo) { naming = false; return; }
-  naming = true;
+  naming = true; areaBlock?.setLoading(true);
   const lat = state.loc.lat, lon = state.loc.lon;
   const run = async () => {
     nameTimer = null;
     const got = await loadName(lat, lon);
     if (!state.loc || state.loc.lat !== lat || state.loc.lon !== lon) return;   // the farmer chose another place meanwhile
-    naming = false;
+    naming = false; areaBlock?.setLoading(false);
     if (got.ok && !state.loc.label) { state.loc = { ...state.loc, label: got.name }; keep(); }
     const h = $('#setupRoot .panel-head'); if (h) h.outerHTML = head();
   };
@@ -81,7 +101,7 @@ function bar() {
 }
 function stepField() {
   const demo = spot?.demo ? `<div class="demo-ready"><p>${esc(WORDS.demoAnswers)}</p><button type="button" class="btn primary" id="demoSee">${esc(WORDS.last)}</button></div>` : '';
-  return `${demo}<div id="mapSlot"></div>`;
+  return `${demo}<div id="areaHost" class="area-host"></div><div id="mapSlot"></div>`;
 }
 // ---- step 2: what do you grow? (the rules and the words are in js/cropstep.js)
 let cropMap = { key: '', status: 'idle', answer: null }, moreOpen = false, fieldYears = { key: '', status: 'idle', answer: null, used: false };
@@ -179,15 +199,7 @@ function stepSoil() {
     <p class="q">${WORDS.colourQ}</p><div class="tiles3" role="radiogroup" aria-label="${esc(WORDS.colourQ)}">${COLOUR.map(c => tile('colour', c, state.soil.mode === 'manual' && state.soil.om === c.value, soilPic(c.value, { size: 36 }))).join('')}</div>
     <details class="disc"><summary>${WORDS.colourAbout}</summary><p class="cap">${WORDS.colourWhy}</p></details>${soilStatus()}</div>${soilFoldHTML(state.soilTest)}`;
 }
-function stepMatters() {
-  const taken = [state.farm.tillage === 'notill' ? 'no-till' : state.farm.tillage === 'conventional' ? 'conventional tillage' : 'min-till', state.farm.coverOK ? 'you can sow cover crops' : 'no cover crops', state.farm.labor ? 'short on workers or machines' : 'enough workers and machines'].join(', ');
-  return `<div class="tiles3 big" role="radiogroup" aria-label="${esc(STEPS[3].heading)}">${MATTERS.map(m => radio('matters', m.value, state.prioPreset === m.value, `<svg class="ic" aria-hidden="true"><use href="#${m.icon}"/></svg><b>${esc(m.title)}</b>`, 'tile')).join('')}</div>
-    <details class="fold-card" id="foldMore"><summary><span class="t">${WORDS.more} <span class="cap">${WORDS.optional}</span></span></summary><div class="fold-b">
-      <p class="cap" id="takenAs">${esc(WORDS.takenAs(taken))}</p><p class="q">${WORDS.tillage}</p>
-      <div class="seg" role="radiogroup" aria-label="${WORDS.tillage}">${TILLAGE.map(t => `<button type="button" role="radio" aria-checked="${state.farm.tillage === t.value}" data-till="${t.value}">${t.title}</button>`).join('')}</div>
-      ${HABITS.map(h => `<label class="swrow"><span>${esc(h.title)}<small>${esc(h.sub)}</small></span><input type="checkbox" role="switch" class="sr" data-habit="${h.key}"${state.farm[h.key] ? ' checked' : ''}><i class="sw" aria-hidden="true"></i></label>`).join('')}</div></details>`;
-}
-const BODY = { field: stepField, crops: stepCrops, soil: stepSoil, matters: stepMatters };
+const BODY = { field: stepField, crops: stepCrops, soil: stepSoil, matters: () => mattersHTML(state) };   // step 4 is drawn by js/inputs-step.js
 
 function cta() {
   const step = steps()[at], last = at === steps().length - 1, need = needFor(step.id, state), off = !!need;
@@ -209,6 +221,7 @@ export function render({ focus = false } = {}) {
   else root.innerHTML = `${panel}<div class="mapcol" id="setupMap" role="group" aria-label="Map"></div>`;
   root.dataset.step = step.id;   // the stylesheet shrinks the map on a phone once the field is chosen
   enhancePickers($('#setupRoot'));
+  mountArea();
   initListen($('#wListen'), step.listen);
   if (focus) { $('#wHeading').tabIndex = -1; $('#wHeading').focus(); $('#setupPanel').scrollTop = 0; if (!motionOff()) scrollTo({ top: 0, behavior: 'smooth' }); else scrollTo(0, 0); }
   document.title = `Farm setup · Crophalo`;
@@ -238,7 +251,6 @@ function choose(target) {
   else if (name === 'water') { state.farm.irrigation = value; state.touched.farm = true; }
   else if (name === 'feel') state.soil = { ...state.soil, mode: 'manual', texture: value };
   else if (name === 'colour') state.soil = { ...state.soil, mode: 'manual', om: value };
-  else if (name === 'matters') { state.prioPreset = value; state.prio = [...PRIORITY_SETS[value]]; }
   if (name === 'feel' || name === 'colour') { state.soil.mode = 'manual'; }
   refresh(true);
   if (name === 'rot' || name === 'garden') say(chosenWords());
@@ -254,8 +266,10 @@ function bind() {
   const root = $('#setupRoot');
   bindSoilTest(root, onSoilTest);
   root.addEventListener('toggle', event => { if (event.target.id === 'foldMoreRot') moreOpen = event.target.open; }, true);
+  const after = r => { refresh(true); if (r.focus) $(r.focus)?.focus(); if (r.say) say(r.say); };   // step 4's answers (js/inputs-step.js)
   root.addEventListener('change', event => {
-    const t = event.target;
+    const t = event.target, inp = inputsChange(t, state);
+    if (inp) return void after(inp);
     if (t.matches('input[type=radio]')) choose(t);
     else if (t.matches('[data-habit]')) { state.farm[t.dataset.habit] = t.checked; state.touched.farm = true; $('#takenAs') && refresh(true); keep(); }
     else if (t.matches('.year-pick')) { const list = [...(state.rotation.custom.length ? state.rotation.custom : [''])]; list[+t.dataset.year] = t.value; state.rotation.custom = list.filter(Boolean); state.touched.rotation = true; refresh(true); }
@@ -263,6 +277,7 @@ function bind() {
   root.addEventListener('click', event => {
     const t = event.target.closest('button, a');
     if (!t) return;
+    const inp = inputsClick(t, state); if (inp) return void after(inp);
     if (t.dataset.go) return go(+t.dataset.go);
     if (t.id === 'wNext') return next();
     if (t.id === 'useFieldYears') return useFieldYears();
@@ -297,9 +312,10 @@ export function setPlace(chosen) {
     fresh.name = chosen.name || '';
     if (chosen.demo) Object.assign(fresh, readyAnswers(fresh, chosen));
   }
-  state = fresh; at = 0; outline = null; cropMap = { key: '', status: 'idle', answer: null }; fieldYears = { key: '', status: 'idle', answer: null, used: false }; moreOpen = false;
+  demoOutline = null; state = fresh; at = 0; outline = null; cropMap = { key: '', status: 'idle', answer: null }; fieldYears = { key: '', status: 'idle', answer: null, used: false }; moreOpen = false;
   askName();
   render({ focus: false });
+  setTimeout(() => { const v = $('#view-setup'); if (v && !v.hidden && (document.activeElement === document.body || !document.activeElement)) { const h = $('#wHeading'); if (h) { h.tabIndex = -1; h.focus({ preventScroll: true }); } } }, 160);   // when the setup opens the keyboard goes to its heading (the one h1)
   readCropMap();
   document.dispatchEvent(new CustomEvent('crophalo:place', { detail: chosen ? { lat: fresh.loc.lat, lon: fresh.loc.lon, name: fresh.name, country: chosen.country ?? chosen.place ?? '', demo: !!chosen.demo, region: chosen.region ?? null, from: 'setup' } : null }));
 }
@@ -324,6 +340,10 @@ export function movePlace(chosen, { from = 'map' } = {}) {
   if (from === 'outside') document.dispatchEvent(new CustomEvent('crophalo:place', { detail: { lat, lon, name: state.name, country: state.loc.label, from: 'outside' } }));
 }
 export const currentState = () => structuredClone(state);
+// The report's field question (a pin the crop map shows as not farmland). setFieldOk: the farmer's word "This is my field", kept for this pin only (js/state.js cleanLoc drops it once the pin moves).
+// toPlaceStep: "Move the pin to my field" opens the setup on its first step, where the pin is placed; nothing else changes.
+export function setFieldOk(word) { if (!state.loc || !word) return; state.loc = { ...state.loc, fieldOk: word }; keep(); }
+export function toPlaceStep() { at = 0; keep(); render({ focus: false }); }
 export function initWizard(seam) {
   where = { ...where, ...seam };
   if (!$('#setupRoot')) return;

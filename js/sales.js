@@ -3,6 +3,7 @@
 // the country's average yield, not the field's; with no costs taken off. Every assumption is written out with the figure, and a figure that cannot be made says why instead.
 // Pure: the two lookups' answers go in, words and numbers come out. No page, no storage, no network, no clock. Checked by scripts/test_sales.mjs.
 import { convert, fxNote, isCode } from './currency.js';
+import { plainReason } from './satellites2-data.js';
 
 const MONTHS = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
 export const monthWords = ym => { const m = /^(\d{4})-(\d{2})$/.exec(String(ym || '')); return m && +m[2] >= 1 && +m[2] <= 12 ? `${MONTHS[+m[2] - 1]} ${m[1]}` : ''; };
@@ -36,7 +37,7 @@ export function assumptions({ country, cropName, yieldInfo, price, currency, rat
 
 // The world price of a crop from the prices lookup's answer, or the reason there is none. Never a guess.
 export function priceOf(prices, cropId) {
-  if (!prices || prices.ok === false) return { ok: false, reason: prices?.reason ? `World prices could not be read: ${prices.reason}` : 'World prices did not answer.' };
+  if (!prices || prices.ok === false) return { ok: false, reason: plainReason(prices?.reason, '') ? `World prices could not be read: ${plainReason(prices.reason, '')}` : 'World prices did not answer.' };
   const s = prices.series && Object.hasOwn(prices.series, cropId) ? prices.series[cropId] : null;
   if (!s) return { ok: false, reason: `The World Bank's price sheet has no world price for ${cropId}.`, noPrice: true };
   if (s.proxy) return { ok: false, reason: `The World Bank's price sheet has no price for ${cropId} itself, only for a product made from it, so no figure is shown.`, noPrice: true };
@@ -47,7 +48,7 @@ export function priceOf(prices, cropId) {
 }
 // A country's national yield of a crop from the FAOSTAT lookup's answer, or the reason there is none.
 export function yieldOf(faostat, country, cropId) {
-  if (!faostat || faostat.ok === false) return { ok: false, reason: faostat?.reason ? `National yields could not be read: ${faostat.reason}` : 'National yields were not read yet.' };
+  if (!faostat || faostat.ok === false) return { ok: false, reason: plainReason(faostat?.reason, '') ? `National yields could not be read: ${plainReason(faostat.reason, '')}` : 'National yields did not answer.' };
   const c = faostat.countries && Object.hasOwn(faostat.countries, country) ? faostat.countries[country] : null;
   if (!c) return { ok: false, reason: `FAOSTAT has no crop figures for the country with code ${String(country).slice(0, 3)}.`, noYield: true };
   const y = c.yield && Object.hasOwn(c.yield, cropId) ? c.yield[cropId] : null;

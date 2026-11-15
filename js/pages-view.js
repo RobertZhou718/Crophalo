@@ -59,35 +59,39 @@ export function limitsHTML() {
     <section class="lim-not" aria-labelledby="lmN"><h2 id="lmN">What Crophalo does not know</h2><ul class="lim-chips">${NOT_KNOWN.map(t => `<li class="chip">${esc(t)}</li>`).join('')}</ul><details class="lim-fold" id="lf-not"><summary>Show more</summary><ul class="lim-chips">${NOT_KNOWN_MORE.map(t => `<li class="chip">${esc(t)}</li>`).join('')}</ul></details></section>`;
 }
 
-// ---- Settings: one calm page, no tabs. Grouped cards, each row a label on the left and its control on the right; every choice is the segmented control.
+// ---- Settings: ONE calm list, the way a phone's settings read. Sections with a small title; each setting one row: its name and one short help line on the left, its control on the right, thin rules between rows;
+// every choice group on one line, the chosen part filled blue with white bold words. Nothing repeats its section's title.
 const choicesOf = (key, words) => SETTING_CHOICES[key].map((v, i) => [v, words[i]]);
-// A row: its label, its control (a segmented control or any other control) and an optional line under it
-const seg = (name, label, choices, current, { quick = false, none = false } = {}) => `<div class="st-row"><span class="st-l" id="lab-${esc(name)}">${esc(label)}</span><div class="seg" role="radiogroup" aria-labelledby="lab-${esc(name)}">${choices.map(([v, t], i) => `<button type="button" role="radio" aria-checked="${v === current}" tabindex="${v === current || (none && i === 0) ? 0 : -1}" ${quick ? `data-quick="${esc(v)}"` : `data-set="${esc(name)}" data-val="${esc(v)}"`}>${esc(t)}</button>`).join('')}</div></div>`;
-const card = (id, title, body) => `<section class="st-card" aria-labelledby="st-${id}"><h2 id="st-${id}">${esc(title)}</h2>${body}</section>`;
+// A row: the name and its help on the left (the name carries the id the control is labelled by), the control on the right.
+const row = (id, name, help, control, cls = '') => `<div class="stx-row${cls ? ' ' + cls : ''}"><div class="stx-t"><span class="stx-n" id="lab-${esc(id)}">${esc(name)}</span>${help ? `<small class="stx-h">${esc(help)}</small>` : ''}</div><div class="stx-c">${control}</div></div>`;
+const segCtl = (name, choices, current, { quick = false, none = false } = {}) => `<div class="seg" role="radiogroup" aria-labelledby="lab-${esc(name)}">${choices.map(([v, t], i) => `<button type="button" role="radio" aria-checked="${v === current}" tabindex="${v === current || (none && i === 0) ? 0 : -1}" ${quick ? `data-quick="${esc(v)}"` : `data-set="${esc(name)}" data-val="${esc(v)}"`}>${esc(t)}</button>`).join('')}</div>`;
+const segRow = (name, label, help, choices, current, opts) => row(name, label, help, segCtl(name, choices, current, opts));
+const section = (id, title, body) => `<section class="st-card stx-sec" aria-labelledby="sx-${id}"><h2 id="sx-${id}">${esc(title)}</h2><div class="stx-list">${body}</div></section>`;
 const line = (text, id = '') => `<p class="st-note"${id ? ` id="${id}"` : ''}>${esc(text)}</p>`;
 export const unitSystem = u => (u.rain === 'mm' && u.temp === 'C' && u.area === 'metric' && u.yield === 't' ? 'metric' : u.rain === 'in' && u.temp === 'F' && u.area === 'imperial' && u.yield === 'bu' ? 'imperial' : 'mixed');
 // "25 mm of rain · 18 °C · 40 ha": what the choices look like, in one line
 export const exampleLine = (u, lines) => { const by = Object.fromEntries(lines); return `${by.Rain} of rain · ${by.Temperature} · ${by['A field'].split(' at ')[0]}`; };
 export function settingsHTML(ctx = {}) {
   const s = ctx.settings ?? {}, u = ctx.units ?? {}, system = unitSystem(u), cur = s.currency ?? 'USD', n = ctx.reminders?.length ?? 0;
-  const units = card('units', 'Units', `${seg('u:system', 'Units', [['metric', 'Metric'], ['imperial', 'US']], system, { quick: true, none: system === 'mixed' })}
-    ${line(system === 'mixed' ? 'You chose some units yourself. Pick Metric or US to set them all.' : 'Follows your country until you change it.')}
+  const unitsMoney = section('units', 'Units and money', `${segRow('u:system', 'Measuring system', system === 'mixed' ? 'You chose some units yourself. Pick Metric or US to set them all.' : 'Follows your country until you change it.', [['metric', 'Metric'], ['imperial', 'US']], system, { quick: true, none: system === 'mixed' })}
+    <p class="st-example" aria-label="What the units look like">${esc(exampleLine(u, sampleLines(u, ctx.moneySample)))}</p>
     <details class="st-fold" id="stEach"><summary>Choose each unit</summary>
-      ${seg('u:rain', 'Rain', [['mm', 'mm'], ['in', 'in']], u.rain)}${seg('u:temp', 'Temperature', [['C', '°C'], ['F', '°F']], u.temp)}${seg('u:area', 'Area and distance', [['metric', 'ha · m · km/h'], ['imperial', 'acres · ft · mph']], u.area)}${seg('u:yield', 'Yield', [['t', 't/ha'], ['bu', 'bu · t/acre']], u.yield)}
+      ${segRow('u:rain', 'Rain', '', [['mm', 'mm'], ['in', 'in']], u.rain)}${segRow('u:temp', 'Temperature', '', [['C', '°C'], ['F', '°F']], u.temp)}${segRow('u:area', 'Area and distance', '', [['metric', 'ha · m · km/h'], ['imperial', 'acres · ft · mph']], u.area)}${segRow('u:yield', 'Yield', '', [['t', 't/ha'], ['bu', 'bu · t/acre']], u.yield)}
     </details>
-    <p class="st-example" aria-label="What the units look like">${esc(exampleLine(u, sampleLines(u, ctx.moneySample)))}</p>`);
-  const money = card('money', 'Money', `<div class="st-row"><label class="st-l" for="curSel">Currency</label><select id="curSel">${CURRENCIES.map(([c, nm]) => `<option value="${c}"${c === cur ? ' selected' : ''}>${esc(`${c} · ${nm}`)}</option>`).join('')}</select></div>
-    ${line('Prices are published in US dollars.')}${cur === 'USD' ? '' : line(fxNote(cur, ctx.rates), 'fxNote')}`);
-  const reading = card('read', 'Reading and motion', `${seg('text', 'Text size', choicesOf('text', ['Default', 'Larger', 'Largest']), s.text)}
-    ${seg('contrast', 'Contrast', choicesOf('contrast', ['Standard', 'High']), s.contrast)}
-    ${seg('links', 'Links', choicesOf('links', ['Standard', 'Underlined']), s.links)}
-    ${seg('motion', 'Motion', choicesOf('motion', ['Full', 'Less', 'Still']), s.motion)}${line('Full: all animations. Less: quick fades only. Still: nothing moves.')}${ctx.deviceStill ? '<p class="st-note" role="status" id="motionDevice">Your device asks for less motion, so Crophalo keeps still.</p>' : ''}
-    ${seg('listen', 'Listening speed', choicesOf('listen', ['Normal', 'Slower', 'Faster']), s.listen)}
-    <div class="st-row"><span class="st-l">Hear how Crophalo sounds</span><button type="button" class="btn" data-sample>Hear a sample</button></div>`);
-  const remind = card('remind', 'Reminders', `<p class="st-note" id="remindCount">${n ? `${n} ${n === 1 ? 'reminder' : 'reminders'} set. They stay on this device.` : 'They stay on this device.'}</p>
+    ${row('cur', 'Currency', 'Prices are published in US dollars.', `<select id="curSel" aria-labelledby="lab-cur">${CURRENCIES.map(([c, nm]) => `<option value="${c}"${c === cur ? ' selected' : ''}>${esc(`${c} · ${nm}`)}</option>`).join('')}</select>`)}
+    ${cur === 'USD' ? '' : line(fxNote(cur, ctx.rates), 'fxNote')}`);
+  const reading = section('read', 'Reading', `${segRow('text', 'Text size', 'Makes every word bigger.', choicesOf('text', ['Default', 'Larger', 'Largest']), s.text)}
+    ${segRow('contrast', 'Contrast', 'Stronger colours and edges.', choicesOf('contrast', ['Standard', 'High']), s.contrast)}
+    ${segRow('links', 'Links', 'Underline every link.', choicesOf('links', ['Standard', 'Underlined']), s.links)}`);
+  const movement = section('move', 'Movement and sound', `${segRow('motion', 'Motion', 'Full: all animations. Less: quick fades only. Still: nothing moves.', choicesOf('motion', ['Full', 'Less', 'Still']), s.motion)}${ctx.deviceStill ? '<p class="st-note" role="status" id="motionDevice">Your device asks for less motion, so Crophalo keeps still.</p>' : ''}
+    ${segRow('listen', 'Listening speed', 'How fast Crophalo reads a page aloud.', choicesOf('listen', ['Normal', 'Slower', 'Faster']), s.listen)}
+    ${row('sample', 'Hear how Crophalo sounds', '', '<button type="button" class="btn" data-sample>Hear a sample</button>')}`);
+  const remind = section('remind', 'Reminders', `<p class="st-note" id="remindCount">${n ? `${n} ${n === 1 ? 'reminder' : 'reminders'} set. They stay on this device.` : 'They stay on this device.'}</p>
     <div id="remindList">${remindListHTML(ctx.reminders ?? [], ctx.nowLocal ?? '2000-01-01T00:00')}</div><div id="remindWays">${settingsRemindersHTML(ctx.remindState)}</div>
-    <div class="st-row"><span class="st-l">Remove every reminder</span><button type="button" class="btn danger" data-erase="reminders" data-label="Delete all reminders">Delete all reminders</button></div>`);
-  const foot = `${installCardHtml()}<div class="st-reset"><a class="link st-status" href="#admin">Service status</a><button type="button" class="btn ghost danger" data-reset-settings>Reset settings</button>${line('Puts units, currency, listening, motion, text size, contrast and link style back to their defaults.')}</div>`;
-  return `<div class="st">${units}${money}${reading}${remind}${foot}</div>`;
+    ${row('delrem', 'Remove every reminder', '', '<button type="button" class="btn danger" data-erase="reminders" data-label="Delete all reminders">Delete all reminders</button>')}`);
+  const device = section('device', 'This device', `${installCardHtml()}
+    ${row('api', 'API connections', 'Which data services answer, and how fast (service status).', '<a class="btn" href="#admin">Open</a>')}
+    ${row('reset', 'Reset settings', 'Puts units, currency, listening, motion, text size, contrast and link style back to their defaults.', '<button type="button" class="btn ghost danger" data-reset-settings>Reset settings</button>')}`);
+  return `<div class="st stx"><div class="stx-col">${unitsMoney}${reading}${movement}</div><div class="stx-col">${remind}${device}</div></div>`;
 }
 export const PRIVACY_TAB_IDS = PRIVACY_TABS.map(t => t.id);

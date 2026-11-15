@@ -3,6 +3,7 @@
 import { yearChips, fullYears, judgePlan, playYear, allYears, stormRow, worst, WORDS } from './hardyear.js';
 import { strategies, optionLabels, ROLE_TAG } from './report-view.js';
 import { MIN_YEARS } from './history.js';
+import { readUnits, unitsFor, localiseText } from './units.js';
 
 export function hardYearModel(cur) {
   const result = cur?.result, series = cur?.series;
@@ -16,11 +17,12 @@ export function hardYearModel(cur) {
     const judged = new Map(plans.map(p => [p, judgePlan(p, series, { texture, irrigation, years })]));
     cur._hy = { key, judged, chips: yearChips(series, cur.state?.prio), counts: allYears(plans, judged, years), storm: stormRow(plans, series, years) };
   }
-  const { judged, chips, counts, storm } = cur._hy;
+  const { judged, chips, counts, storm } = cur._hy, units = unitsFor(readUnits(), cur.state?.loc?.cc);
   const year = years.includes(cur.hyYear) ? cur.hyYear : (chips[0]?.year ?? years.at(-1));
-  const rows = playYear(plans, judged, year).map(r => ({ name: labels.get(r.plan) ?? r.plan.id, role: ROLE_TAG[roles.get(r.plan)] ?? 'Option', cells: r.cells, result: r.result, reason: r.reason }));
+  const rows = playYear(plans, judged, year).map(r => ({ name: labels.get(r.plan) ?? r.plan.id, role: ROLE_TAG[roles.get(r.plan)] ?? 'Option', cells: r.cells, result: r.result, reason: localiseText(r.reason, units) }));
   const names = plans.map(p => labels.get(p) ?? p.id), bare = storm.perPlan.map((x, i) => `${x.bare} under ${i === 0 ? 'what you grow now' : names[i]}`);
-  const stormWords = storm.n ? `The ${storm.n === 10 ? '10 rainiest days' : `${storm.n} days with 20 mm of rain or more`} since ${years[0]}: bare soil on ${bare.join(', ')}.` : '';
+  const nobare = storm.perPlan.every(x => x.bare === 0);
+  const stormWords = storm.n && nobare ? `The ${storm.n === 10 ? '10 rainiest days' : `${storm.n} days with heavy rain`} since ${years[0]}: the ground was not bare under any of these strategies.` : storm.n ? `The ${storm.n === 10 ? '10 rainiest days' : `${storm.n} days with 20 mm of rain or more`} since ${years[0]}: bare soil on ${bare.join(', ')}.` : '';
   const record = `${series.source === 'era5' ? WORDS.backup : WORDS.weather} ${years[0]}–${years.at(-1)}.`;
-  return { status: 'ok', chips, years, year, rows, storm: { n: storm.n, words: stormWords }, counts: counts.map((c, i) => ({ name: names[i], hurt: c.hurt, close: c.close, of: c.of })), record, worst: worst(rows.map(r => r.result)) };
+  return { status: 'ok', units, chips, years, year, rows, storm: { n: storm.n, words: stormWords }, counts: counts.map((c, i) => ({ name: names[i], hurt: c.hurt, close: c.close, of: c.of })), record, worst: worst(rows.map(r => r.result)) };
 }

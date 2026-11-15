@@ -1,8 +1,8 @@
 // "Weak spots in this field": places in the field that stayed less green than the rest in most clear satellite pictures (NASA HLS, 30 m squares), found from the lookup's own answer.
 // Pure: greenSpots() applies the rules to the answer, pins() groups touching squares into at most three numbered spots, classify() turns a failed answer into its plain state.
 // Rules: R1 only squares wholly inside count, under 30 is too small. R2 a pass counts at 60 % clear and a median greenness of 0.35 or more. R3 in a pass the least green fifth is weak. R4 a spot is weak in 2 of 3 counted passes and 5 or more (under 5 passes: too few).
-// R6 touching spot squares make a group of 3 or more; at most 3 pins, the biggest first. It never says why. Checked by scripts/test_weakspots.mjs on the recorded answers.
-export const MIN_INSIDE = 30, CLEAR_SHARE = 0.6, MEDIAN_MIN = 0.35, WEAK_SHARE = 0.2, MIN_PASSES = 5, MIN_GROUP = 3, MAX_PINS = 3, HA_PER_SQUARE = 0.09;
+// R7 a picture whose lowest tenth and highest tenth differ by less than 0.05 flags nothing. R6 touching spot squares make a group of 3 or more; at most 3 pins, the biggest first. It never says why. Checked by scripts/test_weakspots.mjs on the recorded answers.
+export const MIN_INSIDE = 30, CLEAR_SHARE = 0.6, MEDIAN_MIN = 0.35, WEAK_SHARE = 0.2, MIN_PASSES = 5, MIN_GROUP = 3, MAX_PINS = 3, HA_PER_SQUARE = 0.09, MIN_SPREAD = 0.05;   // R7: a picture flags nothing when the field is even: its greenness between the lowest tenth and the highest tenth differs by less than 0.05
 const median = list => { const v = [...list].sort((a, b) => a - b), n = v.length; return n ? (n % 2 ? v[(n - 1) / 2] : (v[n / 2 - 1] + v[n / 2]) / 2) : NaN; };
 
 // The plain state of an answer that is not ok, from the lookup's own reason.
@@ -29,6 +29,8 @@ export function greenSpots(answer) {
   for (const { pass, clear } of counted) {
     const order = [...clear].sort((a, b) => pass.ndvi[index.get(a.id)] - pass.ndvi[index.get(b.id)] || a.id - b.id), take = Math.ceil(WEAK_SHARE * clear.length);
     for (const c of clear) of.set(c.id, of.get(c.id) + 1);
+    const v = order.map(c => pass.ndvi[index.get(c.id)]), at = q => v[Math.floor(q * (v.length - 1))];
+    if (!(at(0.9) - at(0.1) >= MIN_SPREAD)) continue;   // R7: an even field (or every value the same) has no weak place in this picture
     for (const c of order.slice(0, take)) weak.set(c.id, weak.get(c.id) + 1);
   }
   const spots = inside.filter(c => weak.get(c.id) >= MIN_PASSES && weak.get(c.id) * 3 >= 2 * of.get(c.id)).map(c => ({ ...c, weak: weak.get(c.id), of: of.get(c.id) }));

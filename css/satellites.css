@@ -25,3 +25,16 @@
 .sat-tile span { flex: 1 1 14rem; color: var(--ink2); }
 .sat-tile[data-dir=fall] { border-left-color: var(--c-hi); }
 .sat-tile[data-dir=rise] { border-left-color: var(--c-rain); }
+
+/* each card is one closed line (name, one figure and its date) that opens; inside, a closed "Show more" and one source link */
+.sat-fold > summary { display: flex; flex-wrap: wrap; align-items: baseline; justify-content: space-between; gap: var(--space-4) var(--space-12); min-height: var(--touch); cursor: pointer; list-style: none; }
+.sat-fold > summary::-webkit-details-marker { display: none; }
+.sat-fold > summary .sat-name { margin: 0; }
+.sat-one { color: var(--ink2); font-size: var(--fs-small); font-variant-numeric: tabular-nums; }
+.sat-fold[open] > summary { margin-bottom: var(--space-8); }
+.sat-more { margin-top: var(--space-8); }
+.sat-src { margin: var(--space-8) 0 0; font-size: var(--fs-small); overflow-wrap: anywhere; }
+
+/* the one-page report: the cards inside the fold "What NASA satellites see", each its own closed line, across the whole width */
+.lf-satcards { display: grid; gap: var(--space-8); grid-template-columns: repeat(auto-fit, minmax(min(100%, 22rem), 1fr)); align-items: start; }
+.lf-satcards .sat-card { margin: 0; }

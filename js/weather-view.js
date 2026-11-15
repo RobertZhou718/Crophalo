@@ -3,10 +3,10 @@
 // Pure: functions of plain data (see js/weather-data.js) that return text. The page glue (opening a chart large) is in js/report.js.
 // Checked by scripts/test_weather_tab.mjs (the sections in order, the "i" on every figure, the charts' tables, a missing forecast, plain-text escaping).
 import { fmtRain } from './units.js';
+import { localiseText } from './unitstext.js';
 import { weekBlockHTML } from './weather-week.js';
 import { esc } from './words.js';
 import { infoButton, NOT_READ } from './report-view.js';
-import { regionHtml } from './region.js';
 import { longDay, MONTH_LABELS } from './weather-data.js';
 
 const fin = v => typeof v === 'number' && Number.isFinite(v);
@@ -51,18 +51,18 @@ const tile = t => `<article class="card pad wk-tile" data-tile="${esc(t.id)}"><h
 const fact = f => `<article class="wk-fact" data-fact="${esc(f.id)}"><h3>${esc(f.title)} ${infoButton(f.sources, f.title)}</h3><p class="wk-big num">${esc(f.value)}</p><p class="cap">${esc(f.text)}</p></article>`;
 const FORECAST_CREDIT = '<a class="link" href="https://open-meteo.com/" target="_blank" rel="noopener">Weather data by Open-Meteo.com</a> (CC BY 4.0)';
 export function forecastHTML(w, units = {}) {
-  const head = `<h3 id="wk7">The next 7 days ${infoButton(['forecast'], w.week?.today ? `For 7 days from ${longDay(w.week.today)}.` : 'The forecast for the coming days.')}</h3>`;
+  const head = `<h3 id="wk7">The next 7 days ${infoButton(['forecast'], w.week?.today ? `For 7 days from ${longDay(w.week.today)}.` : 'The forecast for the coming days.')} <span class="cap wk-unit">${units.temp === 'F' ? 'in °F' : 'in °C'}</span></h3>`;   // the row prints bare degrees, so its heading names the unit
   if (!w.days.length) return `<section class="wk-sec" aria-labelledby="wk7">${head}<div class="rv-notread" role="status"><p>The forecast is not available right now. The weather record above does not depend on it.</p></div></section>`;
   const calm = w.days.filter(d => d.calm).length, deg = v => Math.round(units.temp === 'F' ? v * 9 / 5 + 32 : v), rain = d => (units.rain === 'in' && d.rain >= 0.5 ? fmtRain(d.rain, units) : d.rainText);
   return `<section class="wk-sec" aria-labelledby="wk7">${head}<ol class="wk-days">${w.days.map(d => `<li class="wk-day${d.calm ? ' is-calm' : ''}"><b>${esc(d.name)}</b><span class="wk-ico" data-icon="${esc(d.icon)}">${esc(ICON[d.icon])}</span><span class="wk-hi num">${deg(d.hi)}°</span><span class="wk-lo num">${deg(d.lo)}°</span><span class="cap">${esc(rain(d))}</span>${d.calm ? '<span class="chip ok">Calm, dry</span>' : ''}</li>`).join('')}</ol>
-    <p class="cap">${calm ? 'Calm, dry: no rain, a low chance of rain, wind under 20 km/h, no frost and under 35 °C, with every value known. A weather check only: fieldwork may be possible.' : 'No calm, dry days this week: rain, wind, frost or heat on every day, or a reading missing.'}</p>
-    ${weekBlockHTML(w.week, units, esc)}
+    <p class="cap">${esc(localiseText(calm ? 'Calm, dry: no rain, a low chance of rain, wind under 20 km/h, no frost and under 35 °C, with every value known. A weather check only: fieldwork may be possible.' : 'No calm, dry days this week: rain, wind, frost or heat on every day, or a reading missing.', units))}</p>
+    ${localiseText(weekBlockHTML(w.week, units, esc), units)}
     <p class="cap">${FORECAST_CREDIT}</p></section>`;
 }
 export function weatherHTML(w, { reading = null, units = {} } = {}) {
   const head = '<section class="rv-sec" aria-labelledby="wkTitle"><h2 id="wkTitle">Weather</h2>';
   if (!w || w.ok === false) return `${head}<div class="rv-notread" role="status"><p>${esc(w?.reason || NOT_READ)}</p></div></section>`;
-  const through = longDay(w.through), region = reading ?? { label: 'Root-zone soil moisture', value: null, km: 9, lat: w.lat, lon: w.lon, source: 'smap', why: 'Soil moisture seen from space comes for a whole square of land, so it is shown as a regional value, never as a pattern inside the field.' };
+  const through = longDay(w.through);
   return `${head}<p class="lead wk-through">Weather through <b>${esc(through || 'the last day read')}</b> ${infoButton(['power'], through ? `Newest day: ${through}` : '')} <span class="cap">${w.note ? esc(w.note) : ''}</span>${w.C?.weatherLine ? `<br><span class="cap wk-freshness">${esc(w.C.weatherLine)}</span>` : ''}</p>
     ${forecastHTML(w, units)}
     <section class="wk-sec" aria-labelledby="wkYear"><h3 id="wkYear">This year so far, against the same days of earlier years</h3><div class="grid tiles">${w.tiles.map(tile).join('')}</div></section>
@@ -70,5 +70,5 @@ export function weatherHTML(w, { reading = null, units = {} } = {}) {
       <p class="lead">Rain, heat and frost records for the area around your field (NASA’s squares are about 50 km wide, and satellite rain is an estimate for a square about 10 km wide). A rain gauge near you can read quite differently. If you keep one, trust it over these totals.</p>
       <div class="wk-facts">${w.facts.map(fact).join('')}</div>
       <div class="grid charts">${w.charts.map(chartCard).join('')}</div></section>
-    <section class="wk-sec" aria-labelledby="wkReg"><h3 id="wkReg">A regional reading</h3>${regionHtml(region)}</section></section>`;
+    <p class="cap wk-sat">How wet the soil is around your field is on the <a href="#satTitle" data-goto="satellites">Satellites &amp; prices</a> part.</p></section>`;
 }

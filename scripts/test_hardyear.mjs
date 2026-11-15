@@ -8,6 +8,7 @@ import { buildHistory } from '../js/history.js';
 import { cropOf } from '../js/crops.js';
 import { SEASON } from '../js/season.js';
 import { yearChips, fullYears, indexIn, judgePlan, playYear, allYears, stormRow, monthsOf, WORDS, WATER_HOLD } from '../js/hardyear.js';
+import { localiseText, IMPERIAL, METRIC } from '../js/units.js';
 import { hardYearHTML } from '../js/hardyear-view.js';
 
 let passed = 0, failed = 0;
@@ -56,4 +57,6 @@ check('the rest is under "Show more", closed at first, with the year picker for 
 check('no word of yield, loss, save, safe or chance outside "not a forecast"', !/\b(yield|loss|save|safe|chance|probab)/i.test(text.replace(/not a forecast/gi, '')), text.match(/\b(yield|loss|save|safe|chance)\w*/i)?.[0]);
 check('the other states say one plain sentence', /could not be read, so no year can be played/.test(hardYearHTML({ status: 'noweather' }).replace(/<[^>]+>/g, '')) && /Too few full years/.test(hardYearHTML({ status: 'toofew' })));
 check('words from the answer are plain text', !/<img|<script/.test(hardYearHTML({ ...model, rows: [{ ...model.rows[0], name: '<img src=x>', reason: '<script>1</script>' }] })));
+check('a metric figure in a sentence is said in the farmer\'s units on a United States field and left alone elsewhere (17 days of 34 °C, 20 mm)', localiseText('17 days of 34 °C or more, 20 mm or more', IMPERIAL) === '17 days of 93 °F or more, 0.8 in or more' && localiseText('17 days of 34 °C or more, 20 mm or more', METRIC) === '17 days of 34 °C or more, 20 mm or more', localiseText('17 days of 34 °C', IMPERIAL));
+check('the card counts its strategies in words (two here, not "three"), and shows a letter for each month under the boxes', /We play your two strategies/.test(text) && (html.match(/<i>[JFMASOND]<\/i>/g) ?? []).length === 24, text.slice(0, 200));
 console.log(`hardyear: ${passed} passed, ${failed} failed`); process.exit(failed ? 1 : 0);

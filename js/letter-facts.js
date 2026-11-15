@@ -1,5 +1,5 @@
-// Crophalo's "More about your field" in plain lines: the weather record, what the NASA satellites see and the crop prices, each a single line with its figure, its date and its source. No chart and no picture:
-// the numbers are the ones the old tabs drew, said in words and in the farmer's units. A line that could not be read is left out and one plain sentence says what is missing; nothing is filled in.
+// Crophalo's "More about your field" in plain lines: the weather record, what the NASA satellites see and the crop prices, each a single line with its figure, its date and its source. The lines hold no chart:
+// the satellite cards (js/satcard.js, each one closed line) may follow the satellite lines. A line that could not be read is left out and one plain sentence says what is missing; nothing is filled in.
 // Pure: markup from plain data. Checked by scripts/test_letter.mjs (every line, the units, a missing lookup) and scripts/e2e_letter.mjs.
 import { esc } from './words.js';
 import { fmtRain, fmtTemp, BUSHEL_LB } from './units.js';
@@ -27,7 +27,8 @@ export function climateFacts(w, u) {
 }
 
 // 2. what the satellites see: the lines that were read, then one sentence for each that was not
-export function satelliteFacts({ reading, imerg, hls, grace, eco }, u) {
+// cards: the satellite cards' markup, each its own closed line, put after the plain lines and before "Show more"; each card then says itself what it lacks, so the lacking sentences are not said twice.
+export function satelliteFacts({ reading, imerg, hls, grace, eco }, u, { cards = '' } = {}) {
   const lines = [], more = [], lacking = [];
   const soil = reading?.value != null && fin(Number(reading.value)) ? Math.round(Number(reading.value) * 100) : null;
   if (soil !== null) lines.push(li(`Water in the top soil: ${soil}%${day(reading.date) ? ` on ${day(reading.date)}` : ''}. From NASA SMAP`, ['smap']));
@@ -40,18 +41,19 @@ export function satelliteFacts({ reading, imerg, hls, grace, eco }, u) {
   const months = grace?.ok ? (grace.months ?? []).filter(m => fin(m.cm)) : [];
   if (months.length > 3) { const last = months.at(-1), mean = months.reduce((s, m) => s + m.cm, 0) / months.length; lines.push(li(`Water stored deep under your region: ${last.cm > mean ? 'higher' : 'lower'} than usual, ${monthWords(last.month)}. From NASA GRACE-FO`, ['grace'])); }
   else if (grace && !grace.loading) lacking.push('The deep water record did not answer.');
-  const ep = eco?.ok ? [...(eco.passes ?? [])].filter(p => fin(p.lst_c)).sort((a, b) => (a.date < b.date ? 1 : -1))[0] : null;
-  if (ep) more.push(li(`Ground temperature from space: ${fmtTemp(ep.lst_c, u)}, ${day(ep.date)}. It is the ground, not the air. From NASA ECOSTRESS`, ['ecostress']));
+  const lst = p => (fin(p?.c) ? p.c : p?.lst_c);   // the cleaned pass (js/satellites2-data.js cleanEco) names it c; the lookup's raw one lst_c
+  const ep = eco?.ok ? [...(eco.passes ?? [])].filter(p => fin(lst(p))).sort((a, b) => (a.date < b.date ? 1 : -1))[0] : null;
+  if (ep) more.push(li(`Ground temperature from space: ${fmtTemp(lst(ep), u)}, ${day(ep.date)}. It is the ground, not the air. From NASA ECOSTRESS`, ['ecostress']));
   else if (eco && !eco.loading) lacking.push('The ground temperature did not answer.');
   const loading = [reading, imerg, hls, grace, eco].some(x => x === undefined || x?.loading);
   const head = soil !== null ? `What NASA satellites see · water in the top soil ${soil}%` : 'What NASA satellites see';
-  const body = `${lines.length ? `<ul class="lf-list">${lines.join('')}</ul>` : ''}${more.length ? `<details class="fold-card" id="lfSatMore"><summary><span class="t">Show more</span></summary><div class="fold-b"><ul class="lf-list">${more.join('')}</ul></div></details>` : ''}${loading && !lines.length ? '<p class="cap" role="status" aria-live="polite">Reading the satellite lookups…</p>' : ''}${lacking.map(miss).join('')}`;
+  const body = `${lines.length ? `<ul class="lf-list">${lines.join('')}</ul>` : ''}${cards ? `<div class="lf-satcards">${cards}</div>` : ''}${more.length ? `<details class="fold-card" id="lfSatMore"><summary><span class="t">Show more</span></summary><div class="fold-b"><ul class="lf-list">${more.join('')}</ul></div></details>` : ''}${loading ? `<p class="cap">Still reading: ${[['soil moisture', reading], ['satellite rain', imerg], ['plant greenness', hls], ['deep water', grace], ['ground temperature', eco]].filter(([, x]) => x === undefined || x?.loading).map(([n]) => n).join(', ')}.</p>` : ''}${cards ? '' : lacking.map(miss).join('')}`;
   return { head, body };
 }
 
 // 3. prices: world prices in the farmer's units (US dollars a bushel for a field in the United States)
 export function priceFacts({ prices, crops, units }) {
-  if (prices === undefined) return { head: 'Crop prices', body: '<p class="cap" role="status" aria-live="polite">Reading the world prices…</p>' };
+  if (prices === undefined) return { head: 'Crop prices', body: '<p class="cap">Still reading: world prices.</p>' };
   if (!prices || prices.ok === false) return { head: 'Crop prices', body: miss('The world prices did not answer, so no price is shown.') };
   const us = units?.area === 'imperial', rows = [], seen = new Set();
   let headFigure = '';

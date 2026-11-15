@@ -35,11 +35,18 @@ const RULES = [
   [/other websites|unknown endpoint|^use (get|post)\b/i, NOT_HERE],
   [/\blat\b|\blon\b|first and last must|plain number|whole number|not one of the known sources|real day written/i, NO_POSITION],
 ];
+// What a farmer must never read: a folder or file name, a program word, a status code or an address (a web or IP address, a port, a host name).
+const SERVER_WORDS = new RegExp([
+  '[\\\\/]', 'traceback', 'exception', 'errno', '\\bstack\\b', '\\bpython\\d*\\b', '\\bnode(?:js)?\\b', '\\bnpm\\b', '\\bspawn\\b', '\\bsubprocess\\b', '\\bundefined\\b', '\\bnull\\b', '\\bNaN\\b',
+  '\\bE(?:NOENT|CONN\\w*|ACCES|PERM|TIMEDOUT|PIPE|ADDRINUSE|AI_AGAIN|NOTFOUND|HOSTUNREACH|NETUNREACH)\\b', '\\b(?:status|http|error|code)\\b[^.]{0,12}?\\b[1-5]\\d\\d\\b',
+  'localhost', '\\b\\d{1,3}(?:\\.\\d{1,3}){3}\\b', ':\\d{2,5}\\b', 'https?:', '\\bwww\\.', '\\b[\\w-]+\\.(?:com|org|net|gov|edu|io|dev|ca|systems|coffee|int)\\b',
+  '\\b[\\w-]+\\.(?:py|js|mjs|cjs|json|txt|log|csv|tif|tiff|nc|nc4|h5|hdf|sh|env|cfg|ini|key|pem|zip|gz)\\b', '(?:^|\\s)\\.[a-z][\\w-]*',
+].join('|'), 'i');
 export function plainReason(reason, fallback) {
   const t = text(reason, 300);
   if (!t) return fallback;
   for (const [re, say] of RULES) if (re.test(t)) return say;
-  return t.length > 260 || /[\\/]|traceback|exception|errno|\bpython\b|\bundefined\b|\bnull\b|\bstatus \d{3}\b|\bhttp \d{3}\b/i.test(t) ? fallback : t;
+  return t.length > 260 || SERVER_WORDS.test(t) ? fallback : t;
 }
 export const GRACE_DOWN = 'The GRACE-FO water-storage lookup did not answer. The rest of the report does not need it.';
 export const ECO_DOWN = 'The ECOSTRESS ground-temperature lookup did not answer. The rest of the report does not need it.';

@@ -662,7 +662,7 @@ dialog.welcome::backdrop { background: var(--backdrop-welcome); }
 #view-info .sec { margin-top: var(--space-32); }
 #view-info h1 { margin-bottom: var(--space-8); }
 #infoBody { display: grid; gap: var(--space-16); }   /* the whole width of the page: cards and lists fill it; only the running words keep a readable line (below) */
-#infoBody > .lead, #infoBody > .data-note, #infoBody > .data-filter, #infoBody > .data-fold, #infoBody > .ex, #infoBody > h2 { max-width: 720px; }
+#infoBody > .lead { max-width: 80ch; }   /* only a running paragraph keeps a readable line; the note boxes, folds, search and cards use the whole row */
 #infoBody > h2 { margin-top: var(--space-16); }
 #infoBody > .lead { margin-top: calc(-1 * var(--space-8)); }
 .data-note { padding: var(--space-12) var(--space-16); border-radius: var(--r2); background: var(--accent-soft); color: var(--ink); font-size: var(--fs-small); }
@@ -686,3 +686,6 @@ html[data-motion=less] .dot.busy { animation: none !important; }
 /* the token that flies to My farm when a field is added (js/added-fx.js): a small round mark, never larger than 28 px, ignoring the pointer */
 .added-token { position: fixed; z-index: var(--z-toast); width: 28px; height: 28px; display: grid; place-items: center; border-radius: 50%; background: var(--accent); color: #fff; box-shadow: var(--shadow-lg); pointer-events: none; }
 .added-token .ic { width: 16px; height: 16px; }
+/* the quiet mark on "My farm" after a field was added from the report: it stays until My farm is opened */
+#navFarm[data-new] { position: relative; }
+#navFarm[data-new]::after { content: ""; position: absolute; top: 4px; right: 4px; width: 8px; height: 8px; border-radius: 50%; background: var(--accent); box-shadow: 0 0 0 2px var(--card); }

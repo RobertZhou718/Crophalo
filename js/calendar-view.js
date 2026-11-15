@@ -5,7 +5,8 @@
 import { esc } from './words.js';
 import { cropName } from './crops.js';
 import { infoButton, NOT_READ } from './report-view.js';
-import { MONTHS, FULL, STATE_WORDS, frostTitle, hotTitle, dayWords, dayYear, daysBetween } from './calendar-data.js';
+import { MONTHS, FULL, STATE_WORDS, frostTitle, hotTitle as hotTitleC, dayWords, dayYear, daysBetween } from './calendar-data.js';
+import { localiseText } from './unitstext.js';
 
 const fin = v => typeof v === 'number' && Number.isFinite(v);
 const num = v => Math.round(v).toLocaleString('en-US');
@@ -15,15 +16,20 @@ const GLYPH = { crop: '', cover: '', residue: '', bare: '' };   // the pattern i
 // ---- the month header, shown above every grid: the short name on a wide screen, one letter on a narrow one
 const monthHead = () => `<div class="fc-row fc-head" aria-hidden="true">${MONTHS.map((m, i) => `<span class="fc-m"><span class="fc-full">${m}</span><span class="fc-ini">${INITIAL(i)}</span></span>`).join('')}</div>`;
 // ---- the climate card
+// u: the farmer's units (js/units.js); with none given the figures stay metric, as before
+let U = {};
+const hotTitle = (month, n) => localiseText(hotTitleC(month, n), U);
+const rainIn = () => U.rain === 'in';
+const rainFig = v => (rainIn() ? (v / 25.4).toFixed(1).replace(/\.0$/, '') : num(v));
 function climateCard(c) {
   if (!c) return `<div class="rv-notread" role="status"><p>${esc(NOT_READ)}</p></div>`;
   const top = Math.max(...c.rain.filter(fin), 1) * 1.25;
   const head = monthHead();
-  const rain = `<div class="fc-row fc-rain" aria-hidden="true">${c.rain.map((v, i) => `<span class="fc-col" title="${esc(fin(v) ? `${FULL[i]}: about ${num(v)} mm of rain` : `${FULL[i]}: rain not read`)}"><span class="fc-fig num">${fin(v) ? num(v) : ''}</span><span class="fc-bar" style="height:${fin(v) ? Math.max(4, v / top * 100).toFixed(0) : 0}%"></span></span>`).join('')}</div>`;
+  const rain = `<div class="fc-row fc-rain" aria-hidden="true">${c.rain.map((v, i) => `<span class="fc-col" title="${esc(fin(v) ? `${FULL[i]}: about ${rainFig(v)} ${rainIn() ? 'in' : 'mm'} of rain` : `${FULL[i]}: rain not read`)}"><span class="fc-fig num">${fin(v) ? rainFig(v) : ''}</span><span class="fc-bar" style="height:${fin(v) ? Math.max(4, v / top * 100).toFixed(0) : 0}%"></span></span>`).join('')}</div>`;
   const marks = `<div class="fc-row fc-marks" aria-hidden="true">${c.frost.map((f, i) => `<span class="fc-mk" title="${esc([fin(f) && f >= 1 ? frostTitle(i, f) : '', fin(c.hot[i]) && c.hot[i] >= 2 ? hotTitle(i, c.hot[i]) : ''].filter(Boolean).join('. ') || `${FULL[i]}: no frost or hot days in a normal year`)}">${fin(f) && f >= 1 ? '<i class="fc-frost">❄</i>' : ''}${fin(c.hot[i]) && c.hot[i] >= 2 ? '<i class="fc-sun">☀</i>' : ''}</span>`).join('')}</div>`;
-  const table = `<table class="sr"><caption>Month by month: rain, frost and hot days in a normal year</caption><thead><tr><th scope="col">Month</th><th scope="col">Rain (mm)</th><th scope="col">Frost</th><th scope="col">Hot days</th></tr></thead><tbody>${MONTHS.map((m, i) => `<tr><th scope="row">${FULL[i]}</th><td>${fin(c.rain[i]) ? num(c.rain[i]) : 'not read'}</td><td>${esc(frostTitle(i, c.frost[i]).split(': ')[1])}</td><td>${esc(hotTitle(i, c.hot[i]).split(': ')[1])}</td></tr>`).join('')}</tbody></table>`;
-  return `<div class="card pad fcal"><div class="fc-labels" aria-hidden="true"><span></span><span class="fc-lab fc-lab-rain">Rain (mm)</span><span class="fc-lab">Frost · heat</span></div><p class="cap fc-unit">Rain in millimetres (mm) for each month, in a normal year</p><div class="fc-grid">${head}${rain}${marks}</div>${table}
-    <p class="cap">The middle of ${c.years} years (${c.first}–${c.last}). ❄ a month with frosty nights; ☀ a month with two or more days above 32 °C.</p></div>`;
+  const table = `<table class="sr"><caption>Month by month: rain, frost and hot days in a normal year</caption><thead><tr><th scope="col">Month</th><th scope="col">Rain (${rainIn() ? 'in' : 'mm'})</th><th scope="col">Frost</th><th scope="col">Hot days</th></tr></thead><tbody>${MONTHS.map((m, i) => `<tr><th scope="row">${FULL[i]}</th><td>${fin(c.rain[i]) ? rainFig(c.rain[i]) : 'not read'}</td><td>${esc(frostTitle(i, c.frost[i]).split(': ')[1])}</td><td>${esc(hotTitle(i, c.hot[i]).split(': ')[1])}</td></tr>`).join('')}</tbody></table>`;
+  return `<div class="card pad fcal"><div class="fc-labels" aria-hidden="true"><span></span><span class="fc-lab fc-lab-rain">Rain (${rainIn() ? 'in' : 'mm'})</span><span class="fc-lab">Frost · heat</span></div><p class="cap fc-unit">Rain in ${rainIn() ? 'inches (in)' : 'millimetres (mm)'} for each month, in a normal year</p><div class="fc-grid">${head}${rain}${marks}</div>${table}
+    <p class="cap">The middle of ${c.years} years (${c.first}–${c.last}). ❄ a month with frosty nights; ☀ a month with two or more days above ${U.temp === 'F' ? '90 °F' : '32 °C'}.</p></div>`;
 }
 
 // ---- a plan's ground, year by year
@@ -66,10 +72,11 @@ export function sowingHTML(lines) {
     <p class="cap">Dates come from the crop guide and your field’s own frost and heat record. Local dates and varieties can differ by a few weeks.</p></section>`;
 }
 
-export function calendarHTML(cal) {
+export function calendarHTML(cal, units = {}) {
+  U = units && typeof units === 'object' ? units : {};
   const head = `<section class="rv-sec" aria-labelledby="calTitle"><h2 id="calTitle">Your farming year ${infoButton(['power', 'gpm'], 'Rain, frost and hot days in a normal year')}</h2><p class="lead">A normal year on your field, month by month, and what each plan would put on the ground.</p>`;
   if (!cal) return `${head}<div class="rv-notread" role="status"><p>${esc(NOT_READ)}</p></div></section>`;
   return `${head}${climateCard(cal.climate)}
-    ${cal.hasPlans ? `<div class="fc-plans">${cal.plans.map(planBlock).join('')}${legendHTML()}</div>` : '<div class="rv-notread" role="status"><p>The plans have not been read yet, so the ground is not drawn. Crophalo never shows a made-up plan.</p></div>'}
+    ${cal.hasPlans ? `<div class="fc-plans">${cal.plans.map(planBlock).join('')}${legendHTML()}</div>` : '<div class="rv-notread" role="status"><p>The plans are not ready, so the ground is not drawn.</p></div>'}
     ${sowingHTML(cal.sowing)}</section>`;
 }

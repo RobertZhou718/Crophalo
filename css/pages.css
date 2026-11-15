@@ -1,10 +1,10 @@
 /* Crophalo's info pages: Privacy, Limitations and Settings. Tokens only; every box wraps, nothing scrolls sideways. */
 /* the tabs of a page are the system's one segmented control: a grey track, the chosen part a raised white thumb (the same look as the Settings choices) */
 .pg-tabs { display: inline-flex; flex-wrap: wrap; gap: 2px; max-width: 100%; padding: 2px; margin: var(--space-12, 12px) 0; border-radius: var(--r-seg); background: var(--fill); }
-.pg-tabs .tab { flex: 1 1 auto; min-height: var(--seg-h); padding: 2px var(--space-12); border: 0; border-radius: var(--r3); background: none; box-shadow: none; color: var(--ink2); font-size: var(--fs-seg); font-weight: var(--fw-medium); line-height: 1.2; }
+.pg-tabs { justify-self: start; }   /* the group is as wide as its words, not the whole column */
+.pg-tabs .tab { flex: 0 1 auto; min-height: var(--ctl-md, 30px); padding: 2px var(--space-16); border: 0; border-radius: var(--r3); background: none; box-shadow: none; color: var(--ink2); font-size: var(--fs-seg); font-weight: var(--fw-medium); line-height: 1.2; }
 .pg-tabs .tab[aria-selected=true] { background: var(--seg-thumb); color: var(--accent-text); font-weight: var(--fw-semi); box-shadow: 0 0 0 .5px var(--sep), 0 1px 2px rgba(0,0,0,.1); }
 .pg-tabs .tab { position: relative; }
-.pg-tabs .tab::after { content: ""; position: absolute; inset: -10px 0; }   /* 44 px to the finger and the mouse, the visible control stays the system's height */
 .pg-tabs .tab:focus-visible { outline: 2px solid var(--accent); outline-offset: -2px; }
 .pgpanel { display: grid; gap: 12px; min-width: 0; }
 .pgpanel:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
@@ -42,7 +42,7 @@
 
 /* ---- Settings: one calm page; white cards on the grey page, each a short title and rows with the label on the left and the control on the right ---- */
 /* the pages use the whole width, in line with the top bar: cards in two columns from about 900 px and three from about 1400 px, one on a phone */
-.st, .lim-grid, .pgpanel.cards, .data-sources, .ad-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 300px), 1fr)); gap: var(--space-16); align-items: start; }   /* as many columns as fit, each at least 300 px, the row always to the right edge */
+.st, .lim-grid, .pgpanel.cards, .data-sources, .ad-grid { --cards: 3; display: grid; grid-template-columns: repeat(auto-fit, minmax(max(min(300px, 100%), calc((100% - (var(--cards) - 1) * var(--space-16)) / var(--cards))), 1fr)); gap: var(--space-16); align-items: start; }   /* as many columns as fit, each at least 300 px, and never more than there are cards (js/page-style.js sets --cards), so the row always reaches the right edge (a card that spans the row would otherwise keep empty columns open) */
 .st > .installcard, .st > .st-reset, .pgpanel.cards > :not(.st-card), .data-sources > .data-none { grid-column: 1 / -1; }
 .st-card { display: grid; padding: var(--space-4) var(--space-16) var(--space-8); border-radius: var(--r1); background: var(--card); box-shadow: var(--shadow); min-width: 0; }
 .st-card > h2 { margin: var(--space-12) 0 var(--space-4); font-size: var(--fs-headline); }
@@ -50,7 +50,13 @@
 .st-card > h2 + .st-row, .st-fold summary + .st-row { border-top: 0; }
 .st-l { flex: 1 1 140px; min-width: 0; color: var(--ink); font-size: var(--fs-row); font-weight: var(--fw-medium); }
 .st-row .seg, .st-row select, .st-row .btn { flex: 0 1 auto; max-width: 100%; }
-.st-row .seg button { min-width: 44px; min-height: 44px; }
+.st-row .seg { flex-wrap: nowrap; }   /* one look for every group of choices: a single row, the parts equal in width */
+.st-row .seg button { flex: 1 1 0; min-width: 44px; min-height: 44px; padding-inline: var(--space-8); line-height: 1.15; }
+.st-card { container-type: inline-size; }
+.st-row .seg button { word-break: keep-all; overflow-wrap: normal; }
+/* a card too narrow to hold the label beside its choices (a narrow screen or a narrow column) puts the label over them, the same for every group */
+@container (max-width: 520px) { .st-row:has(> .seg) { flex-direction: column; align-items: stretch; } .st-row:has(> .seg) > .st-l { flex: 0 0 auto; } .st-row > .seg { align-self: stretch; } }
+@media (max-width: 560px) { .st-row:has(> .seg) { flex-direction: column; align-items: stretch; } .st-row:has(> .seg) > .st-l { flex: 0 0 auto; } .st-row > .seg { align-self: stretch; } }
 .st-row select { min-height: 44px; }
 .st-note { margin: 0; padding: var(--space-4) 0 var(--space-8); color: var(--ink2); font-size: var(--fs-small); }
 .st-example { margin: 0 0 var(--space-8); padding: var(--space-8) var(--space-12); border-radius: var(--r2); background: var(--card2); color: var(--ink); font-size: var(--fs-small); font-variant-numeric: tabular-nums; }
@@ -124,3 +130,105 @@
 .ad-problem { color: var(--bad); }
 .welcome h1 { margin-top: var(--space-12); font-size: 30px; font-weight: var(--fw-bold); letter-spacing: var(--ls-title); line-height: var(--lh-title); }   /* the welcome's title is its own first heading (an h1 in the dialog), styled as the h2 it was */
 @media (max-width: 560px) { .welcome h1 { font-size: 26px; } }
+
+.lim-grid { align-items: stretch; }   /* the cards of a row are as tall as the tallest of the row */
+.lim-card { align-content: start; } .lim-card > details, .lim-card > .lim-fold { margin-top: auto; }
+
+/* the source cards of a row are as tall as the tallest, "Show more" at the foot of each */
+.data-sources { align-items: stretch; }
+.data-sources .row { display: flex; }
+.data-sources .src-body { display: flex; flex-direction: column; flex: 1 1 auto; min-width: 0; }
+.data-sources .src-body > .data-fold { margin-top: auto; }
+
+/* a list of source links: each link has a line box of its own, 30 px with a mouse and 44 px on a touch screen (the house control height), never a 15 px line to hit */
+#infoBody .ex-src a, #infoBody .rv-sources-list a, #infoBody .data-sources .src-body a.link, #infoBody ul li > a.link { display: inline-flex; align-items: center; min-height: var(--ctl-md, 30px); padding-block: 2px; line-height: 1.4; }
+
+/* the info pages and the status page use the whole width of a wide screen (to 1800 px), left to right, in one grid of equal-height cards */
+#view-info .wrap, #view-admin .wrap { max-width: var(--nav-w); padding-inline: var(--space-16); }   /* the same left and right edges as the top bar */
+.pgpanel.cards, .data-sources, .ad-grid { align-items: stretch; }
+.data-note, .data-filter, .data-filter input, .data-fold { max-width: none; }
+
+.sk-rows { display: grid; gap: 10px; padding: var(--space-8) 0; }
+.ad-sk .ad-card { min-height: 112px; }
+
+/* ---- Settings as one calm list: sections with a small title, each setting one row (name and help left, control right), thin rules between, two balanced columns on a wide screen ---- */
+.st.stx { display: grid; grid-template-columns: 1fr 1fr; gap: var(--space-24); align-items: stretch; }
+.stx-col { display: flex; flex-direction: column; min-width: 0; }
+.stx-col > .stx-sec:last-child { flex: 1 1 auto; margin-bottom: 0; }   /* the last section of each column stretches, so both columns end on one line */
+@media (max-width: 899px) { .st.stx { grid-template-columns: 1fr; gap: 0; } .stx-col > .stx-sec:last-child { margin-bottom: var(--space-16); } }
+.stx-sec { display: block; break-inside: avoid; margin: 0 0 var(--space-16); padding: 0 var(--space-16) var(--space-4); container-type: inline-size; }
+.stx-sec > h2 { margin: var(--space-12) 0 var(--space-4); font-size: 13px; line-height: 1.3; text-transform: uppercase; letter-spacing: .06em; font-weight: var(--fw-bold); color: var(--ink2); }
+.stx-list { display: grid; }
+.stx-row { display: flex; align-items: center; justify-content: space-between; gap: var(--space-16); min-height: 60px; padding: 10px 0; border-top: .5px solid var(--sep); }
+.stx-list > .stx-row:first-child { border-top: 0; }
+.stx-t { display: grid; gap: 2px; flex: 1 1 40%; min-width: 0; }
+.stx-n { font-size: var(--fs-row); font-weight: var(--fw-semi); color: var(--ink); line-height: 1.3; }
+.stx-h { font-size: var(--fs-small); font-weight: var(--fw-regular); color: var(--ink2); line-height: 1.35; }
+.stx-c { display: flex; justify-content: flex-end; flex: 0 0 auto; max-width: 100%; }
+.stx-c select { min-height: var(--ctl-md, 30px); max-width: 100%; }
+.stx .seg { flex-wrap: nowrap; }
+.stx .seg { flex-shrink: 0; }
+.stx .seg button { flex: 1 1 auto; min-width: max-content; white-space: nowrap; padding-inline: var(--space-12); line-height: 1.15; }
+.stx .seg button[aria-checked=true] { background: var(--accent); color: #fff; font-weight: var(--fw-bold); box-shadow: none; }   /* the chosen part: filled blue, white bold words */
+.stx .st-example { margin: 0 0 var(--space-8); }
+.stx .st-fold { border-top: .5px solid var(--sep); }
+.stx .st-note { padding: var(--space-4) 0; }
+@container (max-width: 460px) { .stx-row { flex-direction: column; align-items: stretch; gap: var(--space-8); } .stx-c { justify-content: stretch; } .stx-c .seg, .stx-c select { width: 100%; } .stx-c .btn { align-self: flex-start; } }
+@media (max-width: 560px) { .stx-row { flex-direction: column; align-items: stretch; gap: var(--space-8); } .stx-c { justify-content: stretch; } .stx-c .seg, .stx-c select { width: 100%; } .stx-c .btn { align-self: flex-start; } }
+
+/* ---- API connections (the service status): head, tiles, the table of services, the phone's cards ---- */
+.adm-head { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: var(--space-12) var(--space-16); margin: 0 0 var(--space-8); }
+.adm-id { display: flex; align-items: center; gap: var(--space-12); min-width: 0; } .adm-id h1 { margin: 0; }
+.adm-chip { background: var(--fill); color: var(--ink2); font-weight: var(--fw-semi); }
+.adm-act { display: flex; flex-wrap: wrap; align-items: center; gap: var(--space-12); }
+.adm-auto { display: inline-flex; align-items: center; gap: var(--space-8); font-size: var(--fs-small); color: var(--ink2); }
+.adm-sw { position: relative; width: 44px; min-width: 44px; height: 26px; padding: 0; border: 0; border-radius: 13px; background: var(--fill); cursor: pointer; }
+.adm-sw i { position: absolute; top: 3px; left: 3px; width: 20px; height: 20px; border-radius: 50%; background: #fff; box-shadow: 0 1px 2px rgba(0,0,0,.25); transition: transform var(--t-fast) var(--ease); }
+.adm-sw[aria-checked=true] { background: var(--accent); } .adm-sw[aria-checked=true] i { transform: translateX(18px); }
+.adm-sw:focus-visible { outline: 3px solid var(--sel); outline-offset: 2px; }
+.adm-lead { margin: 0 0 var(--space-12); }
+.adm-tiles { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 220px), 1fr)); gap: var(--space-12); margin: 0 0 var(--space-16); }
+.adm-tile { display: grid; gap: 2px; padding: var(--space-12) var(--space-16); border-radius: var(--r1); background: var(--card); box-shadow: var(--shadow); min-width: 0; }
+.adm-tile p { margin: 0; } .adm-tl { font-size: var(--fs-small); color: var(--ink2); } .adm-tb { font-size: 26px; line-height: 1.2; font-weight: var(--fw-bold); color: var(--ink); font-variant-numeric: tabular-nums; } .adm-of { font-size: 16px; color: var(--ink2); font-weight: var(--fw-medium); } .adm-ts { font-size: var(--fs-small); color: var(--ink2); }
+.adm-tablewrap { overflow-x: auto; border-radius: var(--r1); background: var(--card); box-shadow: var(--shadow); }
+.adm-table { width: 100%; border-collapse: collapse; font-size: var(--fs-row); }
+.adm-table th, .adm-table td { padding: 10px 14px; text-align: left; vertical-align: middle; border-bottom: .5px solid var(--sep); }
+.adm-table thead th { font-size: var(--fs-small); font-weight: var(--fw-semi); color: var(--ink2); white-space: nowrap; background: var(--card2); }
+.adm-table tbody tr:last-child > * { border-bottom: 0; }
+.adm-svc { display: grid; gap: 2px; font-weight: var(--fw-regular); } .adm-svc b { font-weight: var(--fw-semi); } .adm-svc small { color: var(--ink2); font-size: var(--fs-small); } .adm-svc code { font: 12px/1.3 ui-monospace, SFMono-Regular, Menlo, monospace; color: var(--ink2); overflow-wrap: anywhere; }
+.adm-st { display: inline-flex; align-items: center; gap: 6px; font-weight: var(--fw-semi); white-space: nowrap; }
+.adm-none { color: var(--ink3, var(--ink2)); }
+.adm-spark { display: inline-flex; align-items: flex-end; gap: 2px; height: 22px; } .adm-spark i { display: block; width: 4px; border-radius: 1px; background: var(--ink2); opacity: .7; }
+.adm-table td small { color: var(--ink2); }
+.adm-sk td { padding: 14px; } .adm-sk .sk { height: 12px; width: 80%; }
+/* a phone: the table becomes cards, each cell with its column name */
+@media (max-width: 760px) {
+  .adm-table thead { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); }
+  .adm-table, .adm-table tbody, .adm-table tr, .adm-table th, .adm-table td { display: block; }
+  .adm-tablewrap { background: none; box-shadow: none; overflow: visible; }
+  .adm-table tr { margin: 0 0 var(--space-12); padding: var(--space-8) var(--space-16); border-radius: var(--r1); background: var(--card); box-shadow: var(--shadow); }
+  .adm-table th, .adm-table td { padding: 6px 0; border: 0; display: flex; justify-content: space-between; gap: var(--space-12); align-items: center; }
+  .adm-table td::before, .adm-table th[data-label]:not(.adm-svc)::before { content: attr(data-label); color: var(--ink2); font-size: var(--fs-small); }
+  .adm-table th.adm-svc { display: grid; padding-bottom: var(--space-8); border-bottom: .5px solid var(--sep); margin-bottom: 4px; }
+  .adm-sk td { display: block; }
+}
+@media (forced-colors: active) { .adm-sw { border: 1px solid ButtonText; } .adm-spark i { background: CanvasText; } }
+
+/* the reminder ways inside Settings: flat rows on the same list, no boxes inside the card */
+.stx .grp { margin: 0; padding: var(--space-8) 0; border-top: .5px solid var(--sep); }
+.stx .grp-cap { margin: 0 0 var(--space-4); font-size: var(--fs-small); font-weight: var(--fw-semi); color: var(--ink2); }
+.stx .gl { margin: 0; padding: 0; list-style: none; background: none; border: 0; border-radius: 0; box-shadow: none; }
+.stx .gl > .row { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: var(--space-8) var(--space-16); min-height: 0; padding: var(--space-4) 0; border: 0; background: none; font-size: var(--fs-small); color: var(--ink); }
+.stx .gl > .row > span { flex: 1 1 260px; min-width: 0; }
+@media (min-width: 761px) { .adm-table tbody th.adm-svc { display: table-cell; background: transparent; font-weight: var(--fw-regular); } .adm-table tbody th.adm-svc > * { display: block; margin-top: 2px; } .adm-table tbody th.adm-svc > b { margin-top: 0; } }
+.adm-svc b { font-weight: var(--fw-bold); }
+
+#view-admin .pg-tabs [role=tab][aria-selected=true], .pg-tabs [role=tab][aria-selected=true] { background: var(--accent); color: #fff; font-weight: var(--fw-bold); box-shadow: none; }
+.adm-line { display: block; width: 84px; height: 26px; overflow: visible; }
+.adm-line polyline { fill: none; stroke: var(--accent); stroke-width: 1.6; stroke-linejoin: round; stroke-linecap: round; vector-effect: non-scaling-stroke; }
+.adm-line circle { fill: var(--accent); }
+
+.adm-table tr[data-state=no_check] .adm-st { color: var(--ink2); font-weight: var(--fw-regular); } .adm-help { display: block; margin-top: 2px; color: var(--ink2); font-size: var(--fs-small); }
+.adm-table tr.adm-group th { padding: var(--space-16) 14px 6px; background: var(--card2); font-size: var(--fs-small); font-weight: var(--fw-bold); text-transform: uppercase; letter-spacing: .05em; color: var(--ink2); }
+@media (max-width: 760px) { .adm-table tr.adm-group { background: none; box-shadow: none; padding: var(--space-8) 0 0; } .adm-table tr.adm-group th { display: block; padding: 0; background: none; } }
+.adm-table td[data-label=Success] { white-space: nowrap; }

@@ -92,3 +92,11 @@ html[data-motion=less] .f3d-sk, html[data-motion=less] .f3d-sk-bar i { transitio
 .f3d-lw-words[data-state=cannot], .f3d-lw-words[data-state=waiting] { color: var(--warn); }
 .f3d-land-credit { margin: 0; font-size: var(--fs-small); }
 .f3d-land-credit a { color: var(--link); display: inline-flex; align-items: center; min-height: var(--touch); }
+
+/* what is drawn on the land: the credit of the picture, and the legend of the layer that is over it */
+.f3d-over { position: absolute; left: var(--space-8); right: var(--space-8); bottom: var(--space-8); display: flex; flex-wrap: wrap; align-items: flex-end; justify-content: space-between; gap: var(--space-8); pointer-events: none; }
+.f3d-pic-credit { margin: 0; max-width: 34em; padding: 3px 8px; border-radius: var(--r3); background: rgba(255,255,255,.82); color: #222; font-size: 11px; line-height: 1.35; pointer-events: auto; }
+.f3d-drape-legend { margin: 0; padding: 6px 10px; list-style: none; display: grid; gap: 2px; border-radius: var(--r3); background: rgba(255,255,255,.88); color: #222; font-size: 12px; pointer-events: auto; }
+.f3d-drape-legend[hidden], .f3d-pic-credit[hidden] { display: none; }
+.f3d-drape-legend li { display: flex; align-items: center; gap: 6px; } .f3d-drape-legend i { width: 14px; height: 14px; border-radius: 3px; border: 1px solid rgba(0,0,0,.25); flex: none; }
+.f3d-lg-name { font-weight: 600; }

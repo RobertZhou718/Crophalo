@@ -37,6 +37,7 @@ try { var kept = JSON.parse(localStorage.getItem('crophalo.settings.v1')) || {},
 <link rel="stylesheet" href="css/app.css">
 <link rel="stylesheet" href="css/home.css">
 <link rel="stylesheet" href="css/setup.css">
+<link rel="stylesheet" href="css/inputs.css">
 <link rel="stylesheet" href="css/map.css">
 <link rel="stylesheet" href="css/sources.css">
 <link rel="stylesheet" href="css/region.css">
@@ -107,7 +108,6 @@ try { var kept = JSON.parse(localStorage.getItem('crophalo.settings.v1')) || {},
     <a class="brand" href="./"><svg class="brand-mark" aria-hidden="true"><use href="#logo"/></svg><span class="brand-name">Crophalo</span></a>
     <nav class="nav-links" aria-label="Main">
       <button type="button" class="tbtn" id="navFarm"><svg class="ic" aria-hidden="true"><use href="#i-cube"/></svg><span class="t">My farm</span></button>
-      <button type="button" class="tbtn" id="navSaved" aria-haspopup="dialog" aria-label="Saved fields"><svg class="ic" aria-hidden="true"><use href="#i-bookmark"/></svg><span class="t">Saved</span><span class="count" id="savedCount"></span></button>
       <button type="button" class="tbtn nav-menu-btn" id="navMenuBtn" aria-expanded="false" aria-controls="navMenu"><svg class="ic" aria-hidden="true"><use href="#i-menu"/></svg><span class="t">Menu</span><i class="chev" aria-hidden="true"></i></button>
       <div class="nav-menu" id="navMenu">
         <a class="tbtn" href="#data" title="Data: where the numbers come from"><svg class="ic" aria-hidden="true"><use href="#i-data"/></svg><span class="t">Data</span></a>
@@ -145,6 +145,7 @@ try { var kept = JSON.parse(localStorage.getItem('crophalo.settings.v1')) || {},
               </div>
               <p class="search-msg" id="searchMsg" role="status"></p>
               <div class="home-card-foot">
+                <p class="search-yours" id="yourField" hidden>Your field: <button type="button" class="link" id="yourFieldGo">your field in My farm</button></p>
                 <p class="search-try" id="searchTry" data-wait>Try a demo field: <button type="button" class="link" id="tryRegion">a demo field</button></p>
                 <p class="hero-listen"><button type="button" class="listen" id="homeListen" hidden><svg class="ic" aria-hidden="true"><use href="#i-speaker"/></svg><span class="t">Listen to how it works</span></button></p>
               </div>
@@ -187,15 +188,11 @@ try { var kept = JSON.parse(localStorage.getItem('crophalo.settings.v1')) || {},
   </section>
   <section class="view" id="view-setup" hidden><div class="setup" id="setupRoot"><h1>Farm setup</h1></div></section>
   <section class="view" id="view-info" hidden><div class="wrap"><div class="sec"><h1 id="infoTitle"></h1><div id="infoBody"></div></div></div></section>
-  <section class="view" id="view-admin" hidden><div class="wrap"><div class="sec"><h1>Service status</h1></div></div></section>
+  <section class="view" id="view-admin" hidden><div class="wrap"><div class="sec"><h1>API connections</h1></div></div></section>
   <section class="view" id="view-report" hidden><div id="reportRoot"><h1>Your field report</h1></div></section>
   <section class="view" id="view-farm" hidden><div class="wrap"><div class="sec"><h1>My farm</h1></div></div></section>
 </main>
 
-<dialog class="sheet" id="dlgSaved" aria-labelledby="dlgSavedTitle">
-  <div class="sheet-head"><h2 id="dlgSavedTitle">Saved fields</h2><button type="button" class="btn" id="dlgSavedDone">Done</button></div>
-  <div class="sheet-body" id="savedList"></div>
-</dialog>
 
 <div id="toast" class="toast" role="status"></div>
 

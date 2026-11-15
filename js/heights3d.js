@@ -1,9 +1,10 @@
 // The 3D view's land heights: asks the server's height lookup for the block the scene wants and turns its answer into the grid the view draws.
 // decodeHeights() is pure; loadHeights() is the one function that reaches the server. A failure is an answer too: the view then draws the land flat and says why.
 // Checked by scripts/test_farm3d.mjs.
+import { plainReason } from './satellites2-data.js';
+import { apiUrl } from './api.js';
 
 // "AAAA" base64 of little-endian 32-bit floats -> Float32Array (NaN stays NaN: no height there)
-import { apiUrl } from './api.js';
 export function floatsOf(b64) {
   const bin = atob(String(b64 || '')), bytes = new Uint8Array(bin.length);
   for (let i = 0; i < bin.length; i++) bytes[i] = bin.charCodeAt(i);
@@ -12,7 +13,7 @@ export function floatsOf(b64) {
 // The server's answer -> the grid {nx, ny, width, depth, h, source, name, res_m, native_m, kind, credit, licence, data_date, cover}, or {failed: sentence}.
 export function decodeHeights(answer, request) {
   if (!answer || typeof answer !== 'object') return { failed: 'The land heights could not be read right now.' };
-  if (answer.ok !== true) return { failed: String(answer.reason || 'The land heights could not be read right now.') };
+  if (answer.ok !== true) return { failed: plainReason(answer.reason, 'The land heights could not be read right now.') };
   const nx = answer.grid?.nx, ny = answer.grid?.ny, h = floatsOf(answer.h);
   if (!Number.isInteger(nx) || !Number.isInteger(ny) || h.length !== nx * ny) return { failed: 'The land heights came back in a shape that could not be used.' };
   if (Math.abs(answer.grid.w - request.width) > 1 || Math.abs(answer.grid.d - request.depth) > 1) return { failed: 'The land heights were for another piece of land.' };

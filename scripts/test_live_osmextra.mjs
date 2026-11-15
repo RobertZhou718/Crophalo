@@ -2,6 +2,7 @@
 // every kind and every refusal, and the failures a real service shows. It never reaches the internet. RULE: never loosen a check here without a written farming reason. Run: node scripts/test_live_osmextra.mjs
 import fs from 'node:fs';
 import path from 'node:path';
+import { fileURLToPath } from 'node:url';
 import { check, same, group, finish, runLookup, addAnswer, tempFolder, netKey, FIXTURES } from './live_testlib.mjs';
 
 const MAIN = 'https://overpass-api.de/api/interpreter', BACKUP = 'https://overpass.kumi.systems/api/interpreter', PRIVATE = 'https://overpass.private.coffee/api/interpreter';
@@ -109,5 +110,14 @@ await group('osmextra: the arguments', async () => {
   }
   const text = fs.readFileSync(new URL('./live/osmextra.py', import.meta.url), 'utf8'), block = /osm\.servers\(\)/.test(text);
   check('osmextra.py asks the servers osm.py names, and carries no server address of its own', block && !/https?:\/\/overpass/.test(text.replace(/#.*$/gm, '')));
+});
+group('recorded OpenStreetMap answers carry no personal or business contact details', () => {
+  const bad = /"(addr:[^"]*|contact:[^"]*|email|phone|fax|website|url|operator|operator:type|owner|wikidata|wikipedia|brand:wikidata|brand:wikipedia)"\s*:/;
+  const root = fileURLToPath(new URL('./fixtures', import.meta.url)), found = [];
+  const walk = d => { for (const f of fs.readdirSync(d, { withFileTypes: true })) { const p = path.join(d, f.name); if (f.isDirectory()) walk(p); else if (/osm/.test(p) && /\.(body|json)$/.test(f.name) && bad.test(fs.readFileSync(p, 'utf8').replace(/"(url)"\s*:\s*"https?:[^"]*"/g, ''))) found.push(f.name); } };
+  walk(root);
+  check('no recorded answer of the lookups holds an address, e-mail, phone, website, operator or owner tag (only the recording\'s own "url" line of where it was asked remains)', found.length === 0, found);
+  const text = fs.readFileSync(new URL('./live/osm.py', import.meta.url), 'utf8');
+  check('osm.py takes those tags out of what it keeps, and osmextra.py goes through the same step', /def scrub\(/.test(text) && /for e in scrub\(elements\)/.test(text) && /osm\.scrub\(elements\)/.test(fs.readFileSync(new URL('./live/osmextra.py', import.meta.url), 'utf8')));
 });
 finish();

@@ -7,6 +7,8 @@ import { fmt } from './sales.js';
 import { fxNote } from './currency.js';
 import { monthList } from './money-data.js';
 
+export const PRICES_DOWN = 'Prices could not be read just now. Try again later.';
+export const SERVER_WORDS = /python|\.venv|\.py\b|traceback|exception|errno|enoent|node_modules|\/[\w.-]+\/[\w.-]+|\bstatus \d{3}\b|\bHTTP\b|undefined|\[object/i;
 export const MONEY_TITLE = 'How this figure is made';
 const list = items => items.length < 2 ? items.join('') : `${items.slice(0, -1).join(', ')} and ${items.at(-1)}`;
 // The figure as the line writes it: per hectare or per acre, to two significant digits, in the farmer's currency.
@@ -21,7 +23,7 @@ export function moneyLineHTML(state, plan, where = 'card', units = {}) {
   const f = state.byPlan?.[plan.id];
   if (!f) return '';
   if (!f.ok && where !== 'detail') return '';   // a card says nothing when there is no figure: the reason is said once, in the detail below the cards
-  if (!f.ok) { const tag = 'p'; return `<${tag} class="cap money-line">No money figure: ${esc(f.reason)}</${tag}>`; }
+  if (!f.ok) { const tag = 'p'; return SERVER_WORDS.test(String(f.reason)) ? `<${tag} class="cap money-line">${esc(PRICES_DOWN)}</${tag}>` : `<${tag} class="cap money-line">No money figure: ${esc(f.reason)}</${tag}>`; }   // a reason with a server's words in it (a path, Python, a status code) is never shown: one plain sentence
   const words = `${figureWords(f, units)}, before costs.`;
   return where === 'detail'
     ? `<p class="cap money-line"><b>${esc(words)}</b> A rough value at the world price. <button type="button" class="link" data-act="money" data-plan="${esc(plan.id)}" aria-haspopup="dialog">${MONEY_TITLE}</button></p>`

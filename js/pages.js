@@ -25,6 +25,7 @@ export function dataPageHTML(table = SOURCES) {
   const list = Object.entries(table).map(([key, n]) => ({ key, ...n })).sort((a, b) => Number(b.nasa) - Number(a.nasa) || a.name.localeCompare(b.name)), nasa = list.filter(n => n.nasa), other = list.filter(n => !n.nasa);
   const count = { nasa: nasa.length, other: other.length };
   return `<p class="data-note" id="nasaLine">${esc(NASA_LINE)}</p>
+    <p class="cap data-admin"><a class="link" href="#admin">API connections (service status)</a>: which data services answer right now, and how fast.</p>
     <details class="data-fold data-nasa" id="nasaUse"><summary>How Crophalo uses NASA data</summary>${NASA_USE.map(([n, what, does]) => `<p><b>${esc(n)}.</b> ${esc(what)}</p><p class="cap">${esc(does)}</p>`).join('')}<p class="cap">${esc(NASA_CREDIT)}</p></details>
     <h2>Where the numbers come from</h2>
     <div class="data-filter"><label class="field"><span>Find a source</span><input type="search" id="srcFilter" autocomplete="off" placeholder="e.g. rain, soil, price"></label><p class="cap" id="srcCount" role="status" aria-live="polite"></p></div>

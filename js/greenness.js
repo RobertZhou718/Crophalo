@@ -4,6 +4,7 @@
 // Checked by scripts/test_greenness.mjs (a stand-in in the lookup's real shape: the steady Oxford answer, a browner and a greener one, gaps, partial seasons, hostile input).
 import { esc } from './words.js';
 import { once, spotKey } from './memo.js';
+import { plainReason } from './satellites2-data.js';
 import { apiUrl } from './api.js';
 
 export const PATCH_WORDS = 'This is a 2 km patch round the pin, read in 250 m pixels. It can include roads, towns or woods.';
@@ -15,7 +16,7 @@ const year = v => (Number.isInteger(v) && v >= 1990 && v <= 2100 ? v : null);
 
 // The lookup's answer rebuilt from known parts: { ok: true, seasons: [{ year, peak (0..1 | null), date, n, of, partial }], gaps: [year], partial: [year], sentence, advice, change, note } or { ok: false, reason }.
 export function cleanGreenness(raw) {
-  if (!raw || typeof raw !== 'object' || raw.ok !== true || !Array.isArray(raw.seasons)) return { ok: false, reason: text(raw?.reason, 240) || GREEN_DOWN };
+  if (!raw || typeof raw !== 'object' || raw.ok !== true || !Array.isArray(raw.seasons)) return { ok: false, reason: plainReason(text(raw?.reason, 240), GREEN_DOWN) };
   const withoutList = Array.isArray(raw.years_without) ? raw.years_without.map(year).filter(v => v !== null) : [], partialList = Array.isArray(raw.partial_years) ? raw.partial_years.map(year).filter(v => v !== null) : [];
   const seen = new Map();
   for (const s of raw.seasons.slice(0, 60)) {
@@ -25,7 +26,7 @@ export function cleanGreenness(raw) {
   }
   for (const y of withoutList) seen.set(y, { ...(seen.get(y) ?? { year: y, date: '', n: 0, of: null }), peak: null, date: '', partial: false });   // a year the lookup names as without clear readings is a gap, whatever the list of seasons says
   const seasons = [...seen.values()].sort((a, b) => a.year - b.year);
-  if (!seasons.length) return { ok: false, reason: text(raw.reason, 240) || GREEN_DOWN };
+  if (!seasons.length) return { ok: false, reason: plainReason(text(raw.reason, 240), GREEN_DOWN) };
   const change = raw.change && typeof raw.change === 'object' && ['greener', 'browner', 'steady'].includes(raw.change.kind) ? { kind: raw.change.kind, difference: fin(raw.change.difference) ? raw.change.difference : null } : null;
   return { ok: true, seasons, gaps: seasons.filter(s => s.peak === null).map(s => s.year), partial: seasons.filter(s => s.peak !== null && s.partial).map(s => s.year), sentence: text(raw.sentence, 400) || null, advice: text(raw.advice, 300) || null, change, note: text(raw.note, 300), window: text(raw.window, 40) || 'April to September', incomplete: text(raw.incomplete, 200), dataDate: text(raw.data_date, 20) };
 }

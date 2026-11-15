@@ -2,7 +2,7 @@
 // a failed first answer is retried once after four seconds and the back-up record says so; the weather line says how new the record is; the loading list names every source. Stand-in answers made from the recorded NASA POWER answer for Barrie.
 // RULE: never loosen a check to make it pass. No network. Run: node scripts/test_report_load.mjs
 import fs from 'node:fs';
-import { loadSpot, ROWS, freshRows, BACKUP_WAIT_MS, COLD_WAIT_MS, forgetSpots } from '../js/report-load.js';
+import { outlineKey, loadSpot, ROWS, freshRows, BACKUP_WAIT_MS, COLD_WAIT_MS, forgetSpots } from '../js/report-load.js';
 import { forgetAll } from '../js/memo.js';
 import { buildSeries, BACKUP_CARD } from '../js/data.js';
 
@@ -68,4 +68,9 @@ check('the weather line says it is live and through which day', /^live · weathe
 same('the loading list has a row for every lookup the report waits on, each naming its source', ROWS.map(r => r.key), ['power', 'forecast', 'cold', 'smap', 'crops', 'soil']);
 check('each row names who provides it, and says which are not NASA', ROWS.every(r => / · /.test(r.label)) && /NASA POWER/.test(ROWS[0].label) && /not NASA/.test(ROWS[1].label) && /not NASA/.test(ROWS[2].label) && /NASA SMAP/.test(ROWS[3].label) && /United States/.test(ROWS[5].label));
 check('fresh rows all wait', freshRows().every(r => r.state === 'wait'));
+// the terrain answer is kept under a key that holds the outline's corners: moving a corner changes the key even when the number of corners and the size stay the same
+{ const a = { pts: [[43.1, -80.7], [43.1, -80.69], [43.11, -80.69], [43.11, -80.7]], ha: 9 }, b = { pts: [[43.1, -80.7], [43.1, -80.69], [43.11, -80.69], [43.1101, -80.7]], ha: 9 };
+  check('the terrain key follows the outline\'s corners (the same count and size but one corner moved gives another key), and a pin has its own key', outlineKey(a) !== outlineKey(b) && outlineKey(a) === outlineKey(JSON.parse(JSON.stringify(a))) && outlineKey(null) === 'none', outlineKey(a).slice(0, 60)); }
+{ const src = fs.readFileSync(new URL('../js/report-load.js', import.meta.url), 'utf8');
+  check('the height map\'s code is fetched only when the height is asked: no import of js/field-data.js at the top, one when getDem runs', !/^import [^\n]*'\.\/field-data\.js'/m.test(src) && /getDem = [^\n]*await import\('\.\/field-data\.js'\)\)\.loadDem\(loc, outline\)/.test(src)); }
 console.log(`report_load: ${passed} passed, ${failed} failed`); process.exit(failed ? 1 : 0);

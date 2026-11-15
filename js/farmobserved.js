@@ -1,8 +1,9 @@
 // What NASA's Harmonized Landsat and Sentinel-2 pictures (HLS, 30 m) actually saw on a field, set beside what the plan says should be there ("Observed" beside "Planned").
 // Pure: observedFor() turns the lookup's answer into the words for one day; loadObserved() asks the server's /api/hlsndvi once for a field and keeps the answer for this visit.
 // Never a made-up state: no clear picture, a day outside the pictures' window, or a lookup that did not answer each say so in words. Checked by scripts/test_sim.mjs and scripts/e2e_farm.mjs.
-
+import { plainReason } from './satellites2-data.js';
 import { apiUrl } from './api.js';
+
 export const PERIOD_DAYS = 15;   // the lookup gives one clear reading for each 15-day period, so a reading is used for the 15 days after it
 const DAY = 864e5, MON = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
 const N = iso => Date.UTC(+iso.slice(0, 4), +iso.slice(5, 7) - 1, +iso.slice(8, 10)) / DAY;
@@ -14,7 +15,7 @@ const isDay = v => typeof v === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(v);
 // answer: the lookup's answer, or null when it has not come. Returns { state: 'wait' | 'unread' | 'ok' | 'none' | 'outside', chip, line, detail?, pass? }.
 export function observedFor(answer, iso, { waiting = false } = {}) {
   if (waiting && !answer) return { state: 'wait', chip: 'Looking…', line: 'Looking for NASA pictures of this field. This can take a minute.' };
-  if (!answer || answer.ok !== true) return { state: 'unread', chip: 'Not seen', line: 'NASA pictures of this field could not be read just now. Try again later.', detail: answer?.reason ? String(answer.reason).slice(0, 200) : '' };
+  if (!answer || answer.ok !== true) return { state: 'unread', chip: 'Not seen', line: 'NASA pictures of this field could not be read just now. Try again later.', detail: plainReason(answer?.reason, '').slice(0, 200) };
   const w = answer.window || {}, passes = (Array.isArray(answer.passes) ? answer.passes : []).filter(p => isDay(p?.date) && Number.isFinite(p.ndvi)).sort((a, b) => a.date.localeCompare(b.date));
   if (!isDay(iso)) return { state: 'unread', chip: 'Not seen', line: 'Choose a day to see it.' };
   if (isDay(w.last) && iso > w.last) return { state: 'outside', chip: 'Not yet seen', line: `${dayShort(iso)} is after NASA's newest picture (${dayShort(w.last)}). Only the plan speaks for that day.` };

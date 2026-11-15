@@ -62,7 +62,7 @@ export function createDrawer(env) {
   env.onProgress?.('compiling');
   const warm = renderer.compileAsync(scene, camera).catch(() => {}).finally(() => { env.onProgress?.('compiled'); content.remove(standIn); tri.dispose(); standIn.dispose(); });
 
-  let shown = null, usedPlants = [], token = 0, disposed = false, lastKey = '', lastLand = '', scenes = 0, compiled = false, frame = 0;
+  let shown = null, usedPlants = [], token = 0, disposed = false, lastKey = '', lastLand = '', lastPaint = '', scenes = 0, compiled = false, frame = 0;
   const meshes = [];   // what the shown scene holds, freed when the next one replaces it
   const extra = [];    // the details of the land (apart, so a switch changes only these and not the ground and the plants)
   const stats = { plants: 0, landTriangles: 0, plantTriangles: 0, contexts: 1, weak, budget };
@@ -111,9 +111,12 @@ export function createDrawer(env) {
       g.setLineDash([]);
       g.fillStyle = '#ffffff'; g.fillRect(0, high, size, STRIP);
       g.fillStyle = mix(PALETTE.openGround, PALETTE.grass, 0.25); g.fillRect(0, 0, size, high);
+      stats.picture = !!sc.picture?.canvas;
+      if (sc.picture?.canvas) { g.imageSmoothingEnabled = true; g.imageSmoothingQuality = 'high'; g.drawImage(sc.picture.canvas, 0, 0, size, high); }   // the real picture of the ground, edge to edge
       const cover = sc.cover, soil = sc.soilColour;
       g.fillStyle = !cover || cover.kind === 'bare' ? soil : cover.kind === 'residue' ? mix(soil, '#d9c490', 0.55) : mix(soil, cover.colour, 0.22);
-      outline(); g.fill();
+      if (sc.picture?.canvas) g.globalAlpha = 0.3;   // over the real picture the field's colour only tints it: the ground stays the real ground
+      outline(); g.fill(); g.globalAlpha = 1;
       g.save();
       try {
         outline(); g.clip();
@@ -157,6 +160,15 @@ export function createDrawer(env) {
           }
         }
       } finally { g.restore(); }
+      if (sc.drape?.polys) {   // squares drawn as they lie on the ground (the weak-spots squares of 30 m)
+        g.save(); try { g.globalAlpha = 0.72; for (const q of sc.drape.polys) { g.beginPath(); q.pts.forEach((p, i) => i ? g.lineTo(px(p.x), pz(p.z)) : g.moveTo(px(p.x), pz(p.z))); g.closePath(); g.fillStyle = q.colour; g.fill(); } } finally { g.restore(); }
+        stats.drape = sc.drape.id;
+      } else if (sc.drape?.rgba) {   // a layer draped over the land: the squares of the height grid, coloured by the layer's own rule, a little see-through so the picture shows under it
+        const d = sc.drape, tmp = makeCanvas(d.w, d.h), tg = tmp.getContext('2d'), img = tg.createImageData(d.w, d.h); img.data.set(d.rgba); tg.putImageData(img, 0, 0);
+        const cw = size / (d.w - 1), ch = high / (d.h - 1);   // the grid's points sit on the corners of its cells: the picture is spread from half a cell outside to half a cell outside
+        g.imageSmoothingEnabled = true; g.drawImage(tmp, -cw / 2, -ch / 2, size + cw, high + ch);
+        stats.drape = d.id;
+      } else stats.drape = null;
       if (!(sc.shade?.state === 'ready')) stats.shadeCells = 0;
       // the shade of the land at the hour shown: a navy tint, and hatching, so it never relies on colour alone; only where the shade job worked it out
       if (sc.shade?.state === 'ready' && sc.shade.mask) {
@@ -266,10 +278,17 @@ export function createDrawer(env) {
 
   // Show a scene: built in steps beside the one on screen, then put in its place at once. A newer show() makes an older one stop at its next pause (it answers false).
   async function show(sc) {
-    const key = pictureKey(sc) + '|' + (sc.shadeKey || ''), land = sc.landKey || '';   // a new shade (another hour, an answer that has come) draws the ground again; a new land key draws the details
-    if (shown && key === lastKey && land === lastLand) return true;   // the same picture: nothing to draw again
+    const key = pictureKey(sc) + '|' + (sc.shadeKey || '') + (sc.hidePlants ? '|np' : ''), land = sc.landKey || '';   // a new shade (another hour, an answer that has come) draws the ground again; a new land key draws the details
+    const paintKey = sc.paintKey || '';
+    if (shown && key === lastKey && land === lastLand && paintKey === lastPaint) return true;   // the same picture: nothing to draw again
     const mine = ++token, made = [], madeExtra = [];
     try {
+      if (shown && key === lastKey && paintKey !== lastPaint) {   // only the picture or a layer over it changed: the ground is painted again, nothing is built
+        await paint(sc, mine, usedPlants);
+        if (disposed || mine !== token) throw superseded;
+        texture.needsUpdate = true; lastPaint = paintKey; shown = sc;
+        if (land === lastLand) { renderer.render(scene, camera); return true; }
+      }
       if (shown && key === lastKey) {   // only the details of the land changed (a switch, or an answer that has arrived): the ground and the plants stay
         await step(mine, 'details');
         await details(sc, mine, madeExtra);
@@ -277,7 +296,7 @@ export function createDrawer(env) {
         if (disposed || mine !== token) throw superseded;
         for (const m of extra.splice(0)) free(m);
         for (const m of madeExtra.splice(0)) { content.add(m); extra.push(m); }
-        lastLand = land; shown = sc; scenes++;
+        lastLand = land; lastPaint = paintKey; shown = sc; scenes++;
         renderer.render(scene, camera);
         return true;
       }
@@ -285,7 +304,7 @@ export function createDrawer(env) {
       await step(mine, 'land');
       made.push(...land_(sc));
       const room = Math.max(0, budget.triangles - stats.landTriangles), per = PER_PLANT[sc.cover?.shape] ?? 110;
-      const list = sc.cover ? thinPlants(sc.cover.plants, Math.min(budget.plants, Math.floor(room / per))) : [];
+      const list = sc.cover && !sc.hidePlants ? thinPlants(sc.cover.plants, Math.min(budget.plants, Math.floor(room / per))) : [];
       await step(mine, 'ground');
       await paint(sc, mine, list);
       await step(mine, 'plants');
@@ -303,7 +322,7 @@ export function createDrawer(env) {
       lights(sc);
       texture.needsUpdate = true;
       stats.plants = list.length;
-      shown = sc; usedPlants = list; lastKey = key; lastLand = land; scenes++;
+      shown = sc; usedPlants = list; lastKey = key; lastLand = land; lastPaint = paintKey; scenes++;
       if (!compiled) {   // the first picture only: the ground picture goes up to the graphics chip in a step of its own
         await renderer.compileAsync(scene, camera);
         if (disposed || mine !== token) throw superseded;
@@ -327,19 +346,19 @@ export function createDrawer(env) {
   // A newer show() ends it at its next pause; it answers true when the new ground is on the glass.
   async function relight(sc) {
     if (!shown || disposed) return false;
-    const mine = token, key = pictureKey(sc) + '|' + (sc.shadeKey || '');
-    if (key === lastKey) return true;
+    const mine = token, key = pictureKey(sc) + '|' + (sc.shadeKey || ''), paintKey = sc.paintKey || '';
+    if (key === lastKey && paintKey === lastPaint) return true;
     try {
       await paint(sc, mine, usedPlants);
       if (disposed || mine !== token) return false;
-      lights(sc); texture.needsUpdate = true; shown = sc; lastKey = key;
+      lights(sc); texture.needsUpdate = true; shown = sc; lastKey = key; lastPaint = paintKey;
       renderer.render(scene, camera);
       return true;
     } catch (e) { if (e === superseded) return false; throw e; }
   }
 
   const onLost = e => { e.preventDefault?.(); env.onLost?.(); };
-  const onRestored = () => { compiled = false; lastKey = ''; lastLand = ''; const sc = shown; shown = null; if (sc) show(sc).then(() => env.onRestored?.(), () => {}); };
+  const onRestored = () => { compiled = false; lastKey = ''; lastLand = ''; lastPaint = ''; const sc = shown; shown = null; if (sc) show(sc).then(() => env.onRestored?.(), () => {}); };
   canvas.addEventListener?.('webglcontextlost', onLost);
   canvas.addEventListener?.('webglcontextrestored', onRestored);
 

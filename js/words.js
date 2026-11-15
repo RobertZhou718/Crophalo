@@ -78,7 +78,7 @@ export const STEPS = Object.freeze([
   { id: 'field', icon: 'i-pin', bar: 'Your field', heading: 'Is this your field?', listen: 'Step 1, your field. Move the pin onto your field on the map. You can also draw its shape. Then press Next step.' },
   { id: 'crops', icon: 'i-leaf', bar: 'Your crops', heading: 'What do you grow?', listen: 'Step 2, your crops. Pick the crops you plant, year after year. Crophalo suggests a rotation first when it can see what farmers grow around you. Choose it, choose another, or build your own. If you grow tea, hazelnuts or other trees, find that under More rotations. Then press Next step.' },
   { id: 'soil', icon: 'i-drop', bar: 'Water and soil', heading: 'Water and soil', listen: 'Step 3, water and soil. Say how your field gets water: rainfed, limited irrigation, or irrigated as needed. Then tap the soil that feels like yours, and its colour. Then press Next step.' },
-  { id: 'matters', icon: 'i-scale', bar: 'What matters most', heading: 'What do you want most?', listen: 'Step 4, what matters most. Tap one picture. Then press See my field report.' },
+  { id: 'matters', icon: 'i-scale', bar: 'What matters most', heading: 'What do you want most?', listen: 'Step 4, what matters most. Tap one picture. You can also tick what else matters, and open What limits you. Then press See my field report.' },
 ]);
 
 export const WATER = Object.freeze([
@@ -98,7 +98,7 @@ export const TILLAGE = Object.freeze([{ value: 'conventional', title: 'Conventio
 export const HABITS = Object.freeze([
   { key: 'coverOK', title: 'I can seed cover crops', sub: 'A drill or seeder, and time for one more pass' },
   { key: 'livestock', title: 'I keep animals', sub: 'Grazing and hay are worth something to me' },
-  { key: 'labor', title: 'Short on workers or machines', sub: 'Keep the plan simple' },
+  { key: 'labor', title: 'Short on workers or machines', sub: 'Plans with a cover crop or a second crop score a little lower.' },
 ]);
 
 export const PARCEL_FOR = Object.freeze({   // where a farmer looks up a parcel on their government's own map: links only, nothing is fetched from them
@@ -114,7 +114,7 @@ export const PARCEL_FOR = Object.freeze({   // where a farmer looks up a parcel 
 export const PARCEL_ELSE = ['FAO GeoNetwork: find your country’s parcel map', 'https://www.fao.org/geonetwork/'];
 
 export const WORDS = Object.freeze({
-  placeLoading: 'Finding the place…', demoChip: 'Demo region', stepLabel: (n, name) => `Step ${n} of 4: ${name}`,
+  placeLoading: 'Where is your field?', placeAsk: 'Tap the map or draw your field.', demoChip: 'Demo region', stepLabel: (n, name) => `Step ${n} of 4: ${name}`,
   badCoords: 'Could not read those coordinates. Try 42.03, -93.62',
   demoAnswers: 'Answers filled in. Change any in the steps.',
   next: 'Go to the next step', last: 'See my field report', back: 'Back',
@@ -122,7 +122,6 @@ export const WORDS = Object.freeze({
   placeNeed: 'Tap the map or draw your field to go on.', cropsNeed: 'Pick what you grow to go on.', soilNeed: 'Tap your soil and its colour to go on.',
   rotName: 'Tap what you grow', rotSame: 'The same crop every year.', rotCycle: n => `${n}-year rotation, then it repeats.`,
   garden: 'They stay in the ground, so there is nothing to rotate. Crophalo will show your weather, frost, rain, slope and soil.',
-  noSuggest: 'Suggestions for this spot have not been read yet. Choose from the ready rotations, or build your own.',
   ready6: 'Ready rotations', buildOwn: 'Build my own', buildSub: 'Choose each year yourself', yearN: n => `Year ${n}`, removeYear: n => `Remove year ${n}`, addYear: 'Add a year',
   yearsNote: 'Year 1: the crop in your field now or next. Then it repeats.', chooseCrop: 'Choose a crop',
   trees: 'Crops that stay for several years: fruit, berries and asparagus', treesMore: 'More trees and bushes',
@@ -130,13 +129,13 @@ export const WORDS = Object.freeze({
   colourAbout: 'About this', colourWhy: 'A rough guide. Your soil test’s figure shows in the report but does not change scores.',
   soilAssume: 'Not sure',
   soilAssumed: 'Average soil used, so the answer is less sure.',
-  more: 'More about how you farm', optional: '(optional)', takenAs: parts => `Taken as: ${parts}.`, tillage: 'Tillage',
+  tillage: 'Tillage',   // step 4's other words are in js/words.inputs.js
 });
 
 // ---- My farm: the labels of its first view and of the places its occasional tools moved to (Compare plans, the field's details, More)
 export const FARM_WORDS = Object.freeze({
   more: 'More', moreField: 'This field', moreMap: 'Map style', moreFarm: 'This farm',
-  details: 'This field', history: 'Land history', board: 'Light', photo: 'Satellite', fields: 'All fields', farms: 'My farms',
+  details: 'This field', history: 'Land history', board: 'Map', askWeak: 'Find weak spots', photo: 'Satellite', fields: 'All fields', farms: 'My farms',
   tools: 'Farm tools', copyPlan: 'Copy the plan to other fields', add: 'Add a field', newFarm: 'Add another farm', importFile: 'Bring in a map file', saveMap: 'Save fields as a map file', saveTable: 'Save the Fields table', recent: 'Recently deleted',
   editField: 'Edit this field', corners: 'Move corners', split: 'Split', rename: 'Rename', remove: 'Delete',
   why: 'Why try it:', showPlan: 'Show on the map and in 3D', keyName: 'What is on the ground', keyPlants: 'Growing crop', keyResidue: 'Stubble left after harvest', keyBare: 'Bare soil',

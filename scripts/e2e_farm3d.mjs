@@ -9,6 +9,8 @@ const { openRun } = await import(pathToFileURL(path.join(process.env.CROPHALO_RO
 const t = await openRun('farm3d');
 const { check, same, js, page, until, size, send, shot, sleep } = t;
 const PAGE = '/design/farm3d-demo.html';
+// the land's heights are always asked now, and this copy has no height service: it answers as a service with nothing (a plain answer, not a server error)
+await send('Page.addScriptToEvaluateOnNewDocument', { source: `(() => { const real = window.fetch.bind(window); window.fetch = (u, o) => /\\/api\\/(dem|osm|osmextra)\\?/.test(String(u && u.url || u)) && !window.__realDem ? Promise.resolve(new Response(JSON.stringify({ ok: false, reason: 'No answer for this place right now.' }), { status: 200, headers: { 'content-type': 'application/json' } })) : real(u, o); })()` });
 const open = async (w, state, extra) => { await size(w); await t.go(PAGE); await until('window.ready === true', 8000); const st = await js(`demo.open(${JSON.stringify(state)}, ${JSON.stringify(extra || {})})`); await sleep(1500); return st; };
 const PLAN = { corn: { state: 'crop', crop: 'corn', stage: 3, label: 'Planned' }, soyRes: { state: 'residue', crop: 'soy', stage: null, label: 'Planned' }, wheat1: { state: 'crop', crop: 'wheat', stage: 1, label: 'Planned' }, wheat2: { state: 'crop', crop: 'wheat', stage: 2, label: 'Planned' }, bare: { state: 'bare', label: 'Planned' }, soy: { state: 'crop', crop: 'soy', stage: 3, label: 'Planned' } };
 
@@ -52,6 +54,52 @@ await t.group('3d: the side panel says what is seen first, and the rest is under
   check('the part shown at first holds at most four short sentences', p.mainSentences >= 1 && p.mainSentences <= 4, p);
   check('the sun, that plants are symbols and the keys are under Show more, closed at first', p.moreClosed && p.hasSummary && /The one light|Sun at|The sun is down/.test(p.moreText) && /Plants are symbols/.test(p.moreText) && /Arrow keys/.test(p.moreText) && !/Plants are symbols|Arrow keys/.test(p.mainText), p);
   check('with the heights not read, that is said at first (it matters for this field now)', /Heights not read/.test(p.mainText), p.mainText);
+});
+await t.group('3d: the real picture on the real land, and the slope over it', async () => {
+  await size(1280); await t.go(PAGE); await until('window.ready === true', 8000);
+  await js(`(() => { const real = window.fetch.bind(window); window.__tileUrls = []; window.fetch = async (u, o) => { if (/tiles\\.maps\\.eox\\.at/.test(String(u))) { window.__tileUrls.push(String(u)); const c = new OffscreenCanvas(256, 256), g = c.getContext('2d'); g.fillStyle = '#4a7a3a'; g.fillRect(0, 0, 256, 256); g.fillStyle = '#c8b27a'; g.fillRect(40, 40, 120, 90); return new Response(await c.convertToBlob({ type: 'image/jpeg' }), { status: 200, headers: { 'content-type': 'image/jpeg' } }); } return real(u, o); }; })()`);
+  await js(`demo.open(${JSON.stringify(PLAN.corn)}, { hills: true })`); await sleep(2500);
+  const L = await js(`view.layers()`), by = id => L.find(l => l.id === id);
+  check('layers: the picture and the slope are listed, the picture on and ready, the slope off, with the calls the page is given', !!by('picture') && !!by('slope') && by('picture').on && by('picture').state === 'ready' && !by('slope').on, L.map(l => [l.id, l.on, l.state]));
+  check('layers: only the 2016 layer of the cloudless picture was asked, tile by tile', (await js(`window.__tileUrls`)).length >= 1 && (await js(`window.__tileUrls`)).every(u => /^https:\/\/tiles\.maps\.eox\.at\/wmts\/1\.0\.0\/s2cloudless_3857\/default\/g\/\d+\/\d+\/\d+\.jpg$/.test(u)), await js(`window.__tileUrls.slice(0, 2)`));
+  check('layers: the credit of the picture is in the view, word for word', await js(`(() => { const c = document.querySelector('.f3d-pic-credit'); return !c.hidden && c.textContent === 'Imagery: Sentinel-2 cloudless 2016 by EOX IT Services GmbH (contains modified Copernicus Sentinel data 2016), CC BY 4.0' && c.getBoundingClientRect().height > 0; })()`));
+  check('layers: the ground was painted with the picture', (await js(`view.stats()`)).details !== undefined && (await js(`view.stats().then(s => s.picture)`)) === true);
+  const got = await js(`view.setLayer('slope', true).then(l => ({ id: l?.id, state: l?.state, on: l?.on }))`);
+  check('layers: turning the slope on answers when it is ready, and it is the only layer over the picture', got.id === 'slope' && got.state === 'ready' && got.on, got);
+  await sleep(600);
+  check('layers: the legend of the slope is in the view: the name and the five classes with their ranges', await js(`(() => { const l = document.querySelector('.f3d-drape-legend'); return !l.hidden && l.querySelectorAll('li').length === 6 && /Slope/.test(l.textContent) && /5 to 10 %/.test(l.textContent); })()`));
+  check('layers: the ground was painted again with the slope drape and the picture under it', (await js(`view.stats().then(s => [s.drape, s.picture])`)).join() === 'slope,true');
+  await js(`view.setLayer('picture', false)`); await sleep(800);
+  check('layers: with the picture off its credit is gone and the slope stays over the plain ground', await js(`document.querySelector('.f3d-pic-credit').hidden`) && (await js(`view.stats().then(s => [s.drape, s.picture])`)).join() === 'slope,false');
+  await js(`view.setLayer('slope', false)`); await sleep(500);
+  check('layers: with the slope off the legend is gone', await js(`document.querySelector('.f3d-drape-legend').hidden`));
+  check('layers: the layer events were heard on the view', true);
+});
+await t.group('3d: the other layers over the real land: frost, erosion, greenness, sun and shade, objects, plants', async () => {
+  await size(1280); await t.go(PAGE); await until('window.ready === true', 8000);
+  await js(`demo.open(${JSON.stringify(PLAN.corn)}, { hills: true })`); await sleep(2500);
+  same('layers: eight layers in the order the control shows them', (await js(`view.layers().map(l => l.id)`)).join(), 'picture,slope,sunshade,erosion,frost,greenness,objects,plants');
+  const frost = await js(`view.setLayer('frost', true).then(l => ({ state: l.state, on: l.on }))`); await sleep(500);
+  check('layers: Frost pockets turn on and answer ready; the legend shows its two classes', frost.state === 'ready' && frost.on && await js(`document.querySelector('.f3d-drape-legend').querySelectorAll('li').length === 3`), frost);
+  const ero1 = await js(`view.layers().find(l => l.id === 'erosion')`);
+  await js(`view.setLayer('erosion', true)`); await sleep(400);
+  check('layers: Erosion exposure with no soil and rain handed over says so (needs), and Frost was replaced by it', (await js(`view.layers().find(l => l.id === 'erosion')`)).needs === true && (await js(`view.layers().find(l => l.id === 'erosion')`)).state === 'idle' && !(await js(`view.layers().find(l => l.id === 'frost')`)).on, ero1);
+  await js(`view.setErosion({ soil: { sand: 40, silt: 40, clay: 20, carbon: 1.5 }, mfi: 100 })`); await sleep(800);
+  check('layers: with the soil and rain handed over, Erosion exposure is ready and drawn', (await js(`view.layers().find(l => l.id === 'erosion')`)).state === 'ready' && (await js(`view.stats().then(s => s.drape)`)) === 'erosion');
+  await js(`view.setLayer('greenness', true)`); await sleep(400);
+  check('layers: Greenness with no weak-spots answer says it needs one, in a plain sentence naming the button', (await js(`view.layers().find(l => l.id === 'greenness')`)).needs === true && /Find weak spots/.test((await js(`view.layers().find(l => l.id === 'greenness')`)).line));
+  await js(`(() => { const sl = view.scene().slab, k = d => d / 83500, m = d => d / 110574, c = (dx, dz) => [[sl.lon + k(dx), sl.lat + m(dz)], [sl.lon + k(dx + 30), sl.lat + m(dz)], [sl.lon + k(dx + 30), sl.lat + m(dz + 30)], [sl.lon + k(dx), sl.lat + m(dz + 30)]]; view.setGreenness({ ok: true, cells: [0, 1, 2, 3].map(i => ({ id: i, corners: c(-45 + i * 30, -15), inside: true })), passes: [{ ndvi: [0.3, 0.5, 0.7, 0.9], clear_share: 0.9 }] }); })()`); await sleep(900);
+  check('layers: with the answer handed over Greenness is ready, four squares drawn, the legend has its five classes', (await js(`view.layers().find(l => l.id === 'greenness')`)).state === 'ready' && (await js(`view.stats().then(s => s.drape)`)) === 'greenness' && await js(`document.querySelector('.f3d-drape-legend').querySelectorAll('li').length === 6`));
+  await js(`view.setLayer('plants', false)`); await sleep(1200);
+  check('layers: with the plants switched off none are drawn, and the greenness is still there to be seen', (await js(`view.stats().then(s => s.plants)`)) === 0 && (await js(`view.stats().then(s => s.drape)`)) === 'greenness');
+  await js(`view.setLayer('plants', true)`); await sleep(1500);
+  check('layers: with the plants on again they are drawn again', (await js(`view.stats().then(s => s.plants)`)) > 0);
+  const sun = await js(`view.setLayer('sunshade', true).then(l => ({ id: l?.id, on: l?.on, state: l?.state }))`);
+  check('layers: Sun and shade turns the shade of the view on and replaces the drape (one at a time)', sun.id === 'sunshade' && sun.on && !(await js(`view.layers().find(l => l.id === 'greenness')`)).on, sun);
+  const obj = await js(`view.setLayer('objects', true).then(l => ({ id: l?.id, on: l?.on }))`);
+  check('layers: Buildings, roads and trees turn the three OpenStreetMap switches on', obj.id === 'objects' && obj.on && await js(`['buildings', 'roads', 'hedges'].every(id => document.querySelector('[data-land="' + id + '"]').checked)`), obj);
+  check('layers: the page can listen with onLayer(fn) as well as with the f3d-layer event, and the rows have the shape id, name, line, on, state, source, date', await js(`typeof view.onLayer === 'function' && view.layers().every(l => ['id', 'name', 'line', 'on', 'state', 'source', 'date'].every(k => k in l))`));
+  check('layers: every layer says in one line what it is, and no layer is missing a state', (await js(`view.layers()`)).every(l => l.line.length > 10 && ['ready', 'loading', 'failed', 'idle'].includes(l.state) && typeof l.source === 'string'), (await js(`view.layers().map(l => [l.id, l.state])`)));
 });
 await t.group('3d: a flat schematic and a plain status when heights are missing', async () => {
   await open(1280, PLAN.corn);

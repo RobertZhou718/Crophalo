@@ -353,7 +353,7 @@ ok('deep cold: the normal-winter line is not claimed when the normal winter is m
 }
 
 // ---- the files: pure, plain
-const files = ['season.js', 'fit.js', 'sure.js', 'engine.js', 'nearby.js', 'compare.js', 'words.compare.js'].map(n => [n, fs.readFileSync(new URL(`../js/${n}`, import.meta.url), 'utf8')]);
+const files = ['season.js', 'fit.js', 'sure.js', 'engine.js', 'nearby.js', 'compare.js', 'words.compare.js', 'inputs.js'].map(n => [n, fs.readFileSync(new URL(`../js/${n}`, import.meta.url), 'utf8')]);
 same('the engine files touch no page, storage, network, clock or chance', files.filter(([, t]) => /Date\.now|new Date\(\)|fetch\(|(?<![.\w])document\.|(?<![.\w])window\.|localStorage|Math\.random|XMLHttpRequest/.test(t)).map(([n]) => n), []);
 same('the engine files import only each other, the crop table, the words and the climate', files.flatMap(([, t]) => [...t.matchAll(/from '([^']+)'/g)].map(m => m[1])).filter(p => !['./words.js', './crops.js', './climate.js', './season.js', './fit.js', './sure.js', './compare.js', './words.compare.js', './cropstep.js'].includes(p)), []);
 const own = fs.readFileSync(new URL(import.meta.url), 'utf8'), others = ['test_season.mjs', 'hand_climates.mjs'].map(n => fs.readFileSync(new URL(`./${n}`, import.meta.url), 'utf8'));

@@ -1,0 +1,18 @@
+/* Crophalo: the look of "Trends on this land" on the Weather tab: one colour per pattern (never colour alone: each row says its figures in words and a table), the dashed trend line, the cross for a year not read. Tokens of css/app.css only. No motion. */
+.tr-sec .tr-past { margin: var(--space-8) 0 var(--space-12); }
+.tr-row { min-width: 0; display: grid; grid-template-columns: minmax(0, 1fr); gap: var(--space-8); align-content: start; }
+.tr-row figcaption { margin: 0; }
+.tr-said { margin: 0; }
+.tr-row .cap { margin: 0; }
+.tr-bar { fill: var(--c-rain); }
+.tr-bar.heat { fill: var(--c-hi); } .tr-bar.dry, .tr-bar.soil { fill: var(--c-dry); } .tr-bar.stored { fill: var(--c-wet); }
+.tr-bar.balance { fill: var(--c-rain); } .tr-bar.neg { fill: var(--c-dry); }
+.tr-bar.heavy { fill: var(--c-lo); } .tr-bar.inner { fill: var(--ink); }
+.tr-dot { fill: var(--c-lo); } .tr-dot.green { fill: var(--c-g); } .tr-dot.autumnFrost { fill: var(--c-hi); }
+.tr-trend { stroke: var(--ink); stroke-width: 1.5; stroke-dasharray: 5 3; }
+.tr-gap { stroke: var(--ink2); stroke-width: 1; fill: none; }
+.ch-key.tr-k20 { background: var(--c-lo); } .ch-key.tr-k50 { background: var(--ink); }
+.tr-nums > summary { min-height: var(--touch); display: flex; align-items: center; gap: var(--space-4); cursor: pointer; }
+.tr-nums .tbl { max-height: 320px; overflow: auto; }
+.tr-nums table { width: 100%; }
+@media (forced-colors: active) { .tr-bar, .tr-dot { fill: CanvasText; } .tr-bar.inner { fill: Highlight; } .tr-trend, .tr-gap { stroke: CanvasText; } }

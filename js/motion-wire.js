@@ -71,6 +71,7 @@ function halo(card, d, fresh) {
 
 // the loading screen: twelve fields turn green as the sources answer, a satellite crosses; the report's own words and progress stay for screen readers
 function loading(root) {
+  return;   // retired on 15 November 2026 (owner's rule 17): the loading screen is a plain list, no squares and no scanner
   const sec = root.querySelector('.rv-loading'); if (!sec || sec.querySelector('.fx-scan')) return;
   const rows = [...sec.querySelectorAll('.rv-src')], done = rows.filter(r => r.classList.contains('is-ok')).length, asked = rows.length || 1;
   const host = document.createElement('div'); host.className = 'fx-scan-host'; (sec.querySelector('.lead') || sec.firstElementChild).after(host);

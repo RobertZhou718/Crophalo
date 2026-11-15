@@ -63,12 +63,12 @@ export const SATS = Object.freeze([
 // ---- how each one looks from far: its own small mark, 24 x 24 round its point, +x along its path. d is filled, s (if any) is stroked. The same paths, larger, are the mark in its card.
 export const MARKS = Object.freeze({
   terra: { d: 'M-11 -2.2h9v4.4h-9zM-2 -.6h2v1.2h-2zM0 -3.4h6.5v6.8H0zM4.4 -6.2h.9v2.8h-.9zM3.3 -8a1.55 1.55 0 1 0 3.1 0a1.55 1.55 0 1 0 -3.1 0z', tint: '#ffe8b8' },
-  jpss: { d: 'M-3.2 -3.2h6.4v6.4h-6.4z', tint: '#ffffff' },
+  jpss: { d: 'M-3.6 -2.2h7.2v4.4h-7.2zM-1.7 -8.8h3.4v5.2h-3.4zM-1.7 3.6h3.4v5.2h-3.4zM-.35 -3.6h.7v1.4h-.7zM-.35 2.2h.7v1.4h-.7zM3.6 -.7h2.8v1.4h-2.8z', tint: '#ffffff' },
   smap: { d: 'M-2 .6h4v3.6h-4zM-6 4.6h12v2.2h-12zM1.3 .8l3.4 -6.2l1 .55l-3.4 6.2z', s: 'M-3 -8a6 2.8 0 1 0 12 0a6 2.8 0 1 0 -12 0z', tint: '#ffffff' },
   gpm: { d: 'M-3 -3h6v6h-6zM-10 -4.6h2.8v9.2h-2.8zM-7.2 -.5h4.2v1h-4.2zM3 -.5h1.4v1h-1.4zM4.4 -2h7v4h-7zM-.5 -5.2h1v2.2h-1zM-2 -6.8h4v1.6h-4z', tint: '#ffffff' },
   gracefo: { d: 'M-4 -1.3h6l2 1.3l-2 1.3h-6z', tint: '#ffe8b8' },
   landsat: { d: 'M-5 -3h6.4v6h-6.4zM1 0a3.1 3.1 0 1 0 6.2 0a3.1 3.1 0 1 0 -6.2 0zM2.5 2.6l5.6 6.2l-3.4 2.3l-5.6 -6.2zM-5 -3l-4.2 -4.4l2.1 -1.6l3.9 4.2z', tint: '#f6e3bb' },
-  s2: { d: 'M-4.25 -2.25h8.5v4.5h-8.5z', tint: '#ffffff' },
+  s2: { d: 'M-4.2 -2h8.4v4h-8.4zM-1.6 -9.2h3.2v6.2h-3.2zM-1.6 3h3.2v6.2h-3.2zM-.35 -3h.7v1h-.7zM-.35 2h.7v1h-.7zM4.2 -.6h2.6v1.2h-2.6z', tint: '#ffffff' },
   iss: { d: 'M-11 -.7h22v1.4h-22zM-10.4 -6h1.8v4.8h-1.8zM-10.4 1.2h1.8v4.8h-1.8zM-7.4 -6h1.8v4.8h-1.8zM-7.4 1.2h1.8v4.8h-1.8zM5.6 -6h1.8v4.8h-1.8zM5.6 1.2h1.8v4.8h-1.8zM8.6 -6h1.8v4.8h-1.8zM8.6 1.2h1.8v4.8h-1.8zM-.9 .7h1.8v6h-1.8zM-2.6 3.4h5.2v1.1h-5.2z', tint: '#ffffff' },
 });
 export const markSvg = look => { const m = MARKS[look]; return m ? `<svg viewBox="-12 -12 24 24" aria-hidden="true" focusable="false"><path d="${m.d}" fill="${m.tint}"/>${m.s ? `<path d="${m.s}" fill="none" stroke="${m.tint}" stroke-width="1.4"/>` : ''}</svg>` : ''; };

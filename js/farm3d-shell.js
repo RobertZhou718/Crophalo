@@ -69,6 +69,7 @@ export function shellHTML({ ids = 'f3d', compact = false, words = null, back = f
         </div>
         <div class="f3d-tools" role="group" aria-label="Camera">${TOOLS.map(([act, name]) => `<button type="button" class="f3d-btn" data-act="${act}" aria-label="${name}" disabled>${icon(act)}</button>`).join('')}<button type="button" class="f3d-btn f3d-reset" data-act="reset" disabled>Reset view</button></div>
         <p class="f3d-wait" role="status" hidden></p>
+        <div class="f3d-over"><ul class="f3d-drape-legend" aria-label="What the colours on the land mean" hidden></ul><p class="f3d-pic-credit" hidden></p></div>
       </div>
       <div class="f3d-side">
         ${side}

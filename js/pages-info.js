@@ -10,7 +10,7 @@ import { loadRates, readRates, money } from './currency.js';
 import { makeBackup, checkBackup, describeBackup, describeWords, restoreBackup, backupName, MAX_BYTES } from './backup.js';
 import { readReminders, writeReminders, remindListHTML, settingsRemindersHTML, notifyState, pushSupport } from './remind.js';
 import { toast } from './toast.js';
-import { pageStyle } from './page-style.js';
+import { pageStyle, countCards } from './page-style.js';
 
 const armer = makeArmer();
 let armTimer = 0, page = '', tab = '';
@@ -27,15 +27,17 @@ export function renderInfoPage(which, node = root()) {
   if (!node) return false;
   renders.count++;
   page = which; pageStyle('css/pages.css', node);
-  if (which === 'limits') { node.innerHTML = `<p class="lead">${esc(PAGE_LEADS.limits)}</p>${limitsHTML()}`; return true; }
-  if (which === 'privacy') { tab = tabFromAddress(PRIVACY_TAB_IDS); node.innerHTML = `<p class="lead">${esc(PAGE_LEADS.privacy)}</p>${privacyHTML(tab, storageCounts())}`; return true; }
-  if (which === 'settings') { tab = ''; node.innerHTML = `<p class="lead">${esc(PAGE_LEADS.settings)}</p>${settingsHTML(ctx())}`; afterSettings(node); return true; }
+  if (which === 'limits') { node.innerHTML = `<p class="lead">${esc(PAGE_LEADS.limits)}</p>${limitsHTML()}`; countCards(node); return true; }
+  if (which === 'privacy') { tab = tabFromAddress(PRIVACY_TAB_IDS); node.innerHTML = `<p class="lead">${esc(PAGE_LEADS.privacy)}</p>${privacyHTML(tab, storageCounts())}`; countCards(node); return true; }
+  if (which === 'settings') { tab = ''; node.innerHTML = `<p class="lead">${esc(PAGE_LEADS.settings)}</p>${settingsHTML(ctx())}`; countCards(node); afterSettings(node); return true; }
   return false;
 }
 const redraw = () => { const n = root(), y = scrollY, open = [...n.querySelectorAll('details[open]')].map(d => d.id); renderInfoPage(page, n); for (const id of open) { const d = n.querySelector(`#${CSS.escape(id)}`); if (d) d.open = true; } scrollTo(0, y); };
 const goTab = (id, focus = true) => { history.replaceState(history.state, '', `#${page}/${id}`); redraw(); if (focus) document.getElementById('pgtab-' + id)?.focus(); };
 
+const SK_ROWS = '<div class="sk-rows" aria-hidden="true"><i class="sk title"></i><i class="sk" style="width:90%"></i><i class="sk" style="width:70%"></i></div><p class="sr" role="status">Checking this browser…</p>';   // grey lines in the shape of the rows that will come
 async function afterSettings(node) {
+  { const w = node.querySelector('#remindWays'); if (w) w.innerHTML = SK_ROWS; }
   import('./remind-wire.js').then(m => m.wireSettingsReminders(node, { afterChange: () => { const c = node.querySelector('#remindCount'); if (c) { const n = readReminders().length; c.textContent = n ? `${n} ${n === 1 ? 'reminder' : 'reminders'} set. They stay on this device.` : 'They stay on this device.'; } } }));
   const state = { notify: notifyState(), push: await pushSupport() }, ways = node.querySelector('#remindWays');
   if (ways && page === 'settings') ways.innerHTML = settingsRemindersHTML({ notify: state.notify, push: { ...state.push, on: false } });
@@ -72,7 +74,7 @@ function bind() {
       if (name === 'u') { saveUnits({ ...readUnits(), [dim]: t.dataset.val }); } else saveSettings({ [t.dataset.set]: t.dataset.val });
       redraw(); node.querySelector(`[data-set="${CSS.escape(t.dataset.set)}"][aria-checked="true"]`)?.focus(); return;
     }
-    if (t.dataset.quick) { saveUnits(t.dataset.quick === 'imperial' ? IMPERIAL : METRIC); redraw(); return; }
+    if (t.dataset.quick) { saveUnits(t.dataset.quick === 'imperial' ? IMPERIAL : METRIC); redraw(); node.querySelector(`[data-quick="${CSS.escape(t.dataset.quick)}"]`)?.focus(); return; }   // the page is drawn again: the keyboard goes back to the same button
     if (t.dataset.sample !== undefined) { if ('speechSynthesis' in window) { speechSynthesis.cancel(); const u = new SpeechSynthesisUtterance('This is how Crophalo reads your report aloud.'); u.rate = { normal: 1, slow: 0.8, fast: 1.25 }[readSettings().listen] ?? 1; speechSynthesis.speak(u); } else toast('This device cannot read aloud.'); return; }
     if (t.dataset.backup !== undefined) {
       const text = JSON.stringify(makeBackup()), url = URL.createObjectURL(new Blob([text], { type: 'application/json' })), a = Object.assign(document.createElement('a'), { href: url, download: backupName() });

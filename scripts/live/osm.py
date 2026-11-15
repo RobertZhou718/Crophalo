@@ -172,10 +172,23 @@ def kind_of(tags):
     return None
 
 
+PRIVATE_KEYS = ("email", "phone", "fax", "website", "url", "operator", "operator:type", "owner", "wikidata", "wikipedia", "brand:wikidata", "brand:wikipedia")
+
+
+def scrub(elements):
+    """Take the tags that name a person or a business out of the elements (an address, an e-mail, a phone number, a website, an operator, an owner): the 3D never needs them, and nothing kept or answered carries them."""
+    for e in elements:
+        tags = e.get("tags") if isinstance(e, dict) else None
+        if isinstance(tags, dict):
+            for key in [k for k in tags if k.startswith(("addr:", "contact:")) or k in PRIVATE_KEYS]:
+                del tags[key]
+    return elements
+
+
 def sort_out(elements):
     """The four lists in the service's order, how many shapes could not be read, and the many-part outlines that are named but not drawn."""
     lists, left_out, not_drawn = {name: [] for name in CAPS}, 0, {}
-    for e in elements:
+    for e in scrub(elements):
         tags = e.get("tags") if isinstance(e.get("tags"), dict) else {}
         kind = kind_of(tags)
         if not kind:

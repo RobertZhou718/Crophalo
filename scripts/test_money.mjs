@@ -3,7 +3,7 @@
 // RULE: never loosen a check to make it pass; a failure means a farmer could be shown money that is not the sources' figure, or be told it is their income. No internet is needed. Run: node scripts/test_money.mjs
 import fs from 'node:fs';
 import { planFigure, moneyFor, loadMoney, MONEY_DOWN } from '../js/money-data.js';
-import { moneyLineHTML, moneySheetHTML, assumptionLines, figureWords, MONEY_TITLE } from '../js/money-view.js';
+import { PRICES_DOWN, moneyLineHTML, moneySheetHTML, assumptionLines, figureWords, MONEY_TITLE } from '../js/money-view.js';
 import { roughValue, roughly } from '../js/sales.js';
 import { forgetAll } from '../js/memo.js';
 
@@ -49,6 +49,8 @@ const units = { area: 'metric' }, byPlan = moneyFor({ current: now, recommended:
   check('the card line: "About $… a hectare a year, before costs", words only (the card is a button)', /^<span class="cap money-line">About \$[\d,]+ a hectare a year, before costs\.<\/span>$/.test(card) && !card.includes('<button'), card);
   check('the detail line adds the "How this figure is made" button, which names the plan', det.includes('data-act="money"') && det.includes('data-plan="now"') && det.includes(MONEY_TITLE) && det.includes('aria-haspopup="dialog"'));
   check('a plan with no figure says why in one quiet line, in the detail only (a card stays quiet)', /No money figure: Canola: /.test(moneyLineHTML(money, canola, 'detail', units)) && /<p class="cap money-line">No money figure/.test(moneyLineHTML(money, canola, 'detail', units)));
+  { const bad = { loading: false, byPlan: { canola: { ok: false, reason: 'Canola: World prices could not be read: Python environment not found (.venv)' }, corn: { ok: false, reason: 'Corn: failed at /srv/crophalo/scripts/live/prices.py status 500' } } }, line = id => moneyLineHTML(bad, { id }, 'detail', units).replace(/<[^>]+>/g, '');
+    check('a reason with a path, Python or a status code never reaches the farmer: one plain sentence and nothing after it', line('canola') === PRICES_DOWN && line('corn') === PRICES_DOWN && !/Python|venv|\.py|srv|status/i.test(line('canola') + line('corn')), line('canola') + ' | ' + line('corn')); }
   same('nothing asked yet: nothing drawn', [moneyLineHTML(undefined, now), moneyLineHTML(null, now), moneyLineHTML({ byPlan: {} }, now), moneyLineHTML(money, null)], ['', '', '', '']);
   check('while it works, the detail says so and the card says nothing', /Working out a rough value/.test(moneyLineHTML({ loading: true }, now, 'detail')) && moneyLineHTML({ loading: true }, now, 'card') === '');
   const ac = moneyLineHTML(money, now, 'card', { area: 'imperial' }); check('with acres chosen the line is per acre, from the per-hectare figure', /an acre a year/.test(ac) && !/a hectare/.test(ac), ac);

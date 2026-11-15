@@ -59,5 +59,18 @@ const got2 = await getOptions(state, C, spotOf(forest, { fieldOk: true }), () =>
 ok('getOptions with the word: ok, the plans, and the one line', got2.ok === true && got2.fieldNote === 'The crop map shows forest here; you said it is your field.' && !!got2.recommended);
 const BANNED = /NaN|undefined|null|\[object|%|likely|probab|chance|guarantee/i;
 ok('no bad words in the question or the note', !BANNED.test(asked.reason + JSON.stringify(asked.askField)) && !BANNED.test(carried.fieldNote));
+
+// ---- the one-page report draws the question and the farmer's word (js/report.js, js/wizard.js): read from the files themselves, since they draw into a page
+{
+  const fs = await import('node:fs'), src = f => fs.readFileSync(new URL(`../js/${f}`, import.meta.url), 'utf8'), rp = src('report.js'), wz = src('wizard.js');
+  ok('the report draws the map\'s sentence and the two buttons only when the answer carries askField', /if \(!ready && r\?\.askField\)/.test(rp) && rp.includes("fieldOk: 'This is my field: carry on'") && rp.includes("movePin: 'Move the pin to my field'") && /data-act="fieldok"/.test(rp) && /data-act="movepin"/.test(rp) && /esc\(r\.reason\)/.test(rp));
+  ok('"This is my field: carry on" writes fieldWord(loc, askField) into the place, keeps it like a change of place, and works the report out again', /act === 'fieldok'\) \{ const word = fieldWord\(cur\.state\.loc, cur\.result\?\.askField\);[^\n]*cur\.state\.loc = \{ \.\.\.cur\.state\.loc, fieldOk: word \}; setFieldOk\(word\); return void openReport\(cur\.state\)/.test(rp) && /export function setFieldOk\(word\) \{[^\n]*state\.loc = \{ \.\.\.state\.loc, fieldOk: word \}; keep\(\);/.test(wz));
+  ok('"Move the pin to my field" sets nothing and goes back to the step where the pin is placed', /act === 'movepin'\) \{ toPlaceStep\(\); return seam\.change\(cur\.state\); \}/.test(rp) && /export function toPlaceStep\(\) \{ at = 0;/.test(wz));
+  ok('after the word the note is shown at the top of the report', /rv-fieldnote" role="note">\$\{esc\(r\.fieldNote\)\}/.test(rp) && rp.indexOf('${note}${answerHTML(') > 0);
+  // the chain the button starts, end to end on the engine: the answer's askField makes the word, the word is kept, and the engine answers with the note
+  const word2 = N.fieldWord(state.loc ?? loc, got.askField), kept = cleanLoc({ ...(state.loc ?? loc), fieldOk: word2 });
+  const again = await getOptions({ ...state, loc: kept }, C, engineSpot({ ...state, loc: kept }, N.spotFields(forest)), () => E, { today: TODAY });
+  ok('the word made from the answer\'s askField brings the plans back with the note', !!word2 && again.ok === true && /you said it is your field/.test(again.fieldNote ?? ''), JSON.stringify([word2, again.reason]).slice(0, 200));
+}
 console.log(`nonfarm: ${passed} passed, ${failed} failed`);
 process.exit(failed ? 1 : 0);

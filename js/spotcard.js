@@ -7,6 +7,7 @@ import { SAY } from './mapwords.js';
 import { getForecast, conditionWords, fieldwork, dayName, degrees } from './weather.js';
 import { sunEvents, clock } from './sun.js';
 import { srcButton } from './srci.js';
+import { plainReason } from './satellites2-data.js';
 import { motionOff, motionLess, easeOut } from './motion.js';
 
 import { clampCard, placeCard, sideCard, MARGIN, TOP, WIDE, NARROW_BELOW, STACK_ROOM } from './cardplace.js';
@@ -146,7 +147,7 @@ async function fillWeather(panel) {
   const mine = card, got = await getForecast(pin.lat, pin.lon);
   if (card !== mine || tab !== 'weather') return;   // the farmer moved on while it came
   panel.removeAttribute('aria-busy');
-  if (!got.ok) { panel.innerHTML = `<p>Could not read the weather here. ${esc(got.reason)} Try again in a moment.</p>`; return; }
+  if (!got.ok) { panel.innerHTML = `<p>Could not read the weather here. ${esc(plainReason(got.reason, ''))} Try again in a moment.</p>`; return; }
   const t = got.days[0], now = got.now, calm = fieldwork(t, now.wind);
   const rain = t.pop == null ? '' : ` · ${Math.round(t.pop)}% chance of rain`, mm = t.mm == null ? '' : ` · ${t.mm.toFixed(t.mm < 10 ? 1 : 0)} mm`;
   const word = conditionWords(now.code);

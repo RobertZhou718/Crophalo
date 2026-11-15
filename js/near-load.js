@@ -2,6 +2,7 @@
 // (country, elevation). A lookup that fails leaves the gate open and says so in nearby.gap: no crop is then checked against local practice, and the report says that.
 // Pure but for the fetches: engineSpot(), fetchCropMap(), loadNearby(), nearbyFrom(). Checked by scripts/test_report.mjs (the spot built for the engine, a failed lookup, the answer's fields passed through).
 import { spotFields, fieldWordFor } from './nearby.js';
+import { plainReason } from './satellites2-data.js';
 import { apiUrl } from './api.js';
 
 const fin = v => typeof v === 'number' && Number.isFinite(v);
@@ -16,7 +17,8 @@ export async function fetchCropMap(loc, get = globalThis.fetch?.bind(globalThis)
   if (!Number.isFinite(lat) || !Number.isFinite(lon) || typeof get !== 'function') return { ok: false, reason: 'no place to look at' };
   const country = countryOf(loc);
   try {
-    return await Promise.race([get(apiUrl(`/api/cropsnear?lat=${encodeURIComponent(lat.toFixed(4))}&lon=${encodeURIComponent(lon.toFixed(4))}${country ? `&country=${encodeURIComponent(country)}` : ''}`)).then(r => r.json()), new Promise((_, no) => setTimeout(() => no(new Error('slow')), ms))]);
+    const a = await Promise.race([get(apiUrl(`/api/cropsnear?lat=${encodeURIComponent(lat.toFixed(4))}&lon=${encodeURIComponent(lon.toFixed(4))}${country ? `&country=${encodeURIComponent(country)}` : ''}`)).then(r => r.json()), new Promise((_, no) => setTimeout(() => no(new Error('slow')), ms))]);
+    return a && typeof a === 'object' && a.ok !== true && typeof a.reason === 'string' ? { ...a, reason: plainReason(a.reason, 'the lookup did not answer') } : a;   // a refusal in a farmer's words: it is shown in the report's gaps and the crop step
   } catch { return { ok: false, reason: 'the lookup did not answer' }; }
 }
 // The code when known, else the country the place line ends with ("Canada"); the server reads either.

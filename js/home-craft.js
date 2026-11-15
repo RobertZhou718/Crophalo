@@ -2,6 +2,7 @@
 // artist's concepts (SMAP, GRACE-FO), each with its credit. Loaded on the first pointing, never before; a picture that cannot load leaves the simple mark and says so.
 // The files and their licence rows: img/craft/README.md. Checked by scripts/test_live_orbits.mjs (every picture has its words) and scripts/e2e_home.mjs.
 import { WORDS } from './home-sats-data.js';
+import { JPSS_SVG, S2_SVG } from './home-craft-art.js';
 
 const MODEL = 'Picture: NASA (NASA 3D Resources model).', JPL = 'Artist’s concept. Courtesy NASA/JPL-Caltech.';
 export const PICS = Object.freeze({
@@ -13,19 +14,21 @@ export const PICS = Object.freeze({
   gracefo: { src: 'img/craft/gracefo.webp', cover: true, credit: `${JPL} Both craft are shown; not to scale.`, alt: 'GRACE-FO, artist’s concept: two identical satellites with gold ends flying one behind the other above the Earth.' },
 });
 const LANDSAT9 = { credit: 'Picture: Landsat 8, NASA (NASA 3D Resources model). Landsat 9 is built on the same design.', alt: 'Landsat 8, from NASA’s 3D model, shown for Landsat 9, which is built on the same design.' };
-// NOAA-20, NOAA-21 and Sentinel-2 have no free picture: a plain body drawn here, three faces of a box lit from the upper left, nothing added that no page shows.
-// w, h: the front face in px of the 640 x 360 window; deep: the side going back. Sentinel-2's are its published 3.4 x 2.35 x 1.8 m at 70 px to the metre.
-const box = (w, h, deep, note = '') => { const x = 320 - w / 2 - deep * .25, y = 166 - h / 2 + deep * .15, dx = deep * .5, dy = -deep * .3, e = ' stroke="rgba(255,255,255,.35)" stroke-width="1" stroke-linejoin="round"';
-  return `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 360"><path d="M${x} ${y}h${w}v${h}h${-w}z" fill="#d4dae3"${e}/><path d="M${x} ${y}l${dx} ${dy}h${w}l${-dx} ${-dy}z" fill="#e9edf3"${e}/><path d="M${x + w} ${y}l${dx} ${dy}v${h}l${-dx} ${-dy}z" fill="#a9b3c2"${e}/>${note ? `<text x="14" y="24" fill="#fff" fill-opacity=".8" font-family="system-ui, sans-serif" font-size="13">${note}</text>` : ''}</svg>`; };
+// NOAA-20, NOAA-21 and Sentinel-2: no picture of theirs that we may use was found in the time, so each is drawn as a spacecraft (js/home-craft-art.js), never as a box, and the caption says it is a drawing.
+const DRAWING = 'Drawing: Crophalo, a simplified picture of the craft; not the agency’s picture and not to scale.';
 export const DRAWN = Object.freeze({
-  jpss: { svg: box(150, 150, 150), credit: 'Drawing: Crophalo, a plain body; not a picture of the real craft.', alt: 'A plain drawing of a weather satellite’s body, with no parts added, for NOAA-20 or NOAA-21.' },
-  s2: { svg: box(238, 165, 126, 'Wing not drawn: its published pages do not show it.'), credit: 'Drawing: Crophalo, after ESA’s published size (3.4 x 1.8 x 2.35 m).', alt: 'A plain drawing of Sentinel-2’s body in its published proportions, 3.4 by 1.8 by 2.35 metres, with no wing.' },
+  jpss: { svg: JPSS_SVG, credit: DRAWING, alt: 'A drawing of a weather satellite of the JPSS family, for NOAA-20 or NOAA-21: a long body wrapped in gold foil, one large blue solar wing on a boom, a telescope and instruments on the earth-facing end, and a small dish.' },
+  s2: { svg: S2_SVG, credit: DRAWING, alt: 'A drawing of Sentinel-2: a white and gold body with the imager’s dark opening and its telescope under it, one large blue solar wing on a boom, and a dish on a mast.' },
 });
 // The picture for a satellite, or null where there is none (NOAA-20, NOAA-21, Sentinel-2: no free picture was found)
 export const pictureOf = sat => { const p = PICS[sat?.look]; return p ? (sat.norad === 49260 ? { ...p, ...LANDSAT9 } : p) : null; };
 
 // Put a satellite's picture into the card's window: parts { pic (the figure), img, cap }; landed: resolves when the mark has finished growing; still(): is this satellite still the one shown?
 export async function show({ pic, img, cap }, sat, landed, still = () => true) {
+  pic.classList.add('is-loading');   // a grey shimmer in the shape of the picture until it is here
+  try { return await showIn({ pic, img, cap }, sat, landed, still); } finally { pic.classList.remove('is-loading'); }
+}
+async function showIn({ pic, img, cap }, sat, landed, still) {
   const d = DRAWN[sat?.look];
   if (d) { await landed; if (!still()) return false; img.className = ''; img.alt = d.alt; img.src = 'data:image/svg+xml,' + encodeURIComponent(d.svg); img.hidden = false; cap.textContent = d.credit; pic.classList.add('has-pic'); return true; }
   const p = pictureOf(sat);

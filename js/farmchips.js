@@ -9,6 +9,7 @@ import { conditionWords } from './weather.js';
 import { newState } from './state.js';
 import * as S from './simulate.js';
 import { tempWords } from './farmunits.js';
+import { fmtRain } from './units.js';
 import { feasible, cropFit, fitBand } from './fit.js';
 import { cropIds, cropName } from './crops.js';
 
@@ -188,6 +189,14 @@ async function run(farm, field, entry) {
   entry.options = options; entry.state = 'ok';
 }
 
+// ---- "The next 7 days" on This field: the forecast's days as a closed part; the temperature's unit is named once, in the heading (never a bare "11°"), and a field in the United States reads in Fahrenheit and inches.
+const DAYNAMES = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+export function weekModel(forecast, units = {}) {
+  const days = (Array.isArray(forecast?.days) ? forecast.days : []).filter(d => fin(d?.tmax) && fin(d?.tmin) && /^\d{4}-\d{2}-\d{2}$/.test(d.date || '')).slice(0, 7); if (!days.length) return null;
+  const f = units.temp === 'F', deg = v => Math.round(f ? v * 9 / 5 + 32 : v), unit = f ? '°F' : '°C';
+  const rows = days.map((d, i) => { const name = i === 0 && d.date === forecast.today ? 'Today' : DAYNAMES[new Date(`${d.date}T00:00:00Z`).getUTCDay()], rain = !fin(d.rain) ? '' : d.rain < 0.5 ? 'dry' : fmtRain(d.rain, units); return { name, hi: deg(d.tmax), lo: deg(d.tmin), rain, line: `${name}: high ${deg(d.tmax)}, low ${deg(d.tmin)}${rain ? `, ${rain}` : ''}` }; });
+  return { unit, title: `The next ${rows.length === 7 ? '7' : rows.length} days, ${unit}`, first: rows[0].line, rows };
+}
 // ---- the engine seam of simulate.js (setEngine): what the field's Check, the Plant sheet's crop packets and the Fields table ask for, answered from the readings this module already holds.
 // Nothing is worked out here that the chips do not already show: the score is the plan's own (pickPlan), the packets are fit.js's own gates for each crop on this field's weather.
 // While the weather is on its way the answer is "waiting"; when it did not come, nothing is invented. onChange is told when an answer arrives, so the screen draws again.

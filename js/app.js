@@ -1,6 +1,7 @@
 // Crophalo's page shell: the start, show(view), the top bar with its Menu, and the address routes of the info pages.
 // Nothing here is pure: it reads and changes the page and the browser's history. Each feature gets its own module, not a section here.
 // Checked by scripts/e2e.mjs (the shell: one heading per view, the Menu, Back, focus), scripts/e2e_flow.mjs (home to report), scripts/e2e_map.mjs and scripts/e2e_farm.mjs.
+import './api-timings.js';   // every call to the data server is timed in this browser, for the API connections page
 import { applySettings } from './settings.js';
 import { own } from './words.js';
 import { initHome } from './home.js';
@@ -15,7 +16,7 @@ import { hooks } from './hooks.js';   // the wrappers the big animations may tak
 const $ = (sel, root = document) => root.querySelector(sel), $$ = (sel, root = document) => [...root.querySelectorAll(sel)];
 
 // ---- state
-const VIEW_TITLES = { home: 'Start', setup: 'Farm setup', report: 'Your report', farm: 'My farm', admin: 'Service status' };
+const VIEW_TITLES = { home: 'Start', setup: 'Farm setup', report: 'Your report', farm: 'My farm', admin: 'API connections' };
 const INFO_PAGES = { data: 'Data', privacy: 'Privacy', limits: 'Limitations', settings: 'Settings' };
 const IN_HISTORY = ['home', 'setup', 'report', 'farm'];   // Back steps through these; the info pages and Admin ride on the address instead
 let current = { view: '', page: '' }, focusTimer = 0;
@@ -48,6 +49,7 @@ export function show(view, fromPop = false, page = '') {
   if (page) Promise.all([import('./pages.js'), import('./srci.js')]).then(([m, sources]) => { sources.initSources(); m.renderInfo(page); }).catch(() => { $('#infoBody').textContent = 'This page could not load. Check the internet connection, then reload the page.'; });
   if (page === 'data') explain();   // "How to read Crophalo" under the Data page's NASA line
   setMenu(false);
+  if (view === 'farm') $('#navFarm')?.removeAttribute('data-new');   // the quiet mark of "Added to My farm" goes once My farm is open
   if (view === 'report') { wire(); showReport(); }   // a report in hand stays; else it is built from the setup answers, or the way back is offered
   if (view === 'farm') { wire(); openFarm(); }   // the board loads the first time it opens; the small motions come too, so a Copy in the land history already shows Copied
   if (view === 'admin') openAdmin();   // open to everyone, no password: it shows nothing private
@@ -58,14 +60,14 @@ export function show(view, fromPop = false, page = '') {
 function fromAddress() {
   const [, name = ''] = /^#([a-z]+)(?:\/[a-z]+)?$/.exec(location.hash) || [];
   if (own(INFO_PAGES, name)) return { view: 'info', page: name };
-  if (location.hash === '#admin') return { view: 'admin', page: '' };
+  if (location.hash === '#admin' || location.hash === '#status') return { view: 'admin', page: '' };
   const kept = history.state?.v ?? 'home';   // an entry with no view of its own (an address typed in, or one we do not know) is the home, so Back never stands still
   return { view: IN_HISTORY.includes(kept) ? kept : 'home', page: '' };
 }
 function route() { const { view, page } = fromAddress(); show(view, true, page); }
 
 // ── the top bar ──
-const menuBtn = $('#navMenuBtn'), menu = $('#navMenu'), saved = $('#dlgSaved');
+const menuBtn = $('#navMenuBtn'), menu = $('#navMenu');
 const menuOpen = () => menuBtn.getAttribute('aria-expanded') === 'true';
 function setMenu(open, refocus = false) {
   if (open === menuOpen()) return;
@@ -76,9 +78,6 @@ function initTopBar() {
   $('.skip').addEventListener('click', event => { event.preventDefault(); focusOnce($('#main')); });
   $('.brand').addEventListener('click', event => { if (event.metaKey || event.ctrlKey || event.shiftKey) return; event.preventDefault(); show('home'); });   // a new-tab click stays the browser's
   $('#navFarm').addEventListener('click', () => show('farm'));
-  $('#navSaved').addEventListener('click', () => saved.showModal());
-  $('#dlgSavedDone').addEventListener('click', () => saved.close());
-  saved.addEventListener('click', event => { if (event.target === saved) saved.close(); });   // only the dimmed page around the sheet is the dialog itself
   menuBtn.addEventListener('click', () => setMenu(!menuOpen()));   // the same button twice closes it
   menu.addEventListener('click', event => { const link = event.target.closest('a'); if (!link) return; setMenu(false); if (link.hash === location.hash) focusHeading(); });
   for (const kind of ['click', 'focusin']) document.addEventListener(kind, event => { if (!menuBtn.contains(event.target) && !menu.contains(event.target)) setMenu(false); });   // a click or a Tab that lands outside closes the list, so it never covers what has focus
@@ -109,6 +108,7 @@ const loadWizard = () => wizardLoad ||= import('./wizard.js').then(wizard => { w
 const loadMap = () => mapLoad ||= Promise.all([loadLeaflet().then(() => import('./mapx.js')), import('./srci.js'), loadWizard()]).then(([map, sources, wizard]) => {
   sources.initSources();   // the "i" beside a figure on the map's card (the report starts it too, when it loads)
   map.initMapX();
+  wizard.setOutlineSource?.(map.outlineNow);   // the area block of the setup's first step reads the outline the map holds
   if (lastPlace !== undefined) document.dispatchEvent(new CustomEvent('crophalo:place', { detail: lastPlace }));
   loadReport().catch(() => { /* asked again when the report is opened */ });   // the report comes in behind the setup, so the lookups for a chosen place can start before "See my field report"
   return { map, wizard };
@@ -179,7 +179,7 @@ addEventListener('load', () => setTimeout(wire, 1500), { once: true });
 applySettings();
 initTopBar();
 initOffline();
-initHome({ place: spot => hooks.place(() => openSetup(spot), spot), mapPick: () => hooks.place(() => openSetup(null), null), saved: () => show('report') });
+initHome({ place: spot => hooks.place(() => openSetup(spot), spot), mapPick: () => hooks.place(() => openSetup(null), null) });
 initWelcome();
 addEventListener('popstate', route);
 addEventListener('hashchange', route);

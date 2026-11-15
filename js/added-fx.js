@@ -13,7 +13,7 @@ const centre = el => { const b = el.getBoundingClientRect(); return { x: b.left 
 export function fly(button, target, { doc = document } = {}) {
   const a = centre(button), b = centre(target); if (!a.w || !b.w) return null;
   const token = doc.createElement('span'); token.className = 'added-token'; token.setAttribute('aria-hidden', 'true');
-  token.innerHTML = '<svg class="ic"><use href="#i-cube"/></svg>'; token.style.left = `${a.x - 14}px`; token.style.top = `${a.y - 14}px`;
+  token.innerHTML = '<svg class="ic"><use href="#i-star"/></svg>'; token.style.left = `${a.x - 14}px`; token.style.top = `${a.y - 14}px`;
   doc.body.append(token);
   const move = token.animate(arcFrames(a, b), { duration: FLIGHT_MS, easing: 'cubic-bezier(.4,0,.2,1)', fill: 'forwards' });
   move.onfinish = move.oncancel = () => { token.remove(); target.animate([{ boxShadow: '0 0 0 0 transparent' }, { boxShadow: '0 0 0 6px var(--accent-soft)' }, { boxShadow: '0 0 0 0 transparent' }], { duration: 600, easing: 'ease-out' }); };   // the item glows once as the token lands

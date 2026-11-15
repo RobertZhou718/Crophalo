@@ -23,6 +23,7 @@ await group('the name of a chosen place', async () => {
   await choose(44.4031, -79.6454); await sleep(300);
   let h = await head();
   same('right after the tap: the top line says the name is being found and the small line holds the coordinates, once', [h.top, h.small], ['Finding the place name', '44.40310, -79.64540']);
+  check('while the place is being found the area block is a grey skeleton, never an empty panel', await js(`!!document.querySelector('#areaHost .sk-block') && !!document.querySelector('#areaHost .sk-lines')`));
   check('nothing is asked while the position may still move', (await js(`window.__asked.length`)) === 0);
   await choose(44.4031, -79.6454); await sleep(400); await choose(44.4031, -79.6454);
   await until(`document.querySelector('#setupRoot .panel-name')?.textContent === 'Near Barrie, Ontario'`, 6000);

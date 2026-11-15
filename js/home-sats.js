@@ -224,8 +224,23 @@ export async function startSats(globe) {
     if (focused?.at) btnOf(focused).style.transform = `translate(${Math.round(b.left + focused.at.x / b.z - HIT)}px, ${Math.round(b.top + focused.at.y / b.z - HIT)}px)`;
     if (!active?.at || card.hidden) return;
     const o = orbit.getBoundingClientRect(), s = stage.getBoundingClientRect(), x = (s.left - o.left) / b.z + b.left + active.at.x / b.z, y = (s.top - o.top) / b.z + b.top + active.at.y / b.z;
-    const at = cardPlace(x, y, { w: card.offsetWidth, h: card.offsetHeight }, { w: orbit.clientWidth, h: orbit.clientHeight });
-    side = at.y > y ? 'below' : at.y + card.offsetHeight < y ? 'above' : at.x > x ? 'right' : 'left';
+    // what is in sight: the part of the home that is on the glass now. The card stays inside it (it scrolls inside itself when it is taller), and it never covers the search card.
+    const z = b.z || 1, rel = r => ({ x: (r.left - o.left) / z, y: (r.top - o.top) / z, w: r.width / z, h: r.height / z });
+    const seeTop = Math.max(0, -o.top / z) + 8, seeBottom = Math.min(orbit.clientHeight, (innerHeight - o.top) / z) - 8, room = Math.max(120, seeBottom - seeTop);
+    const cr0 = document.querySelector('.hero-credit'), c0 = cr0 && cr0.getBoundingClientRect().height ? rel(cr0.getBoundingClientRect()) : null, above = c0 ? c0.y - 12 - seeTop : room, fit = above >= 220 ? Math.min(room, above) : room;   // room above the credit lines, when there is enough of it
+    card.style.maxHeight = `${Math.floor(fit)}px`; card.style.overflowY = 'auto';
+    const ch = Math.min(card.offsetHeight, fit), cw = card.offsetWidth;
+    const at = cardPlace(x, y, { w: cw, h: ch }, { w: orbit.clientWidth, h: orbit.clientHeight });
+    at.y = Math.max(seeTop, Math.min(at.y, seeBottom - ch));
+    const cr = document.querySelector('.hero-credit'), credit = cr && cr.getBoundingClientRect().height ? rel(cr.getBoundingClientRect()) : null;   // the credit lines stay whole: the card goes above them
+    if (credit && at.x < credit.x + credit.w + 8 && at.x + cw > credit.x - 8 && at.y + ch > credit.y - 12) at.y = Math.max(seeTop, credit.y - 12 - ch);
+    const hc = document.querySelector('.home-card'), avoid = hc && !hc.hidden ? rel(hc.getBoundingClientRect()) : null;
+    if (avoid && at.x < avoid.x + avoid.w + 12 && at.x + cw > avoid.x - 12 && at.y < avoid.y + avoid.h + 12 && at.y + ch > avoid.y - 12) {   // the search card is under it: to the right of it where there is room, else below it, else above it
+      if (avoid.x + avoid.w + 12 + cw <= orbit.clientWidth - 8) at.x = avoid.x + avoid.w + 12;
+      else if (avoid.y + avoid.h + 12 + ch <= seeBottom) at.y = avoid.y + avoid.h + 12;
+      else if (avoid.y - 12 - ch >= seeTop) at.y = avoid.y - 12 - ch;
+    }
+    side = at.y > y ? 'below' : at.y + ch < y ? 'above' : at.x > x ? 'right' : 'left';
     card.style.transform = `translate(${Math.round(at.x)}px, ${Math.round(at.y)}px)`; spot = { pt: { x, y }, at };
   }
   function hit(event) {   // the nearest satellite in sight within 22 px of the pointer, never one behind the Earth

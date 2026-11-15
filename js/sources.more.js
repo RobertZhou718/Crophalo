@@ -64,6 +64,9 @@ export const MORE = {
   openfreemap: { org: 'OpenFreeMap', name: 'OpenFreeMap street map', nasa: false, who: 'OpenFreeMap, with OpenMapTiles and OpenStreetMap contributors',
     what: 'The street map and the place names under your field.',
     talk: 'Only the part of the map in view is asked for.', url: 'https://openfreemap.org/' },
+  osmfeatures: { org: 'OpenStreetMap', name: 'OpenStreetMap map features in the 3D view', nasa: false, who: 'OpenStreetMap contributors, through the Overpass API, asked by the Crophalo data server',
+    what: 'The buildings, roads, water, woods, hedges, fences, power lines and tanks drawn in My farm\u2019s 3D view.',
+    talk: 'Volunteers draw these on OpenStreetMap, so a new barn or a lost hedge may be missing. They are asked only when you turn one of them on. Map data \u00a9 OpenStreetMap contributors, under the Open Database License (ODbL) 1.0.', url: 'https://www.openstreetmap.org/copyright' },
 };
 for (const [key, note] of Object.entries(MORE)) if (!Object.hasOwn(SOURCES, key)) SOURCES[key] = note;
 export const ALL_SOURCES = SOURCES;

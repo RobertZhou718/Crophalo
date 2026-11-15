@@ -22,7 +22,7 @@ const text = sel => js(`document.querySelector(${JSON.stringify(sel)})?.textCont
 await send('Page.addScriptToEvaluateOnNewDocument', { source: `(() => { for (const C of [window.WebGLRenderingContext, window.WebGL2RenderingContext]) { if (!C) continue; const was = C.prototype.getParameter; C.prototype.getParameter = function (p) { return p === 37446 && this.canvas && !this.canvas.isConnected ? 'ANGLE (Test graphics chip)' : was.call(this, p); }; } })()` });
 const ENGINE_GROUND = `import('/js/engine.js').then(E => window.__farm.setGround(E.groundOn))`;   // what the page start hands My farm
 const open = async (withGround = true) => {
-  await js(`import('/js/farm.js').then(m => { window.__farm = m; window.__res = m.addFromReport(${REPORT_JS}); })`);
+  await js(`import('/js/farm.js').then(m => { window.__farm = m; m.setStartView?.('map'); window.__res = m.addFromReport(${REPORT_JS}); document.getElementById("navFarm").click(); })`);
   await until(`document.querySelector('#fwFinding')?.textContent.length > 5 && !document.querySelector('#view-farm').hidden`, 15000); await sleep(300);
   await js(withGround ? ENGINE_GROUND : 'window.__farm.setGround(null)'); await sleep(150);
 };
@@ -30,7 +30,7 @@ const open = async (withGround = true) => {
 const board = () => page(T => {
   const ui = window.__farm._ui, st = JSON.parse(localStorage.getItem('crophalo.farms.v1')), f = st.farms.flatMap(x => x.fields).find(x => x.id === ui.fieldId), plan = f?.report?.[ui.planKind] ?? null;
   const g = plan ? window.__farm.groundOf(plan, ui.date) : null;
-  return { fieldId: ui.fieldId, fieldName: document.querySelector('#fwField').selectedOptions[0].textContent.split(' · ')[0], planKind: ui.planKind, planName: plan?.name ?? null, date: ui.date, dateWords: document.querySelector('#fwTime').textContent.trim(), chip: document.querySelector('#fwLabel').textContent.trim(), ground: g, view: ui.view };
+  return { fieldId: ui.fieldId, fieldName: document.querySelector('#fwField').selectedOptions[0].textContent.split(' · ')[0], planKind: ui.planKind, planName: plan?.name ?? null, date: ui.date, ground: g, view: ui.view };
 });
 const threeNow = () => page(T => {
   const s = document.querySelector('#fw3d .f3d-stage'); if (!s) return null;
@@ -58,14 +58,15 @@ async function sameAsBoard(label, b) {
   same(`${label}: the ground state is the board's ground state`, t.ground, b.ground?.state ?? 'none');
   same(`${label}: and its crop and stage`, [t.crop, t.stage], [b.ground?.crop ?? '', String(b.ground?.stage ?? '')]);
   same(`${label}: "Planned" or "Observed" is written on 3D as it is on the board`, t.label, b.ground?.label ?? '');
-  same(`${label}: the board's chip says the same word`, b.chip, b.ground?.label ?? 'not read yet');
   check(`${label}: the 3D legend marks what the board's ground state is`, b.ground ? t.legend.length === 1 && t.legend[0] === LEGEND_OF[b.ground.state] : t.legend.length === 0, [t.legend, b.ground]);
   if (b.ground?.crop === 'wheat') check(`${label}: the words name the crop`, /wheat/i.test(t.cover || ''), t.cover);
   if (b.ground?.state === 'residue') check(`${label}: the words say residue`, /residue/i.test(t.cover || ''), t.cover);
   if (b.ground?.state === 'bare') check(`${label}: the words say bare soil`, /bare soil/i.test(t.cover || ''), t.cover);
 }
 
-await group('link: Map to 3D to Map, three dates, both plans', async () => {
+// Retired on 15 November 2026 at the owner's order: Compare plans is gone from My farm (panel, time bar, colour key, key days, two cards), so its groups do not run.
+const retired = label => console.log(`retired: ${label}`);
+retired('link: Map to 3D to Map, three dates, both plans', async () => {
   await open();
   await tap('#fwCompare'); await until(`!document.querySelector('#fwPanel').hidden && document.querySelectorAll('.fw-step').length === 3`);
   const steps = await js(`[...document.querySelectorAll('.fw-step')].map(b => ({ label: b.querySelector('span').textContent, date: null }))`);
@@ -83,7 +84,6 @@ await group('link: Map to 3D to Map, three dates, both plans', async () => {
       await tap('#fwMapBtn'); await until(`!document.querySelector('#fwMap').hidden`, 10000); await sleep(200);
       const after = await board();
       same(`${tag}: back on the Map, the field, plan and date are as they were`, [after.fieldId, after.planKind, after.date, after.view], [b.fieldId, b.planKind, b.date, 'map']);
-      same(`${tag}: the Map's chip and date are as they were`, [after.chip, after.dateWords], [b.chip, b.dateWords]);
       check(`${tag}: 3D is gone: its box is hidden and empty, its canvas freed`, await js(`document.querySelector('#fw3d').hidden && document.querySelector('#fw3d').children.length === 0`));
       check(`${tag}: the Map has its field again`, await js(`document.querySelectorAll('#fwMap path.fw-field').length === 1`));
       check(`${tag}: the Compare panel is still open`, await js(`!document.querySelector('#fwPanel').hidden`));
@@ -91,7 +91,7 @@ await group('link: Map to 3D to Map, three dates, both plans', async () => {
   }
 });
 
-await group('link: a change of date while in 3D reaches the 3D look, and the farmer\'s camera stays', async () => {
+retired('link: a change of date while in 3D reaches the 3D look, and the farmer\'s camera stays', async () => {
   await open();
   await tap('#fwCompare'); await until(`document.querySelectorAll('.fw-step').length === 3`);
   await tap('.fw-step[data-i="0"]'); await sleep(150);
@@ -110,7 +110,6 @@ await group('link: with no ground answer 3D says so, as the board does', async (
   await open(false);
   await seeThree('no answer');
   const b = await board(), t = await threeNow();
-  same('no answer: the board shows no label, and says nothing it does not know', b.chip, '');
   check('no answer: 3D says "Not read yet" too, and draws no ground state', /^Not read yet/.test(t.labelText) && t.ground === 'none' && t.legend.length === 0 && /Not read yet/.test(t.cover), t);
 });
 
@@ -125,14 +124,11 @@ await group('link: where the device cannot draw 3D the board says so and keeps w
   same('fallback: still on the Map, the Map button chosen', await js(`document.querySelector('#fwMapBtn').getAttribute('aria-pressed')`), 'true');
   check('fallback: the Map is shown with its field', await js(`!document.querySelector('#fwMap').hidden && document.querySelectorAll('#fwMap path.fw-field').length === 1 && document.querySelector('#fw3d').hidden`));
   same('fallback: the field, the plan and the date are as they were', (({ fieldId, planKind, date }) => [fieldId, planKind, date])(await board()), [before.fieldId, before.planKind, before.date]);
-  await tap('#fwCompare'); await until(`!document.querySelector('#fwPanel').hidden`);
-  check('fallback: Compare plans still works', await js(`document.querySelectorAll('.fw-step').length === 3`));
 });
 
 for (const w of [1280, 375]) {
   await group(`link: nothing scrolls sideways at ${w} px, Map and 3D`, async () => {
     await size(w); await go('/'); await open();
-    await tap('#fwCompare'); await until(`document.querySelectorAll('.fw-step').length === 3`);
     await flat(`link Map ${w}`);
     if (await js(`!!document.querySelector('#fwLower') && getComputedStyle(document.querySelector('#fwLower')).display !== 'none'`)) { await tap('#fwLower'); await sleep(150); }   // on a phone the Compare sheet is lowered first, as a farmer does, so the toolbar shows
     await seeThree(`fit ${w}`);
