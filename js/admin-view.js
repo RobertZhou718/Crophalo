@@ -153,17 +153,18 @@ export async function checkSources(post = globalThis.fetch?.bind(globalThis)) {
   try { return cleanSources(await (await post(apiUrl('/api/sources/check'), { method: 'POST' })).json()); } catch { return null; }
 }
 // Ask every service for a test place and note only: did it answer, how long, and the newest data date in the answer. The answer's words are never kept or shown.
+const LIVE_IDS = new Set(['smaproot', 'cropsnear', 'crophist', 'imergrain', 'gracecell', 'prices', 'faostat', 'firms', 'orbits']);   // the lookups the Live data tab asks itself: the quick ones only
 export const TEST_PLACE = Object.freeze({ lat: 41.1795, lon: -96.4398 });   // the Mead demo field
 export async function liveChecks(rows, get = globalThis.fetch?.bind(globalThis)) {
   const out = {};
   if (typeof get !== 'function') return out;
-  await Promise.all((rows ?? []).map(async r => {
+  for (const r of rows ?? []) {   // one at a time: a burst of every lookup at once would fill the data server's few lanes and slow every farmer's report
     const started = performance.now();
     try {
-      const res = await get(apiUrl(`/api/${encodeURIComponent(r.id)}?lat=${TEST_PLACE.lat}&lon=${TEST_PLACE.lon}`)), json = await res.json().catch(() => null), date = [json?.data_date, json?.newest_date, json?.last_date].find(v => typeof v === 'string' && /^\d{4}-\d{2}-\d{2}/.test(v)) ?? '';
+      const res = await get(apiUrl(`/api/${encodeURIComponent(r.id)}?lat=${TEST_PLACE.lat}&lon=${TEST_PLACE.lon}&country=US`)), json = await res.json().catch(() => null), date = [json?.data_date, json?.newest_date, json?.last_date].find(v => typeof v === 'string' && /^\d{4}-\d{2}-\d{2}/.test(v)) ?? '';
       out[r.id] = { ok: res.ok && json?.ok !== false, ms: Math.round(performance.now() - started), date: date.slice(0, 10) };
     } catch { out[r.id] = { ok: false, ms: Math.round(performance.now() - started), date: '' }; }
-  }));
+  }
   return out;
 }
 
@@ -186,9 +187,9 @@ export async function renderAdminPage(root) {
   const draw = () => { body.innerHTML = adminHTML(rows, { busy, tab, log: readLog(), live, liveBusy }); checkBtn.textContent = busy ? 'Checking…' : 'Check now'; checkBtn.disabled = busy; checkBtn.setAttribute('aria-busy', String(busy)); };
   const noteChecks = list => { for (const r of list ?? []) if (r.ms !== null) record(entryOf({ path: `/api/${r.id}`, ms: r.ms, status: statusOf(r) === 'not_answering' ? 0 : 200, ok: statusOf(r) !== 'not_answering' })); };
   async function check() {
-    if (busy) return; busy = true; liveBusy = true; draw();
+    if (busy) return; busy = true; draw();
     const next = await checkSources(); if (next) { rows = next; noteChecks(next); } busy = false; draw();
-    if (rows?.length) { live = await liveChecks(rows); liveBusy = false; draw(); } else liveBusy = false;
+    liveBusy = false;
     const say = body.querySelector('#adSay'); if (say) say.textContent = next ? 'Checked just now.' : 'The check could not be made right now.';
   }
   const setAuto = on => { auto.setAttribute('aria-checked', String(on)); try { localStorage.setItem(AUTO_KEY, on ? '1' : '0'); } catch { /* none */ } clearInterval(timer); if (on) timer = setInterval(() => { if (!document.hidden && !document.getElementById('view-admin')?.hidden) check(); }, 60000); };
@@ -201,6 +202,7 @@ export async function renderAdminPage(root) {
     const blob = new Blob([exportOf(readLog(), rows)], { type: 'application/json' }), url = URL.createObjectURL(blob), a = Object.assign(document.createElement('a'), { href: url, download: `crophalo-api-log-${new Date().toISOString().slice(0, 10)}.json` });
     document.body.append(a); a.click(); a.remove(); setTimeout(() => URL.revokeObjectURL(url), 1000);
   });
-  body.addEventListener('click', event => { const t = event.target.closest('[data-adtab]'); if (!t) return; tab = t.dataset.adtab; draw(); body.querySelector(`#adtab-${tab}`)?.focus(); });
+  body.addEventListener('click', event => { const t = event.target.closest('[data-adtab]'); if (!t) return; tab = t.dataset.adtab; draw(); body.querySelector(`#adtab-${tab}`)?.focus();
+    if (tab === 'live' && !live && !liveBusy && rows?.length) { liveBusy = true; draw(); liveChecks(rows.filter(r => r.can_check !== false && LIVE_IDS.has(r.id))).then(got => { live = got; liveBusy = false; draw(); }); } });
   body.addEventListener('keydown', event => { const t = event.target.closest('[role=tab]'); if (!t || !['ArrowRight', 'ArrowLeft'].includes(event.key)) return; const ids = TABS.map(x => x[0]), i = ids.indexOf(tab), next = ids[(i + (event.key === 'ArrowRight' ? 1 : -1) + ids.length) % ids.length]; event.preventDefault(); tab = next; draw(); body.querySelector(`#adtab-${tab}`)?.focus(); });
 }
