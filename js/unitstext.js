@@ -36,6 +36,7 @@ export function localiseDetailed(text, units = ALL, opts = {}) {
     });
   }
   if (metricRain) {
+    out = out.replace(new RegExp(`(${NUM})\\s?cm of snow\\b`, 'g'), (m, n) => { const v = num(n) / 2.54; if (!fin(v)) return m; const w = plain(v, pick(v, 1, 0)); return note('snow', m, `${w} ${w === '1' ? 'inch' : 'inches'} of snow`); });   // snow depth only: other centimetre figures (stored water) keep their own unit
     out = out.replace(new RegExp(`(\\d+)(\\s+of every\\s+)(\\d+)\\s?mm\\b`, 'g'), (m, a, mid, b) => note('ratio', m, `${a}${mid}${b} inches`));   // a ratio keeps its numbers; only the unit word changes
     out = out.replace(new RegExp(`(${NUM})(?:(\\s*(?:to|–|-)\\s*)(${NUM}))?\\s?mm\\b(?![\\w])(/day)?`, 'g'), (m, a, join, b, perDay) => {
       const x = num(a) / MM_PER_IN, y = b === undefined ? undefined : num(b) / MM_PER_IN; if (!fin(x) || (y !== undefined && !fin(y))) return m;
@@ -68,7 +69,7 @@ export function localiseDeep(value, units, opts = {}, depth = 0) {
 export function metricLeft(text, units = ALL) {
   const u = units || ALL, left = [], add = re => { for (const m of String(text ?? '').matchAll(re)) left.push(m[0].trim()); };
   if (u.temp === 'F') add(new RegExp(`${NUM}\\s?°C`, 'g'));
-  if (u.rain === 'in') add(new RegExp(`${NUM}\\s?mm\\b`, 'g'));
+  if (u.rain === 'in') { add(new RegExp(`${NUM}\\s?mm\\b`, 'g')); add(new RegExp(`${NUM}\\s?cm of snow\\b`, 'g')); }
   if (u.area === 'imperial') { add(new RegExp(`${NUM}\\s?(?:ha|km|km/h|m/s)\\b`, 'g')); add(new RegExp(`${NUM}\\s?m\\b(?![\\w/²])`, 'g')); add(new RegExp(`${NUM}\\s?kg/ha\\b`, 'g')); }
   if (u.yield === 'bu') add(new RegExp(`${NUM}\\s?t/ha\\b`, 'g'));
   return left;

@@ -121,7 +121,7 @@ const needOf = x => mean(x.ev.perSlot.filter(p => p.id !== 'fallow').map(p => p.
 const calmYears = st => st.of - st.crossed.length;
 
 // ---- what a plan may offer, from its own numbers against what is grown now
-function benefitsOf(plan, x, cur, curX, st, stNow) {
+function benefitsOf(plan, x, cur, curX, st, stNow, country) {
   if (x.flag === 'fails') return [];
   const out = [], add = (kind, text) => out.push({ kind, text }), s = plan.scores ?? {}, s0 = cur.scores ?? {}, F = plan.facets, F0 = cur.facets;
   const up = (a, b, by) => fin(a) && fin(b) && a - b >= by;
@@ -131,7 +131,7 @@ function benefitsOf(plan, x, cur, curX, st, stNow) {
     if (fin(plan.pest) && plan.pest >= 80 && x.o.slots.length > 1) add('pest', BW.breaks);
     return out;
   }
-  if (fin(plan.bareMonths) && fin(cur.bareMonths) && cur.bareMonths - plan.bareMonths >= 0.5) add('erosion', BW.erosion(one(plan.bareMonths), one(cur.bareMonths)));
+  if (fin(plan.bareMonths) && fin(cur.bareMonths) && cur.bareMonths - plan.bareMonths >= 0.5) add('erosion', BW.erosion(one(plan.bareMonths), one(cur.bareMonths), country));
   if (up(s.soil, s0.soil, 3)) add('soil', BW.soil(s.soil, s0.soil));
   if (up(F.organic.score, F0.organic.score, 5)) add('organic', BW.organic(F.organic.score, F0.organic.score));
   if (up(F.nitrogen.score, F0.nitrogen.score, 5)) add('nitrogen', BW.nitrogen(uniq([...x.o.slots.filter(id => cropOf(id)?.nfix > 0), ...x.ev.lay.covers.filter(c => c && cropOf(c.id).nfix > 0).map(c => c.id)]).map(low)));
@@ -258,7 +258,7 @@ export function finish({ a, ctx, C, current, others, recommended, generate, stre
   plans.forEach(p => p.slots.forEach(id => { if (cropOf(id)?.winterKill !== undefined && fin(night10) && night10 < DEEP_COLD) cold.set(id, night10); }));
   plans.forEach((p, k) => { p.facets = facetsOf(xs[k], ctx); p.bare = bareOf(xs[k].ev.lay); });
   const st = xs.map(x => stressYears(x.o, x.ev.lay, C, ctx));
-  plans.forEach((p, k) => { p.benefits = benefitsOf(p, xs[k], current, a.base, st[k], st[0]); p.review = reviewOf(p, xs[k], a.base, ctx, C, cold); });
+  plans.forEach((p, k) => { p.benefits = benefitsOf(p, xs[k], current, a.base, st[k], st[0], ctx.country); p.review = reviewOf(p, xs[k], a.base, ctx, C, cold); });
   if (ctx.limits?.goals?.has('nitrogen')) plans.forEach(p => { if (Array.isArray(p.evidence)) p.evidence.push({ text: NITROGEN_EVIDENCE, sources: ['crophalo'] }); });
   // the three strategies: what is grown now, the suggestion (or the best other idea), and one that differs in kind
   const fits = k => xs[k].flag !== 'fails' && !deepColdOf(xs[k], cold);
@@ -273,6 +273,7 @@ export function finish({ a, ctx, C, current, others, recommended, generate, stre
   const strategies = [{ id: current.id, role: 'now', opportunity: opp(0), text: SW.now }];
   if (second !== undefined && second >= 0) strategies.push({ id: plans[second].id, role: keep ? 'worth' : 'suggest', opportunity: opp(second), text: (keep ? SW.worth : SW.suggest)(opp(second)) });
   if (third !== undefined) strategies.push({ id: plans[third].id, role: 'another', opportunity: opp(third), text: SW.another(opp(third)) });
+  strategies.forEach(s => { const p = plans.find(q => q.id === s.id); if (p?.lessCommon) s.text = `${s.text} ${p.lessCommon}`; });   // a crop that is rare nearby is named on the strategy itself
   const { gaps, dropped } = droppedOf(generate, ctx, C);
   let fewWhy = '';
   if (strategies.length < 3) {

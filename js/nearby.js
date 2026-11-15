@@ -20,7 +20,9 @@
 import { cropOf, cropName, cropIds } from './crops.js';
 import { WATER_WORDS } from './words.js';
 
-export const FLOOR_HA = 2000, LITTLE_HA = 250, MAIN = 0.15, COMMON = 0.03;
+export const FLOOR_HA = 2000, LITTLE_HA = 250, SOME_HA = 100, MAIN = 0.15, COMMON = 0.03;
+// SOME_HA: a crop on 100 ha or more in the box is grown nearby, only on less land than the usual line. Where the rule above leaves too few other rotations to compare,
+// the engine may offer such a crop, then a crop the map sees at all, then a crop the country's own list holds, and says so on that strategy (js/engine.js, relax).
 // The class at the pin itself (the answer's "pin"): a farm field's own pixel is never water. AAFC class 20 is Water; USDA's Cropland
 // Data Layer writes water as 111 Open Water (83 Water in its oldest years). A pin on water gets no plans at all (js/engine.js).
 export const WATER = Object.freeze({ CA: Object.freeze([20]), US: Object.freeze([83, 111]) });
@@ -79,7 +81,7 @@ export function gateFrom(answer) {
   if (farm < FLOOR_HA) return { read: false, absent: undefined, common: undefined, bands: {}, water: false, pin, notField: notField(answer), nearby: { source: key, line: null, left: null, gap: `The crop map shows only ${ha(farm)} ha of farmland in ${where}, too little to say what is grown here, so no crop was left out for it.` } };
   const own = new Map(answer.crops.filter(c => c && typeof c.crop === 'string' && fin(c.ha) && fin(c.share)).map(c => [c.crop, c]));
   const widerHa = id => answer.wider.filter(w => Array.isArray(w.crops) && (w.crops.includes(id) || w.crops.includes('*')) && fin(w.ha)).reduce((s, w) => s + w.ha, 0);
-  const bands = {}, common = {}, absent = [];
+  const bands = {}, common = {}, absent = [], some = {}, seen = {};
   for (const id of judgedIds()) {
     const mine = own.get(id), any = (mine?.ha ?? 0) + widerHa(id);
     let band;
@@ -91,6 +93,7 @@ export function gateFrom(answer) {
     else band = null;
     bands[id] = band;
     if (band === 0 || band === 1) absent.push(id);
+    if (band === 1) (any >= SOME_HA ? some : seen)[id] = mine && mine.ha >= 1 ? Math.round(mine.ha * 10) / 10 : null;   // its own class's hectares; null when only a wider class may hold it
     else if (band >= 2) common[id] = Math.round(bonusOf(mine.share) * 1000) / 1000;
   }
   const top = (Array.isArray(answer.classes) ? answer.classes : []).filter(c => fin(c.share) && c.share > 0 && typeof c.name === 'string').slice(0, 4).map(c => {
@@ -100,7 +103,8 @@ export function gateFrom(answer) {
   const line = `Farmland in ${where}: ${ha(farm)} ha, of which every 100 ha hold about ${list(top)}.`;
   const left = absent.length ? `Crops with under ${LITTLE_HA} ha in that box are not suggested here (${absent.length} field crops, among them ${list(absent.filter(id => cropOf(id)).slice(0, 3).map(low))}).` : null;
   const shares = {}; for (const id of judgedIds()) { const mine = own.get(id); if (mine) shares[id] = Math.round(mine.share * 10000) / 10000; }   // each judged crop's own share of the farmland in the box: the market signal of js/compare.js
-  return { read: true, absent, common, bands, water: false, pin, notField: notField(answer), nearby: { source: key, line, left, gap: null }, market: { source: key, year: /^\d{4}$/.test(year) ? +year : null, shares } };
+  const relax = [{ step: 'some', crops: some }, { step: 'seen', crops: seen }].filter(t => Object.keys(t.crops).length);
+  return { read: true, absent, common, bands, relax, water: false, pin, notField: notField(answer), nearby: { source: key, line, left, gap: null }, market: { source: key, year: /^\d{4}$/.test(year) ? +year : null, shares } };
 }
 
 // ---- the national lists: where the crop map cannot read the place (no map outside Canada and the United States, a box with under 2,000 ha of
@@ -161,8 +165,11 @@ export function spotFields(answer, faostat = null, cc = '') {
     // The map reads the place. A crop the map names by its own class (250 ha or more) is grown here and stays; a crop only a wide class ("Other crops", "Other small
     // grains") could hold, with no class of its own, is no proof: there the country's list decides. A crop the map itself calls absent stays absent.
     const nat = faostat ? countryGate(faostat, answer.country) : null, more = nat ? nat.absent.filter(id => g.bands[id] === null) : [];
-    if (!more.length) return { ...ask, absent: g.absent, common: g.common, nearby: g.nearby, market: g.market };
-    return { ...ask, absent: [...g.absent, ...more], common: g.common, nearby: { ...g.nearby, left: [g.nearby.left, notOffered(nat.name, more, ' more')].filter(Boolean).join(' '), source: g.nearby.source }, market: g.market };
+    // the last step of the relaxing: a crop the map does not see here at all, but the country's own list holds
+    const held = nat ? g.absent.filter(id => g.bands[id] === 0 && !nat.absent.includes(id)) : [];
+    const relax = held.length ? [...g.relax, { step: 'country', name: nat.name, crops: Object.fromEntries(held.map(id => [id, null])) }] : g.relax;
+    if (!more.length) return { ...ask, absent: g.absent, common: g.common, relax, nearby: g.nearby, market: g.market };
+    return { ...ask, absent: [...g.absent, ...more], common: g.common, relax, nearby: { ...g.nearby, left: [g.nearby.left, notOffered(nat.name, more, ' more')].filter(Boolean).join(' '), source: g.nearby.source }, market: g.market };
   }
   const nat = countryGate(faostat, KEYS[answer?.country] ? answer.country : cc);
   if (nat) return { ...ask, absent: nat.absent, common: nat.common, nearby: nat.nearby };

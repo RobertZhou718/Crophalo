@@ -137,6 +137,8 @@ export const getSoilSurvey = loc => once(spotKey('soilsurvey', loc), () => loadS
 export const outlineKey = outline => (Array.isArray(outline?.pts) ? `${outline.pts.length}:${outline.ha}:${outline.pts.map(p => `${(+p[0]).toFixed(5)},${(+p[1]).toFixed(5)}`).join(';')}` : 'none');
 // the height map's code (js/field-data.js, with its 3D data) is fetched only when the height is asked, so My farm, which reads this file for the weather, does not load it at start
 export const getDem = (loc, outline) => once(spotKey('dem', loc, outlineKey(outline)), async () => (await import('./field-data.js')).loadDem(loc, outline));
+// The height answer for a DRAWN field hands its slope (percent) to the field, so the comparison of strategies uses it. True when it was taken. A pin's estimated square, a failed answer or a field too small for a slope change nothing.
+export const slopeInto = (state, dem) => { if (!state?.area || !dem?.ok || typeof dem.slope !== 'number' || !Number.isFinite(dem.slope)) return false; state.area.slope = dem.slope; return true; };
 // Start everything the report and its tabs will ask for, for the place just chosen. Answers nothing to the screen. A drawn outline also starts the height map.
 export function prefetchPlace(loc, env = {}, outline = null) {
   const place = cleanPlace(loc?.lat, loc?.lon);

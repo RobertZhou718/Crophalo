@@ -4,7 +4,7 @@
 // Checked by scripts/e2e_flow.mjs (the report group: tabs, keys, the panel, the "i", Add to My Farm, Back) and scripts/test_report.mjs (the markup).
 import { esc } from './words.js';
 import { SLOW_MS, WEATHER_RETRY_MS, assumptions, strategies, setMoneyHook, farmPlans, planWithCrops, proposedPlan, PROPOSED_WORDS, loadingHTML, infoButton, estimatedArea, planName, optionLabel, allPlans, longDate, NOT_READ } from './report-view.js';
-import { getSoilSurvey, spotFor, freshRows, getSmap, getNearby, getImerg, getGrace, getEco, getHls, getDem, prefetchPlace } from './report-load.js';
+import { getSoilSurvey, spotFor, freshRows, getSmap, getNearby, getImerg, getGrace, getEco, getHls, getDem, slopeInto, prefetchPlace } from './report-load.js';
 import { wireRegion } from './region.js';
 import { mountNotes, fieldKey } from './notes-view.js';
 import { foldHTML as soilFoldHTML, bindSoilTest } from './soiltestui.js';
@@ -247,6 +247,7 @@ function paint({ focus = false, keepScroll = true } = {}) {
   r.innerHTML = `${barHTML()}<div class="rv-wrap">${letterBody()}</div>`;
   afterPanel(r);
   markPart();
+  paintFresh();   // answers that landed while the strategies were being compared are offered as soon as the report is on screen
   if (focus) { const h = $('#reportTitle', r); h.tabIndex = -1; h.focus(); setTimeout(() => { if (document.activeElement === document.body || !document.activeElement) $('#reportTitle')?.focus({ preventScroll: true }); }, 160); }   // the keyboard starts at the page's heading, also when a screen change took the first focus away
   if (keepScroll) scrollTo(0, y);
 }
@@ -279,6 +280,9 @@ export async function openReport(state, { demo = false } = {}) {
   weatherWith(null);
   // The other lookups are extras: each one that lands after the report is open is kept and offered with "Refresh the report", never put on the page by itself.
   const landed = (name, apply) => { if (mine !== run) return; if (cur.loading) { apply(); return; } cur.late.set(name, apply); paintFresh(); };
+  // the slope of a drawn field, from the height map (it can take a while): in before the strategies are compared it is used at once, later it waits for "Refresh the report"
+  if (cur.state.area) getDem(loc, outlineOf(cur.state)).then(dem => { if (mine !== run || !cur?.state?.area || !dem?.ok || !fin0(dem.slope)) return; const useDem = () => { if (slopeInto(cur.state, dem)) cur.dem = dem; };
+    if (cur.loading && !cur.worked) useDem(); else { cur.late.set(SLOPE_NEWS, useDem); paintFresh(); } }, () => {});
   const forecastP = (loaded.forecastP ?? Promise.resolve(null)).then(forecast => { if (forecast) landed('this week’s weather', () => weatherWith(forecast)); }, () => {});
   const smapDone = smapP.then(reading => { if (mine !== run) return; setRow('smap', reading?.value != null ? 'ok' : 'fail', reading?.value != null ? '' : String(reading?.reason ?? 'It did not answer.')); landed('soil moisture', () => { cur.reading = reading; }); });
   // soil: the farmer's own test first (typed in setup), then the US soil survey for a field in the United States (given a few seconds), else an assumed loam
@@ -294,6 +298,7 @@ export async function openReport(state, { demo = false } = {}) {
   const applySoil = sv => { if (sv?.ok && sv.soil.mode === 'manual') { cur.state.soil = sv.soil; cur.state.soilSurveyLine = soilLine(sv); } };
   if (first === 'all') { const [sv, near] = await Promise.all([soilP, nearDone]); applySoil(sv); cur.near = near; }
   else { soilP.then(sv => landed('soil survey', () => applySoil(sv))); nearDone.then(near => landed('crops nearby', () => { cur.near = near; })); }   // the report opens on the weather alone: the crop check says it was not made
+  cur.worked = true;   // from here a late answer no longer reaches this run of the comparison
   await work();
   if (mine !== run) return;
   if (loaded.backup && cur.result?.ok) lowerSureness(cur.result);   // the back-up record is rougher: the answer says so and is one point less sure
@@ -313,10 +318,11 @@ function paintFresh() {
   if (!line) { host.insertAdjacentHTML('afterbegin', '<div class="rv-fresh card pad" id="rvFresh" role="status"></div>'); line = r.querySelector('#rvFresh'); }
   const html = freshHTML(); if (line.innerHTML !== html) line.innerHTML = html;
 }
+const SLOPE_NEWS = 'your field’s slope';
 const freshHTML = () => `<p>New data has arrived: ${esc([...cur.late.keys()].join(', '))}.</p><button type="button" class="btn primary" data-act="refresh" id="rvRefresh">Refresh the report</button>`;
 async function refreshReport() {
   if (!cur?.late?.size) return;
-  const mine = run, queue = [...cur.late.values()], needsWork = [...cur.late.keys()].some(k => /crops|soil survey/.test(k));
+  const mine = run, queue = [...cur.late.values()], needsWork = [...cur.late.keys()].some(k => /crops|soil survey|slope/.test(k));
   cur.late.clear(); for (const apply of queue) { try { apply(); } catch { /* one late answer that cannot be applied leaves the others in */ } }
   if (needsWork) { await work(); if (mine !== run) return; }
   figuresNow(); redrawKeep(); paintFresh();

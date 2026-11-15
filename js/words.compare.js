@@ -21,6 +21,8 @@ export const CITE = Object.freeze({
   fao: 'FAOSTAT',
 });
 
+// The source named for soil wash-off fits the field's country: Canada keeps Ontario's guide, the United States names its own soil service, anywhere else Ontario's guide is said as a general one.
+export const erosionCite = country => { const cc = String(country ?? '').toUpperCase(); return cc === 'CA' || !cc ? CITE.erosion : cc === 'US' ? CITE.nrcs : `a general guide to soil erosion, ${CITE.erosion.split(',')[0]}`; };
 // ---- why a crop or a plan was left out (the farmer's own limits and goals, and Crophalo's rule for Ontario without a crop map)
 export const LEFT_WHY = Object.freeze({
   avoid: one => `you said you will not grow ${one ? 'it' : 'them'}`,
@@ -59,7 +61,7 @@ export const facetWords = Object.freeze({
 
 // ---- what a plan may offer (kind, text), from its own numbers against what is grown now
 export const benefitWords = Object.freeze({
-  erosion: (b, b0) => `Can help hold the soil: it would be bare ${+b < 0.5 ? 'under a month' : `about ${b} months`} a year instead of about ${b0}, so heavy rain may take less of it (${CITE.erosion}).`,
+  erosion: (b, b0, country) => `Can help hold the soil: it would be bare ${+b < 0.5 ? 'under a month' : `about ${b} months`} a year instead of about ${b0}, so heavy rain may take less of it (${erosionCite(country)}).`,
   soil: (s, s0) => `May build soil health: the soil score is ${s} against ${s0} for what you grow now.`,
   organic: (o, o0) => `May leave more plant matter for the soil: ${o} against ${o0} of 100 on ${CITE.crophalo}.`,
   nitrogen: names => `${cap(listOf(names))} may leave some nitrogen for the next crop, so it may need less fertiliser (${CITE.omafra}).`,
@@ -105,6 +107,23 @@ export const strategyWords = Object.freeze({
   suggest: opp => `Our suggestion: it passes every check and leads clearly; it ${OPPORTUNITY_WORDS[opp]}.`,
   worth: opp => `The best other option: our answer is to keep what you grow now, and this is the closest idea; it ${OPPORTUNITY_WORDS[opp]}.`,
   another: opp => `A different kind of change, for comparison: it ${OPPORTUNITY_WORDS[opp]}.`,
+});
+// A strategy built with a crop the nearby-crops rule had left out (js/engine.js relaxes the rule only when it leaves too few other rotations): said on that strategy, never silently.
+const haWords = v => (v >= 10 ? Number(v.toPrecision(2)) : Math.max(1, Math.round(v))).toLocaleString('en-US');
+export const rareWords = Object.freeze({
+  some: (crop, ha) => `${crop} is grown on about ${haWords(ha)} ha nearby`,
+  little: crop => `the crop map shows only a little ${crop} nearby`,
+  none: (crop, country) => `the crop map shows no ${crop} near this field, but farmers in ${/^United /.test(country) ? 'the ' : ''}${country} grow it`,
+  lead: parts => `Less common near you: ${parts.join('; ')}.`,
+  leadNone: parts => `Not seen near you: ${parts.join('; ')}.`,
+  left: crops => `This strategy is the exception: without ${listOf(crops)} Crophalo found too few other rotations to compare here.`,
+});
+// The answer is to keep what is grown now although an option scores higher: why, in one sentence each (the engine suggests a change only from a clear lead, js/engine.js STRONG).
+export const keepWords = Object.freeze({
+  close: (n, listed) => `It scores ${n} ${n === 1 ? 'point' : 'points'} higher, which is too small a difference to change what works${listed ? '; it is listed below as an option worth a look' : ''}.`,
+  other: (name, score, why) => `${name} scores ${score}, but ${why}, so it is an idea to ask farmers near you about, not our suggestion.`,
+  rare: 'it uses a crop that is less common near you',
+  just: 'it only just suits this field',
 });
 export const fewWords = Object.freeze({
   lead: n => n === 1 ? 'Only what you grow now can be compared here' : `Only ${n} strategies can be compared here`,

@@ -22,6 +22,8 @@ const ok = (name, cond, detail = '') => { if (cond) passed++; else { failed++; c
 const same = (name, got, want) => ok(name, JSON.stringify(got) === JSON.stringify(want), `got ${JSON.stringify(got)}, want ${JSON.stringify(want)}`);
 const fin = Number.isFinite;
 const ISO = /^\d{4}-\d\d-\d\d$/;
+// An answer of "keep" beside an option that scores a little higher now carries its reason in one or two more sentences (js/words.compare.js keepWords): the main reason is the first.
+const mainReason = r => String(r).replace(/ It scores \d+ points? higher, which is too small a difference to change what works(; it is listed below as an option worth a look)?\./, '').replace(/ [A-Z][^.]* scores \d+, but [^.]*, not our suggestion\.$/, '');
 const BANNED = /NaN|undefined|null|\[object|%|likely|probab|expected|chance|forecast|guarantee|\bsafe\b/i;
 
 const state = (more = {}) => ({
@@ -146,7 +148,7 @@ for (const [label, prio] of [['equal priorities', [3, 3, 3, 3, 3]], ['"keep soil
   ok(`${label}: NASA POWER is a source of the weather lines`, R.evidence.filter(e => /frost|rain|bare/i.test(e.text)).every(e => e.sources.includes('power')));
   ok(`${label}: the stress count is a count with its denominator`, all.every(p => p.evidence.some(e => /^No stress thresholds crossed in (\d+ of )?\d+ tested years/.test(e.text) && Array.isArray(e.rules) && e.rules.length === 4)));
   ok(`${label}: sureness is one of the three words`, ['Very sure', 'Fairly sure', 'Somewhat sure'].includes(R.sureness));
-  ok(`${label}: the reason is one sentence with real numbers`, /^[A-Z].*\d.*\.$/.test(R.reason) && !/\.\s+[A-Z]/.test(R.reason.replace(/\b(Oct|Nov|Sep|May|Apr|Jul)\./g, '')), R.reason);
+  ok(`${label}: the reason is one sentence with real numbers (and, on keep beside a higher score, why keep stands)`, /^[A-Z].*\d.*\.$/.test(mainReason(R.reason)) && !/\.\s+[A-Z]/.test(mainReason(R.reason).replace(/\b(Oct|Nov|Sep|May|Apr|Jul)\./g, '')), R.reason);
   ok(`${label}: the recommendation is a plan of the result`, all.includes(R.recommended));
   ok(`${label}: the five parts and the score are 0 to 100`, all.every(p => p.score >= 0 && p.score <= 100 && Object.values(p.parts).every(v => v >= 0 && v <= 100)));
 }
@@ -192,7 +194,8 @@ for (const [label, prio] of [['equal priorities', [3, 3, 3, 3, 3]], ['"keep soil
   ok(`Oxford, ${label}: the grown-nearby line is evidence with the AAFC source`, R.evidence.some(e => /^Farmland in a box about 28 km north to south/.test(e.text) && e.sources.join() === 'aci'));
   ok(`Oxford, ${label}: no gap says the crops grown nearby were not read`, !R.gaps.some(g => /not read, so no crop was checked/.test(g)));
   ok(`Oxford, ${label}: every plan carries score, the five scores (0 to 100 or null) and one why sentence`, all.every(p => Number.isInteger(p.score) && E.DIMS.every(d => Object.hasOwn(p.scores, d.id) && (p.scores[d.id] === null || (p.scores[d.id] >= 0 && p.scores[d.id] <= 100))) && typeof p.why === 'string' && /^[A-Z].*\.$/.test(p.why) && !/\.\s+[A-Z]/.test(p.why)));
-  ok(`Oxford, ${label}: the reason is one sentence with real numbers`, /^[A-Z].*\d.*\.$/.test(R.reason) && !/\.\s+[A-Z]/.test(R.reason), R.reason);
+  ok(`Oxford, ${label}: the reason is one sentence with real numbers (and, on keep beside a higher score, why keep stands)`, /^[A-Z].*\d.*\.$/.test(mainReason(R.reason)) && !/\.\s+[A-Z]/.test(mainReason(R.reason)), R.reason);
+  ok(`Oxford, ${label}: keep beside a best option that scores higher says why`, R.endorsed || !(R.others[0]?.flag === 'holds' && R.others[0].score > R.current.score) || R.reason.includes(`It scores ${R.others[0].score - R.current.score} point`), R.reason);
   const bad = sentencesOf(R).filter(t => typeof t !== 'string' || !t || BANNED.test(t));
   same(`Oxford, ${label}: every sentence is plain`, bad, []);
   ok(`Oxford, ${label}: an option that does not lead by ${E.STRONG} points is never the firm suggestion`, R.endorsed === (R.others[0].flag === 'holds' && R.others[0].score - R.current.score >= E.STRONG));
@@ -206,7 +209,7 @@ same('Oxford, "keep soil covered" raised: keep; 66 against 66', [OXS.recommended
 same('Oxford: the five parts, corn then soybeans', OXE.current.scores, { water: 55, soil: 64, erosion: 41, income: 87, weather: 83 });
 same('Oxford: the five parts, corn, soybeans, winter wheat: better water, soil, wash-off and weather, less income', wOf(OXE).scores, { water: 64, soil: 68, erosion: 50, income: 81, weather: 85 });
 same('Oxford: the three-year plan pays its pest-break and length costs: pest 88 against 100, 3 points for the third year', [wOf(OXE).pest, OXE.current.pest], [88, 100]);
-same('Oxford: the reason says nothing does clearly better', OXE.reason, 'Nothing we tested does clearly better here: the best other idea, winter wheat, then soybeans, scores 73 against 69 for what you grow now.');
+same('Oxford: the reason says nothing does clearly better, and why 4 points more is not a change', OXE.reason, 'Nothing we tested does clearly better here: the best other idea, winter wheat, then soybeans, scores 73 against 69 for what you grow now. It scores 4 points higher, which is too small a difference to change what works; it is listed below as an option worth a look.');
 
 // ---- Barrie again, now with the grown-nearby gate (the AAFC answer for Barrie recorded today)
 const BAA = JSON.parse(fs.readFileSync(new URL('./fixtures/barrie_cropsnear.json', import.meta.url), 'utf8'));

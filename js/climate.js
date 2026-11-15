@@ -409,9 +409,11 @@ export function frostWords(F) {
   return `${date('Last spring frost', F.last)} ${date('First autumn frost', F.first)}${fin(F.free) ? ` About ${num(F.free)} days lie between them.` : ''} Counted night by night: ${of}.${fin(F.first) ? autumnWords(F.margin, F.source) : ''}`;
 }
 // Where the autumn date comes from, and the low spots: said after every first autumn frost date (the Weather tab and the report).
-export function autumnWords(margin, source) {
+// country: the field's country code when the caller knows it. Outside Canada the check is said as one made elsewhere, never as a local one.
+export function autumnWords(margin, source, country) {
   const low = ' Low, cold spots can get frost two weeks earlier, or more.';
   if (margin > 0) return ` NASA’s night lows run warm in autumn, so here a night under ${margin} °C counts for the autumn date; read that way, it sits in the middle of what ${MARGIN_STATIONS.length} Ontario weather stations (Environment and Climate Change Canada) recorded.${low}`;
+  if (source === 'power' && country && String(country).toUpperCase() !== 'CA') return ` This autumn date is NASA’s own and was not checked against weather stations near your field. In a check made in Canada, NASA’s date came about ${MARGIN_LATE} days late.${low}`;
   if (source === 'power') return ` This autumn date is NASA’s own: where it was held against weather stations, in Ontario, it came about ${MARGIN_LATE} days late.${low}`;
   return low;
 }

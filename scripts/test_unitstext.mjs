@@ -40,6 +40,9 @@ same('0.5 mm is 0.02 in', say('0.5 mm'), '0.02 in');
 same('a range', say('between 20 to 30 mm of rain'), 'between 0.8 to 1.2 in of rain');
 same('per day', say('about 4 mm/day'), 'about 0.2 in/day');
 same('a ratio keeps its numbers', say('rain covers about 89 of every 100 mm corn needs'), 'rain covers about 89 of every 100 inches corn needs');
+same('snow depth in a United States report is in inches', say('survives about −24 °C, and 7.5 cm of snow keeps colder nights off it'), 'survives about −11 °F, and 3 inches of snow keeps colder nights off it');
+same('snow depth still in centimetres is found as metric left', metricLeft('7.5 cm of snow keeps colder nights off it', IMPERIAL), ['7.5 cm of snow']);
+same('a farmer on metric units keeps the snow depth as written', localiseText('7.5 cm of snow', METRIC), '7.5 cm of snow');
 same('seven of every ten', say('rain covers about 7 of every 10 mm of water it needs'), 'rain covers about 7 of every 10 inches of water it needs');
 // ---- area, distance, height, speed
 same('hectares to acres', say('under 250 ha in that box'), 'under 618 acres in that box');

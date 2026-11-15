@@ -35,7 +35,12 @@ ok('Eritrea is not offered teff: no published figure was found for it', (a => a 
 ok('mung beans: not in the US or France (FAO counts them inside dry beans), allowed in India', nat('US').absent.includes('mung') && nat('FR', NONE).absent.includes('mung') && !nat('IN', NONE).absent.includes('mung'));
 ok('alfalfa has no FAO item: never judged by country', ['US', 'FR', 'IN'].every(cc => !nat(cc).absent.includes('alfalfa')));
 ok('every crop the list leaves out is a real judged field crop', nat('FR').absent.every(id => isCrop(id) && NB.judgedIds().includes(id)));
-same('a map that reads the place wins: the national list is not used', NB.spotFields(MAP, FAO, 'US'), NB.spotFields(MAP));
+{ // what is left out is the map's alone; the national list only names, as the last step of a relaxing, the crops the map does not see but the country grows (js/engine.js)
+  const { relax: withList, ...a } = NB.spotFields(MAP, FAO, 'US'), { relax: mapOnly, ...b } = NB.spotFields(MAP);
+  same('a map that reads the place wins: the national list is not used', a, b);
+  same('a map that reads the place: the relaxing steps are the map\'s own, then the country\'s list', withList.filter(t => t.step !== 'country'), mapOnly);
+  ok('a map that reads the place: the country step holds only crops the map calls absent', withList.filter(t => t.step === 'country').every(t => Object.keys(t.crops).every(id => a.absent.includes(id))));
+}
 same('no FAOSTAT answer, a country FAO does not list, or a failed FAOSTAT answer: the gate stays open, as before', [NB.spotFields(NONE, null, 'US').absent, NB.spotFields(NONE, FAO, 'XX').absent, NB.spotFields(NONE, { ok: false }, 'US').absent], [undefined, undefined, undefined]);
 same('a country row with almost nothing in it is a gap in FAO\'s file, not a country that grows nothing: the gate stays open and says nearby crops could not be checked', [NB.spotFields(NONE, FAO, 'ZZ').absent, /nearby crops could not be checked/.test(NB.spotFields(NONE, FAO, 'ZZ').nearby.gap)], [undefined, true]);
 ok('the left-out line says what it means: not offered, the country does not report growing them', /^Not offered here: United States of America does not report growing \d+ field crops on 1,000 ha or more for harvest/.test(nat('US').nearby.left), nat('US').nearby.left);

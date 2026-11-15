@@ -55,7 +55,8 @@ import { hotDaysAt, notFarmlandWords, autumnWords, SQUARE_WORDS, seasonKey, keyT
 import { cropTiming, followOn, secondFit, kindOf, normalYear, isoOf, doyOfIso, dayWord, roughWord, timingWords, varietyWords, lengthsOf, usualOf, TURN, TIGHT, MONTH_DAYS, SEASON_FOOT } from './season.js';
 import { feasible, supplyOf, cropFit, seasonOf, IRRIGATION_MM } from './fit.js';
 import { scenarios, sureField, FLAG_WORDS, VARIANT_WORDS } from './sure.js';
-import { withLimits, goalTerm, finish, DEEP_COLD } from './compare.js';   // the goals and limits, and the strategy comparison (benefits, review, facets, strategies, exposure, bare months)
+import { withLimits, goalTerm, finish, DEEP_COLD } from './compare.js';
+import { rareWords, keepWords } from './words.compare.js';   // the goals and limits, and the strategy comparison (benefits, review, facets, strategies, exposure, bare months)
 
 const fin = Number.isFinite;
 const clamp = (v, lo = 0, hi = 1) => Math.max(lo, Math.min(hi, v));
@@ -129,6 +130,7 @@ function contextOf(state, C, spot = {}, opts = {}) {
     prio, avoid: new Set(Array.isArray(s.avoid) ? s.avoid.filter(isCrop) : []), absent: new Set(Array.isArray(spot.absent) ? spot.absent.filter(isCrop) : []),
     common: spot.common && typeof spot.common === 'object' ? spot.common : {}, recordsRead: Array.isArray(spot.absent) || !!spot.common,
     nearby: spot.nearby && typeof spot.nearby === 'object' ? spot.nearby : null,
+    relax: Array.isArray(spot.relax) ? spot.relax.filter(t => t && t.crops && typeof t.crops === 'object') : [],   // the steps by which the nearby-crops rule may be relaxed (js/nearby.js)
     country: typeof spot.country === 'string' && spot.country ? spot.country : null, second, today,
   });
 }
@@ -441,7 +443,7 @@ function textsOf(o, ev, chk, C, ctx, base, baseEv) {
   // The usual frost dates are the middle of the years that had a frost; where under half the years had one (frostFreeClimate) there is no usual date to give.
   const frostYears = (C.yearly?.frostLast ?? []).filter(fin).length;
   if (C.frostFreeClimate === true && C.years.length) evidence.push({ text: frostYears ? `Frost came in only ${frostYears} of the last ${C.years.length} years on NASA’s record, so no usual frost dates are given. A weather station near you can see frost more often, most of all in low, cold spots.` : `No frost came in the last ${C.years.length} years on NASA’s record. A weather station near you can still see some, most of all in low, cold spots.`, sources: frostKeys });
-  else if (fin(C.med.frostLast) && fin(C.med.frostFirst)) evidence.push({ text: `The usual last spring frost is about ${dayWord(frostDay(C, C.med.frostLast))} and the usual first autumn frost about ${dayWord(frostDay(C, C.med.frostFirst))} (the middle of ${frostYears < C.years.length ? `the ${frostYears} years with a frost` : `${C.years.length} years`}).${autumnWords(C.frostMargin, C.source)}`, sources: frostKeys });
+  else if (fin(C.med.frostLast) && fin(C.med.frostFirst)) evidence.push({ text: `The usual last spring frost is about ${dayWord(frostDay(C, C.med.frostLast))} and the usual first autumn frost about ${dayWord(frostDay(C, C.med.frostFirst))} (the middle of ${frostYears < C.years.length ? `the ${frostYears} years with a frost` : `${C.years.length} years`}).${autumnWords(C.frostMargin, C.source, ctx.country)}`, sources: frostKeys });
   names.forEach(id => { const i = o.slots.indexOf(id), tm = lay.t[i]; if (tm?.ok) evidence.push({ text: `${timingWords(tm)}${tm.len ? ` ${varietyWords(tm)}` : ''}`, sources: ['power', 'fao56', ...(tm.byWarmth ? ['ecocrop'] : []), ...(fin(tm.hot) ? ['luo2011'] : [])] }); });
   lay.follow.forEach((f, i) => {
     if (!f?.follow || !f.ok) return;
@@ -611,6 +613,27 @@ function* evaluateAllSteps(ctx, C) {
   const scoreOf = x => fin(x.score) ? x.score : -Infinity;   // an option that could not be scored ranks last
   const rank = (a, b) => (a.flag === 'fails') - (b.flag === 'fails') || (a.flag === 'borderline') - (b.flag === 'borderline') || scoreOf(b) - scoreOf(a);
   rest.sort(rank);
+  // Three strategies need two other ideas of two different kinds. Where the nearby-crops rule leaves fewer, it is relaxed one step at a time (a crop on 100 ha or more
+  // nearby, then any crop the crop map sees nearby, then the crops the country's own list holds) until there are enough. Only ideas that suit the place are added,
+  // each carries the crops that made it an exception (rare), and they rank after the ideas built under the full rule: toPlan says so on the strategy.
+  const night10 = fin(C.coldLow10) ? C.coldLow10 : C.coldNight10;
+  const kinds = () => new Set(rest.filter(x => x.flag !== 'fails' && !x.o.slots.some(id => cropOf(id)?.winterKill !== undefined && fin(night10) && night10 < DEEP_COLD)).map(x => x.o.kind)).size;
+  if (ctx.relax.length && ctx.absent.size && kinds() < 2) {
+    const seen = new Set(options.map(x => signature(x.o))), open = new Map();
+    for (const tier of ctx.relax) {
+      Object.entries(tier.crops).forEach(([id, ha]) => { if (ctx.absent.has(id) && !open.has(id)) open.set(id, { id, step: tier.step, ha: fin(ha) ? ha : null, name: typeof tier.name === 'string' ? tier.name : '' }); });
+      for (const o of generate({ ...ctx, absent: new Set([...ctx.absent].filter(id => !open.has(id))) }, C)) {
+        const k = signature(o); if (seen.has(k)) continue; seen.add(k);
+        const ev = evaluate(o, C, ctx), chk = check(o, C, ctx, ev); yield 'option';
+        if (chk.flag === 'fails' || ev.lay.follow.some(f => f && !f.ok) || ev.lay.pushed.some(p => p && !p.ok)) continue;
+        rest.push({ o, ev, chk, score: ev.score, flag: chk.flag, rare: [...new Set(o.slots)].filter(id => open.has(id)).map(id => open.get(id)) });
+      }
+      if (kinds() >= 2) break;
+    }
+    // among the exceptions, one that keeps every crop the farmer grows and adds to them comes before one that takes a crop of theirs out
+    const keeps = x => base.o.slots.every(id => x.o.slots.includes(id));
+    rest.sort((a, b) => (a.flag === 'fails') - (b.flag === 'fails') || !!a.rare - !!b.rare || (a.rare && b.rare ? keeps(b) - keeps(a) : 0) || rank(a, b));
+  }
   return { base, rest };
 }
 function* analyseSteps(state, climate, spot = {}, opts = {}) {
@@ -634,11 +657,18 @@ function toPlan(x, kind, C, ctx, base, baseEv, year0, count) {
   const t = textsOf(x.o, x.ev, x.chk, C, ctx, base?.o, baseEv), shown = shownScore(x);
   const parts = Object.fromEntries(Object.entries(x.ev.parts).map(([k, v]) => [k, shown && fin(v) ? Math.round(100 * v) : null]));   // a part not worked out is null, never a guess
   const scores = Object.fromEntries(DIMS.map(d => [d.id, parts[d.id] ?? null]));
+  if (x.rare?.length) {   // built with a crop the nearby-crops rule had left out: said first under why, and beside the line that says such crops are not suggested
+    const low = id => cropName(id, true).toLowerCase(), far = x.rare.filter(r => r.step === 'country'), near = x.rare.filter(r => r.step !== 'country');
+    const lines = [near.length ? rareWords.lead(near.map(r => r.ha !== null ? rareWords.some(low(r.id), r.ha) : rareWords.little(low(r.id)))) : '', far.length ? rareWords.leadNone(far.map(r => rareWords.none(low(r.id), r.name || 'this country'))) : ''].filter(Boolean);
+    t.lessCommon = lines.join(' ');
+    t.why = [t.lessCommon, ...t.why];
+    t.evidence = t.evidence.map(e => e.text === ctx.nearby?.left ? { ...e, text: `${e.text} ${rareWords.left(x.rare.map(r => low(r.id)))}` } : e);
+  }
   return {
     id: kind === 'current' ? 'current' : `${x.o.kind}-${x.o.slots.join('-')}${x.o.covers.some(Boolean) ? '-cover' : ''}${x.o.tillage === 'notill' && x.o.kind === 'notill' ? '-notill' : ''}`,
     name: nameOf(x.o), kind, seasons: planOf(x.o, C, ctx, x.ev, x.chk, year0, count),
     score: shown ? x.score : null, scores, parts, pest: shown ? Math.round(100 * x.ev.pest) : null, flag: x.flag, fit: FLAG_WORDS[x.flag], fitWhy: fitWhyOf(x), optionKind: x.o.kind, slots: [...x.o.slots],
-    bareMonths: Math.round(x.ev.lay.bareMonths * 10) / 10, erosionLevel: x.ev.erosionLevel, why: t.one, whyLines: t.why, evidence: t.evidence, gaps: t.gaps, risks: t.risks,
+    bareMonths: Math.round(x.ev.lay.bareMonths * 10) / 10, erosionLevel: x.ev.erosionLevel, why: t.one, whyLines: t.why, evidence: t.evidence, gaps: t.gaps, risks: t.risks, ...(t.lessCommon ? { lessCommon: t.lessCommon } : {}),
   };
 }
 // The answer for a point that is not farmland at all: no plans, no figures, the reason in words.
@@ -667,7 +697,7 @@ function* stepsInner(state, climate, spot = {}, opts = {}) {
   // What the comparison is set against: the current plan's own score, or, when it has none, why (it does not suit, or could not be scored).
   const failWords = (Object.values(a.base.chk.marks).find(m => m.flag === 'fails' && m.words)?.words ?? '').replace(/\.$/, ''), why = failWords ? ` (${failWords.charAt(0).toLowerCase()}${failWords.slice(1)})` : '';
   const nowWhy = fin(current.score) ? '' : `what you grow now ${a.base.flag === 'fails' ? 'doesn\'t suit here' : 'could not be scored here'}${why}`;
-  let reason;
+  let reason, close = 0, after = '';
   if (pick) {
     const r = others[0], change = [];
     if (r.bareMonths < current.bareMonths) change.push(`the soil is bare about ${r.bareMonths} months a year instead of ${current.bareMonths}`);
@@ -684,8 +714,15 @@ function* stepsInner(state, climate, spot = {}, opts = {}) {
     reason = best.flag !== 'holds'
       ? `Nothing that passes every check does clearly better here; the highest scoring idea, ${best.name.toLowerCase()}, scores ${best.score} against ${current.score} now and only just suits, so it is worth a look, not a firm change.`
       : `Nothing we tested does clearly better here: the best other idea, ${best.name.toLowerCase()}, scores ${best.score} against ${current.score} for what you grow now.`;
+    if (best.flag === 'holds' && best.score > current.score) close = best.score - current.score;   // said once the strategies are known (below)
+    // an option that scores above the kept rotation but is not the best other idea (it only just suits, or it uses a crop that is rare nearby) is named with its reason
+    const top = others.filter(p => p !== best && p.flag !== 'fails' && fin(p.score) && p.score > current.score && p.score > best.score).sort((p, q) => q.score - p.score)[0];
+    if (top) after = ` ${keepWords.other(top.name, top.score, top.lessCommon ? keepWords.rare : keepWords.just)}`;
   } else reason = nowWhy ? `${capital(nowWhy)}, and Crophalo could build no other idea that fits here: ask farmers near you what grows well.` : 'Nothing we tested does clearly better here.';
   const chosen = recommended, more = finish({ a, ctx, C, current, others, recommended, generate, stressYears });
+  // keep, although the best other idea scores a little higher: the reason in sight, and where that idea is shown
+  if (close) reason += ` ${keepWords.close(close, more.strategies.some(s => s.role === 'worth' && s.id === best.id))}`;
+  reason += after;
   return {
     current, recommended, others, reason, evidence: chosen.evidence, gaps: more.gaps.length ? [...chosen.gaps, ...more.gaps] : chosen.gaps, risks: chosen.risks,
     sureness: sure.level, sureWhy: sure.why, endorsed: a.endorsed, gain: best && fin(best.score) && fin(current.score) ? best.score - current.score : null, foot: SEASON_FOOT,

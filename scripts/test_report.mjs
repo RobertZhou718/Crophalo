@@ -389,8 +389,15 @@ check('a note from outside is plain text on the Data page', !/<img src=x/.test(d
     same(`one page, ${id}: three strategies to compare`, rows.length, 3);
     const html = rows.map(p => strategyRowHTML(p, res, null));
     check(`one page, ${id}: no opened strategy says a part is "listed yet"`, html.every(h => !/listed yet|gave no reason/i.test(h)));
+    { const all = html.join(' ').replace(/<[^>]+>/g, ' ') + ' ' + JSON.stringify([res.evidence, res.risks, res.gaps, res.reason]);   // a field in the United States: no sentence names Ontario as if it were local (a guide cited by its own title, such as OMAFRA Publication 811, is a named reference)
+      check(`one page, ${id}: no sentence of a United States field names Ontario`, !/Ontario/.test(all), (all.match(/[^.(]*Ontario[^.)]*/g) ?? []).slice(0, 3).join(' | '));
+      check(`one page, ${id}: the frost date is said as NASA's own, not checked near the field`, /NASA’s own and was not checked against weather stations near your field/.test(all));
+      check(`one page, ${id}: wash-off is cited to the United States soil service`, !/may take less of it/.test(all) || /may take less of it \(USDA NRCS, soil health principles\)/.test(all)); }
     check(`one page, ${id}: every strategy holds all five parts, each with a real line`, html.every(h => PARTS.every(t => new RegExp(`<h3>${t}</h3><ul><li>[^<]{8,}`).test(h))), html.map(h => PARTS.filter(t => !h.includes(`<h3>${t}</h3><ul>`))));
   }
+  { const { erosionCite } = await import('../js/words.compare.js'), { autumnWords } = await import('../js/climate.js');
+    same('wash-off source by country: Canada keeps Ontario\'s guide, elsewhere it is said as a general guide', [erosionCite('CA'), erosionCite('TR')], ['Government of Ontario, Soil erosion: causes and effects', 'a general guide to soil erosion, Government of Ontario']);
+    check('the frost check keeps naming Ontario for a field in Canada', /in Ontario, it came about \d+ days late/.test(autumnWords(0, 'power', 'CA')) && /in Ontario/.test(autumnWords(0, 'power')) && !/Ontario/.test(autumnWords(0, 'power', 'TR'))); }
   const bare = { ...RESULT.others[0], evidence: [], benefits: [], gaps: [], review: [], whyLines: [], why: 'A short reason for this plan.' };
   const row = strategyRowHTML(bare, { ...RESULT, others: [bare, ...RESULT.others.slice(1)] }, null);
   check('one page: a part with nothing in it is not drawn, and no row says it has nothing', !/What evidence supports it|Where information is missing|Risks to check locally|listed yet/.test(row) && /Why it was suggested/.test(row), row.replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ').slice(0, 300));
