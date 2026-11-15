@@ -12,6 +12,22 @@ export const HLS = Object.freeze({
 });
 export const TRUE = Object.freeze({ gibs: 'MODIS_Terra_CorrectedReflectance_TrueColor', name: 'MODIS Terra' });
 export const CREDIT = 'Imagery: NASA GIBS / Worldview';
+// The clean base of the Satellite map: cloud-free pictures of the whole world, no date. Far (zoom 0 to 8): NASA's Blue Marble from GIBS. Close (zoom 9 and nearer): Sentinel-2 cloudless 2016 by EOX (CC BY 4.0; the 2016 layer ONLY: the layers of 2017 and later are non-commercial).
+export const CLEAR_FAR_MAX = 8, CLEAR_NEAR_MIN = 9, CLEAR_NEAR_NATIVE = 14;
+export const BLUE = Object.freeze({ gibs: 'BlueMarble_ShadedRelief_Bathymetry', tms: 'GoogleMapsCompatible_Level8', name: 'NASA Blue Marble' });
+export const blueTemplate = `${GIBS}/${BLUE.gibs}/default/${BLUE.tms}/{z}/{y}/{x}.jpeg`;
+export const EOX_HOST = 'tiles.maps.eox.at';
+export const eoxTemplate = `https://${EOX_HOST}/wmts/1.0.0/s2cloudless_3857/default/g/{z}/{y}/{x}.jpg`;
+export const CLEAR_CREDIT_FAR = 'Imagery: NASA Blue Marble (NASA GIBS)';
+export const CLEAR_CREDIT_NEAR = 'Imagery: Sentinel-2 cloudless 2016 by EOX IT Services GmbH (contains modified Copernicus Sentinel data 2016), CC BY 4.0';
+// Zoom 13 and nearer in the United States: the US Geological Survey's own aerial photographs (USGS Imagery Only, The National Map: USDA and USGS orthoimagery), a US government product, free and public. Real photographs to zoom 16 (drawn larger beyond);
+// outside the United States a tile answers 404 and the Sentinel-2 cloudless tile under it shows in its place, tile by tile. Never a blank tile.
+export const AERIAL_MIN_ZOOM = 13, AERIAL_NATIVE = 16, AERIAL_HOST = 'basemap.nationalmap.gov';
+export const aerialTemplate = `https://${AERIAL_HOST}/arcgis/rest/services/USGSImageryOnly/MapServer/tile/{z}/{y}/{x}`;
+export const AERIAL_CREDIT = 'Imagery: USDA, USGS The National Map: Orthoimagery';
+export const AERIAL_CREDIT_AND = 'USDA, USGS The National Map: Orthoimagery';
+// What the corner names: zoom, and which close-up pictures really show (aerial: 'usgs' | 'both' | 'none').
+export const clearCredit = (zoom, aerial = 'none') => (zoom >= AERIAL_MIN_ZOOM && aerial === 'usgs' ? AERIAL_CREDIT : zoom >= AERIAL_MIN_ZOOM && aerial === 'both' ? `${AERIAL_CREDIT}; ${CLEAR_CREDIT_NEAR.replace(/^Imagery: /, '')}` : zoom >= CLEAR_NEAR_MIN ? CLEAR_CREDIT_NEAR : CLEAR_CREDIT_FAR);
 export const hlsTemplate = l => `${GIBS}/${l.gibs}/default/{time}/${HLS_TMS}/{z}/{y}/{x}.png`;
 export const trueTemplate = `${GIBS}/${TRUE.gibs}/default/{time}/${TRUE_TMS}/{z}/{y}/{x}.jpg`;
 export const domainsUrl = (gibs, tms) => `${GIBS}/wmts.cgi?SERVICE=WMTS&REQUEST=DescribeDomains&VERSION=1.0.0&LAYER=${gibs}&TILEMATRIXSET=${tms}`;

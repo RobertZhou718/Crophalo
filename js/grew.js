@@ -3,6 +3,7 @@
 // Checked by scripts/test_grew.mjs on the answers recorded from the live services on 15 November 2026 (scripts/fixtures/crophist-mead.json and crophist-oxford.json).
 import { esc } from './words.js';
 import { cropName, cropColor } from './crops.js';
+import { apiUrl } from './api.js';
 
 export const LINKS = Object.freeze({
   US: ['USDA crop map, about its accuracy', 'https://www.nass.usda.gov/Research_and_Science/Cropland/SARS1a.php'],
@@ -78,7 +79,7 @@ export function loadGrew({ lat, lon, country, ring = null, fetchFn = globalThis.
   const corners = Array.isArray(ring) && ring.length >= 3 ? ring.map(([a, o]) => `${o.toFixed(4)},${a.toFixed(4)}`).join(';') : '', key = `${country}|${lat.toFixed(4)},${lon.toFixed(4)}|${corners}`;
   if (!kept.has(key)) {
     const q = new URLSearchParams({ lat: lat.toFixed(4), lon: lon.toFixed(4), country, near: '1' }); if (corners) q.set('ring', corners);
-    kept.set(key, (async () => { try { const r = await fetchFn(`/api/crophist?${q}`); return await r.json(); } catch { return { ok: false, reason: 'The crop map did not answer' }; } })().then(a => { if (!a?.ok) kept.delete(key); return a; }));
+    kept.set(key, (async () => { try { const r = await fetchFn(apiUrl(`/api/crophist?${q}`)); return await r.json(); } catch { return { ok: false, reason: 'The crop map did not answer' }; } })().then(a => { if (!a?.ok) kept.delete(key); return a; }));
   }
   return kept.get(key);
 }

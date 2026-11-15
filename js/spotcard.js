@@ -2,6 +2,7 @@
 // Pure parts live in js/cardplace.js. The rest builds the card, drags it and fills its tabs; it asks the map for what it needs and never reaches into it.
 // Checked by scripts/test_spot.mjs (js/cardplace.js), scripts/e2e_map.mjs (opens, tabs, drag, arrows, Escape, stays inside, the phone's bottom card) and scripts/e2e_maptools.mjs (the Area tab).
 import { slopeWords, pinWords, areaPair } from './geo.js';
+import { skeleton } from './skeleton.js';
 import { SAY } from './mapwords.js';
 import { getForecast, conditionWords, fieldwork, dayName, degrees } from './weather.js';
 import { sunEvents, clock } from './sun.js';
@@ -141,7 +142,7 @@ function fill() {
 async function fillWeather(panel) {
   const pin = ctx.pin();
   if (!pin) { panel.innerHTML = '<p class="cap">Drop a pin first: tap the map where your field is.</p>'; return; }
-  panel.setAttribute('aria-busy', 'true'); panel.innerHTML = '<p class="spot-wait"><i class="dot busy" aria-hidden="true"></i> Getting the weather here…</p>';
+  panel.setAttribute('aria-busy', 'true'); panel.innerHTML = skeleton('weather', 'Getting the weather here…');
   const mine = card, got = await getForecast(pin.lat, pin.lon);
   if (card !== mine || tab !== 'weather') return;   // the farmer moved on while it came
   panel.removeAttribute('aria-busy');
@@ -179,7 +180,7 @@ function fillArea(panel) {
 async function fillSun(panel) {
   const pin = ctx.pin();
   if (!pin) { panel.innerHTML = '<p class="cap">Drop a pin first: tap the map where your field is.</p>'; return; }
-  panel.setAttribute('aria-busy', 'true'); panel.innerHTML = '<p class="spot-wait"><i class="dot busy" aria-hidden="true"></i> Reading the field\'s clock…</p>';
+  panel.setAttribute('aria-busy', 'true'); panel.innerHTML = skeleton('sun', 'Reading the field\'s clock…');
   const mine = card, got = await getForecast(pin.lat, pin.lon);
   if (card !== mine || tab !== 'sun') return;
   panel.removeAttribute('aria-busy');

@@ -4,6 +4,7 @@
 // Checked by scripts/test_pages.mjs (the answer rebuilt from known parts, the old shorter answer, a hostile answer, escaping, the states) and scripts/e2e_pages.mjs.
 import { esc } from './words.js';
 import { pageStyle } from './page-style.js';
+import { apiUrl } from './api.js';
 
 const fin = v => typeof v === 'number' && Number.isFinite(v);
 const text = (v, n) => typeof v === 'string' ? v.replace(/[\u0000-\u001f\u007f]/g, ' ').trim().slice(0, n) : '';
@@ -60,11 +61,11 @@ export function adminHTML(rows, { busy = false, now = Date.now() } = {}) {
 }
 export async function loadSources(get = globalThis.fetch?.bind(globalThis)) {
   if (typeof get !== 'function') return null;
-  try { return cleanSources(await (await get('/api/sources')).json()); } catch { return null; }
+  try { return cleanSources(await (await get(apiUrl('/api/sources'))).json()); } catch { return null; }
 }
 export async function checkSources(post = globalThis.fetch?.bind(globalThis)) {
   if (typeof post !== 'function') return null;
-  try { return cleanSources(await (await post('/api/sources/check', { method: 'POST' })).json()); } catch { return null; }
+  try { return cleanSources(await (await post(apiUrl('/api/sources/check'), { method: 'POST' })).json()); } catch { return null; }
 }
 // Draw the page into a node and listen to its button.
 export async function renderAdminPage(root) {

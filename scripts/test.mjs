@@ -199,7 +199,7 @@ await group('the folder', async () => {
 
 // ---- nothing is loaded from an outside address (the data services are asked for data, never for code, fonts or styles)
 await group('outside addresses', async () => {
-  const DATA_HOSTS = ['power.larc.nasa.gov', 'api.open-meteo.com', 'gibs.earthdata.nasa.gov', 'tiles.openfreemap.org'];   // NASA weather, the forecast; NASA GIBS (the pictures of the setup map, its layers and My farm) and OpenFreeMap (its light map and names), which the page now greets early
+  const DATA_HOSTS = ['power.larc.nasa.gov', 'api.open-meteo.com', 'gibs.earthdata.nasa.gov', 'tiles.openfreemap.org', 'tiles.maps.eox.at', 'basemap.nationalmap.gov'];   // NASA weather, the forecast; NASA GIBS (the pictures of the setup map, its layers and My farm) and OpenFreeMap (its light map and names), which the page now greets early; EOX and the US Geological Survey (the clear satellite base close up)
   const outside = v => /^(https?:)?\/\//i.test(v.trim());
   const tags = [], hints = [];
   for (const rel of PAGES) for (const m of read(rel).matchAll(/<(script|link|img|iframe|source|video|audio|embed|object|use|image)\b[^>]*>/gi)) {

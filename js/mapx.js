@@ -103,7 +103,7 @@ function shell(root) {
         </div>
         <div class="mapx-foot" id="mapxFoot"><p class="mapx-basenote" id="mapxBaseNote" role="status" hidden></p><p class="mapx-credit" id="mapxCredit"></p></div>
       </div>
-      <div class="seg mapx-base" role="group" aria-label="${esc(SAY.baseGroup)}"><button type="button" data-base="sat" aria-pressed="true">${esc(SAY.base.sat)}</button><button type="button" data-base="light" aria-pressed="false">${esc(SAY.base.light)}</button></div>
+      <div class="seg mapx-base" role="group" aria-label="${esc(SAY.baseGroup)}"><button type="button" data-base="light" aria-pressed="false">${esc(SAY.base.light)}</button><button type="button" data-base="sat" aria-pressed="true">${esc(SAY.base.sat)}</button></div>
       <div class="mapx-pic" id="mapxPic" hidden><p class="mapx-pic-t" id="mapxPicText" role="status"></p><div class="mapx-pic-b"><button type="button" class="btn sm ghost" data-pic="earlier">Earlier</button><button type="button" class="btn sm ghost" data-pic="newest">Newest</button></div></div>
     </div>
     <div class="mapx-right" id="mapxRight"></div><div class="mapx-panelhost" id="mapxPanels"></div>
@@ -1023,6 +1023,8 @@ function again() {
   dimPin(); saveDraft(); sync();
   (viaKeys ? ui.box : ui.tools.querySelector(`[data-tool=${tool}]`))?.focus({ preventScroll: true, focusVisible: viaKeys });
 }
+// the outline on the map now ({ ring, used } or null): for the setup's "Your field" step, which mounts the area block (js/areablock.js)
+export const outlineNow = () => (keep.ring ? { ring: keep.ring, used: keep.used } : null);
 const cardContext = () => ({ box: ui.box, top: () => barsBottom(), dock: () => dockHeight(), say, order, pin: () => keep.pin, ring: () => keep.ring,
   anchor: () => (keep.pin && map ? map.latLngToContainerPoint([keep.pin.lat, keep.pin.lon]) : null),
   avoid: () => { const lg = gibsCtl?.legendRect?.(), box = ui.box.getBoundingClientRect(), legend = lg ? [{ left: lg.left - box.left, top: lg.top - box.top, w: lg.width, h: lg.height }] : []; if (!keep.ring || !map) return legend; const b = L.latLngBounds(keep.ring), n = map.latLngToContainerPoint(b.getNorthWest()), z = map.latLngToContainerPoint(b.getSouthEast()); return [{ left: n.x, top: n.y, w: z.x - n.x, h: z.y - n.y }, ...legend]; },
@@ -1218,6 +1220,8 @@ function mount(root) {
   else if (keep.pin) map.setView([keep.pin.lat, keep.pin.lon], 14, { animate: false });
   else { const v = usView(); map.setView(v.c, v.z, { animate: false }); }
   busyCtl = initBusy(ui.busy);
+  ui.credit.title = 'Tap to show or hide the whole credit'; ui.credit.dataset.open = 'false';   // a convenience for a pointer; the words and links are always in the page, so no ARIA state is claimed
+  ui.credit.addEventListener('click', event => { if (event.target.closest('a')) return; const open = ui.credit.dataset.open !== 'true'; ui.credit.dataset.open = String(open); });
   baseCtl = initBase(map, { segment: ui.base, credit: ui.credit, note: ui.baseNote, pic: ui.pic }, { say });
   panels = initPanels({ box: ui.box, right: ui.right, host: ui.panelHost }, { say, swallow: () => { tapSwallow = Date.now(); }, beforeOpen: () => closeSpot(false) });
   panels.add(placesPanel({ goTo }));
@@ -1266,10 +1270,10 @@ function mount(root) {
   for (const e of [ui.box, ui.top, ui.right, ui.dock, ui.tools]) sized.observe(e);
   applyStrip(); dimPin(); sync(); measure();
 }
-// the distance bar (not a CSS scale): feet and miles too whenever acres come first
+// the distance bar (not a CSS scale): one line, in feet and miles when acres come first, else in metres and kilometres
 function makeScale() {
   scaleCtl?.remove();
-  scaleCtl = L.control['scale']({ position: 'bottomleft', maxWidth: 110, metric: true, imperial: order() === 'acres' }).addTo(map);
+  scaleCtl = L.control['scale']({ position: 'bottomleft', maxWidth: 110, metric: order() !== 'acres', imperial: order() === 'acres' }).addTo(map);
   ui.foot.prepend(scaleCtl.getContainer());   // the scale lives in the dock beside the credit, not inside the oversized canvas
 }
 

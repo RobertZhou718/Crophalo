@@ -43,11 +43,14 @@ export function answerHTML(result, ctx = {}) {
 // ---- block 2: three rows
 const PRIO_LABELS = ['water fit', 'soil health', 'soil wash-off', 'income', 'weather safety'];
 // "Ranked for what matters most to you: soil health." from the setup's five weights; nothing stands out: the plain lead.
-export function priorityLine(prio) {
+// The plain lead names the number of strategies really shown: a place where only two can be compared must not say "Three".
+const HOW_MANY = ['', 'One strategy', 'Two strategies', 'Three strategies'];
+export const plainLead = shown => `${HOW_MANY[shown] ?? `${shown} strategies`} for this field.`;
+export function priorityLine(prio, shown = 3) {
   const w = Array.isArray(prio) ? prio.slice(0, 5).map(Number) : [];
-  if (w.length < 5 || w.some(v => !Number.isFinite(v))) return 'Three strategies for this field.';
+  if (w.length < 5 || w.some(v => !Number.isFinite(v))) return plainLead(shown);
   const top = Math.max(...w), best = w.map((v, i) => (v === top ? PRIO_LABELS[i] : null)).filter(Boolean);
-  return best.length === 5 || best.length > 2 ? 'Three strategies for this field.' : `Ranked for what matters most to you: ${best.join(' and ')}.`;
+  return best.length === 5 || best.length > 2 ? plainLead(shown) : `Ranked for what matters most to you: ${best.join(' and ')}.`;
 }
 const NOW_LINE = 'No change. This is your field today.';
 function parts(plan, result) {
@@ -77,7 +80,7 @@ export function compareBlockHTML(result, ctx = {}) {
   const head = `<section class="rv-block" id="blkCompare" aria-labelledby="bkCompare"><h2 id="bkCompare">${H.compare}</h2>`;
   if (!result || result.ok === false || !result.recommended) return `${head}<div class="rv-notread" role="status"><p>${esc(result?.reason || NOT_READ)}</p></div></section>`;
   const { first: rows, fewWhy } = strategies(result), labels = optionLabels(result);
-  return `${head}<p class="lead">${esc(priorityLine(ctx.state?.prio))}</p><div class="srows">${rows.map(p => strategyRowHTML(p, result, ctx.chosen, labels.get(p))).join('')}</div>${fewWhy ? `<p class="cap rv-few" role="note">${esc(fewWhy)}</p>` : ''}
+  return `${head}<p class="lead">${esc(priorityLine(ctx.state?.prio, rows.length))}</p><div class="srows">${rows.map(p => strategyRowHTML(p, result, ctx.chosen, labels.get(p))).join('')}</div>${fewWhy ? `<p class="cap rv-few" role="note">${esc(fewWhy)}</p>` : ''}
     ${ctx.hard ? hardYearHTML(ctx.hard) : ''}<p class="cap rv-srcline">${esc(SOURCE_LINE)} ${infoButton(['power', 'rules'], 'the scores')}</p>
     ${rows.length > 1 ? `<details class="fold-card" id="lfTable"><summary><span class="t">See the three side by side</span></summary><div class="fold-b">${compareHTML(result, labels)}</div></details>` : ''}</section>`;
 }

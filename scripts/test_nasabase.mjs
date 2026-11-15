@@ -2,7 +2,7 @@
 // the least cloudy fallback, a tile that does not come, and every sentence. RULE: never loosen a check here without a written farming reason beside it (a cloudy picture drawn on must never pass for clear).
 import { D, J, domains } from './gibs_fixtures.mjs';
 import { parseDomains } from '../js/gibs.js';
-import { tileOf, verdict, choose, hlsTileUrl, hlsTemplate, trueTemplate, hlsWords, trueWords, creditWords, hlsDomainsUrl, trueDomainsUrl, stillUrl, HLS, SAYS, CREDIT, TRIES, MAX_DAYS } from '../js/nasabase.js';
+import { tileOf, verdict, choose, hlsTileUrl, hlsTemplate, trueTemplate, hlsWords, trueWords, creditWords, hlsDomainsUrl, trueDomainsUrl, stillUrl, blueTemplate, eoxTemplate, aerialTemplate, AERIAL_MIN_ZOOM, AERIAL_NATIVE, AERIAL_HOST, clearCredit, EOX_HOST, CLEAR_FAR_MAX, CLEAR_NEAR_MIN, CLEAR_NEAR_NATIVE, HLS, SAYS, CREDIT, TRIES, MAX_DAYS } from '../js/nasabase.js';
 
 let passed = 0, failed = 0;
 const check = (name, ok, detail = '') => { if (ok) passed++; else { failed++; console.log(`FAIL  ${name}${detail ? `  (${typeof detail === 'string' ? detail : JSON.stringify(detail)})` : ''}`); } };
@@ -76,5 +76,14 @@ same('the credit starts with NASA GIBS / Worldview', CREDIT, 'Imagery: NASA GIBS
 check('every sentence is plain and has no Esri', Object.values(SAYS).every(t => typeof t === 'string' && t.length > 10 && !/Esri|arcgis|\bAPI\b|\bundefined\b/i.test(t)));
 const still = stillUrl({ layer: HLS.S30.gibs, day: D('20261105'), box: { w: -80.8, s: 43.1, e: -80.7, n: 43.16 }, width: 640, height: 360, format: 'image/png' });
 check('a still picture is a WMS GetMap with latitude first, the layer, the day and the size', /^https:\/\/gibs\.earthdata\.nasa\.gov\/wms\/epsg4326\/best\/wms\.cgi\?/.test(still) && still.includes('BBOX=43.10000%2C-80.80000%2C43.16000%2C-80.70000') && still.includes(`TIME=${D('20261105')}`) && still.includes('WIDTH=640') && still.includes('HEIGHT=360') && !/esri|arcgis|token|key/i.test(still), still);
+
+// ---- the clean base: Blue Marble far, Sentinel-2 cloudless 2016 by EOX close; no date in either address
+check('far (zoom 0 to 8) the base is NASA Blue Marble from GIBS, no date in the address', blueTemplate === 'https://gibs.earthdata.nasa.gov/wmts/epsg3857/best/BlueMarble_ShadedRelief_Bathymetry/default/GoogleMapsCompatible_Level8/{z}/{y}/{x}.jpeg' && CLEAR_FAR_MAX === 8, blueTemplate);
+check('close (zoom 9 and nearer) it is the 2016 cloudless layer only, and never a later year (those are non-commercial)', eoxTemplate === 'https://tiles.maps.eox.at/wmts/1.0.0/s2cloudless_3857/default/g/{z}/{y}/{x}.jpg' && !/s2cloudless-20|2017|2018|2019|202\d/.test(eoxTemplate) && EOX_HOST === 'tiles.maps.eox.at' && CLEAR_NEAR_MIN === 9 && CLEAR_NEAR_NATIVE === 14, eoxTemplate);
+check('the two layers meet with no gap and no overlap in zoom', CLEAR_FAR_MAX + 1 === CLEAR_NEAR_MIN);
+check('the credit follows the zoom', clearCredit(8) === 'Imagery: NASA Blue Marble (NASA GIBS)' && /^Imagery: Sentinel-2 cloudless 2016 by EOX IT Services GmbH \(contains modified Copernicus Sentinel data 2016\), CC BY 4\.0$/.test(clearCredit(9)));
+check('the clean base names no Esri address', !/esri|arcgis/i.test(blueTemplate + eoxTemplate + clearCredit(3) + clearCredit(12)));
+check('zoom 13 and nearer the USGS aerial photographs (The National Map, USGS Imagery Only) lie over the Sentinel-2 tiles, z/y/x, real photographs to zoom 16', aerialTemplate === 'https://basemap.nationalmap.gov/arcgis/rest/services/USGSImageryOnly/MapServer/tile/{z}/{y}/{x}' && AERIAL_MIN_ZOOM === 13 && AERIAL_NATIVE === 16 && AERIAL_HOST === 'basemap.nationalmap.gov', aerialTemplate);
+check('the corner names what really shows close up: USGS alone, both, or Sentinel-2 alone', clearCredit(15, 'usgs') === 'Imagery: USDA, USGS The National Map: Orthoimagery' && /^Imagery: USDA, USGS The National Map: Orthoimagery; Sentinel-2 cloudless 2016 by EOX IT Services GmbH .*CC BY 4\.0$/.test(clearCredit(15, 'both')) && clearCredit(15, 'none') === clearCredit(12) && clearCredit(12, 'usgs') === clearCredit(12) && clearCredit(5, 'usgs') === clearCredit(5));
 console.log(`${passed} passed, ${failed} failed`);
 process.exit(failed ? 1 : 0);

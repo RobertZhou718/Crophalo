@@ -5,12 +5,13 @@ export const TILES = 'https://tiles.openfreemap.org/planet';
 export const GLYPHS = 'https://tiles.openfreemap.org/fonts/{fontstack}/{range}.pbf';
 export const CREDIT = 'OpenFreeMap © OpenMapTiles Data from OpenStreetMap';
 export const INK = '#3a3a3f';
-export const COLOURS = Object.freeze({ land: '#f3f3f1', water: '#c6d9e6', waterEdge: '#b9cfdf', farmland: '#f4f1e7', grass: '#e8eedf', wood: '#dfe8da', wetland: '#dde8e3', sand: '#f1ede0', ice: '#fbfcfd', rock: '#ebeae6',
-  built: '#e6e5e1', park: '#e0eadb', road: '#ffffff', roadEdge: '#d9d9dd', motorway: '#fbefcf', motorwayEdge: '#e2cf9f', rail: '#d3d3d7', border: '#9a9aa2', state: '#c4c4ca' });
+// The colours of a street map people know: soft land, clear blue water, green parks and woods, white streets with a grey edge, yellow main roads, orange motorways; every name is dark on a white halo (about 7:1 or better).
+export const COLOURS = Object.freeze({ land: '#f2efe9', water: '#aad3df', waterEdge: '#8fc0d1', farmland: '#eeeedb', grass: '#d6ebc1', wood: '#bcdca8', wetland: '#c9e3cf', sand: '#f1e6c4', ice: '#fbfcfd', rock: '#e4e0d8',
+  built: '#e9e3da', park: '#c8e6b0', road: '#ffffff', roadEdge: '#c9c6bd', major: '#fde9a9', majorEdge: '#dfbf5c', motorway: '#f9c07a', motorwayEdge: '#d9873a', rail: '#b9b6b0', border: '#8a8a93', state: '#b4b4bb' });
 
 // Which kinds of place carry a name, and which source layer they come from. Everything named here is a place on land.
 export const PLACE_CLASSES = Object.freeze(['country', 'state', 'city', 'town', 'village']);
-export const LABEL_SOURCE_LAYERS = Object.freeze(['place']);
+export const LABEL_SOURCE_LAYERS = Object.freeze(['place', 'transportation_name']);   // places, and the names of roads (never of water)
 const SOURCE = 'openmaptiles';
 
 // The words of a name: English where the data has it, the local name otherwise; Türkiye wherever the data uses the old English name.
@@ -36,6 +37,29 @@ function labelLayers(onImagery) {
   ];
 }
 
+// Road names along the road, from zoom 13 (main roads from 11); no name of water or of any other feature. Dark on white over a map, white on dark over the photo.
+export const ROAD_NAME = ['coalesce', ['get', 'name_en'], ['get', 'name:latin'], ['get', 'name']];
+function roadNameLayers(onImagery) {
+  const paint = onImagery
+    ? { 'text-color': '#ffffff', 'text-halo-color': 'rgba(10,14,20,0.8)', 'text-halo-width': 1.6, 'text-halo-blur': 0.5 }
+    : { 'text-color': '#3a3a3f', 'text-halo-color': '#ffffff', 'text-halo-width': 2, 'text-halo-blur': 0.3 };
+  const name = (id, classes, minzoom, size) => ({ id, type: 'symbol', source: SOURCE, 'source-layer': 'transportation_name', minzoom, filter: ['all', ['match', ['get', 'class'], classes, true, false], ['has', 'name']],
+    layout: { 'text-field': ROAD_NAME, 'text-font': ['Noto Sans Regular'], 'text-size': size, 'symbol-placement': 'line', 'text-pitch-alignment': 'viewport', 'text-padding': 2, 'text-letter-spacing': 0.02, 'symbol-spacing': 320 }, paint });
+  return [
+    name('road-name-major', ['motorway', 'trunk', 'primary', 'secondary'], 11, zoomSize(11, 10, 16, 13)),
+    name('road-name-minor', ['tertiary', 'minor', 'service', 'track'], 13, zoomSize(13, 10, 17, 12.5)),
+  ];
+}
+// The roads over the photo, thin, with a dark edge so a road stays visible on bright or dark ground; from zoom 12, and never wide enough to hide a field.
+function roadOverlayLayers() {
+  const edge = (id, classes, minzoom, w) => line(id, 'transportation', klass(...classes), { 'line-color': 'rgba(10,14,20,0.5)', 'line-width': w }, { minzoom });
+  const core = (id, classes, minzoom, w, colour) => line(id, 'transportation', klass(...classes), { 'line-color': colour, 'line-opacity': 0.9, 'line-width': w }, { minzoom });
+  return [
+    edge('photo-road-edge', ['motorway', 'trunk', 'primary', 'secondary', 'tertiary', 'minor'], 12, width(12, 1.4, 18, 7)),
+    core('photo-road-minor', ['tertiary', 'minor'], 13, width(13, 0.5, 18, 3.4), '#ffffff'),
+    core('photo-road-major', ['motorway', 'trunk', 'primary', 'secondary'], 12, width(12, 0.8, 18, 4.6), '#ffe9a6'),
+  ];
+}
 const fill = (id, layer, filter, color, extra = {}, paint = {}) => ({ id, type: 'fill', source: SOURCE, 'source-layer': layer, ...(filter ? { filter } : {}), paint: { 'fill-color': color, ...paint }, ...extra });
 const line = (id, layer, filter, paint, extra = {}, layout = {}) => ({ id, type: 'line', source: SOURCE, 'source-layer': layer, ...(filter ? { filter } : {}), layout: { 'line-cap': 'round', 'line-join': 'round', ...layout }, paint, ...extra });
 const klass = (...names) => ['match', ['get', 'class'], names, true, false];
@@ -58,11 +82,12 @@ function groundLayers() {
     line('waterway', 'waterway', klass('river', 'canal'), { 'line-color': C.water, 'line-width': width(8, 0.6, 14, 3) }, { minzoom: 8 }),
     line('waterway-stream', 'waterway', klass('stream', 'drain', 'ditch'), { 'line-color': C.water, 'line-width': width(12, 0.5, 16, 1.5) }, { minzoom: 12 }),
     fill('building', 'building', null, '#e0dfdb', { minzoom: 14 }, { 'fill-outline-color': '#d4d3cf' }),
-    line('road-minor-casing', 'transportation', klass('minor', 'service'), { 'line-color': C.roadEdge, 'line-width': width(12, 1.2, 18, 12) }, { minzoom: 12 }),
-    line('road-minor', 'transportation', klass('minor', 'service'), { 'line-color': C.road, 'line-width': width(12, 0.7, 18, 9) }, { minzoom: 12 }),
-    line('road-track', 'transportation', klass('track', 'path'), { 'line-color': '#cfcfd3', 'line-width': width(13, 0.5, 18, 2), 'line-dasharray': [2, 2] }, { minzoom: 13 }),
-    line('road-major-casing', 'transportation', klass('primary', 'secondary', 'tertiary', 'trunk'), { 'line-color': C.roadEdge, 'line-width': width(6, 1.2, 18, 18) }, { minzoom: 6 }),
-    line('road-major', 'transportation', klass('primary', 'secondary', 'tertiary', 'trunk'), { 'line-color': C.road, 'line-width': width(6, 0.7, 18, 15) }, { minzoom: 6 }),
+    line('road-minor-casing', 'transportation', klass('minor', 'service', 'tertiary'), { 'line-color': C.roadEdge, 'line-width': width(12, 1.2, 18, 12) }, { minzoom: 12 }),
+    line('road-minor', 'transportation', klass('minor', 'service', 'tertiary'), { 'line-color': C.road, 'line-width': width(12, 0.7, 18, 9) }, { minzoom: 12 }),
+    line('road-track', 'transportation', klass('track'), { 'line-color': '#c4bda9', 'line-width': width(12, 0.8, 18, 4) }, { minzoom: 12 }),
+    line('road-path', 'transportation', klass('path'), { 'line-color': '#b5ae9c', 'line-width': width(13, 0.6, 18, 2), 'line-dasharray': [2, 2] }, { minzoom: 14 }),
+    line('road-major-casing', 'transportation', klass('primary', 'secondary', 'trunk'), { 'line-color': C.majorEdge, 'line-width': width(6, 1.2, 18, 18) }, { minzoom: 6 }),
+    line('road-major', 'transportation', klass('primary', 'secondary', 'trunk'), { 'line-color': C.major, 'line-width': width(6, 0.7, 18, 15) }, { minzoom: 6 }),
     line('road-motorway-casing', 'transportation', klass('motorway'), { 'line-color': C.motorwayEdge, 'line-width': width(5, 1.4, 18, 20) }, { minzoom: 5 }),
     line('road-motorway', 'transportation', klass('motorway'), { 'line-color': C.motorway, 'line-width': width(5, 0.8, 18, 17) }, { minzoom: 5 }),
     line('rail', 'transportation', klass('rail'), { 'line-color': C.rail, 'line-width': 1, 'line-dasharray': [4, 3] }, { minzoom: 10 }),
@@ -73,10 +98,11 @@ function groundLayers() {
 }
 
 const base = layers => ({ version: 8, name: 'Crophalo', sources: { [SOURCE]: { type: 'vector', url: TILES, attribution: CREDIT } }, glyphs: GLYPHS, layers });
-// The Light map: calm ground, water without a name, and the names of countries, regions and places.
-export const lightStyle = () => base([...groundLayers(), ...labelLayers(false)]);
+// The Map: a clear street map: soft ground, water without a name, roads with their names, and the names of countries, regions and places.
+export const lightStyle = () => base([...groundLayers(), ...roadNameLayers(false), ...labelLayers(false)]);
 // The names alone (white with a soft dark halo over the photo; dark with a white halo over a light ground); the background is transparent: there is no ground in this style.
-export const labelsStyle = (onImagery = true) => base(labelLayers(onImagery));
+// Over the photo (Satellite) the roads' thin lines and names come with them from zoom 12; over a light ground there is no ground at all and only the names.
+export const labelsStyle = (onImagery = true) => base(onImagery ? [...roadOverlayLayers(), ...roadNameLayers(true), ...labelLayers(true)] : labelLayers(false));
 
 // What a test or a check wants to know about a style: every layer that draws words, where its words come from, and whether any of them could be the name of water.
 export function reading(style) {

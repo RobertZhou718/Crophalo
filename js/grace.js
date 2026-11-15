@@ -2,10 +2,11 @@
 // the answer rebuilt from known parts only, the classes and their colours, where a value stands on the colour bar, the region's disc in map pixels, the months a time-lapse plays and every sentence.
 // Pure: nothing here asks the network or reads the page. Checked by scripts/test_grace.mjs (answers in the lookup's own shape, a month with no measurement, open water, hostile input, the colours for every kind of colour sight).
 import { PLAY } from './layeranim.js';
+import { apiUrl } from './api.js';
 
 export const GRACE = Object.freeze({ id: 'grace', kind: 'region', name: 'Regional water storage', plain: 'Water stored across a wide region.', sub: 'GRACE / GRACE-FO 2002 to now · very coarse, about 300 km',
   here: 'Stored water in this region', areaKm: 300, opacity: 60, step: 1 });
-export const GRACE_URL = (lat, lon) => `/api/gracecell?lat=${encodeURIComponent(lat.toFixed(4))}&lon=${encodeURIComponent(lon.toFixed(4))}`;
+export const GRACE_URL = (lat, lon) => apiUrl(`/api/gracecell?lat=${encodeURIComponent(lat.toFixed(4))}&lon=${encodeURIComponent(lon.toFixed(4))}`);
 export const GRACE_DOI = '10.5067/TEMSC-3JC634';
 export const GRACE_CREDIT = 'Credit: NASA JPL GRACE and GRACE-FO mascons, release RL06.3Mv04 with the CRI filter, from NASA PO.DAAC (DOI 10.5067/TEMSC-3JC634). NASA open data.';
 export const CELL_DEG = 0.5;   // the grid the server reads the answer on: one value for each half-degree square, each square inside one JPL region

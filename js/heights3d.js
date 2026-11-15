@@ -3,6 +3,7 @@
 // Checked by scripts/test_farm3d.mjs.
 
 // "AAAA" base64 of little-endian 32-bit floats -> Float32Array (NaN stays NaN: no height there)
+import { apiUrl } from './api.js';
 export function floatsOf(b64) {
   const bin = atob(String(b64 || '')), bytes = new Uint8Array(bin.length);
   for (let i = 0; i < bin.length; i++) bytes[i] = bin.charCodeAt(i);
@@ -24,7 +25,7 @@ export function decodeHeights(answer, request) {
 export async function loadHeights(request, { fetchImpl = globalThis.fetch, base = '' } = {}) {
   const q = new URLSearchParams({ lat: request.lat, lon: request.lon, w: request.width, d: request.depth, nx: request.n, ny: request.n });
   try {
-    const res = await fetchImpl(`${base}/api/dem?${q}`);
+    const res = await fetchImpl(apiUrl(`/api/dem?${q}`, base));
     const answer = await res.json().catch(() => null);
     return decodeHeights(answer, request);
   } catch {

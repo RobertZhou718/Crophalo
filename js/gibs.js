@@ -1,6 +1,7 @@
 // Crophalo's NASA GIBS map layers, the facts and the pure parts: the four picture layers the map offers (plant greenness, soil moisture, rain rate, land temperature) with their tile address, their legend colours and words;
 // the dates NASA has an image for (read from its DescribeDomains answer, up to yesterday, snapping across gaps); and the tile address of a day. Pure: nothing here asks the network or reads the page.
 // Colours are 10 evenly spaced entries of NASA's own colormaps (colormaps/v1.3, read 14 November 2026). Checked by scripts/test_gibs.mjs (real DescribeDomains answers, the date rules, the tile addresses, the legends, every sentence).
+import { apiUrl } from './api.js';
 export const GIBS = 'https://gibs.earthdata.nasa.gov/wmts/epsg3857/best';
 export const COLORMAP = layer => `https://gibs.earthdata.nasa.gov/colormaps/v1.3/${layer.cm.name}.xml`;
 export const DOMAINS = layer => `${GIBS}/wmts.cgi?SERVICE=WMTS&REQUEST=DescribeDomains&VERSION=1.0.0&LAYER=${layer.gibs}&TILEMATRIXSET=${layer.tms}`;
@@ -33,7 +34,7 @@ export const layerOf = id => (id === FIRES.id ? FIRES : LAYERS.find(l => l.id ==
 // The credit line under each legend: NASA asks for its imagery and its fire data to be credited; both are NASA open data.
 export const GIBS_CREDIT = 'Credit: NASA Global Imagery Browse Services (GIBS), part of NASA ESDIS. NASA open data.';
 export const FIRES_CREDIT = 'Credit: NASA FIRMS (LANCE), part of NASA ESDIS. NASA open data.';
-export const FIRES_URL = (lat, lon) => `/api/firms?lat=${encodeURIComponent(lat.toFixed(4))}&lon=${encodeURIComponent(lon.toFixed(4))}`;
+export const FIRES_URL = (lat, lon) => apiUrl(`/api/firms?lat=${encodeURIComponent(lat.toFixed(4))}&lon=${encodeURIComponent(lon.toFixed(4))}`);
 export const fireRadius = frp => (frp == null ? 4 : Math.max(4, Math.min(12, 3 + Math.sqrt(Math.max(0, frp)))));   // bigger fire, bigger dot, between 4 and 12 px
 const pad = n => String(n).padStart(2, '0');
 export const fireTime = iso => { const m = /^(\d{4})-(\d{2})-(\d{2})T(\d{2}):(\d{2})/.exec(String(iso ?? '')); return m ? `${+m[3]} ${MON[+m[2] - 1]} ${m[1]}, ${pad(m[4])}:${m[5]} UTC` : ''; };

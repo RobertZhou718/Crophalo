@@ -2,6 +2,7 @@
 // (country, elevation). A lookup that fails leaves the gate open and says so in nearby.gap: no crop is then checked against local practice, and the report says that.
 // Pure but for the fetches: engineSpot(), fetchCropMap(), loadNearby(), nearbyFrom(). Checked by scripts/test_report.mjs (the spot built for the engine, a failed lookup, the answer's fields passed through).
 import { spotFields, fieldWordFor } from './nearby.js';
+import { apiUrl } from './api.js';
 
 const fin = v => typeof v === 'number' && Number.isFinite(v);
 export const NEAR_MS = 25e3, LISTS_MS = 6e3;   // how long the page waits for the national lists once the crop map has answered
@@ -15,7 +16,7 @@ export async function fetchCropMap(loc, get = globalThis.fetch?.bind(globalThis)
   if (!Number.isFinite(lat) || !Number.isFinite(lon) || typeof get !== 'function') return { ok: false, reason: 'no place to look at' };
   const country = countryOf(loc);
   try {
-    return await Promise.race([get(`/api/cropsnear?lat=${encodeURIComponent(lat.toFixed(4))}&lon=${encodeURIComponent(lon.toFixed(4))}${country ? `&country=${encodeURIComponent(country)}` : ''}`).then(r => r.json()), new Promise((_, no) => setTimeout(() => no(new Error('slow')), ms))]);
+    return await Promise.race([get(apiUrl(`/api/cropsnear?lat=${encodeURIComponent(lat.toFixed(4))}&lon=${encodeURIComponent(lon.toFixed(4))}${country ? `&country=${encodeURIComponent(country)}` : ''}`)).then(r => r.json()), new Promise((_, no) => setTimeout(() => no(new Error('slow')), ms))]);
   } catch { return { ok: false, reason: 'the lookup did not answer' }; }
 }
 // The code when known, else the country the place line ends with ("Canada"); the server reads either.
@@ -36,5 +37,5 @@ async function gated(mapAnswer, lists, loc, ms) {
 }
 // FAOSTAT's harvested areas per country (the server keeps the answer for a day and shares it). Null when it does not answer: the gate then stays open.
 async function nationalLists(get, ms) {
-  try { return await Promise.race([get('/api/faostat').then(r => r.json()), new Promise((_, no) => setTimeout(() => no(new Error('slow')), ms))]); } catch { return null; }
+  try { return await Promise.race([get(apiUrl('/api/faostat')).then(r => r.json()), new Promise((_, no) => setTimeout(() => no(new Error('slow')), ms))]); } catch { return null; }
 }

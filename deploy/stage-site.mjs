@@ -29,6 +29,7 @@ export const LINK_ONLY = Object.freeze([
   'www.isric.org', 'www.mapspam.info', 'www.nass.usda.gov', 'www.ontario.ca', 'www.usgs.gov', 'www.worldbank.org',
   'mymarketnews.ams.usda.gov',   // the source link of the report's USDA cash bids (js/market-view.js); the bids themselves come through the app's own server
   'openfreemap.org', 'openmaptiles.org', 'www.openstreetmap.org',   // the Light map's credit links (js/mapbase.js); its tiles come from tiles.openfreemap.org, which the policy allows
+  'cloudless.eox.at', 'creativecommons.org',   // the satellite picture's credit links (js/mapbase.js, js/sources.js); its tiles come from tiles.maps.eox.at, which the policy allows
   'api.opentopodata.org',   // named only as the source of a recorded answer (design/engine/height_oxford.json); no page asks it
   'www.croptrust.org', 'agris.fao.org', 'agricultureandfoodsecurity.biomedcentral.com', 'avrdc.org',   // the published pages the national crop list cites in its comments (js/nearby.js); no page asks them
   'droughtmonitor.unl.edu',   // the Drought Monitor's credit line (js/statement.js); the drought figures come through the Crophalo server

@@ -102,7 +102,7 @@ backup file, and Restore it on the other computer.
 ## Run the checks
 
     sh scripts/check.sh              every suite, in one order, stopping at the first failure
-    E2E=0 sh scripts/check.sh        the 101 offline suites only (no browser)
+    E2E=0 sh scripts/check.sh        the 102 offline suites only (no browser)
     NET=1 sh scripts/check.sh        also test_fallback, which asks the internet once and keeps the answers
     node scripts/test_engine.mjs     one suite alone
 
@@ -212,6 +212,11 @@ The libraries kept in the folder stay under their own licences. Each licence tex
 The pictures on the home are not ours either, and the Apache licence does not cover them. The spacecraft pictures in `img/craft/` are NASA's
 (NASA 3D Resources) and NASA/JPL-Caltech's (artist's concepts, under JPL's image use policy). The Earth pictures in `img/earth/` are NASA's
 Blue Marble. Each file's owner, credit, source page and terms are in `img/craft/README.md` and `img/earth/README.md`.
+
+The satellite pictures under the map are not ours either. Far from the ground the map shows NASA Blue Marble (NASA GIBS). Closer it shows
+Sentinel-2 cloudless 2016 by EOX IT Services GmbH (contains modified Copernicus Sentinel data 2016), under the Creative Commons Attribution 4.0
+licence; only the 2016 layer is used. Near the ground in the United States it shows USDA, USGS The National Map: Orthoimagery, a work of the
+US government. The map's own credit line names the one in view.
 
 The data is not ours. Every source keeps its own terms, and each one is named, with its credit and link, on the app's
 Data page and in `docs/`.

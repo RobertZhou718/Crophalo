@@ -11,6 +11,7 @@ import { fetchCropMap } from './near-load.js';
 import { spotFields } from './nearby.js';
 import { loadSoilSurvey } from './soil-load.js';
 import { loadDem } from './field-data.js';
+import { apiUrl } from './api.js';
 
 export const ROWS = Object.freeze([
   { key: 'power', label: 'Weather, rain & soil wetness · NASA POWER' },
@@ -155,7 +156,7 @@ export async function loadSmap(loc, get = globalThis.fetch?.bind(globalThis)) {
   const lat = Number(loc?.lat), lon = Number(loc?.lon), base = { label: SMAP_LABEL, value: null, date: '', km: SMAP_KM, lat, lon, source: 'smap', cell: null };
   if (!Number.isFinite(lat) || !Number.isFinite(lon) || typeof get !== 'function') return { ...base, why: SMAP_DOWN };
   try {
-    const res = await get(`/api/smaproot?lat=${encodeURIComponent(lat.toFixed(4))}&lon=${encodeURIComponent(lon.toFixed(4))}`);
+    const res = await get(apiUrl(`/api/smaproot?lat=${encodeURIComponent(lat.toFixed(4))}&lon=${encodeURIComponent(lon.toFixed(4))}`));
     const a = await res.json();
     if (a?.ok && Number.isFinite(a.value) && a.value >= 0 && a.value <= 1) return { ...base, value: a.value, date: typeof a.date === 'string' ? a.date : '', cell: a.cell ?? null, why: '' };
     return { ...base, why: plainReason(a?.reason, SMAP_DOWN) };   // the reason in a farmer's words: never a program path, a program name or a status code

@@ -2,6 +2,7 @@
 // Pure: observedFor() turns the lookup's answer into the words for one day; loadObserved() asks the server's /api/hlsndvi once for a field and keeps the answer for this visit.
 // Never a made-up state: no clear picture, a day outside the pictures' window, or a lookup that did not answer each say so in words. Checked by scripts/test_sim.mjs and scripts/e2e_farm.mjs.
 
+import { apiUrl } from './api.js';
 export const PERIOD_DAYS = 15;   // the lookup gives one clear reading for each 15-day period, so a reading is used for the 15 days after it
 const DAY = 864e5, MON = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
 const N = iso => Date.UTC(+iso.slice(0, 4), +iso.slice(5, 7) - 1, +iso.slice(8, 10)) / DAY;
@@ -36,7 +37,7 @@ export function loadObserved(lat, lon, { fetchFn = globalThis.fetch?.bind(global
     kept.set(key, entry);
     (async () => {
       try {
-        const res = await fetchFn(`/api/hlsndvi?lat=${encodeURIComponent((+lat).toFixed(4))}&lon=${encodeURIComponent((+lon).toFixed(4))}`);
+        const res = await fetchFn(apiUrl(`/api/hlsndvi?lat=${encodeURIComponent((+lat).toFixed(4))}&lon=${encodeURIComponent((+lon).toFixed(4))}`));
         const a = await res.json();
         entry.answer = a && typeof a === 'object' ? a : { ok: false, reason: 'The NASA picture service sent an answer Crophalo could not use' };
       } catch { entry.answer = { ok: false, reason: 'The NASA picture service did not answer' }; }

@@ -7,6 +7,7 @@
  */
 import { esc } from './words.js';
 import { isDay, addDays, dayWords, IMPORTANT_KINDS } from './remind-plan.js';
+import { apiUrl } from './api.js';
 
 export const KEY = 'crophalo.remind.v1', MAX_REMINDERS = 200, TITLE_MAX = 80, NOTE_MAX = 300;
 export const KINDS = Object.freeze(['sow', 'harvest', 'soil', 'frost', 'heat', 'rain', 'wind', 'storm', 'scout', 'job', 'forecast', 'flower-check', 'cover-by', 'second-sow', 'other']);
@@ -195,7 +196,7 @@ export async function turnPushOn(env, list, nowLocal, { onWait = () => {} } = {}
   if (permission === 'default') { onWait(PUSH_WORDS.waiting); permission = await askNotifications(env); }
   if (permission !== 'granted') return { ok: false, message: permission === 'denied' ? PUSH_WORDS.blocked : PUSH_WORDS.slow };
   let reg; try { reg = await race(env.navigator.serviceWorker.ready, 8000); } catch { return { ok: false, message: PUSH_WORDS.failed }; }
-  let key; try { const res = await env.fetch('/api/push/key'); const body = await res.json(); if (!res.ok || !body?.key) throw new Error('no key'); key = bytes(body.key); } catch { return { ok: false, message: PUSH_WORDS.noServer }; }
+  let key; try { const res = await env.fetch(apiUrl('/api/push/key')); const body = await res.json(); if (!res.ok || !body?.key) throw new Error('no key'); key = bytes(body.key); } catch { return { ok: false, message: PUSH_WORDS.noServer }; }
   let sub;
   try {
     sub = await reg.pushManager.getSubscription();
@@ -206,12 +207,12 @@ export async function turnPushOn(env, list, nowLocal, { onWait = () => {} } = {}
   return sent ? { ok: true, message: PUSH_WORDS.sent } : { ok: false, message: PUSH_WORDS.refused };
 }
 export async function sendList(env, sub, list, nowLocal, now = Date.now()) {   // the subscription and the reminders; also used after any change
-  try { const res = await env.fetch('/api/push/subscribe', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ subscription: sub.toJSON(), reminders: pushPayload(list, nowLocal, now) }) }); return res.ok; } catch { return false; }
+  try { const res = await env.fetch(apiUrl('/api/push/subscribe'), { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ subscription: sub.toJSON(), reminders: pushPayload(list, nowLocal, now) }) }); return res.ok; } catch { return false; }
 }
 export async function turnPushOff(env) {
   try {
     const reg = await env.navigator.serviceWorker.ready, sub = await reg.pushManager.getSubscription();
-    if (sub) { const endpoint = sub.endpoint; await env.fetch('/api/push/unsubscribe', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ endpoint }) }).catch(() => {}); await sub.unsubscribe(); }
+    if (sub) { const endpoint = sub.endpoint; await env.fetch(apiUrl('/api/push/unsubscribe'), { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ endpoint }) }).catch(() => {}); await sub.unsubscribe(); }
     return { ok: true, message: PUSH_WORDS.off };
   } catch { return { ok: false, message: PUSH_WORDS.failed }; }
 }

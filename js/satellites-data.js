@@ -4,6 +4,7 @@
 /* The answer read (GET /api/imergrain?lat=&lon=): { ok, source, data_date, cell: { lat, lon, width_km, height_km, edges }, days: [[YYYY-MM-DD, mm | null, 'late' | 'early' | null] x30],
    days_read, total_mm, late, early, not_published, read_errors, first_estimate: [day], newest_day, incomplete?, note } or { ok: false, reason }. */
 import { plainReason } from './satellites2-data.js';
+import { apiUrl } from './api.js';
 const fin = v => typeof v === 'number' && Number.isFinite(v);
 const isDay = d => typeof d === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(d) && Number.isFinite(Date.parse(d + 'T00:00:00Z'));
 const MON = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'], FULL = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
@@ -45,6 +46,6 @@ export function rainWords(r) {
 export async function loadImerg(loc, get = globalThis.fetch?.bind(globalThis)) {
   const lat = Number(loc?.lat), lon = Number(loc?.lon);
   if (!Number.isFinite(lat) || !Number.isFinite(lon) || typeof get !== 'function') return { ok: false, reason: RAIN_DOWN };
-  try { return cleanRain(await (await get(`/api/imergrain?lat=${encodeURIComponent(lat.toFixed(4))}&lon=${encodeURIComponent(lon.toFixed(4))}`)).json()); }
+  try { return cleanRain(await (await get(apiUrl(`/api/imergrain?lat=${encodeURIComponent(lat.toFixed(4))}&lon=${encodeURIComponent(lon.toFixed(4))}`))).json()); }
   catch { return { ok: false, reason: RAIN_DOWN }; }
 }

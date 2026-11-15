@@ -3,6 +3,7 @@
 // Every number in a sentence is read from the server's answer (GET /api/mnfield, mode now) at run time; none is typed here. Prices are rounded half up to the cent (money()).
 // Pure but for loadMarket() and startMarket(), which ask our own server only (the key stays on the server). The markup is js/market-view.js. Checked by scripts/test_market.mjs.
 import { cropOf, cropName } from './crops.js';
+import { apiUrl } from './api.js';
 
 // ---- small helpers
 const fin = v => typeof v === 'number' && Number.isFinite(v);
@@ -91,11 +92,11 @@ export function cropsToAsk(result) {
 export async function loadMarket(place, crops, fetcher = globalThis.fetch?.bind(globalThis)) {
   if (String(place?.cc ?? '').toUpperCase() !== 'US' || !fin(place?.lat) || !fin(place?.lon) || typeof fetcher !== 'function') return null;
   let keys = null;
-  try { const r = await fetcher('/api/keys', { signal: AbortSignal.timeout(15e3) }); keys = r?.ok ? await r.json() : null; } catch { keys = null; }
+  try { const r = await fetcher(apiUrl('/api/keys'), { signal: AbortSignal.timeout(15e3) }); keys = r?.ok ? await r.json() : null; } catch { keys = null; }
   if (!keys) return null;   // the server did not say it holds the key: the piece is absent, as without the key
   if (!marketWanted({ cc: place.cc }, keys)) return null;
   const list = (Array.isArray(crops) ? crops : []).filter(c => typeof c === 'string' && /^[a-z]{2,12}$/.test(c));
-  const url = `/api/mnfield?lat=${encodeURIComponent(place.lat)}&lon=${encodeURIComponent(place.lon)}&mode=now&crops=${[...new Set(list)].sort().slice(0, 16).join(',')}`;
+  const url = apiUrl(`/api/mnfield?lat=${encodeURIComponent(place.lat)}&lon=${encodeURIComponent(place.lon)}&mode=now&crops=${[...new Set(list)].sort().slice(0, 16).join(',')}`);
   try {
     const r = await fetcher(url, { signal: AbortSignal.timeout(100e3) });
     let a = null; try { a = await r.json(); } catch { a = null; }

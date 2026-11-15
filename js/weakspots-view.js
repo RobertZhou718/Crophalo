@@ -3,6 +3,7 @@
 // Pure words: weakModel(), weakSpotsHTML(). Page parts: loadWeakSpots() (the ask and its keeping) and drawWeakSpots() (a Leaflet layer). Checked by scripts/test_weakspots.mjs and scripts/e2e_farm.mjs (group weak).
 import { esc } from './words.js';
 import { greenSpots, pins, classify } from './weakspots.js';
+import { apiUrl } from './api.js';
 
 export const LINK = ['NASA\'s page about the HLS pictures', 'https://hls.gsfc.nasa.gov/'];
 export const STATE_WORDS = Object.freeze({
@@ -51,7 +52,7 @@ export function loadWeakSpots({ lat, lon, ring, fetchFn = globalThis.fetch?.bind
   const corners = ring.map(([a, o]) => `${o.toFixed(6)},${a.toFixed(6)}`).join(';'), key = `${lat.toFixed(5)},${lon.toFixed(5)}|${corners}`;
   if (!kept.has(key)) {
     const q = new URLSearchParams({ lat: lat.toFixed(6), lon: lon.toFixed(6), ring: corners });
-    kept.set(key, (async () => { try { const r = await fetchFn(`/api/hlsbox?${q}`); return await r.json(); } catch { return { ok: false, reason: 'The satellite pictures did not answer' }; } })().then(a => { if (!a?.ok) kept.delete(key); return a; }));
+    kept.set(key, (async () => { try { const r = await fetchFn(apiUrl(`/api/hlsbox?${q}`)); return await r.json(); } catch { return { ok: false, reason: 'The satellite pictures did not answer' }; } })().then(a => { if (!a?.ok) kept.delete(key); return a; }));
   }
   return kept.get(key);
 }

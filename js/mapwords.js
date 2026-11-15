@@ -30,7 +30,7 @@ export const SAY = {
   view: { in: 'Zoom in', out: 'Zoom out', field: 'Zoom to your field', here: 'Move the pin to where I am', full: 'Full-screen map', exit: 'Exit full-screen map' },
   about: '≈', linesCross: 'Lines cross', selected: 'Selected area', usedChip: 'Used in report', title: 'Your outlined area',
   figureLine: (second, n) => `${second} · ${n} corners`,
-  aboutSpot: 'About this spot', base: { sat: 'Satellite', light: 'Light' },
+  aboutSpot: 'About this spot', base: { sat: 'Satellite', light: 'Map' },
 
   // the refusals: the bar shows them for 4 s, and they are said once
   no: {
@@ -87,7 +87,7 @@ export const SAY = {
   noLocate: 'This browser cannot share its location. Search for a place instead.',
   locateOff: 'Location is switched off for this site. Allow it in your browser settings, or search for a place or paste coordinates instead.',
   locateFailed: 'Your device could not find its position (weak signal or timed out). Move outdoors and try again, or search for a place.',
-  satellite: 'Satellite map', light: 'Light map',
+  satellite: 'Satellite map', light: 'Street map',
   card: { opened: (tab, title) => `${tab} card opened for ${title}`, tabs: { weather: 'Weather', area: 'Area', sun: 'Sun' }, done: 'Done', drawFirst: 'Draw an outline to see its area.', elevation: 'Elevation', slope: 'Slope of the field', corners: 'Corners', notRead: 'not read yet', heights: 'Heights for the outline come from the height map once that lookup is switched on. Crophalo does not guess them.' },
 };
 

@@ -10,6 +10,7 @@ import { seasonWindow, canOffer, buildRecord, recordHTML, OFFER_WORDS, DROUGHT_A
 import { csvReport, statementSeries } from './sharemodel.js';
 import { SUPPORT_LINE } from './report-view.js';
 import { toast } from './toast.js';
+import { apiUrl } from './api.js';
 
 export const WORDS = Object.freeze({
   title: 'Share or print', lead: n => (n > 1 ? `These include ${n === 3 ? 'three strategies' : `${n} strategies`}: what you grow now, our suggestion and another option.` : 'These carry what Crophalo found for this field.'),
@@ -101,7 +102,7 @@ export function openShareSheet(ctx) {
     if (act === 'print-brief') return void printHTML(doc, win, discussHTML(model()), `Crophalo field brief – ${report.name}`);
     if (act === 'print-card') return void printFieldCard(doc, win, { ...report, notes: [], soilTestLines: [] });
     if (act === 'print-record' && offer.ok) {
-      let drought = null; if (ticks.drought && ctx.fetch) { try { const from = offer.win.start.replace(/-/g, ''), to = offer.win.end.replace(/-/g, ''), r = await ctx.fetch(`/api/drought?lat=${report.place.lat}&lon=${report.place.lon}&from=${from}&to=${to}`).then(x => x.json()); drought = r?.ok ? { weeks: r.weeks, county: r.county, state: r.state } : { reason: r?.reason || 'The US Drought Monitor line could not be read.' }; } catch { drought = { reason: 'The US Drought Monitor line could not be read.' }; } }
+      let drought = null; if (ticks.drought && ctx.fetch) { try { const from = offer.win.start.replace(/-/g, ''), to = offer.win.end.replace(/-/g, ''), r = await ctx.fetch(apiUrl(`/api/drought?lat=${report.place.lat}&lon=${report.place.lon}&from=${from}&to=${to}`)).then(x => x.json()); drought = r?.ok ? { weeks: r.weeks, county: r.county, state: r.state } : { reason: r?.reason || 'The US Drought Monitor line could not be read.' }; } catch { drought = { reason: 'The US Drought Monitor line could not be read.' }; } }
       const rec = buildRecord({ name: report.name, place: report.place.label, crop: ctx.cropName ?? '', series: rec, win: offer.win, units: ctx.units ?? {}, backupNote: report.backupNote, drought, madeOn: ctx.today, sources: report.sources.map(s => [s.name, s.who, s.url].filter(Boolean).join('. ')), notes: ticks.notes ? (report.notes ?? []).filter(n => n.kind !== 'notice').map(n => n.text) : [] });
       return void printHTML(doc, win, recordHTML(rec), `Crophalo season weather record – ${report.name}`);
     }

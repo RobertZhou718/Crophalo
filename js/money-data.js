@@ -5,6 +5,7 @@
 import { roughValue, roughly, monthWords } from './sales.js';
 import { once } from './memo.js';
 import { cropName } from './crops.js';
+import { apiUrl } from './api.js';
 
 export const MONEY_DOWN = 'The world price lookup did not answer, so no money figure is shown.';
 const ACRES_PER_HA = 2.4710538147;
@@ -43,7 +44,7 @@ export function loadMoney(get = globalThis.fetch?.bind(globalThis)) {
   return once('money', async () => {
     if (typeof get !== 'function') return { prices: { ok: false, reason: MONEY_DOWN }, faostat: { ok: false, reason: MONEY_DOWN } };
     const ask = async url => { try { const a = await (await get(url)).json(); return a && typeof a === 'object' ? a : { ok: false, reason: MONEY_DOWN }; } catch { return { ok: false, reason: MONEY_DOWN }; } };
-    const [prices, faostat] = await Promise.all([ask('/api/prices'), ask('/api/faostat')]);
+    const [prices, faostat] = await Promise.all([ask(apiUrl('/api/prices')), ask(apiUrl('/api/faostat'))]);
     return { prices, faostat };
   }, { good: m => m.prices?.ok !== false && m.faostat?.ok !== false });
 }

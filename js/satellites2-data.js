@@ -6,6 +6,7 @@
      trend_cm_per_year | null, trend_from, trend_to, trend_years, trend_note, cell, area_km, data_date } or { ok: false, reason }
    GET /api/ecopass?lat=&lon= -> { ok, passes: [{ date, utc, solar_time, solar_date, day_night, lst_c, lst_k, error_k, orbit, version, granule }], clear_passes, passes_checked,
      not_usable: { cloud, quality, water, no_data }, read_errors, newest_clear, window, pixel_m, incomplete, why_none } or { ok: false, reason } */
+import { apiUrl } from './api.js';
 const fin = v => typeof v === 'number' && Number.isFinite(v);
 const isMonth = m => typeof m === 'string' && /^\d{4}-(0[1-9]|1[0-2])$/.test(m);
 const isDay = d => typeof d === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(d) && Number.isFinite(Date.parse(d + 'T00:00:00Z'));
@@ -185,11 +186,11 @@ export function hlsWords(h) {
 const pair = loc => { const lat = Number(loc?.lat), lon = Number(loc?.lon); return Number.isFinite(lat) && Number.isFinite(lon) ? `lat=${encodeURIComponent(lat.toFixed(4))}&lon=${encodeURIComponent(lon.toFixed(4))}` : ''; };
 export async function loadGrace(loc, get = globalThis.fetch?.bind(globalThis)) {
   const q = pair(loc); if (!q || typeof get !== 'function') return { ok: false, reason: GRACE_DOWN };
-  try { return cleanGrace(await (await get(`/api/gracecell?${q}`)).json()); } catch { return { ok: false, reason: GRACE_DOWN }; }
+  try { return cleanGrace(await (await get(apiUrl(`/api/gracecell?${q}`))).json()); } catch { return { ok: false, reason: GRACE_DOWN }; }
 }
 export async function loadHls(loc, get = globalThis.fetch?.bind(globalThis)) {
   const q = pair(loc); if (!q || typeof get !== 'function') return { ok: false, reason: HLS_DOWN };
-  try { return cleanHls(await (await get(`/api/hlsndvi?${q}`)).json()); } catch { return { ok: false, reason: HLS_DOWN }; }
+  try { return cleanHls(await (await get(apiUrl(`/api/hlsndvi?${q}`))).json()); } catch { return { ok: false, reason: HLS_DOWN }; }
 }
 // The card asks again by itself until the year is read to the end or three asks have passed: each ask goes on where the last stopped (the server keeps every pass it read), nobody has to press anything.
 // onUpdate gets every answer as it comes, with `again` set while another ask is under way; the last one says `gaveUp` when three asks left the year unfinished. Pure but for get, wait and onUpdate.
@@ -207,5 +208,5 @@ export async function loadEcoUntilDone(loc, { get = globalThis.fetch?.bind(globa
 }
 export async function loadEco(loc, get = globalThis.fetch?.bind(globalThis)) {
   const q = pair(loc); if (!q || typeof get !== 'function') return { ok: false, reason: ECO_DOWN };
-  try { return cleanEco(await (await get(`/api/ecopass?${q}`)).json()); } catch { return { ok: false, reason: ECO_DOWN }; }
+  try { return cleanEco(await (await get(apiUrl(`/api/ecopass?${q}`))).json()); } catch { return { ok: false, reason: ECO_DOWN }; }
 }

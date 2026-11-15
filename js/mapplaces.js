@@ -2,6 +2,7 @@
 // Pure: resultsHtml(), MESSAGES. The panel itself uses js/places.js and the map's own callbacks.
 // Checked by scripts/test_mapplaces.mjs (the rows and the sentences) and scripts/e2e_map.mjs (the places group: search, coordinates, no match, a failing service, the pin and the outline, one panel at a time).
 import { parseCoords, coordText, matchRegions, geocode } from './places.js';
+import { skeleton } from './skeleton.js';
 
 const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[c]);
 export const MESSAGES = Object.freeze({
@@ -24,7 +25,7 @@ export const resultsHtml = rows => `<ul class="mapx-rows">${rows.map((r, i) => `
 export function placesPanel(env) {
   return { id: 'places', label: 'Places', icon: PLACE_ICON, build(body) {
     body.innerHTML = `<form class="mapx-search" role="search" id="mapxPlaceForm"><label class="sr" for="mapxPlaceQ">Search for a place or coordinates</label>
-        <input id="mapxPlaceQ" type="search" name="q" placeholder="Place or coordinates" autocomplete="off" enterkeyhint="search" spellcheck="false">
+        <input id="mapxPlaceQ" type="search" name="q" placeholder="Search a place" autocomplete="off" enterkeyhint="search" spellcheck="false">
         <button type="button" class="mapx-mic" id="mapxPlaceMic" aria-label="Say a place" hidden>${MIC}</button><button type="submit" class="btn primary sm">Search</button></form>
       <div class="mapx-res" id="mapxPlaceRes" role="status" aria-live="polite"></div>`;
     const q = body.querySelector('#mapxPlaceQ'), res = body.querySelector('#mapxPlaceRes');
@@ -37,7 +38,7 @@ export function placesPanel(env) {
       const mine = ++asked, at = parseCoords(word);
       if (at?.reason) { say(at.reason); return; }
       if (at) { draw(MESSAGES.coords, [{ title: coordText(at.lat, at.lon), sub: 'Latitude, longitude', lat: at.lat, lon: at.lon }]); return; }
-      say(MESSAGES.looking);
+      res.innerHTML = skeleton('list', MESSAGES.looking);
       let found;
       try { found = await geocode(word); } catch { if (mine === asked && alive) say(MESSAGES.down); return; }
       if (mine !== asked || !alive) return;

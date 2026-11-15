@@ -59,7 +59,8 @@ const template = JSON.parse(fs.readFileSync(path.join(HERE, 'staticwebapp.config
   check('a template that lost its marks is refused', /lost/.test(threw), threw);
   check('the filled file stays well under the host\'s 20 KB', Buffer.byteLength(JSON.stringify(filled, null, 2)) < S.LIMITS.configBytes / 2);
   same('the policy\'s outside hosts', S.policyHosts("img-src https://a.org https://b.org:8443; connect-src https://a.org"), ['a.org', 'b.org']);
-  check('the policy lets the pages reach NASA POWER, the forecasts, the map tiles and the place search', ['power.larc.nasa.gov', 'api.open-meteo.com', 'archive-api.open-meteo.com', 'tiles.openfreemap.org', 'server.arcgisonline.com', 'gibs.earthdata.nasa.gov', 'nominatim.openstreetmap.org'].every(h => S.policyHosts(fcsp).includes(h)));
+  check('the policy lets the pages reach NASA POWER, the forecasts, the map tiles and the place search', ['power.larc.nasa.gov', 'api.open-meteo.com', 'archive-api.open-meteo.com', 'tiles.openfreemap.org', 'gibs.earthdata.nasa.gov', 'tiles.maps.eox.at', 'basemap.nationalmap.gov', 'nominatim.openstreetmap.org'].every(h => S.policyHosts(fcsp).includes(h)));
+  check('the policy names the clear satellite pictures\' three hosts for pictures too, and no Esri or Google host anywhere', ['gibs.earthdata.nasa.gov', 'tiles.maps.eox.at', 'basemap.nationalmap.gov'].every(h => (/img-src ([^;]*)/.exec(fcsp)?.[1] ?? '').includes(`https://${h}`)) && !S.policyHosts(fcsp).some(h => /arcgisonline|esri|google|gstatic/i.test(h)), S.policyHosts(fcsp).join(' '));
 }
 same('outside hosts in a text, each with its first line', [...S.hostsIn("a\nfetch('https://Power.larc.nasa.gov/api')\n'https://x.org' 'https://power.larc.nasa.gov' `https://${sub}.y.org`")], [['power.larc.nasa.gov', 2], ['x.org', 3]]);
 check('the list of plain links has no host the policy already allows', !S.LINK_ONLY.some(h => S.policyHosts(template.globalHeaders['content-security-policy']).includes(h)));

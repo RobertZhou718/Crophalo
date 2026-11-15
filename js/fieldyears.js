@@ -4,6 +4,7 @@
 import { esc } from './words.js';
 import { cropName, PRESETS } from './crops.js';
 import { turnOf, turnWords, LINKS } from './grew.js';
+import { apiUrl } from './api.js';
 
 export const WORDS = Object.freeze({
   title: 'This field on the crop map', reading: 'Reading this field’s crop map, year by year…', wrong: 'It can be wrong for one field.',
@@ -60,7 +61,7 @@ export function loadFieldYears({ lat, lon, country, ring = null, fetchFn = globa
   const corners = Array.isArray(ring) && ring.length >= 3 ? ring.slice(0, 200).map(([a, o]) => `${o.toFixed(4)},${a.toFixed(4)}`).join(';') : '', key = `${cc}|${lat.toFixed(4)},${lon.toFixed(4)}|${corners}`;
   if (!kept.has(key)) {
     const q = new URLSearchParams({ lat: lat.toFixed(4), lon: lon.toFixed(4), country: cc, near: '0' }); if (corners) q.set('ring', corners);
-    kept.set(key, (async () => { try { const r = await fetchFn(`/api/crophist?${q}`); return await r.json(); } catch { return { ok: false, reason: 'The crop map did not answer' }; } })().then(a => { if (!a?.ok) kept.delete(key); return a; }));
+    kept.set(key, (async () => { try { const r = await fetchFn(apiUrl(`/api/crophist?${q}`)); return await r.json(); } catch { return { ok: false, reason: 'The crop map did not answer' }; } })().then(a => { if (!a?.ok) kept.delete(key); return a; }));
   }
   return kept.get(key);
 }

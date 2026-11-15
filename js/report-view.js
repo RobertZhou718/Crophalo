@@ -347,7 +347,7 @@ export function optionsHTML(result, selectedId, chosenId = null) {
   if (!result || result.ok === false || !result.recommended) return `${head}<div class="rv-notread" role="status"><p>${esc(result?.reason || NOT_READ)}</p></div></section>`;
   const { first, more, fewWhy } = strategies(result), plans = allPlans(result), chosen = plans.find(p => p.id === selectedId) ?? result.recommended, labels = optionLabels(result);
   const card = p => optionCardHTML(p, result, p === chosen, chosenId, labels.get(p));
-  return `${head}${supportHTML()}<p class="lead">Three strategies, the one you grow now first. Tap one to see why, the evidence, the benefits, what is missing and what to check locally.</p>
+  return `${head}${supportHTML()}<p class="lead">${first.length === 1 ? 'One strategy: what you grow now' : `${['', '', 'Two', 'Three'][first.length] ?? first.length} strategies, the one you grow now first`}. Tap one to see why, the evidence, the benefits, what is missing and what to check locally.</p>
     <div class="grid opts" role="group" aria-label="Strategies">${first.map(card).join('')}</div>${fewWhy ? `<p class="cap rv-few" role="note">${esc(fewWhy)}</p>` : ''}
     ${more.length ? `<h3 class="sub">More options</h3><div class="grid opts" role="group" aria-label="More options">${more.map(card).join('')}</div>` : ''}
     ${compareHTML(result, labels)}${optionDetailHTML(chosen, result, chosenId, labels.get(chosen))}${scoresFoldHTML(result)}</section>`;

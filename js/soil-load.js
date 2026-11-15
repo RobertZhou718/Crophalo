@@ -2,6 +2,7 @@
 // The order is the farmer's own soil test first, then the soil survey, then an assumed average loam; this file is only the second. A figure the survey leaves blank stays unknown, never 0. Only a field in the United States is asked.
 // Pure but for the one fetch: surveyToSoil(), soilLine(), loadSoilSurvey(). Checked by scripts/test_soilload.mjs (answers in the shape of the server's soil lookup, a blank layer, a place with no survey, a failed lookup).
 import { omBand } from './soiltest.js';
+import { apiUrl } from './api.js';
 
 const fin = v => typeof v === 'number' && Number.isFinite(v);
 export const SOIL_MS = 25e3;
@@ -30,6 +31,6 @@ export async function loadSoilSurvey(loc, get = globalThis.fetch?.bind(globalThi
   if (String(loc?.cc ?? '').toUpperCase() !== 'US') return { ok: false, reason: 'The US soil survey covers only the United States.' };
   if (!Number.isFinite(lat) || !Number.isFinite(lon) || typeof get !== 'function') return { ok: false, reason: 'No place to look at.' };
   if (routeGone) return { ok: false, reason: 'The soil survey is not available here, so an average loam is assumed.' };
-  try { return surveyToSoil(await Promise.race([get(`/api/soilfield?lat=${lat.toFixed(4)}&lon=${lon.toFixed(4)}`).then(r => { if (r.status === 404) { routeGone = true; throw new Error('no route'); } return r.json(); }), new Promise((_, no) => setTimeout(() => no(new Error('slow')), ms))])); }
+  try { return surveyToSoil(await Promise.race([get(apiUrl(`/api/soilfield?lat=${lat.toFixed(4)}&lon=${lon.toFixed(4)}`)).then(r => { if (r.status === 404) { routeGone = true; throw new Error('no route'); } return r.json(); }), new Promise((_, no) => setTimeout(() => no(new Error('slow')), ms))])); }
   catch { return { ok: false, reason: 'The soil survey did not answer, so an average loam is assumed.' }; }
 }

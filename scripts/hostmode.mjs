@@ -53,7 +53,7 @@ export const mustWait = (rssBytes, budgetBytes, running) => running > 0 && rssBy
 // The content security policy of a public server that serves the pages itself: scripts only from the site and the inline scripts of its pages by hash (worked out from the files, so a changed page cannot leave a stale hash),
 // styles from the site (the pages set a few in place), pictures and data from the hosts the app really asks, one by one, no wildcard. It is the policy deploy/staticwebapp.config.json carries and the golive check tried in a real browser.
 // null when the folder has no page (a server that only answers /api): then the safe parts alone are sent, as before.
-export const DATA_HOSTS = Object.freeze(['https://power.larc.nasa.gov', 'https://api.open-meteo.com', 'https://archive-api.open-meteo.com', 'https://ensemble-api.open-meteo.com', 'https://seasonal-api.open-meteo.com', 'https://climate-api.open-meteo.com', 'https://nominatim.openstreetmap.org', 'https://api.frankfurter.dev', 'https://gibs.earthdata.nasa.gov', 'https://tiles.openfreemap.org', 'https://server.arcgisonline.com', 'https://elevation-tiles-prod.s3.amazonaws.com', 'https://rest.isric.org']);   // the last two: the setup map's land layers (Terrain Tiles heights, SoilGrids at the pin)
+export const DATA_HOSTS = Object.freeze(['https://power.larc.nasa.gov', 'https://api.open-meteo.com', 'https://archive-api.open-meteo.com', 'https://ensemble-api.open-meteo.com', 'https://seasonal-api.open-meteo.com', 'https://climate-api.open-meteo.com', 'https://nominatim.openstreetmap.org', 'https://api.frankfurter.dev', 'https://gibs.earthdata.nasa.gov', 'https://tiles.openfreemap.org', 'https://tiles.maps.eox.at', 'https://basemap.nationalmap.gov', 'https://elevation-tiles-prod.s3.amazonaws.com', 'https://rest.isric.org']);   // the last two: the setup map's land layers (Terrain Tiles heights, SoilGrids at the pin)
 export function pagePolicy(root) {
   const hashes = []; let any = false;
   for (const page of ['index.html', 'design.html']) {
@@ -61,7 +61,7 @@ export function pagePolicy(root) {
     for (const m of html.matchAll(/<script(?![^>]*\bsrc=)[^>]*>([\s\S]*?)<\/script>/gi)) if (m[1].trim()) hashes.push(`'sha256-${crypto.createHash('sha256').update(m[1]).digest('base64')}'`);
   }
   if (!any) return null;
-  return [`default-src 'self'`, `script-src 'self' ${[...new Set(hashes)].join(' ')}`.trim(), `style-src 'self' 'unsafe-inline'`, `img-src 'self' data: blob: https://server.arcgisonline.com https://gibs.earthdata.nasa.gov`, `font-src 'self'`,
+  return [`default-src 'self'`, `script-src 'self' ${[...new Set(hashes)].join(' ')}`.trim(), `style-src 'self' 'unsafe-inline'`, `img-src 'self' data: blob: https://gibs.earthdata.nasa.gov https://tiles.maps.eox.at https://basemap.nationalmap.gov`, `font-src 'self'`,
     `connect-src 'self' ${DATA_HOSTS.join(' ')}`, `worker-src 'self' blob:`, `child-src 'self' blob:`, `manifest-src 'self'`, `media-src 'self'`, `object-src 'none'`, `base-uri 'self'`, `form-action 'self'`, `frame-ancestors 'self'`, `upgrade-insecure-requests`].join('; ');
 }
 export function securityHeaders(publicMode, { cors = false, csp = null } = {}) {

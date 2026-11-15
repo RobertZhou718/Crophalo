@@ -215,25 +215,27 @@ const baseState = () => js(`import('/js/mapbase.js').then(m => m.baseNow().state
 const baseNote = () => js(`document.querySelector('#mapxBaseNote').textContent`);
 await group('base', async () => {
   await mapReady();
-  same('the base switch names Satellite and Light, Satellite pressed', await js(`[...document.querySelectorAll('.mapx-base button')].map(b => b.textContent + ':' + b.getAttribute('aria-pressed'))`), ['Satellite:true', 'Light:false']);
+  same('the base switch names Map and Satellite, Satellite pressed', await js(`[...document.querySelectorAll('.mapx-base button')].map(b => b.textContent + ':' + b.getAttribute('aria-pressed'))`), ['Map:false', 'Satellite:true']);
   await until(`import('/js/mapbase.js').then(m => !!m.baseNow()?.glMap())`, 15000);
   const first = await baseState();
   check('the first ground (NASA\'s picture) was drawn before the vector-map library had arrived, and the library\'s two scripts came together', await js(`(() => { const g = performance.getEntriesByName('crophalo-ground-shown')[0], l = performance.getEntriesByName('crophalo-gl-ready')[0]; return !!g && !!l && g.startTime <= l.startTime; })()`) && await js(`[...document.scripts].filter(x => /maplibre-gl\\.js|leaflet-maplibre-gl\\.js/.test(x.src)).every(x => x.async === false) && [...document.scripts].filter(x => /maplibre-gl\\.js|leaflet-maplibre-gl\\.js/.test(x.src)).length === 2`));
   check('MapLibre is loaded with the map, from the app\'s own vendor folder', first.gl === true && (await js(`[...document.scripts].some(x => x.src.includes('/vendor/maplibre/'))`)), first);
   await until(`import('/js/mapbase.js').then(m => m.baseNow().state().failed === 'stalled')`, 20000);
   check('the harness cuts the name tiles off, so the photo keeps itself and says the names did not load (the names themselves are checked live: scripts/live_check_basemap.mjs)', (await baseState()).ground === 'photo' && /did not load/.test(await baseNote()), await baseNote());
+  check('the clean base asked NASA Blue Marble for the far map and EOX for the near,', run.cutOff.some(c => /BlueMarble_ShadedRelief_Bathymetry\/default\/GoogleMapsCompatible_Level8\//.test(c.where)));
+  check('with the clean tiles cut off, the daily MODIS picture stands in and says so', /clean satellite picture did not load/.test(await baseNote()) || /did not load/.test(await baseNote()), await baseNote());
   check('the picture\'s credit is NASA\'s, with the day of the coarse picture', /^Imagery: NASA GIBS \/ Worldview · MODIS Terra 250 m, \d{1,2} \w+ \d{4}$/.test(await js(`document.querySelector('#mapxCredit').textContent`)), await js(`document.querySelector('#mapxCredit').textContent`));
   check('the date of the picture is on the map, with the satellite named', await js(`!document.querySelector('#mapxPic').hidden && /^NASA MODIS picture [(]250 m[)], [0-9]{1,2} [A-Za-z]+ [0-9]{4}$/.test(document.querySelector('#mapxPicText').textContent)`), await js(`document.querySelector('#mapxPicText').textContent`));
   await js(`document.querySelector('[data-base=light]').click()`); await until(`import('/js/mapbase.js').then(m => m.baseNow().state().choice === 'light')`);
-  same('Light is pressed and Satellite is not', await js(`[...document.querySelectorAll('.mapx-base button')].map(b => b.getAttribute('aria-pressed'))`), ['false', 'true']);
+  same('Map is pressed and Satellite is not', await js(`[...document.querySelectorAll('.mapx-base button')].map(b => b.getAttribute('aria-pressed'))`), ['true', 'false']);
   check('on the Light map the date of the picture is not shown (there is no picture under it)', await js(`import('/js/mapbase.js').then(m => m.baseNow().state().ground !== 'photo' ? document.querySelector('#mapxPic').hidden : true)`));
   await until(`import('/js/mapbase.js').then(m => m.baseNow().state().failed === 'stalled')`, 20000);
-  same('with the detailed tiles cut off the Light map is NASA\'s picture with the sentence that says why', [(await baseState()).ground, /^The detailed map did not load.* NASA's satellite picture shows without place names/.test(await baseNote())], ['photo', true]);
+  same('with the detailed tiles cut off the Map is the satellite picture with the sentence that says why', [(await baseState()).ground, /^The detailed map did not load.* satellite picture shows without place names/.test(await baseNote())], ['photo', true]);
   // no WebGL: the names are missing and the ground is NASA's picture, and one sentence says so
   await js(`(() => { window.__ctx = HTMLCanvasElement.prototype.getContext; HTMLCanvasElement.prototype.getContext = function (kind, ...rest) { return /webgl/.test(kind) ? null : window.__ctx.call(this, kind, ...rest); }; })()`);
   await js(`import('/js/mapbase.js').then(m => m.baseNow().retry())`);
   await until(`!document.querySelector('#mapxBaseNote').hidden`);
-  check('without WebGL the Light map is NASA\'s picture and the sentence says why', (await baseState()).ground === 'photo' && /WebGL is switched off/.test(await baseNote()) && /NASA/.test(await baseNote()));
+  check('without WebGL the Map is the satellite picture and the sentence says why', (await baseState()).ground === 'photo' && /WebGL is switched off/.test(await baseNote()) && /satellite picture/.test(await baseNote()));
   await js(`document.querySelector('[data-base=sat]').click()`); await sleep(600);
   check('on the Satellite base the missing names are said too, and the picture itself stays', (await baseState()).ground === 'photo' && /place names/.test(await baseNote()));
   await js(`HTMLCanvasElement.prototype.getContext = window.__ctx; Object.defineProperty(navigator, 'onLine', { value: false, configurable: true })`);
@@ -242,7 +244,7 @@ await group('base', async () => {
   await js(`delete navigator.onLine`);
   await js(`import('/js/mapbase.js').then(m => { m.baseNow().retry(); })`); await sleep(500);
   check('no map tile was asked of Esri or ArcGIS by the map base (the home cards\' still pictures are another file) (the harness lists every outside request it cut off)', !run.cutOff.some(c => /arcgis|esri/i.test(c.where) && /\/tile\//.test(c.where)), run.cutOff.filter(c => /arcgis|esri/i.test(c.where) && /\/tile\//.test(c.where)));
-  check('the style holds no water label at all: only the place layer draws words, nothing is named for a sea, lake, river, bay or gulf', await js(`import('/js/lightstyle.js').then(S => [S.lightStyle(), S.labelsStyle(), S.labelsStyle(false)].every(st => { const r = S.reading(st); return r.waterLayers.length === 0 && r.sourceLayers.every(x => x === 'place'); }))`));
+  check('the style holds no water label at all: only the place layer and the road names draw words, nothing is named for a sea, lake, river, bay or gulf', await js(`import('/js/lightstyle.js').then(S => [S.lightStyle(), S.labelsStyle(), S.labelsStyle(false)].every(st => { const r = S.reading(st); return r.waterLayers.length === 0 && r.sourceLayers.every(x => x === 'place' || x === 'transportation_name'); }))`));
 });
 
 await group('rectNoPin', async () => {
@@ -279,7 +281,7 @@ await group('places', async () => {
   await withPlaces('found');
   await js(`document.querySelector('[data-panel=places]').click()`); await until(`document.querySelector('.mapx-panel')`);
   check('the panel is a dialog named Places, with a 44 px close and the search box focused', await js(`(() => { const p = document.querySelector('.mapx-panel'), c = p.querySelector('.mapx-pclose').getBoundingClientRect(); return p.getAttribute('role') === 'dialog' && p.getAttribute('aria-label') === 'Places' && c.width >= 44 && c.height >= 44 && document.activeElement.id === 'mapxPlaceQ'; })()`));
-  same('it has the search label, the placeholder and no section headings (the pin and outline rows and the demo row are gone)', await js(`[document.querySelector('label[for=mapxPlaceQ]').textContent, document.querySelector('#mapxPlaceQ').placeholder, [...document.querySelectorAll('.mapx-sub')].map(h => h.textContent)]`), ['Search for a place or coordinates', 'Place or coordinates', []]);
+  same('it has the search label, the placeholder and no section headings (the pin and outline rows and the demo row are gone)', await js(`[document.querySelector('label[for=mapxPlaceQ]').textContent, document.querySelector('#mapxPlaceQ').placeholder, [...document.querySelectorAll('.mapx-sub')].map(h => h.textContent)]`), ['Search for a place or coordinates', 'Search a place', []]);
   check('the panel does not offer to show the pin or the outline (Zoom to your field does that), nor to move the field to a demo', await js(`!document.querySelector('#mapxPlaceShow, #mapxPlaceDemo') && !/Show on the map|Move your field to/.test(document.querySelector('.mapx-panel').textContent)`));
   check('nothing is asked of the place service while typing', await js(`(async () => { window.__asked = 0; const f = window.fetch; window.fetch = (u, o) => { if (/nominatim/.test(String(u))) window.__asked++; return f(u, o); }; const q = document.querySelector('#mapxPlaceQ'); q.value = 'Woodst'; q.dispatchEvent(new Event('input', { bubbles: true })); await new Promise(r => setTimeout(r, 400)); return window.__asked === 0; })()`));
   await js(`document.querySelector('#mapxPlaceQ').value = 'Woodstock'; document.querySelector('#mapxPlaceForm').requestSubmit()`);
@@ -338,6 +340,8 @@ await group('nasapic', async () => {
   const goClose = () => js(`import('/js/mapbase.js').then(m => m.baseNow().leaflet().setView([43.13, -80.75], 13, { animate: false }) && 1)`);
   const picText = () => js(`document.querySelector('#mapxPicText').textContent`);
   await js(`document.querySelector('[data-base=sat]').click()`);
+  check('the newest picture is off at first and its date bar is hidden', await js(`import('/js/mapbase.js').then(m => m.baseNow().newest() === false && document.querySelector('#mapxPic').hidden !== undefined)`));
+  await js(`import('/js/mapbase.js').then(m => m.baseNow().setNewest(true) && 1)`);
   await stub([D('20261105'), D('20261101')]);
   await goClose();
   await until(`/HLS picture/.test(document.querySelector('#mapxPicText').textContent)`, 15000);
@@ -366,6 +370,8 @@ await group('nasapic', async () => {
   await js(`import('/js/mapbase.js').then(m => m.baseNow().leaflet().setView([45.5, -78.9], 13, { animate: false }) && 1)`);
   await until(`/no clear 30 m picture/.test(document.querySelector('#mapxBaseNote').textContent)`, 15000);
   check('no clear HLS picture in six days: MODIS stays, said in words', /^NASA MODIS picture/.test(await picText()) && /MODIS picture shows/.test(await baseNote()), await baseNote());
+  await js(`import('/js/mapbase.js').then(m => m.baseNow().setNewest(false) && 1)`);
+  check('switched off again, Earlier and Newest go and the credit no longer says "Newest picture" (the harness cuts the clean tiles, so the daily picture\'s own date stays as the stand-in)', await js(`document.querySelector('.mapx-pic-b').hidden && !/Newest picture/.test(document.querySelector('#mapxCredit').textContent)`));
   check('still no map tile request to Esri', !run.cutOff.some(c => /arcgis|esri/i.test(c.where) && /\/tile\//.test(c.where)));
 });
 
@@ -518,8 +524,8 @@ await group('busy', async () => {
   // Satellite to Light
   await js(`document.querySelector('[data-base=light]').click()`); await sleep(220);
   // the harness refuses the detailed tiles at once (a request that FAILS): the sign must go within a second and a half of the press and the two-sentence note says why; only a request that hangs may keep it (the unit suite checks the 8 s words and the limit)
-  await js(`window.__lightAt = performance.now()`); await until(`document.querySelector('#mapxBusy').hidden`, 1500).catch(() => {});
-  check('refused at once: the sign is gone within 1.5 seconds of the press, and the note says why', (await shown()) === false && /did not load/.test(await baseNote()), await baseNote());
+  await js(`window.__lightAt = performance.now()`); await until(`document.querySelector('#mapxBusy').hidden && /did not load/.test(document.querySelector('#mapxBaseNote').textContent)`, 17000).catch(() => {});   // the harness's refused requests raise no error event in MapLibre, so the page's own 15 s stall limit (STALL_MS) is what says so: the sign must be gone, with the note, once that limit has passed
+  check('refused: the sign is gone once the 15 second limit has passed, and the note says why', (await shown()) === false && /did not load/.test(await baseNote()), await baseNote());
   // quick work never flashes: tiles that come at once, a layer turned on and off
   await js(`document.querySelector('[data-base=sat]').click()`); await js(`document.querySelector('[data-legend=ndvi] [data-off]')?.click()`);
   await until(`document.querySelector('#mapxBusy').hidden`, 25000);

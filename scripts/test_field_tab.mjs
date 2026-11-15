@@ -78,6 +78,7 @@ check('every tile that comes from a lookup has an "i"; the soil one is Crophalo\
 const svg = outlineSVG(drawn), es = outlineSVG(est);
 check('a closed path, a north arrow, a name in words', /<path class="outline-shape" d="M[^"]+Z"/.test(svg) && svg.includes('>N<') && /role="img" aria-label="The outline of the field, north up"/.test(svg));
 check('an estimate is its own class (dashed in the style) and says it is estimated', /outline is-estimated/.test(es) && /An estimated outline of the field, north up/.test(es));
+check('the north arrow and its N stand in the top right corner, right of every point of the outline, never on it', (() => { const sv = outlineSVG(drawn), shape = /class="outline-shape" d="([^"]+)"/.exec(sv)[1], xs = [...shape.matchAll(/[ML]([\d.]+) ([\d.]+)/g)].map(m => +m[1]), ax = +/outline-n" d="M([\d.]+) /.exec(sv)[1], tx = +/class="outline-t" x="([\d.]+)"/.exec(sv)[1], vb = +/viewBox="0 0 ([\d.]+) /.exec(sv)[1]; return ax > Math.max(...xs) + 8 && tx === ax && ax < vb; })());
 check('nothing for fewer than three corners, or for no area', outlineSVG({ pts: [[1, 2], [3, 4]] }) === '' && outlineSVG(null) === '' && outlineSVG({ pts: [[1, 2], [3, 4], ['a', 1]] }) === '');
 check('a square field looks square even far from the equator (at 60 degrees)', (() => { const m = /M([\d.]+) ([\d.]+)L([\d.]+) ([\d.]+)L([\d.]+) ([\d.]+)/.exec(outlineSVG({ pts: [[60, 0], [60, 0.0002], [59.9999, 0.0002], [59.9999, 0]] })); return !m || true; })());
 

@@ -4,6 +4,7 @@
 // Checked by scripts/test_greenness.mjs (a stand-in in the lookup's real shape: the steady Oxford answer, a browner and a greener one, gaps, partial seasons, hostile input).
 import { esc } from './words.js';
 import { once, spotKey } from './memo.js';
+import { apiUrl } from './api.js';
 
 export const PATCH_WORDS = 'This is a 2 km patch round the pin, read in 250 m pixels. It can include roads, towns or woods.';
 export const READING_WORDS = 'Reading the greenness history from NASA’s satellite pictures. The first time this can take up to 80 seconds; the page does not wait for it.';
@@ -59,5 +60,5 @@ export function greenItemHTML(state) {
 export function loadGreenness(loc, get = globalThis.fetch?.bind(globalThis)) {
   const lat = Number(loc?.lat), lon = Number(loc?.lon);
   if (!Number.isFinite(lat) || !Number.isFinite(lon) || typeof get !== 'function') return Promise.resolve({ ok: false, reason: GREEN_DOWN });
-  return once(spotKey('ndvihist', { lat, lon }), async () => { try { return cleanGreenness(await (await get(`/api/ndvihist?lat=${encodeURIComponent(lat.toFixed(4))}&lon=${encodeURIComponent(lon.toFixed(4))}`)).json()); } catch { return { ok: false, reason: GREEN_DOWN }; } });
+  return once(spotKey('ndvihist', { lat, lon }), async () => { try { return cleanGreenness(await (await get(apiUrl(`/api/ndvihist?lat=${encodeURIComponent(lat.toFixed(4))}&lon=${encodeURIComponent(lon.toFixed(4))}`))).json()); } catch { return { ok: false, reason: GREEN_DOWN }; } });
 }
