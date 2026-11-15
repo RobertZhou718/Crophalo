@@ -113,7 +113,7 @@ check('and the navy core on its white halo is far above it', ratio(rgb(tokens['-
 // the words
 same('size in hectares', [g.areaWords(12.43), g.areaWords(3.14), g.areaWords(0.456)], ['12.4 ha', '3.1 ha', '0.46 ha']);
 same('size in acres for US units', [g.areaWords(12.43, 'us'), g.areaWords(1, 'us')], ['30.7 acres', '2.5 acres']);
-same('the pin says where it is', g.pinWords(44.38941, -79.69031), 'Pin at 44.3894, -79.6903');
+same('the place says where it is', g.pinWords(44.38941, -79.69031), 'Place at 44.3894, -79.6903');
 same('the slope words at their edges', [1.9, 2, 5.9, 6, 11.9, 12].map(g.slopeWords), ['nearly flat', 'gently sloping', 'gently sloping', 'moderately sloping', 'moderately sloping', 'steep']);
 console.log(`${passed} passed, ${failed} failed`);
 process.exit(failed ? 1 : 0);

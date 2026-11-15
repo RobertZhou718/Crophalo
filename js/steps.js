@@ -11,7 +11,7 @@ export const hasSoil = s => s.soil.mode === 'assumed' || (s.soil.mode === 'map' 
 export const isGarden = s => !!s.rotation.garden;
 export const stepsFor = s => STEPS.filter(step => !(step.id === 'matters' && isGarden(s)));   // a tree or bush garden has nothing to rank
 export const hasPlace = s => Number.isFinite(s?.loc?.lat) && Number.isFinite(s?.loc?.lon);   // a field drawn on the map and a tapped pin both leave a position; nothing else does
-export function needFor(id, s) { return id === 'field' ? (hasPlace(s) ? '' : WORDS.placeNeed) : id === 'crops' ? (hasRotation(s) ? '' : WORDS.cropsNeed) : id === 'soil' ? (hasSoil(s) ? '' : WORDS.soilNeed) : ''; }
+export function needFor(id, s) { return id === 'field' ? (hasPlace(s) && s.area ? '' : WORDS.placeNeed) : id === 'crops' ? (hasRotation(s) ? '' : WORDS.cropsNeed) : id === 'soil' ? (hasSoil(s) ? '' : WORDS.soilNeed) : ''; }
 export const canGo = (id, s) => !needFor(id, s);
 export const rotationSlots = s => s.rotation.garden ? [] : s.rotation.preset === 'custom' ? s.rotation.custom : (PRESETS[s.rotation.preset]?.slots ?? []);
 

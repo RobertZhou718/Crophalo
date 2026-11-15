@@ -97,7 +97,7 @@ export function startFarm(env) {
   };
   const three = farm => {
     p.innerHTML = `${head('First field', STEP_WORDS.three)}<p>${esc(farm.name)} is ready. Add its first field now, or later.</p>
-    <div class="fw-addlist"><button type="button" class="btn lg" data-st="draw">Draw it<small>Tap each corner</small></button><button type="button" class="btn lg" data-st="square">Square around the pin<small>5 ha, you can redraw it</small></button><button type="button" class="btn lg" data-st="later">Later</button></div>`;
+    <div class="fw-addlist"><button type="button" class="btn lg" data-st="draw">Draw it<small>Tap each corner</small></button><button type="button" class="btn lg" data-st="square">Square around your place<small>5 ha, you can redraw it</small></button><button type="button" class="btn lg" data-st="later">Later</button></div>`;
     p.querySelector('#fwClose').onclick = close;
     p.querySelector('[data-st=draw]').onclick = () => env.startDraw();
     p.querySelector('[data-st=square]').onclick = () => env.squareAtPin(5);

@@ -96,9 +96,9 @@ export const TW = Object.freeze({
   green: {
     title: 'Greenness at its peak',
     unit: '', axis: 'greenness (NDVI)', up: 'greener at the peak', down: 'less green at the peak',
-    line: 'How green the land round the pin was at its greenest in each growing season (NDVI: 0 is bare ground, about 0.8 is thick green crop).',
+    line: 'How green the land round your place was at its greenest in each growing season (NDVI: 0 is bare ground, about 0.8 is thick green crop).',
     said: (med, a, b) => `The peak greenness was about ${med} in a middle season, ${a} to ${b}.`,
-    patch: 'A 2 km patch round the pin, from NASA’s MODIS pictures at 250 m: it can include roads, woods or a neighbour’s field.',
+    patch: 'A 2 km patch round your place, from NASA’s MODIS pictures at 250 m: it can include roads, woods or a neighbour’s field.',
     col: 'Peak greenness',
     none: 'The greenness history did not answer, so none is shown.',
   },

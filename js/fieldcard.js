@@ -21,7 +21,7 @@ const ref = refs => Array.isArray(refs) && refs.length ? `<sup>${refs.filter(Num
 // The card's markup. report is the plain shape described in js/sharetext.js, plus sources: [{ name, who, url }] and suggestion.refs: [1, 2].
 export function fieldCardHTML(report) {
   const r = report ?? {}, s = r.suggestion, w = orderedWarnings(r.warnings), where = [r.place?.label, position(r.place), Number.isFinite(+r.place?.ha) ? `${(+r.place.ha).toFixed(1)} ha` : ''].filter(Boolean).join(' · ');
-  const fig = outlineSVG(r.area) || `<p class="fc-nofig">No outline drawn. The answer is for the pin at ${esc(position(r.place))}.</p>`;
+  const fig = outlineSVG(r.area) || `<p class="fc-nofig">No outline drawn. The answer is for the place at ${esc(position(r.place))}.</p>`;
   const answer = r.garden
     ? `<h2>${esc(r.name || 'My field')}</h2><p class="fc-head">A tree or bush crop</p><p>There is no rotation to compare. Its weather, frost, rain, slope and soil are in the full report.</p>`
     : `<h2>Our suggestion</h2><p class="fc-head">${esc(s?.headline ?? 'Keep what you grow')}${ref(s?.refs)}</p>${s?.warning ? `<p class="fc-warn">${esc(s.warning)}</p>` : ''}${s?.why ? `<p>${esc(s.why)}</p>` : ''}${isScore(s?.score) ? `<p class="fc-score">Score ${Math.round(s.score)} out of 100${isScore(r.nowScore) ? ` (what you grow now: ${Math.round(r.nowScore)})` : ''}. A guide, not a chance of success.</p>` : ''}`;

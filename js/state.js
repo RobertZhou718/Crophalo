@@ -61,7 +61,7 @@ const inside = (lat, lon, pts) => {   // ray casting
 // The pin is kept to 4 decimals, so it stands for a square about 11 m across: it holds when that square meets the outline (its middle inside, or an edge
 // of the outline through the square). A garden smaller than the square still keeps its pin; a pin further off is still refused.
 const PIN_HALF = 5e-5 + 1e-9;
-function edgeInSquare([y1, x1], [y2, x2], cy, cx) {   // the edge clipped to the square round the pin (Liang-Barsky): true when any of it is left
+function edgeInSquare([y1, x1], [y2, x2], cy, cx) {   // the edge clipped to the square round your place (Liang-Barsky): true when any of it is left
   let t0 = 0, t1 = 1;
   const dx = x2 - x1, dy = y2 - y1;
   for (const [p, q] of [[-dx, x1 - (cx - PIN_HALF)], [dx, cx + PIN_HALF - x1], [-dy, y1 - (cy - PIN_HALF)], [dy, cy + PIN_HALF - y1]]) {

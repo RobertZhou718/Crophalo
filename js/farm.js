@@ -781,7 +781,7 @@ function drawMap(refit) {
   layer.clearLayers();
   const tabId = ui.fieldId || S.naturalSort(fm?.fields || [])[0]?.id;   // one token in the Tab order: the chosen field, else the first by name
   if (!fm) return;
-  const person = L.divIcon({ className: 'fw-here', html: '<span role="img" aria-label="You are here: the pin of ' + esc(fm.name) + '"><svg viewBox="0 0 30 30" aria-hidden="true"><circle cx="15" cy="15" r="14" fill="#0b2545" stroke="#fff" stroke-width="2"/><circle cx="15" cy="10" r="3.2" fill="#fff"/><path d="M9.5 21.5c0-3.6 2.4-5.8 5.5-5.8s5.5 2.2 5.5 5.8z" fill="#fff"/></svg></span>', iconSize: [30, 30], iconAnchor: [15, 15] });
+  const person = L.divIcon({ className: 'fw-here', html: '<span role="img" aria-label="You are here: the place of ' + esc(fm.name) + '"><svg viewBox="0 0 30 30" aria-hidden="true"><circle cx="15" cy="15" r="14" fill="#0b2545" stroke="#fff" stroke-width="2"/><circle cx="15" cy="10" r="3.2" fill="#fff"/><path d="M9.5 21.5c0-3.6 2.4-5.8 5.5-5.8s5.5 2.2 5.5 5.8z" fill="#fff"/></svg></span>', iconSize: [30, 30], iconAnchor: [15, 15] });
   L.marker([fm.pin.lat, fm.pin.lon], { icon: person, interactive: false, keyboard: false, zIndexOffset: -500 }).addTo(layer);
   for (const f of S.naturalSort(fm.fields)) {
     const chosen = f.id === ui.fieldId, ll = f.ring.map(p => [p[0], p[1]]);

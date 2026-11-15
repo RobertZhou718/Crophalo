@@ -8,7 +8,7 @@ import { skeleton } from './skeleton.js';
 const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[c]);
 export const WORDS = Object.freeze({
   loading: 'Working out the size of your field…',
-  none: 'Draw your field on the map (a rectangle or corners) to see its size here, or tap the map to drop a pin.',
+  none: 'Draw your field on the map (a rectangle or corners) to see its size here.',
   used: 'Used in report', selected: 'Outline drawn, not used yet',
   line: (second, corners) => `${second} · ${corners} corners`,
 });

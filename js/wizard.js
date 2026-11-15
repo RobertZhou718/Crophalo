@@ -360,7 +360,7 @@ export function movePlace(chosen, { from = 'map' } = {}) {
 }
 export const currentState = () => structuredClone(state);
 // The report's field question (a pin the crop map shows as not farmland). setFieldOk: the farmer's word "This is my field", kept for this pin only (js/state.js cleanLoc drops it once the pin moves).
-// toPlaceStep: "Move the pin to my field" opens the setup on its first step, where the pin is placed; nothing else changes.
+// toPlaceStep: "Draw my field" opens the setup on its first step, where the pin is placed; nothing else changes.
 export function setFieldOk(word) { if (!state.loc || !word) return; state.loc = { ...state.loc, fieldOk: word }; keep(); }
 export function toPlaceStep() { at = 0; keep(); render({ focus: false }); }
 export function initWizard(seam) {

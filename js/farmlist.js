@@ -31,7 +31,7 @@ export function renderSettings(env) {
   const { store, farm } = env.get(), p = env.node;
   if (!farm) { p.innerHTML = `${head('Farm settings', '')}<p>No farm is open.</p>`; p.querySelector('#fwClose').onclick = () => env.close(); return; }
   const pr = farm.practice;
-  p.innerHTML = `${head('Farm settings', 'Name, pin, how your fields get water')}
+  p.innerHTML = `${head('Farm settings', 'Name, place, how your fields get water')}
   <form id="fwFarmForm" class="fw-form"><label for="fwFarmNameIn">Farm name</label><input id="fwFarmNameIn" class="fw-input" maxlength="60" value="${esc(farm.name)}" autocomplete="off"><p class="fw-err" id="fwFarmErr" role="alert"></p><div class="fw-actions"><button type="submit" class="btn lg primary">Save name</button></div></form>
   <h3>Pin</h3><p>${esc(farm.pin.label || '')}${farm.pin.label ? ' · ' : ''}${farm.pin.lat}, ${farm.pin.lon}</p><p class="fw-muted">The NASA weather is asked for the pin.</p><button type="button" class="btn lg" data-act="pin">Move the pin</button>
   <fieldset class="fw-radios"><legend>How do your fields get water?</legend>${WATER.map(([k, w]) => `<label><input type="radio" name="irr" value="${k}" ${pr.irrigation === k ? 'checked' : ''}> ${w}</label>`).join('')}</fieldset>
@@ -52,7 +52,7 @@ export function renderSettings(env) {
   p.querySelector('#fwCover').onchange = e => setPractice({ coverOK: e.target.checked });
   p.querySelector('[data-act=pin]').onclick = () => env.pickPin(ll => {
     const res = S.moveFarmPin(env.get().store, farm.id, +ll.lat.toFixed(4), +ll.lng.toFixed(4)); if (res.refused) return env.toast(res.refused);
-    env.commit(res.store, 'Pin moved. Getting the new weather…', true); if (res.words) env.say(res.words); env.settings();
+    env.commit(res.store, 'Field moved. Getting the new weather…', true); if (res.words) env.say(res.words); env.settings();
   }, () => env.settings());
   p.querySelector('[data-act=delete]').onclick = () => {
     p.innerHTML = `${head(`Delete ${farm.name}?`, '', false)}<p>The farm, its ${farm.fields.length} field${farm.fields.length === 1 ? '' : 's'} and their plans are removed from this device's board. They wait under Recently deleted for 30 days, and you can undo it for a few seconds.</p><div class="fw-actions"><button type="button" class="btn lg danger armed" data-act="really">Delete</button><button type="button" class="btn lg" data-act="keep">Keep it</button></div>`;

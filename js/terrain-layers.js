@@ -158,7 +158,7 @@ export function initTerrain(ui, env) {
     const base = `${entry.def.name} computed by Crophalo from ${names} heights on a ${gridWords(g)}. ${METHOD[id]}`;
     if (id !== 'erosion' || entry.inputs?.state !== 'ready') return base;
     const { soil, rain, k } = entry.inputs;
-    return `${base} Soil at the pin (ISRIC SoilGrids, top 15 cm): sand ${Math.round(soil.sand)} %, silt ${Math.round(soil.silt)} %, clay ${Math.round(soil.clay)} %, organic carbon ${soil.carbon.toFixed(1)} %, K = ${k.toFixed(2)}. Rain: Modified Fournier Index ${Math.round(rain.mfi)} mm, whole years ${rain.first} to ${rain.last}.`;
+    return `${base} Soil at your field (ISRIC SoilGrids, top 15 cm): sand ${Math.round(soil.sand)} %, silt ${Math.round(soil.silt)} %, clay ${Math.round(soil.clay)} %, organic carbon ${soil.carbon.toFixed(1)} %, K = ${k.toFixed(2)}. Rain: Modified Fournier Index ${Math.round(rain.mfi)} mm, whole years ${rain.first} to ${rain.last}.`;
   }
   function legendHtml(entry) {
     const d = entry.def, id = d.id, op = opacityOf(id);
@@ -268,11 +268,11 @@ export function initTerrain(ui, env) {
   const WHY = { fetch: 'the height tiles did not load', decode: 'the height tiles did not load', error: 'it could not be worked out', none: 'no heights here', far: 'no heights this far north or south' };
   function hereText(entry, res, s) {
     const d = entry.def, v = res?.values;
-    if (!res?.ok) return `No value for your pin: ${WHY[res?.why] ?? WHY.error}.`;
+    if (!res?.ok) return `No value for your field: ${WHY[res?.why] ?? WHY.error}.`;
     if (d.id === 'slope') return `${d.here}: ${slopeHere(v)}`;
     if (d.id === 'relief') return `${d.here}: ${heightHere(v, shortNames(res.prefixes))}`;
     if (d.id === 'frost') return frostHere(v);
-    if (d.id === 'erosion') return entry.inputs?.state === 'ready' ? `${d.here}: ${erosionHere(v)}` : `No value for your pin: ${erosionWhy(entry)}.`;
+    if (d.id === 'erosion') return entry.inputs?.state === 'ready' ? `${d.here}: ${erosionHere(v)}` : `No value for your field: ${erosionWhy(entry)}.`;
     const when = `${+s.date.d} ${MON[s.date.m - 1]}, ${pad(s.hour)}:00`;
     if (!s.range) return `${when}: ${SAYS.polarNight}`;
     if (!(s.sun.apparent > 0)) return `${when}: the sun is down.`;
@@ -283,7 +283,7 @@ export function initTerrain(ui, env) {
     const pin = env.pin?.(), mine = ++pinSeq, zoom = map().getZoom();
     const gated = e => zoom < e.def.minZoom;
     for (const e of on.values()) if (gated(e)) setText(part(e.def.id, 'data-there'), `${e.def.here}: zoom in to read it`);
-    if (!pin) { for (const e of on.values()) if (!gated(e)) setText(part(e.def.id, 'data-there'), `No value for your pin: ${SAYS.noPin}.`); setText(card('sunshade')?.querySelector('[data-tday]'), ''); return; }
+    if (!pin) { for (const e of on.values()) if (!gated(e)) setText(part(e.def.id, 'data-there'), `No value for your field: ${SAYS.noPin}.`); setText(card('sunshade')?.querySelector('[data-tday]'), ''); return; }
     if ([...on.values()].every(gated)) return;
     const s = on.has('sunshade') ? sunNow() : null, opts = { factor: on.get('erosion')?.inputs?.factor };
     if (s && s.range) { const at = sunAt(s.ms, pin.lat, pin.lon); opts.sun = { azimuth: at.azimuth, apparent: at.apparent }; opts.path = dayPath(s.date, pin); }
@@ -302,20 +302,20 @@ export function initTerrain(ui, env) {
   function erosionWhy(entry) {
     const s = entry.inputs;
     if (!s || s.state === 'nopin') return SAYS.noPin;
-    if (s.state === 'reading') return 'reading the soil and rain at your pin';
-    return s.soilWhy ? 'no soil reading at your pin' : 'no rain record at your pin';
+    if (s.state === 'reading') return 'reading the soil and rain at your field';
+    return s.soilWhy ? 'no soil reading at your field' : 'no rain record at your field';
   }
   function inputsWords(s) {
     if (!s || s.state === 'nopin') return SAYS.pinFirst;
-    if (s.state === 'reading') return 'Reading the soil (ISRIC SoilGrids) and the rain (NASA POWER) at your pin…';
+    if (s.state === 'reading') return 'Reading the soil (ISRIC SoilGrids) and the rain (NASA POWER) at your field…';
     if (s.state === 'failed') {
-      if (s.soilWhy === 'nosoil') return 'SoilGrids has no soil at your pin (water, a town or rock), so erosion exposure is not drawn.';
-      if (s.soilWhy) return 'ISRIC SoilGrids did not answer for your pin, so erosion exposure is not drawn. Try again later.';
-      if (s.rainWhy === 'few') return 'NASA POWER has too few whole years of rain at your pin, so erosion exposure is not drawn.';
-      return 'NASA POWER’s rain record did not load for your pin, so erosion exposure is not drawn. Try again later.';
+      if (s.soilWhy === 'nosoil') return 'SoilGrids has no soil at your field (water, a town or rock), so erosion exposure is not drawn.';
+      if (s.soilWhy) return 'ISRIC SoilGrids did not answer for your field, so erosion exposure is not drawn. Try again later.';
+      if (s.rainWhy === 'few') return 'NASA POWER has too few whole years of rain at your field, so erosion exposure is not drawn.';
+      return 'NASA POWER’s rain record did not load for your field, so erosion exposure is not drawn. Try again later.';
     }
     const { soil, rain, k } = s;
-    return `Soil at your pin: ${textureWords(soil)} (sand ${Math.round(soil.sand)} %, silt ${Math.round(soil.silt)} %, clay ${Math.round(soil.clay)} %, organic carbon ${soil.carbon.toFixed(1)} %), erodibility ${(k / K_LOAM).toFixed(1)} × loam · ISRIC SoilGrids, 250 m, CC BY 4.0. Rain: Modified Fournier Index ${Math.round(rain.mfi)} mm (${Math.round(rain.yearly)} mm a year) from ${RAIN_NAME[rain.source] ?? RAIN_NAME.imerg}, whole years ${rain.first} to ${rain.last} · NASA POWER.`;
+    return `Soil at your field: ${textureWords(soil)} (sand ${Math.round(soil.sand)} %, silt ${Math.round(soil.silt)} %, clay ${Math.round(soil.clay)} %, organic carbon ${soil.carbon.toFixed(1)} %), erodibility ${(k / K_LOAM).toFixed(1)} × loam · ISRIC SoilGrids, 250 m, CC BY 4.0. Rain: Modified Fournier Index ${Math.round(rain.mfi)} mm (${Math.round(rain.yearly)} mm a year) from ${RAIN_NAME[rain.source] ?? RAIN_NAME.imerg}, whole years ${rain.first} to ${rain.last} · NASA POWER.`;
   }
   async function erosionInputs(entry) {
     const pin = env.pin?.();
@@ -332,7 +332,7 @@ export function initTerrain(ui, env) {
     setText(part('erosion', 'data-tinputs'), inputsWords(entry.inputs));
     const i = card('erosion')?.querySelector('.tl-i'); if (i) i.innerHTML = srcButton(srcKeys('erosion'), noteFor(entry));
     const had = !!entry.layer; attach(entry); if (had && entry.layer) repaint(entry); readPin();   // a layer made just now paints itself
-    env.say?.(entry.inputs.state === 'ready' ? 'Erosion exposure on the map, from the soil and rain at your pin' : inputsWords(entry.inputs));
+    env.say?.(entry.inputs.state === 'ready' ? 'Erosion exposure on the map, from the soil and rain at your field' : inputsWords(entry.inputs));
   }
 
   // ---- sun and shade: the date, the hour, and playing the day
@@ -368,7 +368,7 @@ export function initTerrain(ui, env) {
     if (date && document.activeElement !== date && date.value !== isoOf(s.date)) date.value = isoOf(s.date);
     if (hour) { if (s.range) { hour.min = String(s.range.min); hour.max = String(s.range.max); } hour.disabled = !s.range; if (document.activeElement !== hour && +hour.value !== s.hour) hour.value = String(s.hour); hour.setAttribute('aria-valuetext', `${pad(s.hour)}:00`); }
     setText(out, `${pad(s.hour)}:00`);
-    setText(root.querySelector('[data-tclock]'), s.pin ? timesAreWords(s.opts) : 'Times are sun time at the middle of the map (noon is when the sun is highest). Drop a pin for your field’s own clock.');
+    setText(root.querySelector('[data-tclock]'), s.pin ? timesAreWords(s.opts) : 'Times are sun time at the middle of the map (noon is when the sun is highest). Draw your field for its own clock.');
     setText(root.querySelector('[data-tsunpos]'), !s.range ? SAYS.polarNight : s.sun.apparent > 0 ? `${+s.date.d} ${MON[s.date.m - 1]}, ${pad(s.hour)}:00: the sun is ${heightWords(s.sun.apparent)} up in the ${compass8(s.sun.azimuth)}.` : `${+s.date.d} ${MON[s.date.m - 1]}, ${pad(s.hour)}:00: ${SAYS.sunDown}`);
     if (playBtn) { playBtn.textContent = play ? 'Pause' : 'Play the day'; playBtn.toggleAttribute('data-playing', !!play); playBtn.disabled = !play && (motionOff() || !s.range || s.range.min === s.range.max); playBtn.title = motionOff() ? 'Playing by itself is off (Still motion). Move the hour by hand.' : ''; }
   }

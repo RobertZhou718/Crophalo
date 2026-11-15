@@ -447,7 +447,7 @@ export function pointValues(grid, row, col, opts = {}) {
 // ---- the words
 export const TERRAIN_LAYERS = Object.freeze([
   { id: 'slope', plain: 'How steep the ground is.', name: 'Slope', sub: 'SRTM 30 m or finer', minZoom: 9, sharp: true, opacity: 65, here: 'Slope here', zoomIn: 'Zoom in to see slope.' },
-  { id: 'erosion', plain: 'Where rain could wash soil away.', name: 'Erosion exposure', sub: 'slope × soil × rain · a relative index', minZoom: 11, sharp: true, opacity: 70, here: 'Erosion exposure here', zoomIn: 'Zoom in to see erosion exposure: the soil and rain are read at your pin.' },
+  { id: 'erosion', plain: 'Where rain could wash soil away.', name: 'Erosion exposure', sub: 'slope × soil × rain · a relative index', minZoom: 11, sharp: true, opacity: 70, here: 'Erosion exposure here', zoomIn: 'Zoom in to see erosion exposure: the soil and rain are read at your field.' },
   { id: 'frost', plain: 'Low spots where frost comes first.', name: 'Frost pockets', sub: 'low ground where cold air settles', minZoom: 11, sharp: true, opacity: 75, here: 'Frost pockets here', zoomIn: 'Zoom in to see frost pockets: they are smaller than this map’s squares.' },
   { id: 'sunshade', plain: 'Where hills cast shadows.', name: 'Sun and shade', sub: 'hill shadows, any day and hour', minZoom: 11, sharp: false, opacity: 100, here: 'Sun here', zoomIn: 'Zoom in to see sun and shade: from this far out the shadows of the hills are too small to draw.' },
   { id: 'relief', plain: 'The shape of the land.', name: 'Relief shading', sub: 'light from the north-west', minZoom: 9, sharp: false, opacity: 100, here: 'Height here', zoomIn: 'Zoom in to see the relief shading.' },
@@ -457,7 +457,7 @@ export const METHOD = Object.freeze({
   slope: 'Slope by Horn’s method on the true size of each pixel. Classes from FAO’s Guidelines for soil description; its classes under 2 % are joined, because whole-metre heights cannot tell them apart, its steep and very steep classes (30 to 60 % and over 60 %) share one colour, and FAO warns that slopes on almost flat ground are often read too steep.',
   relief: 'Relief shading by the standard hillshade formula, the light from the north-west (315°) and 45° up, on the true heights. Only shade is drawn, so the map under it stays readable.',
   frost: 'Cold air is heavier than warm air: on clear, calm nights it drains downhill and settles in low ground (FAO, Frost protection). Marked: ground at least 2 m below the average height within 300 m, on slopes under 5 %. Large dead-level areas (lakes, wide flats) and the sea are not judged. It is not a temperature measurement or a forecast. Hedges, roads, woods and buildings can hold cold air back or let it drain, and they are not in the heights.',
-  erosion: 'A relative index: the RUSLE slope factor (McCool) × the soil’s erodibility by Williams’ equation compared with loam × rain as the Modified Fournier Index compared with 100 mm. 1 is a 9 % slope of loam under moderate rain. It is not tonnes of soil lost. It leaves out slope length, crops, residue, terraces and contour farming. Soil and rain are read at your pin; the soil can change across the map.',
+  erosion: 'A relative index: the RUSLE slope factor (McCool) × the soil’s erodibility by Williams’ equation compared with loam × rain as the Modified Fournier Index compared with 100 mm. 1 is a 9 % slope of loam under moderate rain. It is not tonnes of soil lost. It leaves out slope length, crops, residue, terraces and contour farming. Soil and rain are read at your field; the soil can change across the map.',
   sunshade: 'Shadows of the land’s shape only: the sun’s place from the NOAA solar equations, rays cast toward the sun over the heights with the Earth’s curve and half a metre of leeway. Trees, buildings and clouds are not included.',
 });
 export const KEYS_WORDS = Object.freeze({
@@ -472,8 +472,8 @@ export const SAYS = Object.freeze({
   none: 'No heights here: Terrain Tiles has no tile for this place.',
   farNorth: 'No heights this far north or south.',
   working: 'Reading the land\u2019s heights…',
-  noPin: 'drop a pin first',
-  pinFirst: 'Drop a pin to read your field’s soil and rain.',
+  noPin: 'draw your field first',
+  pinFirst: 'Draw your field to read its soil and rain.',
   sunDown: 'The sun is down at this hour.',
   polarNight: 'The sun does not rise on this date here.',
   whole: metres => `heights in whole metres, smoothed over about ${Math.round(metres / 10) * 10} m`,

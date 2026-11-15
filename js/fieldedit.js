@@ -182,7 +182,7 @@ export const SQUARES = Object.freeze({
   metric: [['Garden bed, 0.06 ha', 0.06], ['1 ha', 1], ['5 ha', 5], ['10 ha', 10], ['25 ha', 25], ['50 ha', 50]],
   us: [['Garden bed, 0.15 acre', 0.15 / 2.471054], ['1 acre', 1 / 2.471054], ['2.5 acres', 2.5 / 2.471054], ['10 acres', 10 / 2.471054], ['40 acres', 40 / 2.471054], ['80 acres', 80 / 2.471054], ['160 acres', 160 / 2.471054]],
 });
-// A square goes at the map's centre when that is within 10 km of the pin, else around the pin.
+// A square goes at the map's centre when that is within 10 km of the pin, else around your place.
 export const squareCentre = (farm, centre) => S.distanceM([farm.pin.lat, farm.pin.lon], centre) / 1000 <= S.LIMITS.nearKm ? centre : [farm.pin.lat, farm.pin.lon];
 export function renderAdd(env) {
   const { farm } = env.get(), full = farm.fields.length >= S.LIMITS.fields, p = env.panel, sizes = SQUARES[env.units?.() === 'us' ? 'us' : 'metric'];

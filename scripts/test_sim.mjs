@@ -140,11 +140,11 @@ await group('farms and fields', async () => {
   const chk = S.checkNewOutline(S.getFarm(r2.store, id), sq(44.3950, -79.6820, 100));
   check('an overlap asks first, with the field and the hectares', chk.ok && chk.overlap && /^This overlaps North-east field by about \d\.\d ha\. Keep both\?$/.test(chk.overlap.words), chk.overlap?.words);
   const far = S.checkNewOutline(S.getFarm(r2.store, id), sq(44.95, -79.69, 100));
-  check('a field 62 km away is refused as needing its own farm', far.ask === 'far' && /^This outline is \d+ km from the farm pin\. NASA weather squares are about 50 km wide, so it needs its own farm\.$/.test(far.reason), far.reason);
+  check('a field 62 km away is refused as needing its own farm', far.ask === 'far' && /^This outline is \d+ km from the farm’s place\. NASA weather squares are about 50 km wide, so it needs its own farm\.$/.test(far.reason), far.reason);
   const mid = S.checkNewOutline(S.getFarm(r2.store, id), sq(44.4600, -79.6903, 100));
   check('a field 7 km away is added without a warning', mid.ok && mid.note === '', mid.note);
   const warn = S.checkNewOutline(S.getFarm(r2.store, id), sq(44.5100, -79.6903, 100));
-  check('a field 13 km away is added with the weather note', warn.ok && /^13 km from the farm pin: this field's weather may differ\.$/.test(warn.note), warn.note);
+  check('a field 13 km away is added with the weather note', warn.ok && /^13 km from the farm’s place: this field's weather may differ\.$/.test(warn.note), warn.note);
   const rn = S.renameField(r2.store, id, r2.field.id, 'Creek bottom', NOW + 5);
   same('rename keeps the new name and returns the old', [S.getField(S.getFarm(rn.store, id), r2.field.id).name, rn.was], ['Creek bottom', 'North-east field 2']);
   same('an empty rename is refused', S.renameField(r2.store, id, r2.field.id, '   ').refused, 'Give the field a name.');
@@ -545,7 +545,7 @@ await group('the farm list and settings', async () => {
   same('the pin moves to 4 decimals', [S.getFarm(moved.store, id).pin.lat, S.getFarm(moved.store, id).pin.lon], [44.45, -79.75]);
   same('fields near the new pin are not counted far', moved.far, 0);
   const faraway = S.moveFarmPin(store, id, 30, -100);
-  check('fields now far from the pin are counted and said', faraway.far === 3 && /^3 fields are now more than 50 km from the pin\./.test(faraway.words), faraway.words);
+  check('fields now far from the pin are counted and said', faraway.far === 3 && /^3 fields are now more than 50 km from the farm’s place\./.test(faraway.words), faraway.words);
   same('a pin out of range is refused', S.moveFarmPin(store, id, 95, 0).refused, 'That place could not be read.');
   const del = S.deleteFarm(two.store, two.farm.id, NOW + 20);
   same('a deleted farm leaves the list and the next one opens', [del.store.farms.length, del.store.active], [1, id]);

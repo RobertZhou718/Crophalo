@@ -31,22 +31,17 @@ async function drag(a, b) { await send('Input.dispatchMouseEvent', { type: 'mous
 
 await group('tools', async () => {
   await mapReady();
-  same('Pin is the tool at first, with the three tools named', await js(`[...document.querySelectorAll('.mapx-seg button')].map(b => b.title + ':' + b.getAttribute('aria-pressed'))`), ['Pin:true', 'Rectangle:false', 'Corners:false']);
+  same('Rectangle is the tool at first, with the two tools named (there is no Pin: a field is not a spot)', await js(`[...document.querySelectorAll('.mapx-seg button')].map(b => b.title + ':' + b.getAttribute('aria-pressed'))`), ['Rectangle:true', 'Corners:false']);
   // changed: the words fit the hand in use (a mouse clicks), and the first taps from the world view zoom in: a pin dropped at zoom 2 lands kilometres from the field
-  same('with no place yet, far out, the hint asks to zoom in to the field', [await hint(), (await state()).pin], ['Zoom in to your field: click near it, or search with Places.', null]);
+  same('with no place yet, far out, the hint asks to zoom in to the field', [await hint(), (await state()).pin], ['Zoom in to your field to draw it. Click it to zoom in.', null]);
   const c = await centre();
-  for (let i = 0; i < 4; i++) { if (await js(`import('/js/mapbase.js').then(m => m.baseNow().leaflet().getZoom())`) >= 10) break; await tapAt(c.x, c.y); await sleep(450); }   // the map opens on the United States (zoom 3 to 5): two or three clicks bring it to 10
-  check('clicks from the opening view zoom in three levels each until the field is near enough (zoom 10), and drop no pin', (await state()).pin === null && await js(`import('/js/mapbase.js').then(m => m.baseNow().leaflet().getZoom())`) >= 10);
-  same('then the hint asks for a click on the field', await hint(), 'Click your field to drop the pin.');
-  await tapAt(c.x, c.y); await until(`document.querySelector('.mapx-pin')`); await sleep(700);
-  const st = await state();
-  check('a tap puts the pin there, rounded to 4 decimals', st.pin && Number.isFinite(st.pin.lat) && String(st.pin.lat).split('.')[1]?.length <= 4, st.pin);
-  check('the pin has a 44 by 44 tap area', await js(`(() => { const r = document.querySelector('.mapx-pin').getBoundingClientRect(); return r.width >= 43.5 && r.height >= 43.5; })()`));
-  check('the pin says where it is, for a screen reader', /^Pin at -?\d+\.\d{4}, -?\d+\.\d{4}$/.test(await live()), await live());
-  same('now the hint says how to move it, in a mouse\'s words', await hint(), 'Click the map to move your field, or drag the pin. Click the pin for the weather.');   // changed: the words fit the hand in use
+  for (let i = 0; i < 6; i++) { if (await js(`import('/js/mapbase.js').then(m => m.baseNow().leaflet().getZoom())`) >= 13) break; await tapAt(c.x, c.y); await sleep(450); }   // the map opens on the United States (zoom 3 to 5): two or three clicks bring it to 10
+  check('clicks from the opening view zoom in until the field can be drawn (zoom 13), and set no place', (await state()).pin === null && await js(`import('/js/mapbase.js').then(m => m.baseNow().leaflet().getZoom())`) >= 13);
+  same('then the hint says how to draw the field', await hint(), 'Drag on the map to draw your field, or click 2 corners along one side.');
+  check('there is no Pin button, and no mark of a place is reachable by pointer or keys', await js(`!document.querySelector('[data-tool=pin]') && [...document.querySelectorAll('.mapx-pin')].every(e => e.tabIndex === -1 && e.getAttribute('aria-hidden') === 'true')`));
   // rectangle
   await tool('rect');
-  same('Rectangle changes the hint', await hint(), 'Click 2 corners along one side of your field, or drag a box.');   // changed: two clicks along a side (a field turned off north), or the quick box
+  same('Rectangle keeps the hint', await hint(), 'Drag on the map to draw your field, or click 2 corners along one side.');   // changed: two clicks along a side (a field turned off north), or the quick box
   await drag({ x: c.x + 100, y: c.y + 80 }, { x: c.x + 108, y: c.y + 130 });   // away from the pin
   check('a box under 12 px wide is refused, and says why in the bar, where the farmer is looking', !(await state()).ring && /line, not a field/.test(await hint()), await hint());
   await js(`window.__outline = []; document.addEventListener('crophalo:outline', e => window.__outline.push(e.detail))`);
@@ -56,7 +51,7 @@ await group('tools', async () => {
   // changed: corners are kept to 5 decimals, about 1 m, so a corner dragged at a close zoom lands where it was dropped
   check('its corners are rounded to 5 decimals and lie north-west, north-east, south-east, south-west', ring && ring.flat().every(v => (String(v).split('.')[1] || '').length <= 5) && ring[0][0] === ring[1][0] && ring[0][1] === ring[3][1] && ring[0][0] > ring[2][0] && ring[0][1] < ring[1][1]);
   // changed: the tools never lock. The tool returns to Pin, the outline is selected with its handles, and Start again is in the card: the farmer can redraw without losing the old outline
-  check('the tool returns to Pin, the outline is selected with handles, and Start again is in the card', await js(`document.querySelector('.mapx-seg [data-tool=pin]').getAttribute('aria-pressed') === 'true' && [...document.querySelectorAll('.mapx-seg button')].every(b => !b.disabled) && document.querySelectorAll('.mapx-handle').length === 4 && !!document.querySelector('.spot [data-spot=again]')`));
+  check('the tool lets go, the outline is selected with handles, and Start again is in the card', await js(`[...document.querySelectorAll('.mapx-seg button')].every(b => b.getAttribute('aria-pressed') === 'false') && [...document.querySelectorAll('.mapx-seg button')].every(b => !b.disabled) && document.querySelectorAll('.mapx-handle').length === 4 && !!document.querySelector('.spot [data-spot=again]')`));
   check('the page is told of the outline, once, and that it is used for the report at once', await js(`window.__outline.length === 1 && window.__outline[0].ring.length === 4 && window.__outline[0].used === true`), await js('window.__outline'));
   // polygon: four clicks and Finish, after Start again
   await js(`document.querySelector('.spot [data-spot=again]').click()`); await sleep(200);
@@ -1012,11 +1007,11 @@ await group('basenote', async () => {
 
 await group('stack', async () => {
   await mapReady();
-  same('five buttons, each named', await js(`[...document.querySelectorAll('.mapx-stack button')].map(b => b.getAttribute('aria-label'))`), ['Zoom in', 'Zoom out', 'Zoom to your field', 'Move the pin to where I am', 'Full-screen map']);
+  same('five buttons, each named', await js(`[...document.querySelectorAll('.mapx-stack button')].map(b => b.getAttribute('aria-label'))`), ['Zoom in', 'Zoom out', 'Zoom to your field', 'Take me to where I am', 'Full-screen map']);
   check('every button is at least 44 by 44', await js(`[...document.querySelectorAll('.mapx-stack button')].every(b => { const r = b.getBoundingClientRect(); return r.width >= 43.5 && r.height >= 43.5; })`));
   const z0 = await js(`document.querySelector('.leaflet-container')._leaflet_map?.getZoom?.() ?? -1`);
   await js(`document.querySelector('[data-view=field]').click()`);
-  check('Zoom to your field with no pin says to drop one', /Drop a pin first/.test(await js(`document.querySelector('#toast').textContent`)));
+  check('Zoom to your field with no field drawn says to draw one', /Draw your field first/.test(await js(`document.querySelector('#toast').textContent`)));
   await js(`document.querySelector('[data-view=full]').click()`); await sleep(100);
   same('full screen toggles, hides the top bar and renames its button', await js(`[document.querySelector('#mapx').classList.contains('full'), getComputedStyle(document.querySelector('.nav')).display, document.querySelector('[data-view=full]').getAttribute('aria-label')]`), [true, 'none', 'Exit full-screen map']);
   await js(`document.querySelector('#mapx').dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true }))`); await sleep(100);

@@ -38,12 +38,12 @@ export function fieldYearsModel({ state, answer = null, country = '', used = fal
   if (state !== 'ok' || !answer?.ok) { const small = /too small/i.test(answer?.reason ?? ''); return { state: small ? 'small' : 'down', lines: [small ? WORDS.small : WORDS.down] }; }
   const turn = turnOf(answer), pin = answer.where === 'pin', us = String(country).toUpperCase() === 'US', first = answer.years?.first, last = answer.years?.last;
   const recent = (answer.field ?? []).slice(0, 3).map(f => `${f.year} ${f.crop ? low(f.crop) : 'mixed'}`);
-  const more = [`Years read: ${first} to ${last}. We look at up to ${answer.points || 9} points ${pin ? 'around your pin' : 'inside your field'} for each year. A year counts when more than half of the points agree.`,
+  const more = [`Years read: ${first} to ${last}. We look at up to ${answer.points || 9} points ${pin ? 'around the place you chose' : 'inside your field'} for each year. A year counts when more than half of the points agree.`,
     `${us ? 'USDA crop map' : 'Agriculture and Agri-Food Canada crop map'}, 30 m squares, ${first} to ${last}.`, ...(answer.not_read?.length ? [`${answer.not_read.map(y => `${y} not read`).join('. ')}.`] : [])];
   const link = LINKS[us ? 'US' : 'CA'];
   if (!turn) return { state: 'ok', lines: [`The crop map shows: ${recent.join(', ')}. Choose your crops below.`], more, link, rotation: null };
   const rotation = rotationFor(turn), matches = !!filled && !!rotation && sameRotation(rotation, filled);
-  const shows = `The crop map shows ${turnWords(turn)} ${pin ? 'around your pin' : 'on this field'} since ${turn.since}.`;
+  const shows = `The crop map shows ${turnWords(turn)} ${pin ? 'around the place you chose' : 'on this field'} since ${turn.since}.`;
   return { state: 'ok', lines: used ? [WORDS.done(roleWords(rotation))] : matches ? [shows, WORDS.matches] : [shows, WORDS.wrong], more, link, rotation: matches ? null : rotation, used, matches };
 }
 export function fieldYearsHTML(model) {

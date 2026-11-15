@@ -77,7 +77,7 @@ export function seasonHeadline({ plan, field, year, lean, usual, runs, years }) 
 export const runByRun = (min, max, years) => (min === max ? `Run by run, ${min} of the ${years} past years ${min === 1 ? 'is' : 'are'} hurt.` : `Run by run, between ${min} and ${max} of the ${years} past years are hurt.`);
 export const NOT_SEPARATE = (runs, years) => `These are ${runs} forecast runs laid over the same ${years} past years, so they are not ${(runs * years).toLocaleString('en-US')} separate outcomes.`;
 export const seasonEnds = (month, names) => { const [y, m] = month.split('-').map(Number); return `The seasonal forecast ends in late ${names[m - 1]} ${y}. After that, these futures use the past years as they were.`; };
-export const LOOKAHEAD_CREDIT = 'Weather data by Open-Meteo.com (CC BY 4.0), used under its free, non-commercial terms. Only your farm’s pin, rounded to about 10 km, is sent. Nothing from Look ahead is saved with your farm.';
+export const LOOKAHEAD_CREDIT = 'Weather data by Open-Meteo.com (CC BY 4.0), used under its free, non-commercial terms. Only your farm’s place, rounded to about 10 km, is sent. Nothing from Look ahead is saved with your farm.';
 export const CLIMATE_BUTTON_NOTE = 'This reads 7 climate models and takes about 4 minutes the first time, then opens at once.';
 export const OUTLOOK_TREND_NOTE = 'The usual months come from your farm’s NASA weather since 2001. The trend needs the 7 climate models, which take about 4 minutes the first time and then open at once.';
 export const RULES = Object.freeze([

@@ -50,7 +50,7 @@ Every figure in Crophalo that comes from outside carries a small "i" button. It 
 ### NASA / USGS Harmonized Landsat and Sentinel-2 greenness (on the Satellites tab)
 
 - **What it is.** Surface reflectance from Landsat 8 and 9 (NASA and USGS) and Sentinel-2 (the European Space Agency), made to match each other, at 30 m. Crophalo works out NDVI, a measure of how green the plants look, from the red and near-infrared bands.
-- **What Crophalo does with it.** It reads a box of 3 by 3 dots (90 m) round the field's pin and takes, for each 15-day period of the last 12 months, the clearest pass. A dot with cloud, cloud shadow, snow or water is never counted as low greenness; a period with no clear pass is left empty. It is the greenness of the dots in that small box, not of the whole farm.
+- **What Crophalo does with it.** It reads a box of 3 by 3 dots (90 m) round the field's place and takes, for each 15-day period of the last 12 months, the clearest pass. A dot with cloud, cloud shadow, snow or water is never counted as low greenness; a period with no clear pass is left empty. It is the greenness of the dots in that small box, not of the whole farm.
 - **Version in use.** HLS Sentinel-2 (HLSS30) and Landsat (HLSL30) Surface Reflectance Daily Global 30 m, version 2.0 (checked 14 November 2026), from NASA's Land Processes DAAC (LP DAAC).
 - **Credit.** DOI 10.5067/HLS/HLSS30.002 and 10.5067/HLS/HLSL30.002.
 - **More.** https://lpdaac.usgs.gov/products/hlss30v002/

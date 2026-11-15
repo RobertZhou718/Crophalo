@@ -106,7 +106,7 @@ export function buildSeries(answer, place = {}) {
   return S;
 }
 const LAND = ['GWETROOT', 'EVLAND'];   // root-zone soil wetness and water from the land: NASA has them only over land
-export const SEA_WORDS = 'NASA POWER’s weather square here is sea or ice: it holds no soil wetness and no water from the land on any day, so Crophalo cannot compare crops here. Put the pin on the field itself.';
+export const SEA_WORDS = 'NASA POWER’s weather square here is sea or ice: it holds no soil wetness and no water from the land on any day, so Crophalo cannot compare crops here. Draw the field itself.';
 export const landProblem = S => (S?.noLand === true ? SEA_WORDS : '');   // '' on land, and on the back-up record, which has no land measures at all
 // The same sea-or-ice test on NASA POWER's raw answer, before any series is built: both land measures sent, and not one day of either holds a reading.
 export function answerNoLand(answer) {

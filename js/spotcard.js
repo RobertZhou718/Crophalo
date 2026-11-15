@@ -24,7 +24,7 @@ function tabsNow() { return ctx.ring() ? ['weather', 'area', 'sun'] : ['weather'
 const TAB_WORDS = SAY.card.tabs;
 function title() {
   const pin = ctx.pin(), name = String(pin?.name || '').split(',').map(s => s.trim()).filter(Boolean).slice(0, 2).join(', ');
-  return tab === 'area' && !pin?.name ? SAY.title : name || 'This spot';
+  return tab === 'area' && !pin?.name ? SAY.title : name || (ctx.ring() ? 'This field' : 'This place');
 }
 
 // quiet: the map has just said what the card would (a closed outline says its area once); the card then says nothing of its own and takes no focus.
@@ -59,7 +59,7 @@ function draw() {
   const have = tabsNow(), a = document.activeElement, was = card.contains(a) ? (a.dataset.spot ? `[data-spot=${a.dataset.spot}]` : a.dataset.tab ? `[data-tab=${a.dataset.tab}]` : a.classList.contains('spot-grip') ? '.spot-grip' : null) : null;
   card.innerHTML = `<header class="spot-head"><span class="spot-grip" role="button" tabindex="0" aria-label="Move this card. Use the arrow keys, or drag."><i></i><i></i><i></i><i></i><i></i><i></i></span>
       <h2 id="spotTitle">${esc(title())}</h2><button type="button" class="btn sm" data-spot="done">${esc(SAY.card.done)}</button></header>
-    <div class="spot-tabs seg" role="tablist" aria-label="About this spot">${have.map(t => `<button type="button" role="tab" id="spotTab-${t}" aria-controls="spotPanel" aria-selected="${t === tab}" tabindex="${t === tab ? 0 : -1}" data-tab="${t}">${TAB_WORDS[t]}</button>`).join('')}</div>
+    <div class="spot-tabs seg" role="tablist" aria-label="${ctx.ring() ? 'About this field' : 'About this place'}">${have.map(t => `<button type="button" role="tab" id="spotTab-${t}" aria-controls="spotPanel" aria-selected="${t === tab}" tabindex="${t === tab ? 0 : -1}" data-tab="${t}">${TAB_WORDS[t]}</button>`).join('')}</div>
     <div class="spot-panel" id="spotPanel" role="tabpanel" aria-labelledby="spotTab-${tab}" tabindex="0"></div>`;
   if (tab === 'area') card.setAttribute('aria-describedby', 'spotFigure spotFigureLine'); else card.removeAttribute('aria-describedby');
   wire(); fill();
@@ -142,7 +142,7 @@ function fill() {
 }
 async function fillWeather(panel) {
   const pin = ctx.pin();
-  if (!pin) { panel.innerHTML = '<p class="cap">Drop a pin first: tap the map where your field is.</p>'; return; }
+  if (!pin) { panel.innerHTML = '<p class="cap">Draw your field first: drag a rectangle on the map.</p>'; return; }
   panel.setAttribute('aria-busy', 'true'); panel.innerHTML = skeleton('weather', 'Getting the weather here…');
   const mine = card, got = await getForecast(pin.lat, pin.lon);
   if (card !== mine || tab !== 'weather') return;   // the farmer moved on while it came
@@ -153,7 +153,7 @@ async function fillWeather(panel) {
   const word = conditionWords(now.code);
   panel.innerHTML = `<p class="spot-now"><span class="spot-temp">${esc(degrees(now.temp))}</span> <span>${esc(word)}</span></p>
     <p class="cap">${now.feels == null ? '' : `Feels like ${esc(degrees(now.feels))}`}${now.wind == null ? '' : ` · wind ${Math.round(now.wind)} km/h`}</p>
-    <p>Today high ${esc(degrees(t.hi))}, low ${esc(degrees(t.lo))}${rain}${mm} ${srcButton('forecast', `${got.updated ? `Updated at ${got.updated}, local time at the field. ` : ''}The forecast for the 1 km square around your pin, ${pinWords(pin.lat, pin.lon).replace('Pin at ', '')}.`)}</p>
+    <p>Today high ${esc(degrees(t.hi))}, low ${esc(degrees(t.lo))}${rain}${mm} ${srcButton('forecast', `${got.updated ? `Updated at ${got.updated}, local time at the field. ` : ''}The forecast for the 1 km square around the place you chose, ${pinWords(pin.lat, pin.lon).replace('Place at ', '')}.`)}</p>
     ${got.updated ? `<p class="cap">Updated ${esc(got.updated)}, field time.</p>` : ''}
     <p class="cap spot-credit"><a href="https://open-meteo.com/" target="_blank" rel="noopener noreferrer">Weather data by Open-Meteo.com</a></p>
     <p class="spot-calm ${calm.ok === true ? 'ok' : calm.ok === false ? 'no' : ''}">${esc(calm.words)}</p>
@@ -180,7 +180,7 @@ function fillArea(panel) {
 }
 async function fillSun(panel) {
   const pin = ctx.pin();
-  if (!pin) { panel.innerHTML = '<p class="cap">Drop a pin first: tap the map where your field is.</p>'; return; }
+  if (!pin) { panel.innerHTML = '<p class="cap">Draw your field first: drag a rectangle on the map.</p>'; return; }
   panel.setAttribute('aria-busy', 'true'); panel.innerHTML = skeleton('sun', 'Reading the field\'s clock…');
   const mine = card, got = await getForecast(pin.lat, pin.lon);
   if (card !== mine || tab !== 'sun') return;

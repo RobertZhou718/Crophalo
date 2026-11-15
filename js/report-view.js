@@ -120,7 +120,7 @@ export function barsHTML(scores) {
 }
 
 // ---- what is assumed, from the answers themselves
-export function estimatedArea(loc, hectares = 10) {   // a square of that area around the pin, for when no outline was drawn: always labelled "estimated"
+export function estimatedArea(loc, hectares = 10) {   // a square of that area around your place, for when no outline was drawn: always labelled "estimated"
   if (!loc || !fin(loc.lat) || !fin(loc.lon)) return null;
   const half = Math.sqrt(hectares * 1e4) / 2, dLat = half / 111320, dLon = half / (111320 * Math.max(0.01, Math.cos(loc.lat * Math.PI / 180)));
   const r = v => Math.round(v * 1e4) / 1e4;
@@ -136,7 +136,7 @@ export function assumptions(state) {
   if (state?.farm?.irrigation === 'none') out.push('Water: rain only. The field is not irrigated.');
   else if (state?.farm?.irrigation) out.push(`Water: ${state.farm.irrigation === 'limited' ? 'limited irrigation' : 'irrigated as needed'}.`);
   else out.push('Water: not known, so rain only is assumed.');
-  out.push(state?.area ? `Outline: the one you drew${fin(state.area.ha) ? ` (${state.area.ha.toFixed(1)} ha)` : ''}.` : 'Outline: estimated as a 10 ha square around the pin, because none was drawn.');
+  out.push(state?.area ? `Outline: the one you drew${fin(state.area.ha) ? ` (${state.area.ha.toFixed(1)} ha)` : ''}.` : 'Outline: estimated as a 10 ha square around your place, because none was drawn.');
   return out;
 }
 

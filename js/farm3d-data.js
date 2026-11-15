@@ -423,7 +423,7 @@ export const ESTIMATED_HA = 10;
 export function groundScene(input) {
   const pin = input.pin, field = input.field || {}, phone = !!input.phone;
   let polygon = field.polygon, estimated = !!field.areaEstimated;
-  if (!Array.isArray(polygon) || polygon.length < 3) {   // no outline drawn: a square of 10 ha round the pin, always said to be an estimate
+  if (!Array.isArray(polygon) || polygon.length < 3) {   // no outline drawn: a square of 10 ha round your place, always said to be an estimate
     const half = Math.sqrt(ESTIMATED_HA * 1e4) / 2, f = frameAt(pin.lat, pin.lon);
     polygon = [[-half, -half], [half, -half], [half, half], [-half, half]].map(([x, z]) => { const p = f.toLatLon(x, z); return [p.lat, p.lon]; });
     estimated = true;
@@ -481,7 +481,7 @@ export function groundScene(input) {
     label: { state: label, plan: kindWord, planName: input.planName || null, date: input.date || null, dateWords: dateWords(input.date), line: `${label} · ${kindWord} · ${dateWords(input.date)}` },
     words: {
       cover: cover?.words || 'Not read yet: what covers this field on this date.', note: g?.note || null,
-      outline: estimated ? `Outline estimated: a ${ESTIMATED_HA} ha square round the pin. Draw the field to replace it.` : `${field.name || 'Your field'}: ${Math.round(area / 1e3) / 10} ha, from the outline you drew.`,
+      outline: estimated ? `Outline estimated: a ${ESTIMATED_HA} ha square round your place. Draw the field to replace it.` : `${field.name || 'Your field'}: ${Math.round(area / 1e3) / 10} ha, from the outline you drew.`,
       heights: heights.words, credit: heights.status === 'read' ? creditWords(given) : '', sun: sunNow ? (sunUp ? `Sun at ${clock(momentMs, { zone: input.zone, offsetMin: input.offsetMin, lon: pin.lon })}: ${heightWords(sunNow.apparent)} up, in the ${compass8(sunNow.azimuth)}. The one light in the picture.` : 'The sun is down on this date at the hour shown.') : 'No date, so no sun.',
       illustrative: 'Plants are symbols, drawn larger than real so they show from here.',
       past: Number.isInteger(input.pastYear) ? `${input.pastYear}: past weather, not today` : '',   // during the year replay, so the picture is never mistaken for today

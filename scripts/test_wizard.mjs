@@ -12,10 +12,11 @@ const same = (name, got, want) => check(name, JSON.stringify(got) === JSON.strin
 const s = newState();
 same('four steps, in order', STEPS.map(x => x.id), ['field', 'crops', 'soil', 'matters']);
 check('every step has a bar label, a heading and a Listen text', STEPS.every(x => x.bar && x.heading && x.listen.startsWith('Step ')));
-check('the first step blocks only until the field has a position', !canGo('field', s) && canGo('field', { ...s, loc: { lat: 43.1, lon: -80.7 } }));
-const NEED_PLACE = 'Tap the map or draw your field to go on.';
+const AREA = { pts: [[43.1, -80.7], [43.1, -80.69], [43.09, -80.69], [43.09, -80.7]], ha: 9 };
+check('the first step blocks until the field is drawn: a position alone is not enough, a position with its outline opens it', !canGo('field', s) && !canGo('field', { ...s, loc: { lat: 43.1, lon: -80.7 } }) && canGo('field', { ...s, loc: { lat: 43.1, lon: -80.7 }, area: AREA }));
+const NEED_PLACE = 'Draw your field on the map to go on.';
 check('step one blocks with no position', needFor('field', { ...s, loc: null }) === NEED_PLACE && needFor('field', { ...s, loc: {} }) === NEED_PLACE && !hasPlace({ loc: { lat: '43', lon: 1 } }) && needFor('field', { ...s, loc: { lat: '43', lon: 1 } }) === NEED_PLACE);
-check('step one opens with a real position', needFor('field', { ...s, loc: { lat: 43.1, lon: -80.7 } }) === '' && hasPlace({ loc: { lat: 0, lon: 0 } }) && !hasPlace(null) && !hasPlace({ loc: { lat: NaN, lon: 1 } }));
+check('step one opens with a real position', needFor('field', { ...s, loc: { lat: 43.1, lon: -80.7 }, area: AREA }) === '' && hasPlace({ loc: { lat: 0, lon: 0 } }) && !hasPlace(null) && !hasPlace({ loc: { lat: NaN, lon: 1 } }));
 check('step two blocks until a rotation is chosen', !canGo('crops', s) && needFor('crops', s) === 'Pick what you grow to go on.');   // the crop step now offers a suggestion and cards to pick from, so the line says Pick
 s.rotation.preset = 'corn-soy'; check('a ready rotation lets step two go on', canGo('crops', s));
 s.rotation.preset = 'custom'; check('building your own with no year does not', !hasRotation(s));
@@ -79,7 +80,7 @@ check('a demo region\'s tillage default is read (a no-till field starts no-till)
   for (const id of ['mead-field', 'beltsville-field', 'barrie-field']) {
     const r = REGIONS.find(x => x.id === id); if (!r) continue;
     const base = { ...newState(), loc: { lat: Math.round(r.lat * 1e4) / 1e4, lon: Math.round(r.lon * 1e4) / 1e4, label: r.country, cc: '' }, name: r.name };
-    const st = { ...base, ...readyAnswers(base, r) };
+    const st = { ...base, ...readyAnswers(base, r), area: r.outline ? { pts: r.outline, ha: r.area_ha ?? 10 } : { pts: [[r.lat, r.lon], [r.lat, r.lon + 0.001], [r.lat - 0.001, r.lon + 0.001], [r.lat - 0.001, r.lon]], ha: 1 } };   // a demo brings its outline
     check(`${id}: every step can be passed with Next (place, crops, water and soil)`, stepsFor(st).every(step => canGo(step.id, st)), stepsFor(st).map(step => `${step.id}:${needFor(step.id, st)}`).join(' | '));
     check(`${id}: the soil is the soil map's, said in words`, st.soil.mode === 'map' && st.soil.texture === r.defaults.soil_texture && typeof SOIL_MAP_WORDS[st.soil.texture] === 'string', JSON.stringify(st.soil));
     check(`${id}: the tillage and the water answer follow the region; water not known stays open`, st.farm.irrigation === (r.defaults.irrigation ?? null) && (!r.defaults.tillage || st.farm.tillage === r.defaults.tillage), JSON.stringify(st.farm));

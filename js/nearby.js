@@ -45,7 +45,7 @@ export function notField(answer) {
   if (!answer || answer.ok !== true || !Number.isInteger(code) || !kind || !Object.hasOwn(kind, code) || isWater(answer)) return null;
   const year = String(answer.year ?? answer.data_date ?? '').trim(), w = kind[code];
   return { code, name: typeof answer.pin.name === 'string' ? answer.pin.name : '', word: w, source: KEYS[answer.country], year,
-    text: `The ${WHO[answer.country]}${year ? ` of ${year}` : ''} shows ${w} at this pin, not a field.` };
+    text: `The ${WHO[answer.country]}${year ? ` of ${year}` : ''} shows ${w} at this place, not a field.` };
 }
 // The farmer's own word that it is a field, kept with the place: { lat, lon, code, word } or null. It counts only for the same pin and the same class,
 // so moving the pin, or a new map year that reads another class, asks again.

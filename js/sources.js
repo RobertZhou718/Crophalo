@@ -80,7 +80,7 @@ export const SOURCES = {
   osm: { org: 'OpenStreetMap', name: 'OpenStreetMap place search', nasa: false,
     who: 'OpenStreetMap contributors, through the Nominatim search service',
     what: 'The names of towns and places, and where they are. Also the name shown above your field.',
-    talk: 'OpenStreetMap is a map of the world that volunteers keep up to date. When you type a place, its name is sent to Nominatim and the best matches come back. Once your pin stops moving, its position is sent too, to find the name of the place, such as “Near Barrie, Ontario”.',
+    talk: 'OpenStreetMap is a map of the world that volunteers keep up to date. When you type a place, its name is sent to Nominatim and the best matches come back. Once you choose a place, its position is sent too, to find the name of the place, such as “Near Barrie, Ontario”.',
     url: 'https://nominatim.org/' },
   // ---- the references the report engine's evidence lines point to (js/engine.js SOURCE_KEYS)
   fao56: { org: 'FAO', name: 'FAO-56 crop water guide', nasa: false,

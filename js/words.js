@@ -18,7 +18,7 @@ export function countryName(name, code) {
 }
 
 // A pin the crop map reads as water gets this answer and no plans (js/nearby.js reads the pin, js/engine.js answers it).
-export const WATER_WORDS = 'This point is water: Crophalo cannot compare crops here. Put the pin on the field itself.';
+export const WATER_WORDS = 'This point is water: Crophalo cannot compare crops here. Draw the field itself.';
 // 0, 0 is refused wherever a position comes in (js/places.js parseCoords, js/data.js cleanPlace): it is what a missing position turns into.
 export const ZERO_WORDS = 'The position reads 0, 0: that point is open sea off West Africa, and it is what a missing position usually turns into. Check the two numbers and try again.';
 
@@ -75,7 +75,7 @@ export const shortName = name => String(name ?? '').replace(/ \(.*\)$/, '');    
 
 // ---- the setup steps: their words, kept apart from the code so they can be read, changed and later translated in one place
 export const STEPS = Object.freeze([
-  { id: 'field', icon: 'i-pin', bar: 'Your field', heading: 'Is this your field?', listen: 'Step 1, your field. Move the pin onto your field on the map. You can also draw its shape. Then press Next step.' },
+  { id: 'field', icon: 'i-pin', bar: 'Your field', heading: 'Is this your field?', listen: 'Step 1, your field. Draw your field on the map: drag a rectangle, or tap its corners. Then press Next step.' },
   { id: 'crops', icon: 'i-leaf', bar: 'Your crops', heading: 'What do you grow?', listen: 'Step 2, your crops. Pick the crops you plant, year after year. Crophalo suggests a rotation first when it can see what farmers grow around you. Choose it, choose another, or build your own. If you grow tea, hazelnuts or other trees, find that under More rotations. Then press Next step.' },
   { id: 'soil', icon: 'i-drop', bar: 'Water and soil', heading: 'Water and soil', listen: 'Step 3, water and soil. Say how your field gets water: rainfed, limited irrigation, or irrigated as needed. Then tap the soil that feels like yours, and its colour. Then press Next step.' },
   { id: 'matters', icon: 'i-scale', bar: 'What matters most', heading: 'What do you want most?', listen: 'Step 4, what matters most. Tap one picture. You can also tick what else matters, and open What limits you. Then press See my field report.' },
@@ -114,12 +114,12 @@ export const PARCEL_FOR = Object.freeze({   // where a farmer looks up a parcel 
 export const PARCEL_ELSE = ['FAO GeoNetwork: find your country’s parcel map', 'https://www.fao.org/geonetwork/'];
 
 export const WORDS = Object.freeze({
-  placeLoading: 'Where is your field?', placeAsk: 'Tap the map or draw your field.', demoChip: 'Demo region', stepLabel: (n, name) => `Step ${n} of 4: ${name}`,
+  placeLoading: 'Where is your field?', placeAsk: 'Draw your field on the map.', demoChip: 'Demo region', stepLabel: (n, name) => `Step ${n} of 4: ${name}`,
   badCoords: 'Could not read those coordinates. Try 42.03, -93.62',
   demoAnswers: 'Answers filled in. Change any in the steps.',
   next: 'Go to the next step', last: 'See my field report', back: 'Back',
   mine: 'Your answers stay on this device unless you share your report.',
-  placeNeed: 'Tap the map or draw your field to go on.', cropsNeed: 'Pick what you grow to go on.', soilNeed: 'Tap your soil and its colour to go on.',
+  placeNeed: 'Draw your field on the map to go on.', cropsNeed: 'Pick what you grow to go on.', soilNeed: 'Tap your soil and its colour to go on.',
   rotName: 'Tap what you grow', rotSame: 'The same crop every year.', rotCycle: n => `${n}-year rotation, then it repeats.`,
   garden: 'They stay in the ground, so there is nothing to rotate. Crophalo will show your weather, frost, rain, slope and soil.',
   ready6: 'Ready rotations', buildOwn: 'Build my own', buildSub: 'Choose each year yourself', yearN: n => `Year ${n}`, removeYear: n => `Remove year ${n}`, addYear: 'Add a year',

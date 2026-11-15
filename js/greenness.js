@@ -1,5 +1,5 @@
-// Crophalo's greenness history for the land history page: how green the land round the pin was at its peak in each growing season since 2001, from NASA's MODIS 16-day greenness. A season with too few clear readings is a gap, never 0 and never a
-// made-up peak; the lookup's own sentence and advice are shown as it gave them, and with no sentence only the seasons are shown. It is always said to be a 2 km patch round the pin (250 m pixels) that can include roads, towns or woods.
+// Crophalo's greenness history for the land history page: how green the land round your place was at its peak in each growing season since 2001, from NASA's MODIS 16-day greenness. A season with too few clear readings is a gap, never 0 and never a
+// made-up peak; the lookup's own sentence and advice are shown as it gave them, and with no sentence only the seasons are shown. It is always said to be a 2 km patch round your place (250 m pixels) that can include roads, towns or woods.
 // Pure: cleanGreenness(), greenLines(), greenChartSVG(). loadGreenness() asks the server's route once, in the background: the first time it can take 80 seconds, and the page never waits for it.
 // Checked by scripts/test_greenness.mjs (a stand-in in the lookup's real shape: the steady Oxford answer, a browner and a greener one, gaps, partial seasons, hostile input).
 import { esc } from './words.js';
@@ -7,7 +7,7 @@ import { once, spotKey } from './memo.js';
 import { plainReason } from './satellites2-data.js';
 import { apiUrl } from './api.js';
 
-export const PATCH_WORDS = 'This is a 2 km patch round the pin, read in 250 m pixels. It can include roads, towns or woods.';
+export const PATCH_WORDS = 'This is a 2 km patch round your place, read in 250 m pixels. It can include roads, towns or woods.';
 export const READING_WORDS = 'Reading the greenness history from NASA’s satellite pictures. The first time this can take up to 80 seconds; the page does not wait for it.';
 export const GREEN_DOWN = 'The greenness history did not answer, so none is shown.';
 const fin = v => typeof v === 'number' && Number.isFinite(v);

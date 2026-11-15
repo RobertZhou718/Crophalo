@@ -138,7 +138,7 @@ export const EX = Object.freeze({
     lead: f => `Each picture is drawn to scale, centred on the field; in truth the field sits somewhere inside each square. The field is an example of ${f} ha. The dashed box is the next picture.`,
     figTitle: 'Data square sizes around one field', fieldLabel: f => `Example field, ${f} ha`, nextBox: 'next picture',
     tableCap: 'The same in words', cols: ['Data', 'Square', 'How Crophalo brings it to your field', 'Against the example field'],
-    holds: n => `One square holds about ${n} fields of this size`, across: n => `About ${n} of its squares across the field`, fieldRow: 'Your field', fieldHow: 'The outline you draw, or a pin; its slope is worked out from the height map inside the outline.',
+    holds: n => `One square holds about ${n} fields of this size`, across: n => `About ${n} of its squares across the field`, fieldRow: 'Your field', fieldHow: 'The outline you draw; its slope is worked out from the height map inside the outline.',
     timeHead: 'Days, months and seasons',
     time: 'Daily values are grouped: for each month, the middle (median) of the years since 2001 gives a normal year, and seasons are counted from each crop’s sowing to its harvest. Counts are written as counts, like “in 4 of 25 years”, never as a chance.',
     sureHead: 'What the size means for how sure it is',

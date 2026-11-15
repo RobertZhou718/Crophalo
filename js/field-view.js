@@ -13,6 +13,6 @@ export function fieldHTML({ state, dem = null, outline = null, loading = false, 
   return `<section class="rv-sec" aria-labelledby="fdTitle"><h2 id="fdTitle">Your land</h2>
     <p class="lead">What Crophalo knows about the ground itself, and where each figure comes from.</p>
     ${loading ? '<p class="cap" role="status" aria-live="polite">Reading the height map for slope and height…</p>' : ''}
-    <div class="land-wrap">${fig ? `<figure class="land-fig">${fig}<figcaption class="cap">${outline.estimated ? 'Estimated: a 10 ha square round your pin, because no outline was drawn.' : 'The outline you drew.'}</figcaption></figure>` : ''}
+    <div class="land-wrap">${fig ? `<figure class="land-fig">${fig}<figcaption class="cap">${outline.estimated ? 'Estimated: a 10 ha square round your place, because no outline was drawn.' : 'The outline you drew.'}</figcaption></figure>` : ''}
       <dl class="land-list">${tiles.map(tile).join('')}</dl></div>${soilTestHTML ? `<div id="stHost" class="land-soiltest"><p class="cap" id="stStatus" role="status" aria-live="polite"></p>${soilTestHTML}</div>` : ''}</section>`;
 }

@@ -156,6 +156,18 @@ await group('the folder', async () => {
       for (const m of line.matchAll(/(?:©|\(c\)|copyright)\s*(\d{4})\b/gi)) hit(m[0], iso(m[1], 12, 31));
     });
   }
+  // the owner's order: a field is not a spot, so no farmer-facing sentence says "pin" (crop and place names aside; code names, CSS names and the "i-pin" icon are not sentences)
+  {
+    const lit = /('(?:[^'\\\n]|\\.)*'|"(?:[^"\\\n]|\\.)*"|`(?:[^`\\]|\\.)*`)/g, word = /(?<![\w.\-#/])pins?(?![\w\-])/i, found = [];
+    for (const [rel, text] of TEXT) {
+      if (!/^js\/[^/]+\.js$/.test(rel)) continue;
+      text.split('\n').forEach((line, i) => {
+        if (line.trimStart().startsWith('//')) return;
+        for (const m of line.matchAll(lit)) { const t = m[0].replace(/\$\{[^}]*\}/g, ''); if (/ /.test(t) && word.test(t)) found.push(`${rel}:${i + 1} ${m[0].slice(0, 70)}`); }
+      });
+    }
+    none('no farmer-facing sentence in js/ says "pin" (a field is not a spot)', found);
+  }
   none(`no date before ${BEGAN} is written anywhere in the project (data ranges are listed with their reason)`, early);
 
   // The licence. The challenge asks for an open-source licence and for the licences of everything bundled to be named, and for SI tool use to be said plainly.

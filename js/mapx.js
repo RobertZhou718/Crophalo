@@ -84,7 +84,7 @@ function shell(root) {
     <p class="sr" id="mapxHelp">${esc(SAY.help)}</p><p class="sr" id="mapxLive" role="status" aria-live="polite"></p>
     <p class="sr" id="mapxPinHelp">${esc(SAY.pinHelp)}</p><p class="sr" id="mapxCornerHelp">${esc(SAY.cornerHelp)}</p><p class="sr" id="mapxWhy"></p>
     <div class="mapx-top">
-      <div class="seg slide mapx-seg" role="group" aria-label="${esc(SAY.toolGroup)}">${['pin', 'rect', 'poly'].map(t => `<button type="button" data-tool="${t}" aria-pressed="${t === 'pin'}" title="${esc(SAY.tool[t])}">${svg(t)}<span class="mapx-w">${esc(SAY.tool[t])}</span></button>`).join('')}</div>
+      <div class="seg slide mapx-seg" role="group" aria-label="${esc(SAY.toolGroup)}">${['rect', 'poly'].map(t => `<button type="button" data-tool="${t}" aria-pressed="${t === 'rect'}" title="${esc(SAY.tool[t])}">${svg(t)}<span class="mapx-w">${esc(SAY.tool[t])}</span></button>`).join('')}</div>
       <div class="mapx-dock" id="mapxDock">
         <div class="mapx-hint" id="mapxHint" role="group" aria-label="${esc(SAY.barName)}">
           <div class="mapx-result" id="mapxResult" hidden><p class="mapx-big" id="mapxBig"></p><p class="mapx-second"><span id="mapxSecond"></span> <span class="chip" id="mapxUsed"></span></p></div>
@@ -182,9 +182,7 @@ function drawPin({ land = false, from = null } = {}) {
   if (!layers.pin) {
     layers.pin = L.marker(at, { icon: pinIcon(), interactive: false, keyboard: false, riseOnHover: false }).addTo(map);
     const el = pinEl();
-    el.tabIndex = 0; el.setAttribute('role', 'button'); el.setAttribute('aria-label', SAY.pinName); el.setAttribute('aria-describedby', 'mapxPinHelp');
-    el.addEventListener('pointerdown', pinDown);
-    el.addEventListener('keydown', pinKey);
+    el.tabIndex = -1; el.setAttribute('aria-hidden', 'true'); el.classList.add('target');   // a field is not a spot: the mark is a soft target at the chosen place, never a pin to drag, press or reach by keys
   } else layers.pin.setLatLng(at);
   if (from && !motionOff() && (from.lat !== keep.pin.lat || from.lon !== keep.pin.lon)) {   // the old pin fades out where it was
     const old = L.marker([from.lat, from.lon], { icon: pinIcon(), interactive: false, keyboard: false }).addTo(map), o = old.getElement();
@@ -196,9 +194,7 @@ function drawPin({ land = false, from = null } = {}) {
 }
 function dimPin() {
   const el = pinEl(); if (!el) return;
-  const off = !!draft;   // while a drawing tool is on, the pin steps out of the way of the pointer and of the Tab order
-  el.classList.toggle('dim', off); el.tabIndex = off ? -1 : 0;
-  if (off) el.setAttribute('aria-hidden', 'true'); else el.removeAttribute('aria-hidden');
+  el.classList.toggle('dim', !!draft); el.tabIndex = -1; el.setAttribute('aria-hidden', 'true');   // the place mark is only a soft target: out of the pointer's and the Tab order's way
   el.classList.toggle('carries', !!keep.ring);
 }
 // A settled place for the field: the wizard keeps it (its answers and step stay), the report starts fetching.
@@ -367,8 +363,11 @@ function undoWords(kind, before, now) {
 
 // ---- the tools
 const DRAWING = ['rect', 'poly'];
+// With no outline the Rectangle is always armed: there is no Pin tool to fall back to.
+function armIdle() { if (!keep.ring && !draft && keep.tool === 'pin') { draft = { tool: 'rect', pts: [], times: [], ghost: false }; keep.tool = 'rect'; } }
 function setTool(tool) {
   if (!['pin', ...DRAWING].includes(tool)) return;
+  if (tool === 'pin' && !keep.ring) tool = 'rect';   // there is no Pin tool: with no outline the Rectangle stays armed
   if (tool === keep.tool) { if (draft && compact()) enterDrawView(); checkFar(); return; }   // the tool already pressed changes nothing (on a phone it only brings the drawing view back)
   const had = draft;
   if (had?.pts.length) { step('switch'); kit.clearDraft(true); }
@@ -396,7 +395,7 @@ function cancelDrawing() {
   const n = draft.pts.length, tool = draft.tool;
   if (n) step('cancel');
   kit.clearDraft(true);
-  draft = null; keep.tool = 'pin'; growF = 1;
+  draft = null; keep.tool = 'pin'; growF = 1; armIdle();
   kit.ghost(null); kit.outline(keep.ring);
   if (n) undoToast(SAY.toast[tool]);
   dimPin(); saveDraft(); sync();
@@ -408,7 +407,7 @@ function escape(event) {
   if (spotOpen()) { stop(); closeSpot(); return; }
   if (draft?.pts.length) { stop(); cancelDrawing(); return; }
   if (selected) { stop(); deselect({ words: true }); return; }
-  if (draft) { stop(); setTool('pin'); return; }
+  if (draft && keep.ring) { stop(); setTool('pin'); return; }   // with no outline the Rectangle is always armed: Escape goes on to leave full screen
   if (ui.box.classList.contains('full')) { stop(); exitFull(); }
 }
 
@@ -879,7 +878,7 @@ function lineWords() {
   if (draft) {
     if (boxNow) return SAY.rectBox;
     if (z < DRAW_FROM) return says(SAY.drawFar, h);
-    if (draft.tool === 'rect') return says(n === 0 ? SAY.rect0 : n === 1 ? SAY.rect1 : SAY.rect2, h, n === 2 ? SAY.btn.setFar : SAY.btn.setCorner);
+    if (draft.tool === 'rect') return says(n === 0 ? (keep.pin ? SAY.rectHere : SAY.rect0) : n === 1 ? SAY.rect1 : SAY.rect2, h, n === 2 ? SAY.btn.setFar : SAY.btn.setCorner);
     if (st === 'closing') return says(SAY.polyClose, h, SAY.btn.closeOutline);
     return says(n === 0 ? SAY.poly0 : n < 3 ? SAY.poly1 : SAY.poly3, h, SAY.btn.addCorner);
   }
@@ -957,7 +956,9 @@ function syncNow(fade) {
   ui.box.classList.toggle('crossing', crossingNow);
   ui.box.classList.toggle('drawview', drawView);
   ui.box.classList.toggle('no-pin', !keep.pin);
-  for (const b of ui.tools.querySelectorAll('button')) b.setAttribute('aria-pressed', b.dataset.tool === keep.tool ? 'true' : 'false');
+  const shownTool = keep.tool === 'pin' && !keep.ring ? 'rect' : keep.tool;
+  ui.box.classList.toggle('has-ring', !!keep.ring);
+  for (const b of ui.tools.querySelectorAll('button')) b.setAttribute('aria-pressed', b.dataset.tool === shownTool ? 'true' : 'false');
   slideTools();
   if (map.doubleClickZoom) DRAWING.includes(keep.tool) ? map.doubleClickZoom.disable() : map.doubleClickZoom.enable();
   const handlesOn = selected && keep.ring && !outlineTiny() && !draft;
@@ -1104,11 +1105,11 @@ function applyStrip() {
 function fieldFromOutside(lat, lon, { zoom = 13, name, country } = {}) {
   const at = L.latLng(lat, lon), outside = keep.ring && !insideRing(lat, lon, keep.ring), drawing = draft?.pts.length;
   if (outside || drawing || keep.pin) step(outside ? 'moveOut' : 'pin');
-  if (drawing) { kit.clearDraft(); draft = null; keep.tool = 'pin'; }
+  if (drawing) { kit.clearDraft(); draft = null; keep.tool = 'pin'; armIdle(); }
   if (selected) { selected = false; chosen = -1; }
   if (outside) { const wasUsed = keep.used; keep.ring = null; keep.used = false; kit.outline(null); kit.ghost(null); closeSpot(false); if (wasUsed) bus('crophalo:area', null); bus('crophalo:outline', { ring: null, used: false }); }
   else if (draft?.ghost) { kit.ghost(null); kit.outline(keep.ring); }
-  if (!keep.ring && draft) { draft = null; keep.tool = 'pin'; }
+  if (!keep.ring && draft) { draft = null; keep.tool = 'pin'; armIdle(); }
   keep.pin = { ...(keep.pin || {}), lat: r4(lat), lon: r4(wrapLon(lon)), ...(name !== undefined ? { name } : {}), ...(country !== undefined ? { country } : {}) };
   drawPin({ land: true });
   map.flyTo(at, zoom, { animate: !motionQuiet(), duration: 0.6 });   // one calm fly
@@ -1131,7 +1132,7 @@ function onPlace(event) {
   if (place?.from === 'outside') { fieldFromOutside(place.lat, place.lon, { zoom: Math.max(map.getZoom(), 13) }); return; }
   // a new setup: nothing of the last field is carried over
   closeSpot(false); past.length = 0; future.length = 0; clearTimeout(pendingTap);
-  draft = null; selected = false; chosen = -1; keep.ring = null; keep.used = false; keep.tool = 'pin'; boxNow = null;
+  draft = null; selected = false; chosen = -1; keep.ring = null; keep.used = false; keep.tool = 'pin'; boxNow = null; armIdle();
   kit.clearDraft(); kit.outline(null); kit.ghost(null);
   keep.pin = place ? { lat: place.lat, lon: place.lon, name: place.name || '', country: place.country || '' } : null;
   if (place) { prefetch(place.lat, place.lon); if (place.area?.pts?.length >= 3) { keep.ring = cleanRing(place.area.pts, 5); keep.used = true; kit.outline(keep.ring); } }
@@ -1184,7 +1185,7 @@ function onKey(event) {
   if (k.startsWith('Arrow')) { arrowsPan(event); kbdOn(); return; }
   if (k === '+' || k === '=') { event.preventDefault(); kbdOn(); zoomBy(1); return; }
   if (k === '-' || k === '_') { event.preventDefault(); kbdOn(); zoomBy(-1); return; }
-  if (k === '1' || k === '2' || k === '3') { event.preventDefault(); kbdOn(); setTool(['pin', 'rect', 'poly'][+k - 1]); return; }
+  if (k === '1' || k === '2') { event.preventDefault(); kbdOn(); setTool(['rect', 'poly'][+k - 1]); return; }
   if (k === ' ' || k === 'Spacebar') { event.preventDefault(); kbdOn(); stepAtCross(); return; }
   if (k === 'Enter') { event.preventDefault(); kbdOn(); if (draft?.tool === 'poly' && draft.pts.length >= 3) closePoly(); else stepAtCross(); return; }
   if (k === 'Backspace' && draft?.pts.length) { event.preventDefault(); undo(); }
@@ -1221,6 +1222,7 @@ function mount(root) {
   const kept = loadDraft();
   if (kept && kept.step === 'done' && !keep.ring) { keep.ring = cleanRing(kept.pts, 5); keep.used = false; keep.madeBy = kept.tool; }
   else if (kept && kept.step !== 'done') { draft = { tool: kept.tool, pts: kept.pts.map(LL), times: kept.pts.map(() => 0), ghost: !!keep.ring }; keep.tool = kept.tool; backWords = SAY.said.draftBack; }
+  armIdle();   // with no outline yet, the Rectangle is armed when the map opens
   const view = keep.ring || draft?.pts.length > 1 ? L.latLngBounds([...(keep.ring || []), ...(draft?.pts.map(ll) || [])]) : null;
   if (view) map.fitBounds(view, { padding: [48, 48], maxZoom: SELF_MAX, animate: false });
   else if (draft?.pts.length) map.setView(draft.pts[0], LAND_AT, { animate: false });
@@ -1244,7 +1246,7 @@ function mount(root) {
   });
   ui.hintBtns.addEventListener('focusin', event => { const b = event.target.closest('[data-act]'); ui.why.textContent = b?.dataset.why || ''; syncCross(); });
   ui.stack.addEventListener('click', onStack);
-  ui.change.addEventListener('click', () => { if (keep.tool !== 'pin') setTool('pin'); enterDrawView(); });
+  ui.change.addEventListener('click', () => { if (keep.ring) { setTool('rect'); } enterDrawView(); });
   ui.canvas.addEventListener('pointerdown', onDown);
   ui.canvas.addEventListener('pointermove', onMove, { passive: true });
   document.addEventListener('pointerup', onUp, true); document.addEventListener('pointercancel', onCancel, true);

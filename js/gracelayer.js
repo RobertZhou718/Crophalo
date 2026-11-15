@@ -1,4 +1,4 @@
-// Crophalo's Regional water storage on the setup map: NASA GRACE and GRACE-FO stored water for the region round the pin, asked of Crophalo's own server, drawn as one soft disc about 300 km across under the place names,
+// Crophalo's Regional water storage on the setup map: NASA GRACE and GRACE-FO stored water for the region round your place, asked of Crophalo's own server, drawn as one soft disc about 300 km across under the place names,
 // with a legend card: the value and its month, "very coarse: one value for a whole region, not your field", the colour bar with a marker, Earlier / Later / Newest month, "Play the last 8 months", the credit, an "i" card and an honest reason when nothing is drawn.
 // Not pure (the facts and words are js/grace.js). Checked by scripts/e2e_map.mjs (the grace group: on and off, no pin, the answer drawn, a month with no measurement, a failed lookup, the months, the play, the fit at 320 px).
 import { GRACE, GRACE_URL, GRACE_CREDIT, GRACE_CLASSES, GAP_COLOUR, GRACE_WORDS, cleanGrace, cellKey, classOf, barAt, barGradient, monthOf, stepMonth, graceFrames, monthWords, monthShort,
@@ -109,7 +109,7 @@ export function initGrace(ui, env) {
   function draw() {   // every line of the card from the state: what is asked, what came back, the month shown
     if (!card()) return;
     const g = s.g, ready = s.status === 'ready' && g, m = ready ? monthOf(g, keep.month) : null;
-    setText(part('[data-here]'), ready ? hereWords(g, keep.month) : (s.status === 'asking' ? `${GRACE.here}: reading…` : `No value for your pin: ${s.status === 'nopin' ? 'drop a pin first' : 'nothing came back'}.`));
+    setText(part('[data-here]'), ready ? hereWords(g, keep.month) : (s.status === 'asking' ? `${GRACE.here}: reading…` : `No value for your field: ${s.status === 'nopin' ? 'draw your field first' : 'nothing came back'}.`));
     const mark = part('[data-mark]'), band = part('[data-gband]');
     if (mark) { const at = m && m.cm !== null ? barAt(m.cm) : null; mark.hidden = at === null; if (at !== null) mark.style.left = `${Math.round(at * 1000) / 10}%`; }
     if (band) {

@@ -1,7 +1,7 @@
 // The numbers of THE DESCENT: where the globe and the map are the same size, how long each stretch of the flight is, which way round the Earth turns. Pure: no page, no clock.
 // Used by js/macro-descent.js; checked by scripts/test_live_orbits.mjs.
 const D = Math.PI / 180, SHARP_PX = 2048;
-export const PIN_ZOOM = 15;   // a field's zoom on a pin: what the setup uses after "I am at my field"   // the setup map's own zoom for a place; the width of the Earth picture that stays sharp
+export const PIN_ZOOM = 15;   // a field's zoom on a place: what the setup uses after "I am at my field"   // the setup map's own zoom for a place; the width of the Earth picture that stays sharp
 // An orthographic globe of radius r px shows 6,371,000 / r metres a pixel at its middle; a Web Mercator map at zoom z shows 156,543.03 cos(lat) / 2^z: they match when 2^z = 0.024571 r cos(lat).
 // A whole zoom, so the map's tiles are crisp; zoom 4 where the picture stays sharp at that size (r at most (width / 2 pi) x 1.6), else zoom 3.
 export function handoff(lat, rMax = (SHARP_PX / (2 * Math.PI)) * 1.6) {

@@ -129,7 +129,7 @@ export const NOT_READ = Object.freeze({
   modis: 'The greenness history since 2001 is not read yet: its lookup is not connected.',
   pests: 'Pest sightings nearby are not read yet.',
   slope: 'The slope is not read yet. It is read when you are online.',
-  soil: 'The soil at the farm pin is not read yet.',
+  soil: 'The soil at the farm’s place is not read yet.',
 });
 export const CHECKLIST = Object.freeze([
   ['A lab soil test: pH, nutrients and salt.', 'The soil map is 250 m wide.'],

@@ -50,7 +50,7 @@ import { hasRotation, hasSoil, hasPlace } from './steps.js';
 
 const $ = (sel, root = document) => root.querySelector(sel), $$ = (sel, root = document) => [...root.querySelectorAll(sel)];
 const WORDS = { change: 'Change answers', farm: 'Add to My farm', farmDone: 'Open in My farm', title: 'Your field', sources: 'Sources', again: 'Try again', back: 'Back', home: 'Back to the start',
-  none: 'There is no report to show yet. Answer the setup questions first.', askTitle: 'Is this your field?', fieldOk: 'This is my field: carry on', movePin: 'Move the pin to my field', priorities: 'Your priorities', fine: 'Fine-tune what matters', whatif: 'What if the weather shifts?' };
+  none: 'There is no report to show yet. Answer the setup questions first.', askTitle: 'Is this your field?', fieldOk: 'This is my field: carry on', movePin: 'Draw my field', priorities: 'Your priorities', fine: 'Fine-tune what matters', whatif: 'What if the weather shifts?' };
 const PRIO_NAMES = ['Water fit', 'Soil health', 'Soil wash-off', 'Income', 'Weather safety (drought, heat, frost)'], PRIO_WORDS = ['Not a concern', 'A little', 'Some', 'Important', 'Very important', 'Most important'];
 // The Calendar tab's stylesheet is added when the report starts, so the page's own file does not have to list it.
 function ensureStyle(href) { if (!document.querySelector(`link[href="${href}"]`)) { const l = document.createElement('link'); l.rel = 'stylesheet'; l.href = href; document.head.append(l); } }
@@ -273,7 +273,7 @@ export async function openReport(state, { demo = false } = {}) {
   const mine = ++run;
   cur = { state: structuredClone(state), tab: 'letter', plan: null, rows: freshRows(), loading: true, result: null, climate: null, demo, t0: Date.now(), weatherIn: false, seen: false, late: new Map() };
   lastKind = '';   // a report that opens again is a new screen change, whatever the last one showed
-  if (!hasPlace(cur.state)) { cur.loading = false; cur.noPlace = true; cur.failed = 'Tap the map or draw your field, then open the report again.'; draw(); return; }   // no position: nothing is asked of any service
+  if (!hasPlace(cur.state)) { cur.loading = false; cur.noPlace = true; cur.failed = 'Draw your field on the map, then open the report again.'; draw(); return; }   // no position: nothing is asked of any service
   draw({ focus: true });
   const ticker = setInterval(() => { if (mine !== run || !cur?.loading) { clearInterval(ticker); return; } draw(); }, 1000);   // the seconds and the slow words of the list move once a second
   const rowOf = key => cur.rows.find(r => r.key === key), loc = cur.state.loc, env = { fetch: globalThis.fetch.bind(globalThis), caches: globalThis.caches, climateFrom: seam.climateFrom };
@@ -355,7 +355,7 @@ export function showReport() {
   root().innerHTML = `<div class="rv-wrap"><section class="rv-sec"><h1 id="reportTitle" tabindex="-1">Your report</h1><p>${WORDS.none}</p><p><button type="button" class="btn primary" data-act="home">${WORDS.home}</button></p></section></div>`;
 }
 
-// The outline a report works with: the one the farmer drew, or an estimated 10 ha square round the pin, always flagged.
+// The outline a report works with: the one the farmer drew, or an estimated 10 ha square round your place, always flagged.
 const outlineOf = state => state.area ? { ...state.area, estimated: false } : estimatedArea(state.loc);
 // The tabs that ask the server when they are first opened: Satellites & prices (30 days of satellite rain) and Field (the height map). Each fills its panel when it answers.
 function loadFor(part) {

@@ -84,8 +84,8 @@ const digits = (layer, v) => (layer.id === 'ndvi' ? v.toFixed(2) : layer.id === 
 // "Greenness here: 0.62 · 9 Nov", the rain as the day's average rate with about how much fell, or, when nothing could be read, the plain reason. Pure.
 export function hereWords(layer, hit, day, why = '') {
   const on = day ? ` · ${shortDay(day)}` : '';
-  if (!hit) return `No value for your pin${why ? `: ${why}` : ''}.`;
-  if (hit.nodata) return `No value for your pin: ${HERE_WHY.nodata}.`;
+  if (!hit) return `No value for your field${why ? `: ${why}` : ''}.`;
+  if (hit.nodata) return `No value for your field: ${HERE_WHY.nodata}.`;
   if (hit.clear) return `${layer.here}: ${layer.clear ?? 'under the bottom of the scale'}${on}`;
   const v = layer.cm?.kelvin ? hit.value - 273.15 : hit.value;
   if (layer.id === 'rain') {
@@ -95,7 +95,7 @@ export function hereWords(layer, hit, day, why = '') {
   }
   return `${layer.here}: ${hit.open ? 'about ' : ''}${digits(layer, v)}${layer.unit}${on}`;
 }
-export const HERE_WHY = Object.freeze({ nopin: 'drop a pin first', nodata: 'no image at the pin on this day', blocked: 'the browser did not allow reading the picture', down: 'NASA did not answer' });
+export const HERE_WHY = Object.freeze({ nopin: 'draw your field first', nodata: 'no image at your field on this day', blocked: 'the browser did not allow reading the picture', down: 'NASA did not answer' });
 
 // ---- fires: appear in the order they were seen, the newest few get a halo, and the count in view
 export function fireOrder(points, total = 2400) {

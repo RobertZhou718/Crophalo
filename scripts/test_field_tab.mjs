@@ -57,7 +57,7 @@ const dem = south, tiles = landTiles({ state: base, dem, outline: est }), by = i
 same('the tiles, in order: soil, slope, height, size, spot', tiles.map(t => t.id), ['soil', 'slope', 'height', 'size', 'spot']);
 check('assumed soil says nothing was measured and that the report is less sure', /Average soil \(assumed\)/.test(by('soil').value) && /Nothing was measured/.test(by('soil').text) && /less sure/.test(by('soil').text));
 check('slope: the class, the percent, the downhill side, the basis and the source with its spacing', by('slope').value === 'Gently sloping (3.0%)' && /Water runs downhill towards the south\./.test(by('slope').text) && /NRCan HRDEM lidar, one every 2\.0 m\./.test(by('slope').text), by('slope').text);
-check('an estimated outline says so in the slope line: the plane of a square round the pin, not drawn', /a square of about 316 m round your pin \(estimated: no outline was drawn\)/.test(by('slope').text), by('slope').text);
+check('an estimated outline says so in the slope line: the plane of a square round the pin, not drawn', /a square of about 316 m round your place \(estimated: no outline was drawn\)/.test(by('slope').text), by('slope').text);
 check('a drawn outline says it is the field you drew', /The plane that fits the field you drew\./.test(landTiles({ state: base, dem, outline: drawn }).find(t => t.id === 'slope').text));
 same('height in metres with the source', [by('height').value, /NRCan HRDEM lidar, one every 2\.0 m/.test(by('height').text)], ['300 m', true]);
 check('the size of an estimate is marked estimated and called a stand-in, not a measurement', by('size').value === '10 ha (estimated)' && /stand-in, not a measurement/.test(by('size').text));
@@ -85,7 +85,7 @@ check('a square field looks square even far from the equator (at 60 degrees)', (
 // ---- the tab
 const html = fieldHTML({ state: base, dem, outline: est });
 check('"Your land" with its lead, the outline and the list', /Your land/.test(html) && /What Crophalo knows about the ground itself/.test(html) && /land-fig/.test(html) && /<dl class="land-list">/.test(html));
-check('the figure caption says it is estimated, and why', /Estimated: a 10 ha square round your pin, because no outline was drawn\./.test(html));
+check('the figure caption says it is estimated, and why', /Estimated: a 10 ha square round your place, because no outline was drawn\./.test(html));
 check('a drawn outline is captioned as drawn', /The outline you drew\./.test(fieldHTML({ state: base, dem, outline: drawn })));
 check('each tile is a term and a value, and the ones from lookups have an "i"', (html.match(/<div class="land-tile"/g) ?? []).length === 5 && (html.match(/<dt>/g) ?? []).length === 5 && (html.match(/class="srci/g) ?? []).length >= 3);
 check('while the height map is read: a status line, and the tiles say "Not read yet"', (h => /Reading the height map for slope and height/.test(h) && /Not read yet/.test(h))(fieldHTML({ state: base, dem: null, outline: est, loading: true })));

@@ -44,7 +44,7 @@ export function todoItems(tab, model) {
     if (!f.soil) add('Soil: not known yet.', { id: 'soil', label: 'Choose this field\'s soil' });
     else if (f.soil.assumed) add('The soil is assumed until a real one answers.', { id: 'soil', label: 'Choose this field\'s soil' });
     if (!t && !f.marks?.slope) add('The slope could not be read. It is read again when you are online.', { id: 'land', label: 'Mark the land yourself' });
-    if (f.estimated) add('The outline is estimated: a square around the pin. Draw the real outline to make it exact.');
+    if (f.estimated) add('The outline is estimated: a square around your place. Draw the real outline to make it exact.');
   } else if (tab === 'weather') {
     for (const a of (model.forecast !== 'none' && model.forecast?.alerts) || []) add(a.text, a.remind ? { id: 'remind-alert:' + a.id, label: 'Remind me the evening before' } : null);
   } else if (tab === 'remind') {

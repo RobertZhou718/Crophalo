@@ -50,14 +50,14 @@ export function grewModel({ state, answer = null, country = 'US', pinOnly = fals
     const small = /too small/i.test(answer?.reason || '') || state === 'small';
     return { state: small ? 'small' : 'down', lines: [small ? 'This field is too small to read by year on the crop map.' : 'The crop map did not answer. Try again later.'], strip: [], more: [] };
   }
-  const turn = turnOf(answer), near = afterCorn(answer.near), where = pinOnly || answer.where === 'pin' ? 'around your pin' : 'on this field';
-  const lines = [turn ? `The crop map shows ${turnWords(turn)} ${pinOnly ? 'around your pin' : 'here'} since ${turn.since}.` : `The crop map shows: ${recent(answer).join(', ')}.`];
+  const turn = turnOf(answer), near = afterCorn(answer.near), where = pinOnly || answer.where === 'pin' ? 'around the place you chose' : 'on this field';
+  const lines = [turn ? `The crop map shows ${turnWords(turn)} ${pinOnly ? 'around the place you chose' : 'here'} since ${turn.since}.` : `The crop map shows: ${recent(answer).join(', ')}.`];
   if (answer.near) lines.push(near ? neighbourWords(near) : 'Too few map points around you to count.');
   if (turn && turn.crops.includes('corn')) lines.push('Rotation breaks some corn pests but not all, so ask your adviser which ones here.');
   lines.push(turn ? 'The map can be wrong for one field, so trust what you know.' : 'The map can be wrong for one field, so choose your crops from what you know.');
   const first = answer.years?.first, last = answer.years?.last, us = country === 'US';
   const more = [
-    `How we read it: we look at up to ${answer.points || 9} points ${pinOnly ? 'around your pin' : 'inside your field'} for each year. A year counts when more than half of the points agree. `,
+    `How we read it: we look at up to ${answer.points || 9} points ${pinOnly ? 'around the place you chose' : 'inside your field'} for each year. A year counts when more than half of the points agree. `,
     ...(answer.near ? [`Around you: we count what followed corn in ${answer.near.years?.first ?? ''} to ${answer.near.years?.last ?? ''}, on about ${answer.near.grid_points || 900} map points 170 m apart within 3 km of the field. It counts map points, not farms, and never one named place.`] : []),
     us ? 'How good the map is: its makers say major crops are normally right 85 to 95 times in 100.' : 'How good the map is: it aims to be right at least 85 times in 100.',
     `The map: ${us ? 'USDA crop map' : 'Agriculture and Agri-Food Canada crop map'}, 30 m squares, ${first} to ${last}.`,

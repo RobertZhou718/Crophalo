@@ -40,7 +40,7 @@ check('both rotations are shown side by side, the suggested one marked', (ov.mat
 check('what covers the ground after harvest is said for each, in words from the plan', /After [^<]*:<\/b> leftover crop residue: a thin cover/.test(ov) && /After [^<]*:<\/b> a living cover that protects the soil/.test(ov) && !/Corn, 1:/.test(ov));
 check('the late-harvest caveat names the window from the plan, not an invented date', ov.includes('Where it may be hard:') && ov.includes('25 Sep 2028') && ov.includes('15 Oct 2028') && ov.includes('squeezes that window'));
 check('how sure, with its fold of what to confirm', ov.includes('How sure this is:') && ov.includes('Somewhat sure') && ov.includes('id="ovSure"') && ov.includes('What local knowledge would change it') && ov.includes('Soil is assumed, not measured.') && ov.includes('The score is a guide. It is not a yield and not a chance of success.'));
-check('the assumptions are written on the screen: assumed soil, rain only, an estimated outline', ov.includes('an average loam is assumed') && ov.includes('Water: rain only') && ov.includes('estimated as a 10 ha square around the pin'));
+check('the assumptions are written on the screen: assumed soil, rain only, an estimated outline', ov.includes('an average loam is assumed') && ov.includes('Water: rain only') && ov.includes('estimated as a 10 ha square around your place'));
 check('the score ring is there for the suggestion', ov.includes('Score 71 out of 100'));
 check('there is an "i" beside the suggestion that opens its sources', /class="srci nasa"[^>]*data-src="[^"]*power[^"]*"/.test(ov));
 check('"Add to My Farm" is not in the Overview: it is one action, in the bar', !/Add to My Farm/.test(ov));

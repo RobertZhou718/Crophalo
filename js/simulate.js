@@ -306,10 +306,10 @@ export function checkNewOutline(farm, ring, { ignore = '', units = 'metric' } = 
   if (issue) return { ok: false, refused: issue };
   if (farm.fields.filter(f => f.id !== ignore).length >= LIMITS.fields && !ignore) return { ok: false, refused: 'A farm holds up to 40 fields.' };
   const mid = interiorPoint(ring), km = distanceM([farm.pin.lat, farm.pin.lon], mid) / 1000;
-  if (km > LIMITS.farKm) return { ok: false, ask: 'far', km: Math.round(km), reason: `This outline is ${Math.round(km)} km from the farm pin. NASA weather squares are about 50 km wide, so it needs its own farm.` };
+  if (km > LIMITS.farKm) return { ok: false, ask: 'far', km: Math.round(km), reason: `This outline is ${Math.round(km)} km from the farm’s place. NASA weather squares are about 50 km wide, so it needs its own farm.` };
   let worst = null;
   for (const f of farm.fields) if (f.id !== ignore) { const ha = overlapHa(ring, f.ring); if (ha >= 0.05 && (!worst || ha > worst.ha)) worst = { name: f.name, ha }; }
-  const note = km > LIMITS.nearKm ? `${Math.round(km)} km from the farm pin: this field's weather may differ.` : '';
+  const note = km > LIMITS.nearKm ? `${Math.round(km)} km from the farm’s place: this field's weather may differ.` : '';
   return { ok: true, overlap: worst ? { name: worst.name, ha: r(worst.ha, 1), words: `This overlaps ${worst.name} by about ${worst.ha.toFixed(1)} ha. Keep both?` } : null, note, km };
 }
 
@@ -643,7 +643,7 @@ export function moveFarmPin(store, id, lat, lon, label = '', now = Date.now()) {
   if (!farm) return { refused: 'That farm could not be found.' };
   if (la == null || lo == null) return { refused: 'That place could not be read.' };
   const far = farm.fields.filter(f => distanceM([la, lo], interiorPoint(f.ring)) / 1000 > LIMITS.farKm).length;
-  return { store: mapFarm(store, id, f => touch({ ...f, pin: { ...f.pin, lat: r(la, 4), lon: r(lo, 4), label: text(label, 200) || f.pin.label } }, now)), far, words: far ? `${far} field${far === 1 ? ' is' : 's are'} now more than 50 km from the pin. NASA weather squares are about 50 km wide.` : '' };
+  return { store: mapFarm(store, id, f => touch({ ...f, pin: { ...f.pin, lat: r(la, 4), lon: r(lo, 4), label: text(label, 200) || f.pin.label } }, now)), far, words: far ? `${far} field${far === 1 ? ' is' : 's are'} now more than 50 km from the farm’s place. NASA weather squares are about 50 km wide.` : '' };
 }
 export const pruneDeletedFarms = (deleted, now = Date.now()) => deleted.filter(d => now - d.at <= LIMITS.trashDays * DAY_MS);
 // Delete a farm: it goes whole to Recently deleted (the last 5, 30 days), so its fields and plans can come back.

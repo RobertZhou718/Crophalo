@@ -220,7 +220,7 @@ export function metres(a, b) { const f = frame(a), [x, y] = f.to(b); return Math
 export function direction(a, b) { const f = frame(a), [x, y] = f.to(b), deg = (Math.atan2(x, y) / RAD + 360) % 360; return SAY.dirs[Math.round(deg / 45) % 8]; }
 
 // The latitude and longitude as the pin announces them: "Pin at 44.3894, -79.6903".
-export const pinWords = (lat, lon) => `Pin at ${lat.toFixed(4)}, ${lon.toFixed(4)}`;
+export const pinWords = (lat, lon) => `Place at ${lat.toFixed(4)}, ${lon.toFixed(4)}`;
 
 // The slope of the field in plain words (percent): nearly flat under 2, gently under 6, moderately under 12, else steep.
 export function slopeWords(pct) {

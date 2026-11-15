@@ -1,4 +1,4 @@
-// Crophalo's Regional water storage on the map, the facts and the pure parts: NASA GRACE and GRACE-FO (JPL's mascon solution) as one region about 300 km wide round the pin, from Crophalo's own server (/api/gracecell);
+// Crophalo's Regional water storage on the map, the facts and the pure parts: NASA GRACE and GRACE-FO (JPL's mascon solution) as one region about 300 km wide round your place, from Crophalo's own server (/api/gracecell);
 // the answer rebuilt from known parts only, the classes and their colours, where a value stands on the colour bar, the region's disc in map pixels, the months a time-lapse plays and every sentence.
 // Pure: nothing here asks the network or reads the page. Checked by scripts/test_grace.mjs (answers in the lookup's own shape, a month with no measurement, open water, hostile input, the colours for every kind of colour sight).
 import { PLAY } from './layeranim.js';
@@ -104,8 +104,8 @@ export const GRACE_WORDS = Object.freeze({
   what: 'All the water stored in the ground, the soil, the snow, the lakes and the rivers together, as centimetres of water against its 2004 to 2009 average.',
   inside: 'Your whole view lies inside one GRACE region.',
   disc: 'The soft disc shows the size of one region, about 300 km across. NASA’s own edges of the region are not drawn.',
-  nopin: 'Drop a pin on your field to see the stored water of its region.',
-  asking: 'Asking NASA’s GRACE-FO record for the region of your pin… The first answer can take half a minute.',
+  nopin: 'Draw your field to see the stored water of its region.',
+  asking: 'Asking NASA’s GRACE-FO record for the region of your field… The first answer can take half a minute.',
   down: 'Not available right now: Crophalo’s server did not answer for NASA’s GRACE-FO record. Try again later.',
   noroute: 'This copy of Crophalo’s server has no water-storage lookup, so nothing is drawn.',
   busy: 'Crophalo’s server is busy. Try again in a minute.',
@@ -117,7 +117,7 @@ export const GRACE_WORDS = Object.freeze({
 // "Stored water in this region: 4 cm less than the 2004–2009 average (± 8 cm)", then the month in short, or a month with no measurement said plainly. Never more exact than the measurement: whole centimetres.
 export function hereWords(g, month) {
   const m = monthOf(g, month);
-  if (!m) return 'No value for your pin: no measurement that month.';
+  if (!m) return 'No value for your field: no measurement that month.';
   if (m.cm === null) return `${GRACE.here}: no measurement for ${monthWords(m.month)} (the satellites did not measure it; it is left empty, never filled in)`;
   const v = m.cm, same = Math.round(v) === 0, within = m.unc !== null && Math.abs(v) < m.unc;
   const size = same ? 'the same as the 2004–2009 average' : `${cmWords(v)} ${v < 0 ? 'less' : 'more'} than the 2004–2009 average`;
