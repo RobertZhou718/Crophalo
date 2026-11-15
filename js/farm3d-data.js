@@ -438,7 +438,7 @@ export function groundScene(input) {
   const m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(input.date || '');
   const day = m ? { y: +m[1], m: +m[2], d: +m[3] } : null;
   const ev = day ? sunEvents(day, pin.lat, pin.lon) : null;
-  const momentMs = ev && ev.state === 'normal' ? ev.noon - 90 * 60000 : ev ? ev.noon : null;
+  const momentMs = Number.isFinite(input.hourMs) ? input.hourMs : ev && ev.state === 'normal' ? ev.noon - 90 * 60000 : ev ? ev.noon : null;   // the hour the farmer picked (shade), else a morning moment of the date
   const sunNow = momentMs != null ? sunAt(momentMs, pin.lat, pin.lon) : null;
   const sunUp = sunNow && sunNow.apparent > 0;
   const lights = sunNow ? lightsOf(sunNow, null, 0) : { state: 'day', lights: [{ type: 'hemisphere', sky: '#eaf2ff', ground: '#a47148', intensity: 1.5 }] };
@@ -448,17 +448,17 @@ export function groundScene(input) {
   if (g) {
     const shape = g.crop ? cropShape(g.crop) : null, st = Number.isInteger(g.stage) ? g.stage : null;
     const px = (input.viewPx || (phone ? 360 : 900)) * 0.8 / Math.max(box.x1 - box.x0, box.z1 - box.z0, 1);
-    const limit = (phone ? MAX_PLANTS_PHONE : MAX_PLANTS);
+    const limit = Math.min(phone ? MAX_PLANTS_PHONE : MAX_PLANTS, input.plantLimit > 0 ? input.plantLimit : Infinity);   // a weaker device is given fewer plants, spaced wider over the same field
     const bearing = rowBearing(poly, 0);
+    const lay = opts => input.plants === false ? { plants: [] } : plantsOf(poly, { bearing, ...opts, limit });   // plants: false gives the words and the shapes only, for the page while the picture is built elsewhere
     if ((g.state === 'crop' || g.state === 'cover') && shape) {
       const stage = st ?? 3, real = (REAL_HEIGHT[shape] || REAL_HEIGHT.cereal)[stage], share = GROWTH_SHARE[stage];
       const height = symbolHeight({ realHeight: real, span, pxPerMetre: px, stage, share: typeof share === 'function' ? 0.5 : share });
-      const lay = plantsOf(poly, { bearing, rowGap: unit * 0.55, plantGap: unit * 0.45, limit });
-      cover = { kind: stage >= 2 ? 'standing' : 'young', state: g.state, shape, crop: g.crop, stage, stageName: STAGES[stage], height, realHeight: real, colour: g.state === 'cover' ? PALETTE.cover : leafColour(stage, 0.5), plants: lay.plants, bearing,
-        words: `${stage >= 2 ? 'Standing' : 'Young'} ${cropName(g.crop)}, ${STAGES[stage]}.` };
+      cover = { kind: stage >= 2 ? 'standing' : 'young', state: g.state, shape, crop: g.crop, stage, stageName: STAGES[stage], height, realHeight: real, colour: g.state === 'cover' ? PALETTE.cover : leafColour(stage, 0.5), plants: lay({ rowGap: unit * 0.55, plantGap: unit * 0.45 }).plants, bearing,
+        words: stage >= 5 ? `Standing ${cropName(g.crop)}, ready to harvest.` : `${stage >= 2 ? 'Standing' : 'Young'} ${cropName(g.crop)}, ${STAGES[stage]}.` };   // a crop still on the field at the last stage is ready to harvest: "harvested" is the residue's word
     } else if (g.state === 'residue') {
-      const lay = plantsOf(poly, { bearing, rowGap: unit * 0.22, plantGap: unit * 0.22, limit });
-      cover = { kind: 'residue', shape: shape || 'cereal', crop: g.crop, stage: null, height: unit * 0.2, length: unit * 0.7, colour: '#cdb27a', plants: lay.plants, bearing,
+      const lay2 = lay({ rowGap: unit * 0.22, plantGap: unit * 0.22 });
+      cover = { kind: 'residue', shape: shape || 'cereal', crop: g.crop, stage: null, height: unit * 0.2, length: unit * 0.7, colour: '#cdb27a', plants: lay2.plants, bearing,
         words: `${g.crop ? cropName(g.crop)[0].toUpperCase() + cropName(g.crop).slice(1) + ' residue' : 'Crop residue'}: thin, low stalks left lying after harvest.` };
     } else {
       cover = { kind: 'bare', shape: null, crop: null, stage: null, height: 0, colour: PALETTE.soil, plants: [], bearing, words: 'Bare soil: nothing grows and no residue is left.' };
@@ -470,7 +470,7 @@ export function groundScene(input) {
   const why = input.heights?.failed ? String(input.heights.failed).replace(/[.\s]+$/, '') : null;
   const src = given?.name ? `${given.name}, ${given.res_m ? `one every ${given.res_m >= 10 ? Math.round(given.res_m) : given.res_m.toFixed(1)} m` : 'cell size not stated'}. ${given.kind === 'DSM' ? 'It includes the tops of trees and buildings.' : 'Bare ground: trees and buildings are not in it.'} ` : '';
   const heights = hm && !hm.flat ? { model: hm, rise: hm.rise, status: 'read', source: given.name || null, words: `Heights read: ${src}The land rises ${hm.rise < 10 ? hm.rise.toFixed(1) : Math.round(hm.rise)} m across this view, drawn at true height.` }
-    : { model: null, rise: 0, status: why ? 'failed' : given ? 'flat' : 'missing', source: null, words: why ? `Heights not read: ${why}. The land is drawn flat, as a plain schematic.` : 'Heights not read: the land is drawn flat, as a plain schematic.' };
+    : { model: null, rise: 0, status: why ? 'failed' : given ? 'flat' : 'missing', source: null, words: why ? `Heights not read: ${why}; the land is drawn flat, as a plain schematic.` : 'Heights not read: the land is drawn flat, as a plain schematic.' };
   const soilColour = input.soil?.colour || PALETTE.soil;
   const kindWord = input.planKind === 'proposed' ? 'Proposed plan' : 'Current plan';
   return {
@@ -482,12 +482,59 @@ export function groundScene(input) {
     words: {
       cover: cover?.words || 'Not read yet: what covers this field on this date.', note: g?.note || null,
       outline: estimated ? `Outline estimated: a ${ESTIMATED_HA} ha square round the pin. Draw the field to replace it.` : `${field.name || 'Your field'}: ${Math.round(area / 1e3) / 10} ha, from the outline you drew.`,
-      heights: heights.words, sun: sunNow ? (sunUp ? `Sun at ${clock(momentMs, { zone: input.zone, offsetMin: input.offsetMin, lon: pin.lon })}: ${heightWords(sunNow.apparent)} up, in the ${compass8(sunNow.azimuth)}. The one light in the picture.` : 'The sun is down on this date at the hour shown.') : 'No date, so no sun.',
+      heights: heights.words, credit: heights.status === 'read' ? creditWords(given) : '', sun: sunNow ? (sunUp ? `Sun at ${clock(momentMs, { zone: input.zone, offsetMin: input.offsetMin, lon: pin.lon })}: ${heightWords(sunNow.apparent)} up, in the ${compass8(sunNow.azimuth)}. The one light in the picture.` : 'The sun is down on this date at the hour shown.') : 'No date, so no sun.',
       illustrative: 'Plants are symbols, drawn larger than real so they show from here.',
+      past: Number.isInteger(input.pastYear) ? `${input.pastYear}: past weather, not today` : '',   // during the year replay, so the picture is never mistaken for today
     },
     aria: `3D view of ${field.name || 'your field'}, seen from the ${pin.lat < 0 ? 'north' : 'south'}. ${label}: ${cover?.words || 'ground cover not read yet'} ${heights.status === 'read' ? 'Hills at true height.' : 'Drawn flat.'}`,
     // what this view was given, handed back so the page and the checks can see that 3D shows the very field, plan, date and ground the board shows
     echo: { fieldId: field.id ?? null, planKind: input.planKind ?? null, planName: input.planName ?? null, date: input.date ?? null, ground: g ? { state: g.state, crop: g.crop ?? null, stage: Number.isInteger(g.stage) ? g.stage : null, label } : null },
     palette: PALETTE,
   };
+}
+
+// ---- what one device is asked to draw. A device that draws slowly gets fewer plants, a smaller ground picture and fewer pixels, so 3D still opens at once.
+// Tiers: high (a computer with a graphics chip), mid (a phone, 4 cores or fewer, or 4 GB or less), low (drawn in software, 2 cores, or 2 GB or less).
+// The plant symbols have about 110 triangles each at most (the corn and wheat shapes), so each tier's plant count stays under its triangle count.
+export const BUDGETS = Object.freeze({
+  high: Object.freeze({ plants: 4000, triangles: 450000, ground: 1024, pixelRatio: 1.5, antialias: true }),
+  mid: Object.freeze({ plants: 1500, triangles: 170000, ground: 1024, pixelRatio: 1.5, antialias: false }),
+  low: Object.freeze({ plants: 600, triangles: 70000, ground: 512, pixelRatio: 1, antialias: false }),
+});
+// device: { phone, dpr, cores, memoryGB, software, maxTexture } (a 0 or missing value is "not known" and never lowers the tier)
+export function budgetFor({ phone = false, dpr = 1, cores = 0, memoryGB = 0, software = false, maxTexture = 0 } = {}) {
+  const tier = software || (cores > 0 && cores <= 2) || (memoryGB > 0 && memoryGB <= 2) ? 'low' : phone || (cores > 0 && cores <= 4) || (memoryGB > 0 && memoryGB <= 4) ? 'mid' : 'high';
+  const b = BUDGETS[tier], ratio = Math.max(1, Number(dpr) || 1);
+  return { tier, plants: b.plants, triangles: b.triangles, ground: maxTexture > 0 ? Math.min(b.ground, maxTexture) : b.ground, pixelRatio: Math.min(ratio, b.pixelRatio), antialias: b.antialias && ratio < 1.5 };
+}
+// The plants to draw when the land itself already takes part of the triangles: every k-th plant, so the field stays evenly covered (never only its first rows).
+export function thinPlants(plants, keep) {
+  const n = Math.max(0, Math.floor(keep));
+  if (plants.length <= n) return plants;
+  if (!n) return [];
+  const step = plants.length / n, out = [];
+  for (let i = 0; i < n; i++) out.push(plants[Math.floor(i * step)]);
+  return out;
+}
+// Where a plant's shadow falls on flat ground: the offset (metres) from its foot to the tip of its shadow, for a sun direction {x, y, z} (towards the sun) and a height.
+// None when the sun is down or within 3° of the horizon; never longer than three times the height (a low sun's shadow is cut short, not drawn across the field).
+export function shadowOffset(dir, height) {
+  if (!dir || !(dir.y > Math.sin(3 * Math.PI / 180)) || !(height > 0)) return null;
+  const len = Math.min(height / Math.tan(Math.asin(Math.min(1, dir.y))), 3 * height), flat = Math.hypot(dir.x, dir.z) || 1;
+  return { dx: -dir.x / flat * len, dz: -dir.z / flat * len, len };
+}
+// What the picture depends on, as one string: a change of date that leaves the sun, the ground and the field as they were draws nothing again.
+export function pictureKey(sc) {
+  const r = v => Math.round(v * 1000) / 1000, c = sc.cover, s = sc.sun;
+  return JSON.stringify([sc.field.id, sc.field.estimated, sc.field.polygon.map(p => [r(p.x), r(p.z)]), sc.slab.width, sc.slab.depth, sc.soilColour, sc.heights.status, sc.heights.model ? [sc.heights.model.nx, sc.heights.model.ny, r(sc.heights.model.rise)] : null,
+    c ? [c.kind, c.shape, c.crop, c.stage, c.colour, r(c.height), c.plants.length] : null, s ? [r(s.x), r(s.y), r(s.z), s.up] : null, sc.light.state]);
+}
+
+// The height map's own credit and licence, said whenever the land is drawn from it (every map that gives heights asks for its credit to travel with the picture).
+// The server sends both with the heights; the licence is added only when the credit does not already say it.
+export function creditWords(g) {
+  const credit = String(g?.credit ?? '').trim().replace(/[.\s]+$/, ''), licence = String(g?.licence ?? '').trim().replace(/[.\s]+$/, '');
+  if (!credit && !licence) return '';
+  const said = !!licence && credit.toLowerCase().includes(licence.toLowerCase().slice(0, 24));
+  return `Height map: ${credit || licence}${credit && licence && !said ? `. Licence: ${licence}` : ''}.`;
 }

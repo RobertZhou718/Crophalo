@@ -12,14 +12,17 @@
  * current: Plan, recommended: Plan | null, others: [Plan],
  * reason: 'one sentence', evidence: [{ text, sources: ['power', ...] }], gaps: [text], risks: [text],
  * sureness: 'Very sure' | 'Fairly sure' | 'Somewhat sure' | null,
- * sureWhy: [{ firm: true|false, text }], endorsed: true|false, gain: points | null
+ * sureWhy: [{ firm: true|false, text }], endorsed: true|false, gain: points | null,
+ * strategies: [{ id, role, opportunity, text }], fewWhy: text, exposure: [{ month, hazard, crop, stage, count, of, text, source, sources }],
+ * exposureNote: text, bare: [{ id, months, years, of, text }], dropped: [{ kind, slots, reason }]   (js/compare.js: the three strategies to compare
+ * first, when the crops grown now are most exposed, the months the soil is bare, and the ideas the farmer's limits left out, also named in gaps)
  * }
- * state    the setup answers of js/state.js (rotation, farm, soil, soilTest, avoid, prio).
+ * state    the setup answers of js/state.js (rotation, farm, soil, soilTest, avoid, prio, goals, limits).
  * climate  computeClimate() of js/climate.js on the field's NASA POWER record; null when the weather is not read yet: then
  * recommended, sureness and gain are null, current lists the crops with null dates, and gaps says why.
  * spot     what is known about the place: { lat, lon, elev, slope (percent, or null), soil: { texture, source:
  * 'assumed'|'own'|'map'|'world'|'test' }, country, fieldDrawn, absent: [cropIds], common: { cropId: bonus },
- * nearby: { source: 'aci'|'cdl', line, left, gap } }; all optional. absent, common and nearby come from js/nearby.js
+ * nearby: { source: 'aci'|'cdl'|'fao', line, left, gap }, market: { source, year, shares } }; all optional. absent, common and nearby come from js/nearby.js
  * (spotFields) on the crop-map lookup scripts/live/cropsnear.py; without them nothing is checked against local practice.
  * today    the date the plans start after; when left out, the day after the last day of the weather record.
  * recommended is the endorsed best option, or the current plan when nothing does clearly better ("Keep").
@@ -28,7 +31,9 @@
  * Plan = { id, name, kind: 'current' | 'proposed', seasons: [Season],
  * score 0–100, scores { water, soil, erosion, income, weather } 0–100 each (null for a part not worked out; parts is the same
  * object under its older name), pest 0–100, flag: 'holds' | 'borderline' | 'fails', fit: 'Holds up' | 'Only just suits' | "Doesn't suit here",
- * why: one sentence, whyLines: [the longer lines], evidence, gaps, risks, bareMonths, slots }
+ * why: one sentence, whyLines: [the longer lines], evidence, gaps, risks, bareMonths, slots,
+ * benefits: [{ kind, text }], review: [text], facets: { nitrogen, organic, pest, forage, market, waterUse, infiltration } each { score | null, text, source },
+ * bare: [month 1..12] }   (the last four from js/compare.js)
  * Season = { year (the harvest year), crop: cropId, sow: 'YYYY-MM-DD', harvest: 'YYYY-MM-DD', after: 'residue' | 'cover' | 'bare',
  * residueUntil: 'YYYY-MM-DD' | null, window: { earliest, latest } | null,
  * stages: [initial, development, mid, late] days | null, variety: 's'|'m'|'l'|null, wake: 'YYYY-MM-DD' | null,
@@ -44,12 +49,13 @@
  * keyDates(current, proposed) -> [{ key: 'harvest'|'establish'|'spring', date, label, current: ground, proposed: ground }] or []
  * The three dates of the walkthrough when the proposed plan sows a winter crop after another crop's harvest.
  */
-import { own } from './words.js';
+import { own, WATER_WORDS } from './words.js';
 import { cropOf, cropName, cropIds, presetOf, isCrop } from './crops.js';
-import { hotDaysAt } from './climate.js';
+import { hotDaysAt, notFarmlandWords, autumnWords, SQUARE_WORDS, seasonKey, keyToDoy, SOUTH_SHIFT, GROW_LINE } from './climate.js';
 import { cropTiming, followOn, secondFit, kindOf, normalYear, isoOf, doyOfIso, dayWord, roughWord, timingWords, varietyWords, lengthsOf, usualOf, TURN, TIGHT, MONTH_DAYS, SEASON_FOOT } from './season.js';
 import { feasible, supplyOf, cropFit, seasonOf, IRRIGATION_MM } from './fit.js';
 import { scenarios, sureField, FLAG_WORDS, VARIANT_WORDS } from './sure.js';
+import { withLimits, goalTerm, finish, DEEP_COLD } from './compare.js';   // the goals and limits, and the strategy comparison (benefits, review, facets, strategies, exposure, bare months)
 
 const fin = Number.isFinite;
 const clamp = (v, lo = 0, hi = 1) => Math.max(lo, Math.min(hi, v));
@@ -76,7 +82,9 @@ export const SOURCE_KEYS = lockAll({
   fao56: 'FAO Irrigation and Drainage Paper 56 (Allen et al. 1998), Table 11', ecocrop: 'FAO ECOCROP',
   faowater: 'FAO Irrigation Water Management Training Manual 3', faoky: 'FAO Irrigation and Drainage Papers 33 and 66',
   nch40: 'National Corn Handbook NCH-40 (Neild & Newman)', luo2011: 'Luo 2011, Climatic Change 109:583–598', crophalo: "Crophalo's own rule set and crop scales",
-  aci: 'Agriculture and Agri-Food Canada, Annual Crop Inventory (30 m)', cdl: 'USDA NASS Cropland Data Layer (30 m)',
+  aci: 'Agriculture and Agri-Food Canada, Annual Crop Inventory (30 m)', cdl: 'USDA NASS Cropland Data Layer (30 m)', fao: 'FAOSTAT, harvested area by country',
+  eccc: 'Environment and Climate Change Canada, daily climate records of 35 Ontario stations', wintersurvival: 'OMAFRA Field Crop News, Winter Survival',
+  era5land: 'ERA5-Land coldest nights (Open-Meteo)',
 });
 
 // ---- small words
@@ -90,6 +98,17 @@ const round = v => Math.round(v);
 const one = v => (Math.round(v * 10) / 10).toString();
 const plural = (n, word, many = `${word}s`) => `${n} ${n === 1 ? word : many}`;
 const capital = text => text ? text[0].toUpperCase() + text.slice(1) : text;
+const minus = v => String(round(v) + 0).replace('-', '−');   // −24, with a true minus sign; + 0 so −0 reads 0
+const winterChecked = (id, C) => kindOf(id, C) === 'winter' && fin(cropOf(id)?.winterKill);
+// Frost dates are kept as season keys (js/climate.js seasonKey): the day of the year in the north, half a year on in the south.
+const keyOf = (C, d) => fin(d) ? seasonKey(((Math.round(d) - 1) % 365 + 365) % 365 + 1, !!C.south) : NaN;
+const frostDay = (C, key) => fin(key) ? keyToDoy(key, !!C.south) : NaN;
+const sownInAutumn = (id, C) => ['winter', 'autumn'].includes(kindOf(id, C));   // sown in autumn, harvested the next year: no spring frost after its sowing
+// The years a timing's harvest lies past its sowing year's season year: north of the equator a season year is the calendar year; south of it
+// it runs half a year later (July to June), so a summer crop cut after New Year and a winter crop cut that November share one season year.
+const yearsOn = (C, tm) => fin(tm?.harvest) ? Math.floor((tm.harvest - (C.south ? SOUTH_SHIFT : 0) - 1) / 365) : 0;
+const MONTH_NAMES = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
+const seasonWords = C => C.season?.months?.length ? `${MONTH_NAMES[C.season.months[0]]} to ${MONTH_NAMES[C.season.months.at(-1)]}` : 'the six wettest months';   // the growing season of js/climate.js
 const rainKeys = C => C.source === 'era5' ? [] : ['power', C.imerg ? 'gpm' : 'merra2'];
 
 // ---- the farmer's answers and the place, read once
@@ -102,7 +121,7 @@ function contextOf(state, C, spot = {}, opts = {}) {
   const prio = Array.isArray(s.prio) && s.prio.length === 5 && s.prio.every(v => Number.isInteger(v) && v >= 0 && v <= 5) ? s.prio : PRIORITY_SETS.balanced;
   const second = {}; if (rot.second && typeof rot.second === 'object') for (const k of Object.keys(rot.second)) if (/^[0-9]$/.test(k) && isCrop(rot.second[k])) second[k] = rot.second[k];
   const today = doyOfIso(opts.today ?? spot.today) ?? (C?.through ? doyOfIso(C.through) : null);
-  return {
+  return withLimits(s, C, spot, {
     slots, irrigation: ['none', 'limited', 'full'].includes(farm.irrigation) ? farm.irrigation : 'none', irrigationAsked: ['none', 'limited', 'full'].includes(farm.irrigation),
     tillage: own(TILL, farm.tillage) ? farm.tillage : 'reduced', livestock: farm.livestock === true, coverOK: farm.coverOK !== false, labor: farm.labor === true,
     texture: texture ?? 'loam', soilSource: texture ? source : 'assumed', slope: fin(spot.slope) ? spot.slope : fin(s.area?.slope) ? s.area.slope : null,
@@ -111,7 +130,7 @@ function contextOf(state, C, spot = {}, opts = {}) {
     common: spot.common && typeof spot.common === 'object' ? spot.common : {}, recordsRead: Array.isArray(spot.absent) || !!spot.common,
     nearby: spot.nearby && typeof spot.nearby === 'object' ? spot.nearby : null,
     country: typeof spot.country === 'string' && spot.country ? spot.country : null, second, today,
-  };
+  });
 }
 const fitCtx = ctx => ({ irrigation: ctx.irrigation, texture: ctx.texture, elev: ctx.elev, soilTest: ctx.soilTest });
 
@@ -124,7 +143,7 @@ export function shortestCycle(slots) {
 const signature = o => `${o.slots.join('>')}|${o.covers.map(c => c ? 1 : 0).join('')}|${o.tillage}|${Object.entries(o.seconds).map(e => e.join(':')).join(',')}`;
 
 // ---- one option laid out on the field's normal years: the timing of each slot, the turn to the next crop, cover crops, second crops
-// Days are counted on the cycle: slot i is harvested in year i of the cycle; day 1 is 1 January of year 0; the cycle wraps.
+// Days are counted on the cycle: slot i is harvested in season year i of the cycle (yearsOn); day 1 is 1 January of year 0; the cycle wraps.
 function coverCropFor(C, slots) {
   const legume = slots.some(id => cropOf(id).group === 'legume');
   if (C.tropic && C.med.P > 1200) return 'sunnhemp';   // the wet tropics
@@ -142,8 +161,22 @@ export function layout(o, C, ctx) {
     const f = followOn(id, prevId, C);
     follow[i] = f;
     if (f.ok) { t[i] = f.next; if (f.shortened && (i - 1 + N) % N !== i) t[(i - 1 + N) % N] = f.prev; }
+    else if (f.why === 'window' && f.next?.ok && fin(f.next.sow)) t[i] = f.next;   // past its last good sowing day: still never sown before the crop before it is off (the check says it fails)
   });
-  const rel = tm => ({ sow: tm.harvest > 365 ? tm.sow - 365 : tm.sow, harvest: tm.harvest > 365 ? tm.harvest - 365 : tm.harvest });   // on the harvest year
+  const rel = tm => { const back = 365 * yearsOn(C, tm); return { sow: tm.sow - back, harvest: tm.harvest - back }; };   // on the harvest's season year
+  // Every other crop is never sown into the crop before it either: one sown in autumn where winters are mild, or with the rains, whose usual
+  // day comes before the harvest before it is off moves to a week after that harvest and is checked again at its new date (js/season.js).
+  // Slot i is harvested in season year i, so on its own count the crop before it comes off on that crop's own harvest day less 365.
+  const pushed = o.slots.map(() => null);
+  for (let lap = 0; lap < 2; lap++) for (let i = 0; i < N; i++) {   // twice round the cycle: a move at its end can reach its first crop
+    const id = o.slots[i], j = (i - 1 + N) % N, kind = kindOf(id, C);
+    if (id === 'fallow' || o.slots[j] === 'fallow' || follow[i] || kind === 'winter' || kind === 'calendar') continue;
+    const sowAt = rel(t[i]).sow, offAt = rel(t[j]).harvest - 365;
+    if (!fin(sowAt) || !fin(offAt) || sowAt >= offAt + TURN) continue;
+    const day = offAt + TURN + 365 * yearsOn(C, t[i]), moved = cropTiming(id, C, { sow: day });
+    pushed[i] = { from: pushed[i]?.from ?? t[i].sow, to: day, ok: !!moved.ok && fin(moved.harvest) };
+    t[i] = moved;
+  }
   const L = N * 365, wrap = d => ((Math.round(d) - 1) % L + L) % L;
   const at = o.slots.map((id, i) => {
     if (id === 'fallow' || !fin(t[i].sow) || !fin(t[i].harvest)) return null;
@@ -186,7 +219,7 @@ export function layout(o, C, ctx) {
   });
   for (let k = 0; k < L; k++) if (!fin(cov[k])) { cov[k] = 0; what[k] = { state: 'bare', crop: null }; }
   const monthly = Array.from({ length: N * 12 }, (_, g) => { const y = Math.floor(g / 12), m = g % 12, from = y * 365 + BEFORE[m]; let s = 0; for (let d = 0; d < MONTH_DAYS[m]; d++) s += cov[from + d]; return s / MONTH_DAYS[m]; });
-  return { N, t, follow, at, covers, seconds, gaps, monthly, cov, bareMonths: monthly.filter(v => v < 0.3).length / N, yearCover: mean([...cov]) };
+  return { N, t, back: t.map(tm => yearsOn(C, tm)), follow, pushed, at, covers, seconds, gaps, monthly, cov, bareMonths: monthly.filter(v => v < 0.3).length / N, yearCover: mean([...cov]) };
 }
 const BEFORE = [0, 31, 59, 90, 120, 151, 181, 212, 243, 273, 304, 334];
 function monthAt(d) { const day = ((Math.round(d) - 1) % 365 + 365) % 365; let m = 0; while (m < 11 && day >= BEFORE[m + 1]) m++; return m; }
@@ -203,7 +236,7 @@ export function evaluate(o, C, ctx) {
     const waterFit = clamp((w.ratio - 0.45) / 0.6), lowUse = 1 - clamp((w.need - 250) / 600), cc = lay.covers[i];
     const water = 0.55 * waterFit + 0.45 * lowUse - (cc ? 0.30 * cc.dry : 0);
     const s = seasonOf(id, C, tm), heatDays = crop.heat > 60 || !fin(s.days) ? 0 : sumDays(s.sow, s.harvest, d => Y.hotNear(crop.heat, d));
-    const heatExp = clamp(heatDays / 25), tender = crop.frost < 0.3, r = { sow: tm.harvest > 365 ? NaN : tm.sow, harvest: tm.harvest > 365 ? tm.harvest - 365 : tm.harvest };
+    const heatExp = clamp(heatDays / 25), tender = crop.frost < 0.3, r = { sow: tm.harvest > 365 && sownInAutumn(id, C) ? NaN : keyOf(C, tm.sow), harvest: keyOf(C, tm.harvest > 365 ? tm.harvest - 365 : tm.harvest) };   // on the frost keys' count
     const hit = years.filter(y => (fin(r.sow) && fin(y.last) && y.last >= r.sow) || (tender && fin(r.harvest) && fin(y.first) && y.first <= r.harvest));
     const frostRisk = years.length ? hit.length / years.length * (1 - crop.frost) : 0;
     const droughtExp = (fin(C.droughtYears) ? C.droughtYears : 0) * (1 - crop.drought) * (1 - IRR_FACTOR[ctx.irrigation]) * 1.6;
@@ -240,8 +273,8 @@ export function evaluate(o, C, ctx) {
   lay.seconds.forEach((s, i) => { if (!s?.fit?.ok) return; const S = cropOf(s.id); pest += (S.fam !== cropOf(crops[i]).fam ? 0.1 : 0) / N - ([crops[i], crops[(i + 1) % N]].includes(s.id) ? 0.1 : 0) / N; });
   pest = clamp(pest);
   const parts = { water, soil, erosion, income, weather }, w = ctx.prio, wsum = sum(w);
-  const overall = (wsum > 0 ? sum(DIMS.map((d, k) => w[k] * parts[d.id])) / wsum : mean(Object.values(parts))) * 0.9 + 0.1 * pest;
-  const extra = 0.03 * Math.max(0, N - 2) + coverN / N * (ctx.labor ? 0.01 : 0.04) + secondN / N * (ctx.labor ? 0.03 : 0.06);
+  const overall = (wsum > 0 ? sum(DIMS.map((d, k) => w[k] * parts[d.id])) / wsum : mean(Object.values(parts))) * 0.9 + 0.1 * pest + goalTerm(ctx, perSlot);
+  const extra = 0.03 * Math.max(0, N - 2) + coverN / N * (ctx.labor ? 0.08 : 0.04) + secondN / N * (ctx.labor ? 0.10 : 0.06);   // short on workers or machines: a cover or second crop costs more, never less
   return { score: Math.round(100 * clamp(overall - extra)), parts, pest, perSlot, lay, risk, erosionLevel: risk < 0.22 ? 'low' : risk < 0.5 ? 'medium' : 'high', diversity, coverN, secondN, extra };
 }
 function sumDays(from, to, f) { let s = 0; for (let d = from; d < to; d++) { const v = f(d); if (fin(v)) s += v; } return s; }
@@ -257,14 +290,28 @@ export function check(o, C, ctx, ev) {
     if (fol && !fol.ok) { marks[id] = { flag: 'fails', words: fol.words }; return; }
     const s = sureField(id, C, fitCtx(ctx));
     const variantsFail = scenarios(C).slice(1).filter(V => { if (!fol) return false; const f2 = followOn(id, o.slots[(i - 1 + o.slots.length) % o.slots.length], V); return !f2.ok; }).map(V => V.variant);
-    const fails = [...new Set([...s.fails, ...variantsFail])];
-    if (fails.length || fol?.tight) marks[id] = { flag: 'borderline', fails, tight: !!fol?.tight };
+    const fails = [...new Set([...s.fails, ...variantsFail])], cold = winterCold(id, C);
+    if (fails.length || fol?.tight || cold) marks[id] = { flag: 'borderline', fails, tight: !!fol?.tight, cold };
     else if (!marks[id]) marks[id] = { flag: 'holds', fails: [] };
   });
   o.covers.forEach((c, i) => { const cc = lay.covers[i]; if (cc) { const f = feasible(cc.id, C, fitCtx(ctx)); if (!f.ok) marks[cc.id] = { flag: 'fails', words: f.words }; } });
   Object.entries(o.seconds).forEach(([i, id]) => { const s = lay.seconds[i]; if (s && !s.fit.ok) marks[`second:${id}`] = { flag: 'second', words: s.fit.words }; });
   const flags = Object.entries(marks).filter(([k]) => !k.startsWith('second:')).map(([, m]) => m.flag);
   return { marks, flag: flags.includes('fails') ? 'fails' : flags.includes('borderline') ? 'borderline' : 'holds' };
+}
+
+// Winter cold on a crop that rests through the winter. The crop table's winterKill is what the hardened crop survives (winter wheat about
+// −24 °C, OMAFRA). Where the coldest night of a normal winter (the colder of the two records) is colder than that, the crop lives through
+// the winter only under snow, which the weather record cannot see: it only just suits. No 2 °C slack is added: the line holds the air
+// against what the plant itself survives, and on a cold night the plant at its crown, in the soil, is warmer than the air above it.
+// Never "doesn't suit" on this alone: under snow, farmers grow winter wheat where the nights are far colder (New Liskeard, Thunder Bay).
+// A cold winter (about once in ten years) with a night under DEEP_COLD (js/compare.js) also makes it only just suit: it survives only under steady snow cover there.
+export function winterCold(id, C) {
+  const kill = cropOf(id)?.winterKill, night = fin(C?.coldLow) ? C.coldLow : C?.coldNight, night10 = fin(C?.coldLow10) ? C.coldLow10 : C?.coldNight10;
+  if (!fin(kill) || kindOf(id, C) !== 'winter') return null;
+  const normal = fin(night) && night < kill, deep = fin(night10) && night10 < DEEP_COLD;
+  if (!normal && !deep) return null;
+  return { night, kill, snow: cropOf(id).winterSnow ?? null, normal, deep, night10 };
 }
 
 // ---- building the options from the farmer's own rotation (never from a catalogue of permutations)
@@ -331,7 +378,7 @@ function firstYear(o, lay, ctx) {
   const t0 = lay.t[0], today = ctx.today;
   if (!today) return null;
   let y = today.year;
-  const sowAt = year => ({ year: year - (t0.harvest > 365 ? 1 : 0), doy: t0.sow });
+  const sowAt = year => ({ year: year - lay.back[0], doy: t0.sow });
   if (fin(t0.sow)) while (sowAt(y).year < today.year || (sowAt(y).year === today.year && t0.sow <= today.doy)) y++;
   else y++;
   return y;
@@ -341,7 +388,7 @@ export function planOf(o, C, ctx, ev, chk, year0, count) {
   for (let k = 0; k < Math.max(count, N); k++) {
     const i = k % N, id = o.slots[i], tm = lay.t[i], year = year0 + k;
     if (id === 'fallow' || !fin(tm.sow)) { seasons.push({ year, crop: id, sow: null, harvest: null, after: 'bare', residueUntil: null, window: null, stages: null, variety: null, wake: null, cover: null, coverFrom: null, coverUntil: null, timing: id === 'fallow' ? 'Fallow: no crop in the ground this year.' : timingWords(tm) }); continue; }
-    const sowYear = year - (tm.harvest > 365 ? 1 : 0), g = lay.gaps[i], cc = lay.covers[i];
+    const sowYear = year - lay.back[i], g = lay.gaps[i], cc = lay.covers[i];
     const dateAt = d => isoOf(year0 + (k - i) + Math.floor((d - 1) / 365), ((d - 1) % 365 + 365) % 365 + 1);   // a day of the cycle, in this lap of it
     const crop = cropOf(id), resid = crop.resid * TILL[o.tillage];
     seasons.push({
@@ -372,16 +419,16 @@ function textsOf(o, ev, chk, C, ctx, base, baseEv) {
   // why
   const added = o.slots.filter(id => !base?.slots.includes(id));
   if (o.kind === 'existing') why.push('This is what you grow now. We compare every other idea with it.');
-  else if (o.kind === 'cover') why.push(`After harvest your soil is bare for about ${bareBase} months a year. A cover crop in that gap keeps roots and straw on the ground, so heavy rain takes less soil.`);
-  else if (o.kind === 'notill') why.push('Keep your crops, but stop ploughing. The old crop straw stays on top and protects the soil.');
+  else if (o.kind === 'cover') why.push(`After harvest your soil is bare for about ${bareBase} months a year. A cover crop in that gap keeps roots and straw on the ground, which can help heavy rain take less soil.`);
+  else if (o.kind === 'notill') why.push('Keep your crops, but stop ploughing. The old crop straw stays on top, which can help protect the soil.');
   else if (o.kind === 'legume' && added.length && cropOf(added[0]).group !== 'legume') {
     const w = added[0], f = lay.follow[o.slots.indexOf(w)];
-    why.push(`Adding ${low(w)} makes your rotation ${o.slots.length} years long. Pests and diseases that build up when the same crops come back often get broken up.`);
+    why.push(`Adding ${low(w)} makes your rotation ${o.slots.length} years long. Pests and diseases that build up when the same crops come back often may be broken up.`);
     if (f?.follow) why.push(`${short(w)} ${are(w)} sown in the fall after the ${adj(f.prev.id)} harvest, so living plants cover the ground through the fall and spring, when the soil would otherwise carry only ${adj(f.prev.id)} residue.`);
-  } else if (o.kind === 'legume') why.push(`${short(added[0] ?? o.slots[0])} make${are(added[0] ?? o.slots[0]) === 'are' ? '' : 's'} their own fertiliser (nitrogen) from the air and leave some in the soil for the next crop. They also break the cycle of pests that like your main crops.`);
-  else if (o.kind === 'drought') why.push(`${short(base.slots.find(id => !o.slots.includes(id)))} needs the most water of your crops (about ${cropOf(base.slots.find(id => !o.slots.includes(id))).water} mm a season). ${short(added[0])} ${are(added[0]) === 'are' ? 'need' : 'needs'} less water and handle${are(added[0]) === 'are' ? '' : 's'} dry spells better, so a dry year hurts less.`);
-  else if (o.kind === 'forage') why.push(`Two years of alfalfa give deep roots, some nitrogen for the next crop and hay for your animals. Then ${low(o.slots[2])} grows on the nitrogen it leaves behind.`);
-  else if (o.kind === 'diverse') why.push(`A ${o.slots.length}-year mix (${list(o.slots.map(low))}) uses different crop families in turn, which spreads the weather risk, puts a nitrogen-fixing crop in the rotation and breaks pest cycles.`);
+  } else if (o.kind === 'legume') why.push(`${short(added[0] ?? o.slots[0])} make${are(added[0] ?? o.slots[0]) === 'are' ? '' : 's'} their own fertiliser (nitrogen) from the air and leave some in the soil for the next crop. They can also help break the cycle of pests that like your main crops.`);
+  else if (o.kind === 'drought') why.push(`${short(base.slots.find(id => !o.slots.includes(id)))} needs the most water of your crops (about ${cropOf(base.slots.find(id => !o.slots.includes(id))).water} mm a season). ${short(added[0])} ${are(added[0]) === 'are' ? 'need' : 'needs'} less water and handle${are(added[0]) === 'are' ? '' : 's'} dry spells better, so a dry year may hurt less.`);
+  else if (o.kind === 'forage') why.push(`Two years of alfalfa can give deep roots, some nitrogen for the next crop and hay for your animals. Then ${low(o.slots[2])} can use the nitrogen it leaves behind.`);
+  else if (o.kind === 'diverse') why.push(`A ${o.slots.length}-year mix (${list(o.slots.map(low))}) uses different crop families in turn, which can spread the weather risk, puts a nitrogen-fixing crop in the rotation and can help break pest cycles.`);
   // evidence
   evidence.push({ text: `Your soil would be bare about ${bare} months a year${bareBase !== null && o.kind !== 'existing' ? ` (now ${bareBase})` : ''}.`, sources: ['power', 'fao56', 'crophalo'] });
   if (fin(C.med.heavy)) evidence.push({ text: `Heavy-rain days (20 mm or more in a day): about ${one(C.med.heavy)} a year${fin(C.med.maxDay) ? ` (the wettest day of a normal year gives about ${round(C.med.maxDay)} mm)` : ''}.`, sources: rk });
@@ -389,15 +436,23 @@ function textsOf(o, ev, chk, C, ctx, base, baseEv) {
   const ratios = ev.perSlot.filter(p => p.id !== 'fallow' && fin(p.ratio));
   const worst = ratios.sort((a, b) => a.ratio - b.ratio)[0];
   if (worst) evidence.push({ text: worst.ratio >= 1 ? 'Rain covers all of what these crops need in a normal year.' : `In a normal year rain covers about ${round(worst.ratio * 100)} of every 100 mm ${low(worst.id)} ${are(worst.id) === 'are' ? 'need' : 'needs'}.`, sources: [...rk, 'faowater', 'faoky'] });
-  if (C.dryOf > 0) evidence.push({ text: C.dryYears.length ? `In ${C.dryYears.length} of the last ${C.dryOf} growing seasons (April to September) rain fell a quarter or more short of its usual amount, or the soil was clearly dry (${list(C.dryYears.map(String))}).` : `In none of the last ${C.dryOf} growing seasons (April to September) did rain fall a quarter short of its usual amount.`, sources: keys(['power', ...rk]) });
-  if (fin(C.med.frostLast) && fin(C.med.frostFirst) && !C.south) evidence.push({ text: `The usual last spring frost is about ${dayWord(C.med.frostLast)} and the usual first autumn frost about ${dayWord(C.med.frostFirst)} (the middle of ${C.years.length} years).`, sources: ['power'] });
-  names.forEach(id => { const i = o.slots.indexOf(id), tm = lay.t[i]; if (tm?.ok) evidence.push({ text: `${timingWords(tm)}${tm.len ? ` ${varietyWords(tm)}` : ''}`, sources: ['power', 'fao56', ...(fin(tm.hot) ? ['luo2011'] : [])] }); });
+  if (C.dryOf > 0) evidence.push({ text: C.dryYears.length ? `In ${C.dryYears.length} of the last ${C.dryOf} growing seasons (${seasonWords(C)}) rain fell a quarter or more short of its usual amount, or the soil was clearly dry (${list(C.dryYears.map(String))}).` : `In none of the last ${C.dryOf} growing seasons (${seasonWords(C)}) did rain fall a quarter short of its usual amount.`, sources: keys(['power', ...rk]) });
+  const frostKeys = C.frostMargin > 0 ? ['power', 'eccc'] : ['power'];   // where the autumn date comes from (js/climate.js autumnLine)
+  // The usual frost dates are the middle of the years that had a frost; where under half the years had one (frostFreeClimate) there is no usual date to give.
+  const frostYears = (C.yearly?.frostLast ?? []).filter(fin).length;
+  if (C.frostFreeClimate === true && C.years.length) evidence.push({ text: frostYears ? `Frost came in only ${frostYears} of the last ${C.years.length} years on NASA’s record, so no usual frost dates are given. A weather station near you can see frost more often, most of all in low, cold spots.` : `No frost came in the last ${C.years.length} years on NASA’s record. A weather station near you can still see some, most of all in low, cold spots.`, sources: frostKeys });
+  else if (fin(C.med.frostLast) && fin(C.med.frostFirst)) evidence.push({ text: `The usual last spring frost is about ${dayWord(frostDay(C, C.med.frostLast))} and the usual first autumn frost about ${dayWord(frostDay(C, C.med.frostFirst))} (the middle of ${frostYears < C.years.length ? `the ${frostYears} years with a frost` : `${C.years.length} years`}).${autumnWords(C.frostMargin, C.source)}`, sources: frostKeys });
+  names.forEach(id => { const i = o.slots.indexOf(id), tm = lay.t[i]; if (tm?.ok) evidence.push({ text: `${timingWords(tm)}${tm.len ? ` ${varietyWords(tm)}` : ''}`, sources: ['power', 'fao56', ...(tm.byWarmth ? ['ecocrop'] : []), ...(fin(tm.hot) ? ['luo2011'] : [])] }); });
   lay.follow.forEach((f, i) => {
     if (!f?.follow || !f.ok) return;
     const w = f.next.window, wid = o.slots[i];
     evidence.push({ text: `${short(wid)} needs about ${w.init} days to come up and root (FAO-56) before the normal daily mean drops under ${w.minT} °C (about ${dayWord(w.cold)}), so the last good sowing day here is about ${dayWord(w.latest)}; sown on ${dayWord(f.next.sow)} it gathers about ${round(f.next.units)} °C-days above 0 °C before then.`, sources: ['power', 'fao56', 'ecocrop'] });
-    const firsts = (C.yearly?.frostFirst ?? []).filter(fin), early = firsts.filter(v => v < w.latest).length;
-    if (firsts.length) evidence.push({ text: early ? `The first autumn frost came before ${dayWord(w.latest)} in ${early} of ${firsts.length} years.` : `The first autumn frost never came before ${dayWord(w.latest)} in ${firsts.length} years.`, sources: ['power'] });
+    const firsts = (C.yearly?.frostFirst ?? []).filter(fin), early = firsts.filter(v => v < keyOf(C, w.latest)).length;
+    if (firsts.length) evidence.push({ text: early ? `The first autumn frost came before ${dayWord(w.latest)} in ${early} of ${firsts.length} years.` : `The first autumn frost never came before ${dayWord(w.latest)} in ${firsts.length} years.`, sources: frostKeys });
+  });
+  names.filter(id => winterChecked(id, C)).forEach(id => {   // the winter-cold check of a crop that rests through the winter, with its figures
+    const crop = cropOf(id), night = fin(C.coldLow) ? C.coldLow : C.coldNight, night10 = fin(C.coldLow10) ? C.coldLow10 : C.coldNight10;
+    evidence.push({ text: `Hardened ${low(id)} survives about ${minus(crop.winterKill)} °C${fin(crop.winterSnow) ? `, and ${crop.winterSnow} cm of snow keeps colder nights off it` : ''} (${crop.winterBy}); the coldest night of a normal winter here is about ${minus(night)} °C${fin(night10) ? `, and of a cold winter about ${minus(night10)} °C` : ''}.`, sources: ['power', ...(C.coldRecords === 2 ? ['era5land'] : []), 'wintersurvival'] });
   });
   if (ctx.recordsRead && typeof ctx.nearby?.line === 'string' && own(SOURCE_KEYS, ctx.nearby.source)) {   // what farmers grow around the field (js/nearby.js)
     evidence.push({ text: ctx.nearby.line, sources: [ctx.nearby.source] });
@@ -414,7 +469,10 @@ function textsOf(o, ev, chk, C, ctx, base, baseEv) {
   if (!ctx.recordsRead) gaps.push(typeof ctx.nearby?.gap === 'string' && ctx.nearby.gap ? ctx.nearby.gap : 'What farmers around here grow was not read, so no crop was checked against local practice.');
   if (o.slots.includes('corn')) gaps.push('FAO-56 season lengths are used as printed: they are not stretched for this field\'s cooler summers.');
   if (lay.follow.some(f => f?.follow)) gaps.push(`We count one week from a harvest to the next sowing. A no-till drill can be quicker, a wet harvest slower.`);
-  if (o.slots.some(id => kindOf(id, C) === 'winter')) gaps.push(`Winter cold on the crop is not checked: Crophalo has no winter-hardiness rule for field crops. The coldest night of a normal winter here is about ${String(round(C.coldNight)).replace('-', '−')} °C.`);
+  const winterIds = names.filter(id => kindOf(id, C) === 'winter'), unchecked = winterIds.filter(id => !winterChecked(id, C));
+  if (winterIds.length > unchecked.length) gaps.push('Snow is not in the weather record: the winter-cold check counts the coldest nights, not the snow that shelters a winter crop from them.');
+  if (unchecked.length) gaps.push(`Winter cold on ${list(unchecked.map(low))} is not checked: Crophalo has no winter-hardiness figure for ${unchecked.length > 1 ? 'them' : 'it'}. The coldest night of a normal winter here is about ${minus(C.coldNight)} °C.`);
+  gaps.push(SQUARE_WORDS);
   if (o.covers.some(Boolean)) gaps.push('Cover crop seed price, sowing date and when to end it are different in every area.');
   if (Object.keys(o.seconds).length) gaps.push('A second crop is placed with one week between harvesting a crop and sowing the next. Our data has no yields for second crops.');
   // risks: a failed check first, then the borderline line, then the rest
@@ -427,12 +485,14 @@ function textsOf(o, ev, chk, C, ctx, base, baseEv) {
     const parts = [];
     if (m.tight) parts.push(`the turn from the harvest before it to its last good sowing day is under ${TIGHT} days in a normal year`);
     if (m.fails.length) parts.push(`with weather ${list(m.fails.map(v => VARIANT_WORDS[v]))} than the NASA weather square, it could fall short`);
+    if (m.cold?.normal) parts.push(`the coldest night of a normal winter here, about ${minus(m.cold.night)} °C, is colder than the ${minus(m.cold.kill)} °C that hardened ${low(id)} survives (${cropOf(id).winterBy}), so it lives through the winter only under snow${fin(m.cold.snow) ? ` (${m.cold.snow} cm is enough)` : ''}`);
+    if (m.cold?.deep) parts.push(`in a cold winter, about once in ten years, the coldest night is about ${minus(m.cold.night10)} °C, so it survives only under steady snow cover here`);
     risks.push(`${short(id)} only just suit${are(id) === 'are' ? '' : 's'} this field: ${parts.join('; and ')}. Ask farmers near you.`);
   });
   lay.follow.forEach((f, i) => {
     if (!f?.follow) return;
     const prev = f.usualPrev, nxt = f.usualNext, wid = o.slots[i], pid = prev.id, harvestDay = prev.harvest > 365 ? prev.harvest - 365 : prev.harvest;
-    if (!nxt.window) return;
+    if (!nxt.window || !fin(harvestDay)) return;   // a crop before it with no harvest day here squeezes nothing: why it has none is said with its own check
     const room = nxt.window.latest - (harvestDay + TURN);
     risks.push(`A late ${adj(pid)} harvest squeezes the ${low(wid)} sowing window: in a normal year the ${low(pid)} ${are(pid)} ready about ${dayWord(harvestDay)}, and a week later ${room >= 0 ? `leaves ${plural(room, 'day')} before` : `is ${plural(-room, 'day')} past`} the last good sowing day here (about ${dayWord(nxt.window.latest)}).${f.shortened ? ` So the plan uses a ${f.prev.len === 's' ? 'short-season' : 'shorter'} ${low(pid)} variety (about ${f.prev.total} days in FAO tables, ready about ${dayWord(f.prev.harvest)}).` : ''}`);
   });
@@ -441,7 +501,10 @@ function textsOf(o, ev, chk, C, ctx, base, baseEv) {
   if (ev.pest < 0.5) risks.push('When the same crops come back often, their pests and diseases build up.');
   if ((C.trend?.heat32?.t > 1.5) || (C.trend?.P?.t < -1.5)) risks.push('The weather is changing (more hot days or less rain). That is slowly getting worse for these crops.');
   const frosty = ev.perSlot.filter(p => p.frostHit > 0);
-  if (frosty.length) risks.push(`A late spring or early autumn frost came in some years (${list(frosty.map(p => `${low(p.id)} in ${p.frostHit} of ${p.frostOf}`))}). Check your sowing dates with farmers near you.`);
+  // What the count holds, said as it is: a year counts when that year's last spring frost came on or after the sowing day, or, for a crop that
+  // frost kills, its first autumn frost came on or before the harvest day; a frost before the crop is up counts too (no emergence day is placed).
+  const tenderHits = frosty.filter(p => cropOf(p.id).frost < 0.3), hardyHits = frosty.filter(p => !(cropOf(p.id).frost < 0.3)), hits = list => list.map((p, k) => `${low(p.id)} in ${p.frostHit} of ${p.frostOf}${k === 0 ? ' years' : ''}`);
+  if (frosty.length) risks.push(`In some years a frost came ${tenderHits.length ? `on or after the sowing day, or by the harvest day (${list(hits(tenderHits))})` : ''}${tenderHits.length && hardyHits.length ? ', and ' : ''}${hardyHits.length ? `on or after the sowing day for crops that stand frost (${list(hits(hardyHits))})` : ''}. This counts a frost before the crop is up too. Check your sowing dates with farmers near you.`);
   names.forEach(id => { const tm = lay.t[o.slots.indexOf(id)]; (tm?.remarks ?? []).filter(r => /heat units|shorter hybrid|frost/.test(r)).forEach(r => risks.push(r)); });
   if (o.slots.includes('fallow')) risks.push('In a fallow year the soil is bare, and water dries out of it.');
   if (o.covers.some(Boolean)) risks.push('Cover crops drink water too. In a dry spring, less is left for the next crop. Ask a local adviser when to end them.');
@@ -454,38 +517,60 @@ function whyOne(o, lay, base, bareBase) {
   const added = o.slots.filter(id => !base?.slots.includes(id)), first = added[0] ?? o.slots[0];
   if (o.kind === 'existing') return 'This is what you grow now, and every other idea is compared with it.';
   if (o.kind === 'cover') return `A cover crop after each harvest puts roots and leaves on soil that is now bare about ${bareBase} months a year, so heavy rain takes less soil.`;
-  if (o.kind === 'notill') return 'The same crops without ploughing leave the old crop straw on top, where it protects the soil.';
+  if (o.kind === 'notill') return 'The same crops without ploughing leave the old crop straw on top, where it can help protect the soil.';
   if (o.kind === 'legume' && added.length && cropOf(added[0]).group !== 'legume') {
     const f = lay.follow[o.slots.indexOf(added[0])];
     return f?.follow ? `${short(added[0])} ${are(added[0])} sown in the fall after the ${adj(f.prev.id)} harvest, so living plants cover the ground through the fall and spring, when the soil would otherwise carry only ${adj(f.prev.id)} residue.`
-      : `Adding ${low(added[0])} makes your rotation ${o.slots.length} years long, which breaks up the pests and diseases that build up when the same crops come back often.`;
+      : `Adding ${low(added[0])} makes your rotation ${o.slots.length} years long, which may break up the pests and diseases that build up when the same crops come back often.`;
   }
   if (o.kind === 'legume') return `${short(first)} make${are(first) === 'are' ? '' : 's'} their own fertiliser (nitrogen) from the air and leave some in the soil for the next crop.`;
-  if (o.kind === 'drought') { const gone = base.slots.find(id => !o.slots.includes(id)); return `${short(first)} ${are(first) === 'are' ? 'need' : 'needs'} less water than ${low(gone)} and handle${are(first) === 'are' ? '' : 's'} dry spells better, so a dry year hurts less.`; }
-  if (o.kind === 'forage') return `Two years of alfalfa give deep roots, some nitrogen and hay, and then ${low(o.slots[2])} grows on the nitrogen it leaves behind.`;
-  return `A ${o.slots.length}-year mix (${list(o.slots.map(low))}) uses different crop families in turn, which spreads the weather risk and breaks pest cycles.`;
+  if (o.kind === 'drought') { const gone = base.slots.find(id => !o.slots.includes(id)); return `${short(first)} ${are(first) === 'are' ? 'need' : 'needs'} less water than ${low(gone)} and handle${are(first) === 'are' ? '' : 's'} dry spells better, so a dry year may hurt less.`; }
+  if (o.kind === 'forage') return `Two years of alfalfa can give deep roots, some nitrogen and hay, and then ${low(o.slots[2])} can use the nitrogen it leaves behind.`;
+  return `A ${o.slots.length}-year mix (${list(o.slots.map(low))}) uses different crop families in turn, which can spread the weather risk and can help break pest cycles.`;
 }
 const baseEvNeed = ev => ev ? ev.perSlot.map(p => p.need).filter(fin) : [];
 
 // The years that crossed a stress threshold, counted on the field's own record. Rules (each named in the fold):
 // a frost-tender crop sown before that year's last spring frost; a frost-tender crop not yet harvested at that year's first autumn
-// frost; a dry growing season for a rain-fed crop; 10 or more days of 35 °C or more for a crop whose heat limit is under 35 °C.
+// frost; a dry growing season for a rain-fed crop that flowers in it; 10 or more days of 35 °C or more while a crop whose heat limit
+// is under 35 °C stands in the field.
+// Hot days in the field: that year's days of 35 °C or more month by month (js/climate.js yearly.heat35m), a month the crop stands in for
+// only part of it counted in step with its days there. The crop's year is the one it is harvested in. A month not read gives no count.
+const hotInField = (C, k, tm) => {
+  const H = C.yearly?.heat35m; if (!Array.isArray(H) || !fin(tm.sow) || !fin(tm.harvest)) return NaN;
+  const last = Math.floor((Math.round(tm.harvest) - 1) / 365); let n = 0;
+  for (let d = Math.round(tm.sow); d < Math.round(tm.harvest); d++) { const row = H[k + Math.floor((d - 1) / 365) - last], m = monthAt(d); if (!row || !fin(row[m])) return NaN; n += row[m] / MONTH_DAYS[m]; }
+  return n;
+};
+// A dry growing season is laid on a rain-fed crop that flowers in it, as a grain crop's yield answers most to water around flowering (FAO
+// Irrigation and Drainage Paper 33, yield response by growth stage); a crop timed with no flowering day is judged by the middle of its season.
+// A winter-rain place (the Western Australian wheatbelt, the Swartland, central Chile): the season counted holds the drier half of the year's
+// rain, and every month of the other, rainy half averages above 5 °C, warm enough for crops to grow (the growing season of FAO GAEZ,
+// js/climate.js GROW_LINE). There a crop sown in autumn grows in the rainy winter, so the counted season's rain is not laid on it; a summer
+// crop still is. Where the winter months are colder (Ireland, the Netherlands, the Columbia Basin, Konya) nothing changes. No new number.
+const winterRains = C => {
+  const months = C.season?.months, P = C.monthly?.P, T = C.monthly?.tmean;
+  if (C.coldWinter !== false || !months?.length || !Array.isArray(P) || !Array.isArray(T) || P.some(v => !fin(v)) || T.some(v => !fin(v))) return false;
+  const other = MONTH_DAYS.map((_, m) => m).filter(m => !months.includes(m)), inside = months.reduce((s, m) => s + P[m], 0), outside = other.reduce((s, m) => s + P[m], 0);
+  return inside < outside && other.every(m => T[m] > GROW_LINE);
+};
+const floweringInSeason = (C, tm, id) => { const months = C.season?.months; if (!months?.length) return true; if (winterRains(C) && sownInAutumn(id, C)) return false; const d = fin(tm.flower) ? tm.flower : (tm.sow + tm.harvest) / 2; return !fin(d) || months.includes(monthAt(d)); };
 export function stressYears(o, lay, C, ctx) {
-  const Y = C.years ?? [], rules = ['A frost-tender crop sown before that year\'s last spring frost', 'A frost-tender crop not yet harvested at that year\'s first autumn frost', 'A dry growing season (rain a quarter short, or clearly dry soil) for a rain-fed crop', '10 or more days of 35 °C or more for a crop whose heat stress starts below 35 °C'];
+  const Y = C.years ?? [], rules = ['A frost-tender crop sown before that year\'s last spring frost', 'A frost-tender crop not yet harvested at that year\'s first autumn frost', 'A dry growing season (rain a quarter short, or clearly dry soil) for a rain-fed crop that flowers in it; where most rain falls in a mild winter, not for a crop sown in autumn, which grows on that rain', '10 or more days of 35 °C or more while a crop whose heat stress starts below 35 °C stands in the field'];
   const dry = new Set(C.dryYears ?? []), crossed = [];
   let of = 0;
   Y.forEach((year, k) => {
-    const last = C.yearly.frostLast[k], first = C.yearly.frostFirst[k], hot = C.yearly.heat35?.[k];
-    if (C.south) return;
+    const last = C.yearly.frostLast[k], first = C.yearly.frostFirst[k];
     of++;
     const why = [];
     o.slots.forEach((id, i) => {
       if (id === 'fallow') return;
-      const crop = cropOf(id), tm = lay.t[i], tender = crop.frost < 0.3, sow = tm.harvest > 365 ? NaN : tm.sow, harvest = tm.harvest > 365 ? tm.harvest - 365 : tm.harvest;
-      if (tender && fin(sow) && fin(last) && last >= sow) why.push(`${low(id)}: spring frost on ${dayWord(last)}`);
-      if (tender && fin(harvest) && fin(first) && first <= harvest) why.push(`${low(id)}: autumn frost on ${dayWord(first)}`);
-      if (ctx.irrigation === 'none' && dry.has(year)) why.push(`${low(id)}: dry season`);
-      if (crop.heat < 35 && hot >= 10) why.push(`${low(id)}: ${round(hot)} days of 35 °C or more`);
+      const crop = cropOf(id), tm = lay.t[i], tender = crop.frost < 0.3, sow = tm.harvest > 365 && sownInAutumn(id, C) ? NaN : keyOf(C, tm.sow), harvest = keyOf(C, tm.harvest > 365 ? tm.harvest - 365 : tm.harvest);
+      if (tender && fin(sow) && fin(last) && last >= sow) why.push(`${low(id)}: spring frost on ${dayWord(frostDay(C, last))}`);
+      if (tender && fin(harvest) && fin(first) && first <= harvest) why.push(`${low(id)}: autumn frost on ${dayWord(frostDay(C, first))}`);
+      if (ctx.irrigation === 'none' && dry.has(year) && floweringInSeason(C, tm, id)) why.push(`${low(id)}: dry season`);
+      const hot = crop.heat < 35 ? hotInField(C, k, tm) : NaN;
+      if (hot >= 10) why.push(`${low(id)}: about ${round(hot)} days of 35 °C or more in the field`);
     });
     if (why.length) crossed.push({ year, why: [...new Set(why)] });
   });
@@ -519,8 +604,12 @@ const drain = gen => { let r = gen.next(); while (!r.done) r = gen.next(); retur
 function* evaluateAllSteps(ctx, C) {
   const options = [];
   for (const o of generate(ctx, C)) { const ev = evaluate(o, C, ctx), chk = check(o, C, ctx, ev); options.push({ o, ev, chk, score: ev.score, flag: chk.flag }); yield 'option'; }
-  const base = options[0], rest = options.slice(1);
-  const rank = (a, b) => (a.flag === 'fails') - (b.flag === 'fails') || (a.flag === 'borderline') - (b.flag === 'borderline') || b.score - a.score;
+  // A new idea whose winter crop cannot follow the crop before it in time (its sowing window closes before that harvest is off), or whose
+  // crop moved to a week after the harvest before it no longer fits there, is no idea at all and is dropped; the farmer's own rotation is
+  // always shown, with the reason it fails.
+  const base = options[0], rest = options.slice(1).filter(x => !x.ev.lay.follow.some(f => f && !f.ok) && !x.ev.lay.pushed.some(p => p && !p.ok));
+  const scoreOf = x => fin(x.score) ? x.score : -Infinity;   // an option that could not be scored ranks last
+  const rank = (a, b) => (a.flag === 'fails') - (b.flag === 'fails') || (a.flag === 'borderline') - (b.flag === 'borderline') || scoreOf(b) - scoreOf(a);
   rest.sort(rank);
   return { base, rest };
 }
@@ -528,25 +617,38 @@ function* analyseSteps(state, climate, spot = {}, opts = {}) {
   const ctx = contextOf(state, climate, spot, opts);
   const { base, rest } = yield* evaluateAllSteps(ctx, climate);
   const best = rest[0] ?? null;
-  return { ctx, base, others: rest, best, gain: best ? best.score - base.score : 0, endorsed: endorses(best, base) };
+  return { ctx, base, others: rest, best, gain: best ? (fin(best.score - base.score) ? best.score - base.score : null) : 0, endorsed: endorses(best, base) };
 }
 export function analyse(state, climate, spot = {}, opts = {}) { return drain(analyseSteps(state, climate, spot, opts)); }
 
+// A plan that does not suit here, or could not be scored, carries no number at all: "Doesn't suit here" next to a 69 reads as a good
+// idea. Its words (fitWhy) say why instead. The numbers stay inside the engine, where they still rank the options.
+const shownScore = x => x.flag !== 'fails' && fin(x.score);
+function fitWhyOf(x) {
+  if (shownScore(x)) return null;
+  const words = Object.values(x.chk.marks).filter(m => m.flag === 'fails' && m.words).map(m => m.words);
+  return `${words.length ? `${words.join(' ')} ` : ''}So it has no score here.`;
+}
 function toPlan(x, kind, C, ctx, base, baseEv, year0, count) {
   year0 = Math.max(year0, firstYear(x.o, x.ev.lay, ctx) ?? year0);   // a plan never starts with a sowing that is already past
-  const t = textsOf(x.o, x.ev, x.chk, C, ctx, base?.o, baseEv);
-  const parts = Object.fromEntries(Object.entries(x.ev.parts).map(([k, v]) => [k, fin(v) ? Math.round(100 * v) : null]));   // a part not worked out is null, never a guess
+  const t = textsOf(x.o, x.ev, x.chk, C, ctx, base?.o, baseEv), shown = shownScore(x);
+  const parts = Object.fromEntries(Object.entries(x.ev.parts).map(([k, v]) => [k, shown && fin(v) ? Math.round(100 * v) : null]));   // a part not worked out is null, never a guess
   const scores = Object.fromEntries(DIMS.map(d => [d.id, parts[d.id] ?? null]));
   return {
     id: kind === 'current' ? 'current' : `${x.o.kind}-${x.o.slots.join('-')}${x.o.covers.some(Boolean) ? '-cover' : ''}${x.o.tillage === 'notill' && x.o.kind === 'notill' ? '-notill' : ''}`,
     name: nameOf(x.o), kind, seasons: planOf(x.o, C, ctx, x.ev, x.chk, year0, count),
-    score: fin(x.score) ? x.score : null, scores, parts, pest: Math.round(100 * x.ev.pest), flag: x.flag, fit: FLAG_WORDS[x.flag], optionKind: x.o.kind, slots: [...x.o.slots],
+    score: shown ? x.score : null, scores, parts, pest: shown ? Math.round(100 * x.ev.pest) : null, flag: x.flag, fit: FLAG_WORDS[x.flag], fitWhy: fitWhyOf(x), optionKind: x.o.kind, slots: [...x.o.slots],
     bareMonths: Math.round(x.ev.lay.bareMonths * 10) / 10, erosionLevel: x.ev.erosionLevel, why: t.one, whyLines: t.why, evidence: t.evidence, gaps: t.gaps, risks: t.risks,
   };
 }
+// The answer for a point that is not farmland at all: no plans, no figures, the reason in words.
+const notHere = reason => ({ current: null, recommended: null, others: [], reason, notFarmland: true, evidence: [], gaps: [], risks: [], sureness: null, sureWhy: [], endorsed: false, gain: null });
 
-export function* optionsForSteps(state, climate, spot = {}, opts = {}) {
+function* stepsInner(state, climate, spot = {}, opts = {}) {
   const C = climate && typeof climate === 'object' && climate.monthly ? climate : null;
+  if (spot?.water === true) return notHere(WATER_WORDS);   // the crop map's class at the pin is water (js/nearby.js)
+  if (spot?.notField && typeof spot.notField.text === 'string' && spot.fieldOk !== true) return askField(spot.notField);   // forest, wetland, developed land...: no plan until the farmer says it is a field
+  if (C && notFarmlandWords(C)) return notHere(notFarmlandWords(C));   // sea or ice under the weather square, or no growing season at all
   const ctx0 = contextOf(state, C, spot, opts);
   if (!ctx0.slots.length) return { current: null, recommended: null, others: [], reason: 'Tell us what you grow now, and the field report compares other ideas with it.', evidence: [], gaps: ['No crops were given for this field.'], risks: [], sureness: null, sureWhy: [], endorsed: false, gain: null };
   if (!C) {
@@ -561,25 +663,44 @@ export function* optionsForSteps(state, climate, spot = {}, opts = {}) {
   for (const x of a.others) { others.push(toPlan(x, 'proposed', C, ctx, a.base, a.base.ev, year0, Math.max(3, x.o.slots.length))); yield 'plan'; }
   const recommended = a.endorsed ? others[0] : current;
   const sure = surenessOf(a.best, a.base, ctx, C);
-  const pick = a.endorsed ? a.best : null;
+  const pick = a.endorsed ? a.best : null, best = a.best ? others[0] : null;
+  // What the comparison is set against: the current plan's own score, or, when it has none, why (it does not suit, or could not be scored).
+  const failWords = (Object.values(a.base.chk.marks).find(m => m.flag === 'fails' && m.words)?.words ?? '').replace(/\.$/, ''), why = failWords ? ` (${failWords.charAt(0).toLowerCase()}${failWords.slice(1)})` : '';
+  const nowWhy = fin(current.score) ? '' : `what you grow now ${a.base.flag === 'fails' ? 'doesn\'t suit here' : 'could not be scored here'}${why}`;
   let reason;
   if (pick) {
     const r = others[0], change = [];
     if (r.bareMonths < current.bareMonths) change.push(`the soil is bare about ${r.bareMonths} months a year instead of ${current.bareMonths}`);
-    if (r.parts.soil - current.parts.soil >= 4) change.push(`the soil score is ${r.parts.soil - current.parts.soil} points higher`);
-    reason = `${r.why.replace(/\.$/, '')}; it scores ${r.score} against ${current.score} for what you grow now${change.length ? `, and ${list(change)}` : ''}.`;
-  } else if (a.best) {
-    reason = a.best.flag !== 'holds'
-      ? `Nothing that passes every check does clearly better here; the highest scoring idea, ${nameOf(a.best.o).toLowerCase()}, scores ${a.best.score} against ${a.base.score} now and only just suits, so it is worth a look, not a firm change.`
-      : `Nothing we tested does clearly better here: the best other idea, ${nameOf(a.best.o).toLowerCase()}, scores ${a.best.score} against ${a.base.score} for what you grow now.`;
-  } else reason = 'Nothing we tested does clearly better here.';
-  const chosen = recommended;
+    if (fin(current.parts.soil) && r.parts.soil - current.parts.soil >= 4) change.push(`the soil score is ${r.parts.soil - current.parts.soil} points higher`);
+    reason = `${r.why.replace(/\.$/, '')}; it scores ${r.score}${nowWhy ? `, while ${nowWhy}` : ` against ${current.score} for what you grow now`}${change.length ? `, and ${list(change)}` : ''}.`;
+  } else if (best && best.flag === 'fails') {
+    reason = nowWhy ? `${capital(nowWhy)}, and no other idea passes the weather and water checks here either: ask farmers near you what grows well.`
+      : `No other idea passes the weather and water checks here, so nothing is offered in place of what you grow now, which scores ${current.score}.`;
+  } else if (best && nowWhy) {   // no number for what is grown now: its reason first, then the best other idea on its own
+    reason = best.flag !== 'holds'
+      ? `${capital(nowWhy)}, and nothing that passes every check does better: the highest scoring idea, ${best.name.toLowerCase()}, scores ${best.score} and only just suits, so it is worth a look, not a firm change.`
+      : `${capital(nowWhy)}; the best other idea, ${best.name.toLowerCase()}, scores ${best.score} and passes every check, but it does not lead clearly, so it is a question for farmers near you, not a firm change.`;
+  } else if (best) {
+    reason = best.flag !== 'holds'
+      ? `Nothing that passes every check does clearly better here; the highest scoring idea, ${best.name.toLowerCase()}, scores ${best.score} against ${current.score} now and only just suits, so it is worth a look, not a firm change.`
+      : `Nothing we tested does clearly better here: the best other idea, ${best.name.toLowerCase()}, scores ${best.score} against ${current.score} for what you grow now.`;
+  } else reason = nowWhy ? `${capital(nowWhy)}, and Crophalo could build no other idea that fits here: ask farmers near you what grows well.` : 'Nothing we tested does clearly better here.';
+  const chosen = recommended, more = finish({ a, ctx, C, current, others, recommended, generate, stressYears });
   return {
-    current, recommended, others, reason, evidence: chosen.evidence, gaps: chosen.gaps, risks: chosen.risks,
-    sureness: sure.level, sureWhy: sure.why, endorsed: a.endorsed, gain: a.best ? a.best.score - a.base.score : null, foot: SEASON_FOOT,
+    current, recommended, others, reason, evidence: chosen.evidence, gaps: more.gaps.length ? [...chosen.gaps, ...more.gaps] : chosen.gaps, risks: chosen.risks,
+    sureness: sure.level, sureWhy: sure.why, endorsed: a.endorsed, gain: best && fin(best.score) && fin(current.score) ? best.score - current.score : null, foot: SEASON_FOOT,
+    strategies: more.strategies, fewWhy: more.fewWhy, exposure: more.exposure, exposureNote: more.exposureNote, bare: more.bare, dropped: more.dropped,
   };
 }
 
+// The map shows something that is not a field at the pin: no score and no plan, the sentence, and the two ways on (the report draws the two buttons from askField).
+const ASK_WORDS = ' Crophalo gives no score or plan until you say which.';
+const askField = nf => ({ ...notHere(`${nf.text}${ASK_WORDS}`), askField: { code: nf.code, word: nf.word, source: nf.source, year: nf.year, text: nf.text, actions: ['move-pin', 'carry-on'] } });
+// The same steps with the farmer's word noted: a plan for a pin the map calls forest keeps one line saying so.
+export function* optionsForSteps(state, climate, spot = {}, opts = {}) {
+  const r = yield* stepsInner(state, climate, spot, opts);
+  return spot?.notField && spot.fieldOk === true && !r.notFarmland ? { fieldNote: `The crop map shows ${spot.notField.word} here; you said it is your field.`, ...r } : r;
+}
 export function optionsFor(state, climate, spot = {}, opts = {}) { return drain(optionsForSteps(state, climate, spot, opts)); }
 
 // ---- what covers the ground on a date

@@ -123,7 +123,7 @@ const spears = c => ground() + [[9, 12], [16, 5], [23, 10]].map(([x, y]) => line
 const DRAW = {
   corn: c => corn(c, dark(c, 0.2)), sweetcorn: c => corn(c, light(c, 0.6)),   // sweet corn is corn with paler kernels
   wheat: c => ear(c), swheat: c => ear(c), durum: c => ear(c), barley: c => ear(c, true), rye: c => ear(c, true), triticale: c => ear(c, true),
-  oats: panicle, rice: panicle, teff: panicle, quinoa: cluster, buckwheat: cluster, pmillet: candle, fmillet: fingers, sorghum,
+  oats: panicle, rice: panicle, teff: panicle, quinoa: cluster, buckwheat: cluster, pmillet: candle, fmillet: fingers, proso: panicle, sorghum,
   soy: c => pod(c), pea: c => pod(c), faba: c => pod(c), cowpea: c => pod(c, { eye: true }), pigeonpea: c => pod(c), mung: c => pod(c, { slim: true }), greenbean: c => pod(c, { slim: true }),
   chickpea, lentil, bean, groundnut: peanut, bambara, lupin: c => spike(c), alfalfa,
   sunflower, canola: c => flower(c), scanola: c => flower(c), mustardseed: c => flower(c), mustard: c => ground() + flower(c),   // spring canola is canola

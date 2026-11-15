@@ -17,6 +17,11 @@ export function countryName(name, code) {
   return String(name ?? '').trim().replace(OLD_TR_NAME, 'Türkiye');
 }
 
+// A pin the crop map reads as water gets this answer and no plans (js/nearby.js reads the pin, js/engine.js answers it).
+export const WATER_WORDS = 'This point is water: Crophalo cannot compare crops here. Put the pin on the field itself.';
+// 0, 0 is refused wherever a position comes in (js/places.js parseCoords, js/data.js cleanPlace): it is what a missing position turns into.
+export const ZERO_WORDS = 'The position reads 0, 0: that point is open sea off West Africa, and it is what a missing position usually turns into. Check the two numbers and try again.';
+
 // ---- the crop side: what a past season, a score and a flag are called
 // ---- one crop in one past year. Fine and Close call are never added into one "came through" count: a count leads with the problem.
 export const SEASON_WORDS = Object.freeze({ ok: 'Fine', close: 'Close call', hurt: 'Hurt', nodata: 'No data', growing: 'Still growing' });
@@ -71,7 +76,7 @@ export const shortName = name => String(name ?? '').replace(/ \(.*\)$/, '');    
 // ---- the setup steps: their words, kept apart from the code so they can be read, changed and later translated in one place
 export const STEPS = Object.freeze([
   { id: 'field', icon: 'i-pin', bar: 'Your field', heading: 'Is this your field?', listen: 'Step 1, your field. Move the pin onto your field on the map. You can also draw its shape. Then press Next step.' },
-  { id: 'crops', icon: 'i-leaf', bar: 'Your crops', heading: 'What do you grow?', listen: 'Step 2, your crops. Tap the crops you plant, one year after the other. If you grow tea, hazelnuts or other trees, tap that instead. Then press Next step.' },
+  { id: 'crops', icon: 'i-leaf', bar: 'Your crops', heading: 'What do you grow?', listen: 'Step 2, your crops. Pick the crops you plant, year after year. Crophalo suggests a rotation first when it can see what farmers grow around you. Choose it, choose another, or build your own. If you grow tea, hazelnuts or other trees, find that under More rotations. Then press Next step.' },
   { id: 'soil', icon: 'i-drop', bar: 'Water and soil', heading: 'Water and soil', listen: 'Step 3, water and soil. Say how your field gets water: rainfed, limited irrigation, or irrigated as needed. Then tap the soil that feels like yours, and its colour. Then press Next step.' },
   { id: 'matters', icon: 'i-scale', bar: 'What matters most', heading: 'What do you want most?', listen: 'Step 4, what matters most. Tap one picture. Then press See my field report.' },
 ]);
@@ -110,20 +115,30 @@ export const PARCEL_ELSE = ['FAO GeoNetwork: find your country’s parcel map', 
 
 export const WORDS = Object.freeze({
   placeLoading: 'Finding the place…', demoChip: 'Demo region', stepLabel: (n, name) => `Step ${n} of 4: ${name}`,
-  fold: 'Type coordinates or look up a parcel', coordLabel: 'Coordinates', go: 'Go', badCoords: 'Could not read those coordinates. Try 42.03, -93.62',
-  parcelLead: 'Have a parcel or legal land number? Look it up on your government map, then paste the coordinates above:',
-  mapMissing: 'The map is shown here.', next: 'Go to the next step', last: 'See my field report', back: 'Back',
+  badCoords: 'Could not read those coordinates. Try 42.03, -93.62',
+  demoAnswers: 'Answers filled in. Change any in the steps.',
+  next: 'Go to the next step', last: 'See my field report', back: 'Back',
   mine: 'Your answers stay on this device unless you share your report.',
-  placeNeed: 'Tap the map or draw your field to go on.', cropsNeed: 'Tap what you grow to go on.', soilNeed: 'Tap your soil and its colour to go on.', ready: 'Ready. Your answer takes a few seconds.',
+  placeNeed: 'Tap the map or draw your field to go on.', cropsNeed: 'Pick what you grow to go on.', soilNeed: 'Tap your soil and its colour to go on.',
   rotName: 'Tap what you grow', rotSame: 'The same crop every year.', rotCycle: n => `${n}-year rotation, then it repeats.`,
   garden: 'They stay in the ground, so there is nothing to rotate. Crophalo will show your weather, frost, rain, slope and soil.',
   noSuggest: 'Suggestions for this spot have not been read yet. Choose from the ready rotations, or build your own.',
   ready6: 'Ready rotations', buildOwn: 'Build my own', buildSub: 'Choose each year yourself', yearN: n => `Year ${n}`, removeYear: n => `Remove year ${n}`, addYear: 'Add a year',
-  yearsNote: 'Year 1 is the crop in your field now, or the one you plant next. The years then repeat in order.', chooseCrop: 'Choose a crop',
+  yearsNote: 'Year 1: the crop in your field now or next. Then it repeats.', chooseCrop: 'Choose a crop',
   trees: 'Crops that stay for several years: fruit, berries and asparagus', treesMore: 'More trees and bushes',
-  waterQ: 'How does your field get water?', soilQ: 'What is your soil like?', tapOne: 'Tap one', feelQ: 'How does it feel in your hand?', colourQ: 'What colour is it?',
-  colourAbout: 'About this', colourWhy: 'A rough guide only. If you have a soil test, type its organic matter under “I have a soil test”. It is shown in your report, but it does not change the option scores.',
-  soilMapOff: 'The soil survey has not been read for this spot yet. Tap the soil that is like yours, or use an assumed soil.', soilAssume: 'Not sure: use assumed soil',
-  soilMine: 'Your choice.', soilAssumed: 'Average soil is assumed. Nothing was measured, so the answer will say it is less sure. Tap your soil above if you know it.',
+  waterQ: 'How does your field get water?', soilQ: 'What is your soil like?', feelQ: 'How does it feel in your hand?', colourQ: 'What colour is it?',
+  colourAbout: 'About this', colourWhy: 'A rough guide. Your soil test’s figure shows in the report but does not change scores.',
+  soilAssume: 'Not sure',
+  soilAssumed: 'Average soil used, so the answer is less sure.',
   more: 'More about how you farm', optional: '(optional)', takenAs: parts => `Taken as: ${parts}.`, tillage: 'Tillage',
+});
+
+// ---- My farm: the labels of its first view and of the places its occasional tools moved to (Compare plans, the field's details, More)
+export const FARM_WORDS = Object.freeze({
+  more: 'More', moreField: 'This field', moreMap: 'Map style', moreFarm: 'This farm',
+  details: 'This field', history: 'Land history', board: 'Light', photo: 'Satellite', fields: 'All fields', farms: 'My farms',
+  tools: 'Farm tools', copyPlan: 'Copy the plan to other fields', add: 'Add a field', newFarm: 'Add another farm', importFile: 'Bring in a map file', saveMap: 'Save fields as a map file', saveTable: 'Save the Fields table', recent: 'Recently deleted',
+  editField: 'Edit this field', corners: 'Move corners', split: 'Split', rename: 'Rename', remove: 'Delete',
+  why: 'Why try it:', showPlan: 'Show on the map and in 3D', keyName: 'What is on the ground', keyPlants: 'Growing crop', keyResidue: 'Stubble left after harvest', keyBare: 'Bare soil',
+  timeLine: 'Date on the board', timeHelp: 'The arrow keys move a month. Page Up and Page Down move a season.',
 });

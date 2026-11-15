@@ -140,6 +140,15 @@ export const CHECKLIST = Object.freeze([
   ['Boundaries, access and rights of way: ask the land registry.', 'The field outline here is your drawing, not a legal boundary.'],
   ['Walk the field on a frosty morning and after heavy rain.', ''],
 ]);
+// The same checks, the ones the record's own lines point at first: downpour years lead to the flooding and heavy-rain check, dry years and dry spells to the water check, late and early frosts to the frosty-morning walk.
+// Each is led by the share of the counted years its lines marked; the rest keep their written order. Pure.
+const LEAD = { 1: ['downpour'], 2: ['dry', 'dryspell'], 6: ['lateFrost', 'earlyFrost'] };   // an index of CHECKLIST, and the lines that point at it
+export function checklistFor(h) {
+  const share = ids => (h?.ok ? Math.max(0, ...ids.map(id => { const c = h.counts?.[id]; return c && c.of ? c.n / c.of : 0; })) : 0);
+  const rows = CHECKLIST.map((item, i) => ({ item, i, w: LEAD[i] ? share(LEAD[i]) : 0 })).sort((a, b) => b.w - a.w || a.i - b.i);
+  return { list: rows.map(r => r.item), led: rows.filter(r => r.w > 0).length };
+}
+export const NO_MONEY = 'No yields and no money in this record.';
 export const CLOSING = 'This is a record of past weather and maps, not an inspection or a recommendation. Talk to farmers near you, a local farm adviser and a lawyer before you decide.';
 export const HOW = Object.freeze([
   'Weather: NASA POWER daily weather for a square about 50 km wide, since 2001. A year counts when at least 330 days have both temperatures and rain.',
@@ -153,13 +162,26 @@ export const HOW = Object.freeze([
 export const VERDICT_CELL = Object.freeze({ hurt: 'hurt', close: 'close', fine: 'fine' });
 const causeText = w => (typeof w === 'string' ? w : w && typeof w.text === 'string' ? `${w.text}${typeof w.date === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(w.date) ? `, ${causeDay(w.date)}` : ''}` : '');
 const causeDay = iso => `${+iso.slice(8)} ${MON[+iso.slice(5, 7) - 1].slice(0, 3)} ${iso.slice(0, 4)}`;
+// The count line of a crop row. When the row's verdicts leave out winter survival (the weather record has no snow cover), the line says so in the count itself, never only in a note.
+export const winterOnly = r => !!r?.scope || /Winter survival is not judged/.test(JSON.stringify([r?.notes, r?.chronic]));
+export const countWords = r => { const c = r.counts; return winterOnly(r) ? `Fine in ${c.fine} of ${c.judged} years, for the spring weather Crophalo can judge. A close call in ${c.close}, hurt in ${c.hurt}. Winter survival is not judged.` : `Fine in ${c.fine} of ${c.judged} years, a close call in ${c.close}, hurt in ${c.hurt}.`; };
+// The sentences a crop row carries besides its counts, in this order: the crop the report rejects for this place ("never counts as came through"), what happens in most years here (said once), and the remarks with no verdict
+// (bare ground, rain filled in by a model...). Each may be text or { text }; anything else is dropped. A season is named by its label ("2026-27") where it has one, else by its harvest year.
+export const REJECTED_WORDS = 'Crophalo’s own crop check says this crop does not suit this place, so no year is counted as having come through.';
+const sentence = v => (typeof v === 'string' ? v.trim() : v && typeof v.text === 'string' ? v.text.trim() : '');
+export function rowNotes(r) {
+  const out = []; if (r?.rejected) out.push(typeof r.rejected === 'string' && r.rejected.trim() ? r.rejected.trim() : REJECTED_WORDS);
+  for (const list of [r?.chronic, r?.notes]) for (const v of Array.isArray(list) ? list : []) { const t = sentence(v); if (t && !out.includes(t)) out.push(t); }
+  return out;
+}
+export const yearLabel = y => (typeof y?.label === 'string' && y.label.trim() ? y.label.trim() : String(y?.year ?? ''));
 export const causesOf = y => (Array.isArray(y?.why) ? y.why.map(causeText).filter(Boolean) : []);
 export function cropsLines(crops) {
   if (!crops?.ok || !Array.isArray(crops.rows) || !crops.rows.length) return [crops?.reason || NOT_READ.crops];
-  const list = (r, verdict) => r.years.filter(y => y.verdict === verdict).map(y => `${y.year}${causesOf(y).length ? ` (${causesOf(y).join('; ')})` : ''}`);
+  const list = (r, verdict) => r.years.filter(y => y.verdict === verdict).map(y => `${yearLabel(y)}${causesOf(y).length ? ` (${causesOf(y).join('; ')})` : ''}`);
   const out = crops.rows.flatMap(r => {
     const c = r.counts, hurt = list(r, 'hurt'), close = list(r, 'close'), skipped = c.nodata + c.growing;
-    return [`${r.field}: ${r.crop}. Fine in ${c.fine} of ${c.judged} years, a close call in ${c.close}, hurt in ${c.hurt}.`, hurt.length ? `Hurt: ${hurt.join(', ')}.` : '', close.length ? `Close call: ${close.join(', ')}.` : '', skipped ? `Not counted: ${skipped} ${skipped === 1 ? 'year' : 'years'} (no weather, or the season was not over).` : ''].filter(Boolean);
+    return [`${r.field}: ${r.crop}. ${countWords(r)}`, hurt.length ? `Hurt: ${hurt.join(', ')}.` : '', close.length ? `Close call: ${close.join(', ')}.` : '', skipped ? `Not counted: ${skipped} ${skipped === 1 ? 'year' : 'years'} (no weather, or the season was not over).` : '', ...rowNotes(r)].filter(Boolean);
   });
   return [...out, crops.basis].filter(Boolean);
 }
@@ -168,7 +190,7 @@ export function asText(h, { farm = 'Your farm', place = '', date = '', crops = n
   const s = inShort(h), out = [`${farm}: land history`, [place, yearsOf(h), 'weather from NASA'].filter(Boolean).join(' · '), date ? `Copied ${date}` : '', '', 'IN SHORT', ...s.lines, s.notSeen, s.trend, s.short, '', 'WEATHER ON THIS LAND'].filter(l => l !== null);
   for (const id of ORDER) out.push(`- ${spokenLine(h, id)}`);
   out.push('', 'YOUR CROPS, YEAR BY YEAR', ...cropsLines(crops), '', 'WHAT THE RECORD CANNOT TELL YOU: CHECK BEFORE YOU DECIDE');
-  for (const [a, b] of CHECKLIST) out.push(`☐ ${a}${b ? ` (${b})` : ''}`);
-  out.push('', ...HOW, '', 'Past weather, not a forecast. ' + CLOSING);
+  for (const [a, b] of checklistFor(h).list) out.push(`☐ ${a}${b ? ` (${b})` : ''}`);
+  out.push('', ...HOW, '', 'Past weather, not a forecast. ' + NO_MONEY + ' ' + CLOSING);
   return out.filter((l, i, a) => !(l === '' && a[i - 1] === '')).join('\n');
 }

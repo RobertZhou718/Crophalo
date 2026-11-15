@@ -1,0 +1,33 @@
+/* Crophalo's Terrain analysis on the map: the group in the Layers panel and the legend cards of Slope, Erosion exposure, Frost pockets, Sun and shade and Relief shading.
+   Loaded by js/terrain-layers.js when the map starts. Every control in a terrain legend is at least 44 px tall; the words wrap down to a 320 px screen with the largest text. */
+.tl-setnote { margin: 0 0 var(--space-8); }
+.tl-legend p:empty { display: none; }
+.tl-legend header .tl-i { white-space: nowrap; }
+.tl-keys { list-style: none; margin: var(--space-8) 0 0; padding: 0; display: grid; gap: 3px; font-size: var(--fs-small); }
+.tl-keys li { display: flex; align-items: flex-start; gap: var(--space-8); line-height: 1.3; min-width: 0; }
+.tl-keys li span { min-width: 0; overflow-wrap: anywhere; }
+.tl-sw { flex: none; width: 14px; height: 14px; margin-top: 1px; border-radius: 3px; box-shadow: inset 0 0 0 1px rgba(0,0,0,.3); }
+.tl-sw.tl-none { background: repeating-linear-gradient(45deg, rgba(255,255,255,.9) 0 3px, rgba(0,0,0,.25) 3px 4px); }
+.tl-bar { height: 14px; margin-top: var(--space-8); border-radius: 6px; background: linear-gradient(90deg, rgba(20,20,20,0), rgba(20,20,20,.85)); box-shadow: inset 0 0 0 1px rgba(0,0,0,.28), 0 0 0 1px rgba(255,255,255,.7); }
+.tl-legend > p.cap { margin: var(--space-4) 0 0; overflow-wrap: anywhere; }
+.tl-credit { font-size: var(--fs-micro); }
+.tl-when { display: flex; flex-wrap: wrap; align-items: center; gap: var(--space-8); margin-top: var(--space-8); }
+.tl-field { display: flex; align-items: center; gap: var(--space-8); flex: 1 1 100%; min-width: 0; min-height: var(--touch); }
+.tl-field > span { flex: none; min-width: 3em; }
+.tl-field input[type=date] { flex: 1 1 auto; min-width: 0; min-height: var(--touch); padding: 0 var(--space-8); border: 1px solid var(--line, #c9ccd2); border-radius: 8px; background: var(--card, #fff); color: inherit; font: inherit; }
+.tl-field input[type=range] { flex: 1 1 auto; min-width: 0; min-height: var(--touch); margin: 0; accent-color: var(--accent); }
+.tl-field output { flex: none; min-width: 3.2em; text-align: right; font-variant-numeric: tabular-nums; }
+.tl-legend .btn.sm { min-height: var(--touch); }
+.tl-when .btn { flex: 1 1 100%; justify-content: center; text-align: center; }
+.tl-when .btn[data-playing] { background: var(--accent); color: var(--accent-ink); }
+.tl-when .btn:disabled { opacity: .6; }
+.tl-check { display: flex; align-items: center; gap: var(--space-8); min-height: var(--touch); margin-top: var(--space-4); cursor: pointer; }
+.tl-check input { flex: none; width: 20px; height: 20px; margin: 0; accent-color: var(--accent); }
+.tl-op { min-height: var(--touch); }
+.tl-op > span { flex: none; }
+.tl-op input { min-height: var(--touch); }
+.tl-retry { margin-top: var(--space-8); }
+.tl-retry[hidden] { display: none; }
+.tl-day { font-weight: 600; }
+/* each square of a class layer is one height cell: drawn sharp when the map is zoomed past the heights' own detail */
+.leaflet-layer.tl-sharp canvas { image-rendering: pixelated; }

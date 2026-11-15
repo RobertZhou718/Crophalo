@@ -163,6 +163,7 @@ before it runs the lookup (so every pin inside one coarse pixel shares one answe
 |---|---|---|---|---|---|
 | `canopy` | LAT LON W D NX NY | no | 120 s | 90 days | no |
 | `cdl` | LAT,LON … (1 to 5 spots) | no | 120 s | 30 days | no |
+| `crophist` | LAT LON COUNTRY NEAR [RING] | no | 120 s | 30 days | no |
 | `dem` | LAT LON W D NX NY [SOURCE] | no | 120 s | 30 days | no |
 | `ecostress` | LAT LON | yes | 150 s | 24 h | no |
 | `faostat` | none | no | 420 s | 24 h | shared by all |
@@ -170,12 +171,14 @@ before it runs the lookup (so every pin inside one coarse pixel shares one answe
 | `grace` | LAT LON | for a newer file only | 300 s | 24 h | 0.05° |
 | `gracegrid` | none | for a newer file only | 300 s | 24 h | shared by all |
 | `hls` | LAT LON | yes | 150 s | 24 h | no |
+| `hlsbox` | LAT LON RING | yes | 150 s | 7 days | no |
 | `horizon` | LAT LON [W D] | no | 120 s | 90 days | no |
 | `imerg` | LAT LON FROM TO | yes | 120 s | 6 h | centre of the 0.1° square |
 | `isda` | LAT LON | no | 30 s | 30 days | no |
 | `landcover` | LAT LON W D NX NY | no | 120 s | 30 days | no |
 | `ndvi` | LAT LON | no | 240 s | 7 days | 0.002° |
 | `ndvihist` | LAT LON | no | 300 s | 30 days | 0.002° |
+| `orbits` | none | no | 90 s | 12 h | shared by all |
 | `osm` | LAT LON W D | no | 150 s | 30 days | no |
 | `prices` | none | no | 300 s | 12 h | shared by all |
 | `smap` | LAT LON | yes | 420 s | 7 days | 0.01° |
@@ -371,6 +374,7 @@ The script receives `LAT LON COUNTRY`: `cropsnear.py 43.1300 -80.7500 CA`.
 | `crops[]` | crops.js id, 0..1, hectares | each crop whose OWN class has pixels in the box; a double-crop class counts for both crops |
 | `wider[]` | code, name, ids, 0..1, hectares | classes that hold several crops without saying which; `"*"` = any crop not classed on its own |
 | `classes[]` | code, name, kind, ids, 0..1, hectares | every farmland class in the box, largest first, kind `own`, `wider` or `other` |
+| `pin` | code, name (kind, ids) | the map's class at the field's own point, or null when it could not be read; a USDA class of the "garden" part of `cropsnear_map.json` (orchards, vineyards, cane, hops, asparagus: crops that stay for years) adds `"kind":"garden"` and `crops`, the standing-crop ids of `js/crops.js` GARDENS that hold it |
 
 **Failure answers.**
 
@@ -427,6 +431,87 @@ one thing changed by hand, in a temp folder.
 - **USDA's CroplandCROS service** answers `query` for the newest raster (2025, `2025_10m_cdls`) and `computeHistograms`
   with that raster locked; asked at 30 m it counts the 10 m map at 30 m.
 
+## crophist
+
+**What it is.** What this field grew, year by year, read from the national 30 m crop maps at up to nine points inside the
+field; with `near=1` also, as counts only, what the farm fields around it grew in the year after each crop. In the 48 lower
+US states USDA NASS's Cropland Data Layer (2008 to the newest year, through USDA's CroplandCROS image service), in Canada
+Agriculture and Agri-Food Canada's Annual Crop Inventory (2011 to the newest year). No NASA login. Nothing is decided here:
+the page finds the turn and the "after corn" shares from these counts.
+
+**Request.** `GET /api/crophist?lat=&lon=&country=US|CA&near=0|1&ring=lon,lat;lon,lat;…`
+
+| Field | Unit | Limits |
+|---|---|---|
+| `lat`, `lon` | decimal degrees | -84..84 and -180..180; blank is missing, never 0 |
+| `country` | ISO 3166 code | `CA` or `US`, as for `cropsnear` |
+| `near` | 0 or 1 | blank is 0 |
+| `ring` | lon,lat pairs joined by `;` | optional; 3 to 200 corners (a closed outline may repeat its first one); written with 4 decimals |
+
+The script receives `LAT LON COUNTRY NEAR [RING]`, for example `crophist.py 41.1795 -96.4398 US 1 -96.4446,41.1830;…`.
+Without `ring` the field is the pin.
+
+**Good answer** (Mead, outline, near=1, shortened):
+
+    {"ok":true,"source":"USDA NASS Cropland Data Layer 2008 to 2025, through USDA's CroplandCROS image service","data_date":"2008/2025",
+     "data_date_note":"…","units":"…","country":"US","where":"outline","points":9,"points_read":9,"spots":[[41.181817,-96.443067],…],
+     "field":[{"year":2025,"crop":"corn","agree":9,"code":1,"name":"Corn","mixed":false,"unread":0,"classes":[1,1,1,1,1,1,1,1,1]},…],
+     "years":{"first":2008,"last":2025},"not_read":[],
+     "near":{"radius_km":3,"step_m":170,"grid_points":948,"years":{"first":2017,"last":2025},"pairs":8,
+             "after":{"corn":{"soy":1659,"corn":292,"pea":42,"alfalfa":14,"oats":6,"wheat":5,"rye":2,"triticale":1,"other":14,"n":2035},…}},
+     "licence":"public domain (USDA NASS)","checked":"…"}
+
+| Field | Type, unit | Meaning |
+|---|---|---|
+| `source`, `data_date`, `data_date_note`, `units` | text | the map, its years (`first/last`) and the same in words, with why the first year is 2008 (US) or 2011 (Canada) |
+| `country`, `where` | text | `US` or `CA`; `outline` when a ring was sent, `pin` when not |
+| `points`, `points_read` | count | the field points asked (3 to 9) and those that answered (US only; it can be below `points`) |
+| `spots` | [lat, lon] | each point, north row first, west to east; `classes` uses this order |
+| `field[]` | per year, newest first | `year`; `crop` (a crops.js id, or null when no crop has more than half the points, or when the class most points show is not one crop alone); `agree` (points that show the most common crop or class); `code`, `name` (the majority class, null when mixed); `mixed`; `unread` (points with no value); `classes` (the class at each point, null = no value) |
+| `years` | {first, last} | the years read |
+| `not_read` | years | years the service did not answer, and years with no value at any point; left out of `field` |
+| `near` | object | only with near=1 and at least one pair of years read: `radius_km` 3, `step_m` 170, `grid_points` (the field's own left out), `years` (the newest 9), `pairs` (Y, Y+1 read, 8 when all are), `after[crop]` (for each crop in year Y, how many grid points showed each crop in Y+1; `other` is a farm class that is not one crop; `n` the sum of the row, in point-pairs), `not_read` |
+| `near_reason` | text | in place of `near` when no neighbour pair could be read |
+| `incomplete` | text | only on a partial answer, for example `"2016 not read"`, `"1 of 9 points not read"` |
+| `licence` | text | `public domain (USDA NASS)` or `Open Government Licence - Canada` |
+
+**Failure answers.**
+
+| Reason | Final |
+|---|---|
+| `Crop maps by year are read for Canada and the United States only` | **yes** |
+| `This field is too small to read by year on the 30 m crop map (fewer than 3 points 30 m apart fit inside it)` (nothing is asked) | **yes** |
+| `The US crop map (USDA Cropland Data Layer) has no reading for this place` (Canada: the same words for its map) | **yes** |
+| `The Canadian crop map (AAFC Annual Crop Inventory) did not answer just now; try again in a minute` (the US map: the same words) | no |
+| `… asked us to slow down; try again in a few minutes` (HTTP 429; nothing more is asked) | no |
+| `… did not list any year of its map; try again later` | no |
+| `The crop map took too long to answer; try again in a minute` | no |
+| `near must be 0 or 1`, `The field's outline must be 3 to 200 corners written lon,lat;lon,lat`, `lat and lon are required as decimal degrees` | no |
+
+**Partial answers.** `incomplete` marks one: a year or a field point not read, or a neighbour year not read. The server
+keeps it 1 hour.
+
+**Time limit.** Server: 120 s. The lookup stops itself at 115 s. One request: 30 s. A neighbour request gets only the time
+left (two tries, 5 s kept back) and is skipped under 3 s; the field is then answered with `near_reason`. Measured live on
+2026-11-15: 5.1 s at Mead with near=1 (18 requests), 6.6 s at Oxford (25 requests).
+
+**Memory.** Limit 300 MB. Measured about 32 MB live on 2026-11-15.
+
+**Kept.** The server keeps a whole answer 30 days (the maps change once a year), a partial one 1 hour, a final failure 24
+hours. The lookup keeps no file.
+
+**Snapped.** Not snapped: the field is read at its own points.
+
+**Source and manners.** US: one `identify` per field point with `returnCatalogItems=true` on
+`https://pdi.scinet.usda.gov/image/rest/services/CDL_WM/ImageServer`, and with near=1 one `getSamples` per year (each
+year's raster locked). Canada: the list of years, then one `getSamples` per year on
+`https://agriculture.canada.ca/imagery-images/rest/services/annual_crop_inventory/{year}/ImageServer`. At most 1,000 points
+per request. The services, the failure words and the class table (`cropsnear_map.json`) are the crop-map lookup's own,
+imported from `cropsnear.py`.
+
+**Checked by.** `node scripts/test_crophist.mjs` (offline) on `scripts/fixtures/live/crophist/mead` and `oxford`, recorded
+from the live public services on 2026-11-15; the failures are copies of these changed in a temp folder.
+
 ## dem
 
 *To be written.*
@@ -437,7 +522,7 @@ one thing changed by hand, in a temp folder.
 
 ## ecopass
 
-**What it is.** The ground temperature, seen from space at about 70 m, of the pixel that holds the field, for the newest clear passes of NASA's ECOSTRESS instrument (on the International Space Station) in the last 60 days. It is the temperature of the surface (soil, leaves, snow), not the air temperature. ECOSTRESS passes at different hours (the station's orbit drifts through the day), so each pass says its own date and local solar time, and passes made at different hours must never be compared as if they were the same time of day. Only the field's own pixel is read; a pixel with cloud, lower quality, water or no view is never a reading. Needs the NASA login.
+**What it is.** The ground temperature, seen from space at about 70 m, of the pixel that holds the field, for every clear pass of NASA's ECOSTRESS instrument (on the International Space Station) in the last 365 days, with the number of clear daytime days at 45 C or more. It is the temperature of the surface (soil, leaves, snow), not the air temperature. ECOSTRESS passes at different hours (the station's orbit drifts through the day), so each pass says its own date and local solar time, and passes made at different hours must never be compared as if they were the same time of day. Only the field's own pixel is read; a pixel with cloud, lower quality, water or no view is never a reading. Needs the NASA login.
 
 **Request.** `GET /api/ecopass?lat=43.13&lon=-80.75`; latitude -52..52 (ECOSTRESS does not see further). The server snaps the place to 0.0005 degrees (about 50 m, finer than the 70 m pixel, so the pin keeps its own pixel) and runs `ecopass.py LAT LON`.
 
@@ -447,22 +532,24 @@ one thing changed by hand, in a temp folder.
      "data_date":"YYYY-MM-DD","units":"Ground (surface skin) temperature seen from space for one 70 m pixel, in degrees Celsius (and kelvin), at the time of each pass; not the air temperature",
      "pixel_m":70,"window":{"first":"YYYY-MM-DD","last":"YYYY-MM-DD"},
      "passes":[{"date":"YYYY-MM-DD","utc":"07:02","solar_time":"01:39","solar_date":"YYYY-MM-DD","day_night":"night","lst_c":-2.3,"lst_k":270.82,"error_k":1.0,"orbit":47324,"version":"002","granule":"ECOv002_L2T_LSTE_47324_006_17TNH_..."}, "..."],
-     "clear_passes":4,"passes_checked":24,"not_usable":{"cloud":2,"quality":2,"water":0,"no_data":16},"read_errors":0,"newest_clear":"YYYY-MM-DD","note":"..."}
+     "clear_passes":4,"summary":{"day_clear":2,"night_clear":2,"hot_days":0,"hot_c":45,"hot_source":"Peacock et al., Crop Science 30(1):138-143 (1990): ...","max_day_c":24,"max_day_date":"YYYY-MM-DD"},"passes_found":24,"passes_checked":24,"coverage":{"found":24,"examined":24,"back_to":"YYYY-MM-DD","kept":0,"newly_read":24,"complete":true},"not_usable":{"cloud":2,"quality":2,"water":0,"no_data":16},"read_errors":0,"newest_clear":"YYYY-MM-DD","note":"..."}
 
 | Field | Meaning |
 |---|---|
-| `passes` | up to 4 clear passes, newest first, one per orbit (the next scene of the same overpass is not a second pass). `lst_c` / `lst_k` the ground temperature, `error_k` the file's own estimate of its error (kelvin) |
+| `passes` | every clear pass of the year (up to 250), newest first, one per orbit (the next scene of the same overpass is not a second pass). `lst_c` / `lst_k` the ground temperature, `error_k` the file's own estimate of its error (kelvin) |
 | `utc`, `solar_time`, `day_night` | when the pass was made: UTC, the field's mean local solar time (UTC plus longitude / 15 hours; not the clock on the wall, which depends on the time zone and the season), and NASA's own day or night flag |
 | `version` | the product version the pass came from: 003 where it has the pass, else 002 (the passes of both versions are the same overpasses) |
-| `passes_checked`, `not_usable` | how many passes were looked at (newest first, at most 36) and why the others gave no reading: `cloud` (the final cloud mask), `quality` (the quality code is not the best quality, or the value is outside 200 to 360 K), `water`, `no_data` (the pass did not see the field's pixel, or its cloud mask is "not known") |
-| `incomplete` | present when some pass could not be read just now, or the time ran out before the newest 36 were looked at |
+| `summary` | `day_clear` days with a clear daytime pass; `hot_days` how many of those days had a day pass of `hot_c` (45 C) or more (two hot passes on one day are one day; night passes are never counted); `max_day_c` and `max_day_date` the hottest clear day. The 45 C line is a sorghum finding (`hot_source`: soil above 45 C stopped sorghum seedlings establishing in the field), so the card says so; other crops differ |
+| `passes_found`, `passes_checked`, `not_usable` | how many passes the catalogue lists over the place and how many were looked at (newest first, at most 400, until the time left runs short) and why the others gave no reading: `cloud` (the final cloud mask), `quality` (the quality code is not the best quality, or the value is outside 200 to 360 K), `water`, `no_data` (the pass did not see the field's pixel, or its cloud mask is "not known") |
+| `coverage` | how far down the year this ask got: `found` passes in the catalogue, `examined` of them (newest first), `back_to` the day of the oldest one examined, `kept` taken from what earlier asks kept, `newly_read` read for the first time in this ask, `complete` true only when every pass was examined and none failed. An ask reads at most 60 passes for the first time (`FW_ECO_NEW_PER_ASK` changes it, for a test), so a year is read over a few asks, each going on where the last stopped |
+| `incomplete` | present when some pass could not be read just now, or the ask stopped before the end: "so far the newest N of M passes were read, back to D; the rest are read on the next ask" |
 | `why_none` | present when no pass was clear: the answer is still a good one (`passes` empty), never a made-up temperature |
 
-**Failure answers.** The common two for bad arguments (`lat must be -52..52`); `NASA's catalogue lists no ECOSTRESS pass over this place in the last 60 days...` (not final); `NASA did not accept this computer's login`; the files refused for the login (it may need approving for NASA LP DAAC); `NASA's ECOSTRESS files could not be read just now` (every pass failed, not final).
+**Failure answers.** The common two for bad arguments (`lat must be -52..52`); `NASA's catalogue lists no ECOSTRESS pass over this place in the last 365 days...` (not final); `NASA did not accept this computer's login`; the files refused for the login (it may need approving for NASA LP DAAC); `NASA's ECOSTRESS files could not be read just now` (every pass failed, not final).
 
 **Partial answers.** Yes: `incomplete` and `read_errors` say which passes were not read.
 
-**Time limit.** 150 s on the server. Live, Oxford: 50 to 55 s cold (the newest 24 passes are looked at until 4 are clear), about 3 s when the passes were read before. The cloud mask is read first (it also says when the pixel was not seen), and the archive's short-lived file address is asked for ahead of the read, so the archive's slow step and the content network's quick reads overlap (12 files in 9.7 s against 13.5 s). The lookup stops looking at older passes 25 s before its limit and says so.
+**Time limit.** 150 s on the server. Cold, a year of passes (about ninety over a mid-latitude place) is read newest first until the time left runs short; every pass read is kept, so the second run reads only the new ones (about 3 s). The first live run of the year-long version has not been made yet: it needs the owner's NASA login (`node scripts/live_check_ecopass.mjs`). Before the year-long version, Oxford took 50 to 55 s cold for the newest 24 passes. The cloud mask is read first (it also says when the pixel was not seen), and the archive's short-lived file address is asked for ahead of the read, so the archive's slow step and the content network's quick reads overlap (12 files in 9.7 s against 13.5 s). The lookup stops looking at older passes 25 s before its limit and says so.
 
 **Memory.** Limit 300 MB. Measured live: peak 104 MB (rasterio and numpy loaded; one pixel per read).
 
@@ -673,6 +760,74 @@ A crop FAO has no figure for is **absent**, never 0. Regional totals ("World", "
 
 **Checked against the live service.** Oxford, 2026-11-14: 24 periods, 17 with a reading, 7 empty (the winter), NDVI between 0.29 and 0.53, 8 cloudy and 13 snowy candidates passed over, no read errors; one pass recomputed from a direct read of its three files, same value (0.528, nine dots).
 
+## hlsbox
+
+**What it is.** How green each 30 m square inside the field looked, pass after pass, from May 1 to September 30 of the last
+two full calendar years, for "Weak spots in this field". NASA / USGS HLS v2.0 surface reflectance, 30 m, from NASA's Land
+Processes DAAC, with the same files and the same cloud, snow and water rules as `hlsndvi`, whose helpers it imports. The
+catalogue is open; the files need the free NASA Earthdata login.
+
+**Request.** `GET /api/hlsbox?lat=&lon=&ring=lon,lat;lon,lat;…`
+
+| Field | Unit | Limits |
+|---|---|---|
+| `lat`, `lon` | decimal degrees | as for every point; they must lie in the outline's box |
+| `ring` | lon,lat pairs joined by `;` | 3 to 200 corners, closed or not, written with 6 decimals; the outline's box at most 2 km a side |
+
+The script receives `LAT LON RING`.
+
+**Example request.** `GET /api/hlsbox?lat=41.1651&lon=-96.4766&ring=-96.480200,41.162400;-96.473000,41.162400;-96.473000,41.167800;-96.480200,41.167800`
+
+**Good answer** (`ok: true`):
+
+| Field | Type, unit | Meaning |
+|---|---|---|
+| `source`, `data_date`, `units` | text | hlsndvi's HLS v2.0 sentence; the date of the newest kept pass (with no pass, the window); what NDVI, corners and clear_share mean |
+| `pixel_m` | metres | 30 |
+| `window` | object | `first`, `last` and the two `seasons` read |
+| `cells[]` | per 30 m square | every square with a corner or its centre inside the outline, numbered north to south, then west to east: `id`, `corners` (NW, NE, SE, SW as [lat, lon]), `lat`, `lon` (its centre), `inside` (true only when all four corners are inside) |
+| `cells_inside` | count | how many cells are inside |
+| `passes[]` | oldest first, at most one per 15-day period | `date`, `sensor` (`Sentinel-2` or `Landsat 8 and 9`), `ndvi[]` (`ndvi[k]` belongs to `cells[k]`, 3 decimals; null is cloud, shadow, next to cloud, snow, water or no value, never 0), `clear_share`, `tile`, `granule` |
+| `periods`, `periods_read` | count | always 20; 20 minus the periods not looked at or not readable |
+| `left_out[]` | `{period, why}` | one for each period with no pass; `why` is `no_pass`, `cloud`, `snow`, `water`, `outside`, `other_grid`, `not_read` or `no_time` |
+| `not_usable`, `read_errors` | counts | the rejected candidates by reason; the files that could not be read |
+| `incomplete` | true or false | true when a period was not read or a file failed |
+| `note`, `why_none` | text | the rules in plain words; `why_none` only when there are no passes |
+
+A pass is kept only when at least 60 % of the inside squares are clear. At most 3 candidates are tried per period, by the
+tile's cloud cover.
+
+**Failure answers.**
+
+| Reason | Final |
+|---|---|
+| `This field is too big for one look (over 2 km across). Split it to look for weak spots.` (nothing is asked) | **yes** |
+| `This field is too small for 30 m squares (under 30 squares).` (nothing is asked) | **yes** |
+| the outline sentence (3 to 200 corners), the lat and lon sentences, `lat and lon must lie inside the box of the field's outline` | no |
+| NASA's catalogue lists no pass over this field from May to September of the two years | no |
+| common's no-login sentence; the login refused; the files refused (hlsndvi's words) | no |
+| every file failed: `could not be read just now; try again in a minute`; out of time: the slow sentence | no |
+
+**Partial answers.** `incomplete: true` or `read_errors > 0`. The server keeps it 1 hour. An `ok: true` answer with no
+passes and `incomplete: true` is a time-out, not "too cloudy".
+
+**Time limit.** Server: 150 s. The lookup stops starting new periods when fewer than 22 s are left (hlsndvi's spare time).
+
+**Memory.** Limit 300 MB. Measured offline on the largest field allowed (1.9 km): 4,096 cells, a 0.76 MB answer, peak 70 MB.
+Not yet measured live.
+
+**Kept.** The server keeps a whole answer 7 days. The lookup keeps no file.
+
+**Snapped.** Not snapped.
+
+**Source and manners.** NASA's catalogue (CMR) gets the field's centre; then range reads of three small layers (the Fmask
+flags, the red band, the near-infrared band) over the outline's window, never a whole file.
+
+**Checked by.** `node scripts/test_live_hlsbox.mjs` (offline: the catalogue, the token and small GeoTIFFs built the real way;
+about 40 s). The page's test answers `scripts/fixtures/live/hlsbox/mead.json` and `mead-cloudy.json` are hand-made and say
+so. By hand, live: `node scripts/live_check_hlsbox.mjs` (a field about 600 m a side near Mead, Nebraska). Not yet checked
+against the live service.
+
 ## horizon
 
 *To be written.*
@@ -772,6 +927,46 @@ A crop FAO has no figure for is **absent**, never 0. Regional totals ("World", "
 **Checked by.** `scripts/test_live_ndvihist.mjs` (offline: the list of days and palette tiles made by hand in the real formats; a greener, a steady, a browner land; gaps, partial seasons, empty patches, too few seasons; the service failing; the south and the tropics; arguments), `scripts/live_check_ndvihist.mjs` (by hand, live).
 
 **Checked against the live service.** Oxford, 2026-11-15: 25 seasons from 2001 to 2025, peaks between 0.56 and 0.64 (the patch holds the edge of Woodstock; the farmland of the tile has a median of 0.83), steady since 2001; one composite compared with the 8-day layer of the same day: 0.57 and 0.55.
+
+## orbits
+
+**What it is.** The orbital elements of the thirteen satellites whose data Crophalo reads (Terra, NOAA-20, NOAA-21, SMAP, the GPM Core Observatory, GRACE-FO 1 and 2, Landsat 8 and 9, Sentinel-2A, 2B and 2C, and the International Space Station, which carries ECOSTRESS), for the turning Earth on the home. The browser works each satellite's place out from them with SGP4 (`js/home-sats.js`, the folder's own satellite.js). The elements are the U.S. Space Force's (Space-Track.org) as CelesTrak republishes them. No login and no key.
+
+**Request.** `GET /api/orbits`, no arguments; one answer for every visitor (`orbits.py`).
+
+**Good answer** (real numbers, recorded 15 November 2026 UTC; one of the thirteen shown):
+
+    {"ok":true,"source":"CelesTrak GP data: the U.S. Space Force's newest orbital element set for each satellite (Space-Track.org), for SGP4",
+     "credit":"Orbits: U.S. Space Force (Space-Track.org), via CelesTrak.","data_date":"YYYY-MM-DD","units":"Orbital elements as CCSDS OMM fields: ...",
+     "satellites":[{"norad":25994,"name":"TERRA","epoch":"YYYY-MM-DDTHH:MM:SS.sssZ","asked":"YYYY-MM-DDTHH:MM:SSZ",
+       "omm":{"NORAD_CAT_ID":25994,"OBJECT_NAME":"TERRA","OBJECT_ID":"…","EPOCH":"…","MEAN_MOTION":14.6119781,"ECCENTRICITY":0.0003557,"INCLINATION":97.9264, "…"}}, "…"],
+     "missing":[],"requests":13,"checked":"YYYY-MM-DDTHH:MM:SSZ"}
+
+| Field | Meaning |
+|---|---|
+| `satellites` | one entry per satellite that has a usable set, in the list's order: CelesTrak's name, the epoch cut to the millisecond with a `Z` (as every browser reads it), when CelesTrak was asked for it, and the seventeen OMM fields exactly as checked |
+| `missing` | the satellites with no set in this answer, each with a plain reason (CelesTrak could not be asked; its set could not be used, and why; its newest set is more than 14 days old) |
+| `requests` | how many requests this run sent to CelesTrak (0 when every kept set is younger than 2 hours, or during a quiet time) |
+| `stale`, `note` | present when some sets are older ones kept from before, because CelesTrak could not be asked for them now; each still carries its own epoch |
+| `next_ask` | present during a quiet time: when CelesTrak will be asked again |
+
+**Failure answers.** `The satellites' orbits could not be read just now; try again in a while` (no usable set at all, not final); `This lookup takes no arguments`; `CelesTrak took too long to answer; the satellites' orbits will be asked for again later` (the time limit).
+
+**Partial answers.** `incomplete` ("3 of 13 satellites have no element set in this answer") or `stale` with its `note`: the server keeps them one hour.
+
+**Time limit.** 90 s on the server; the lookup stops asking when less than 12 s are left and answers with what it has. Each request may take 20 s. Normally 13 small requests, a second apart: about 15 s.
+
+**Memory.** Limit 300 MB. Measured on the recorded answers: peak 22 MB.
+
+**Kept.** The server keeps a whole answer 12 hours, so CelesTrak is asked at most twice a day for every visitor together. The lookup keeps each satellite's last good set under `FW_CACHE/orbits/<number>.json` (source files, written whole): a set read less than 2 hours ago is never asked for again (CelesTrak has nothing newer before then), and when CelesTrak cannot be asked the kept set is handed out with its own epoch and `stale`. After an answer that is not 200 the lookup writes `FW_CACHE/orbits/quiet.json` and asks CelesTrak nothing for 2 hours. The browser keeps the answer for the visit only (`sessionStorage`, `crophalo.orbits.v1`).
+
+**Snapped.** Not a place: one answer for everyone.
+
+**Source and manners.** `https://celestrak.org/NORAD/elements/gp.php?CATNR={number}&FORMAT=JSON` (FORMAT is always given: without it CelesTrak answers in CSV). One try per request, a second or more apart, and the round stops at the first answer that is not 200, as CelesTrak's usage policy asks; CelesTrak checks for new sets every 2 hours, asks clients not to download the same data again before then (it may answer 403), and firewalls addresses with more than 50 errors in 2 hours. CelesTrak states no licence or fee. Space-Track's user agreement gives blanket approval to pass on these basic element sets with a citation, so the home and the Data page say "Orbits: U.S. Space Force (Space-Track.org), via CelesTrak". This is a reading of the terms, not legal advice.
+
+**Checked by.** `scripts/test_live_orbits.mjs` (offline, on the 13 answers recorded from CelesTrak in `scripts/fixtures/live/orbits/`, with `recording.json` saying how they were asked: a good answer, the kept sets and the 2-hour rules, a 403 in the middle of a round, CelesTrak down at once, an answer with no set, a set with a broken number or another catalogue number, a set more than 14 days old; and the positions against the orbit library) and `scripts/e2e_home.mjs` (the home in a real browser on the same recorded sets).
+
+**Checked against the live service.** 15 November 2026, 03:04 UTC: 13 requests 3 s apart, all 200, epochs 6.8 to 18.3 hours old, every set `EPHEMERIS_TYPE` 0 and `CLASSIFICATION_TYPE` U (the recording in the fixture folder).
 
 ## osm
 

@@ -238,6 +238,15 @@ for (const [name, how] of [['a file that is not found (404)', w => { w.net.statu
   check('every script, style and data file the real page names is in the copy', local.every(f => got.has(f)), local.filter(f => !got.has(f)));
   check('the real app\'s own modules are all there, including the ones reached only by import()', ['js/app.js', 'js/mapx.js', 'js/spotcard.js', 'js/weather.js', 'js/srci.js', 'js/sources.js'].every(f => !fs.existsSync(path.join(ROOT, f)) || got.has(f)), ['js/app.js', 'js/mapx.js', 'js/spotcard.js'].filter(f => !got.has(f)));
   check('the copy holds the real stylesheets and the map library', [...got].some(f => /^css\/.*\.css$/.test(f)) && got.has('vendor/leaflet/leaflet.js') && got.has('vendor/leaflet/leaflet.css'));
+  check('the copy holds the motion stylesheets, so the page turn never scrolls the report sideways offline either', got.has('css/fx.css') && got.has('css/fx-halo.css'), [...got].filter(f => /^css\/fx/.test(f)));
+  const byName = JSON.parse(fs.readFileSync(path.join(ROOT, 'sw.js'), 'utf8').match(/const BY_NAME = (\[[^\]]*\])/)[1].replace(/'/g, '"'));
+  check('every file the worker lists by name is a real file of the folder, and in the copy', byName.length > 0 && byName.every(f => fs.existsSync(path.join(ROOT, f)) && got.has(f)), byName.filter(f => !got.has(f)));
+  const { LANDED } = await import(new URL('../js/macro.js', import.meta.url).href);
+  check('every big animation that has landed is in the copy', LANDED.every(n => got.has(`js/macro-${n}.js`)), LANDED.filter(n => !got.has(`js/macro-${n}.js`)));
+  const sheets = fs.readdirSync(path.join(ROOT, 'css')).filter(f => f.endsWith('.css')).map(f => `css/${f}`);
+  // My farm now turns its two 3D scenes on (farm.setScenes in js/app.js): their modules, asked by a built name, and css/macro-3d.css come into the copy too, so no stylesheet is left out any more
+  check('every stylesheet of the folder is in the copy', sheets.every(f => got.has(f)), sheets.filter(f => !got.has(f)));
+  check('My farm\'s two 3D scenes are in the copy', ['js/macro-skeleton.js', 'js/macro-sun.js'].every(f => got.has(f)), ['js/macro-skeleton.js', 'js/macro-sun.js'].filter(f => !got.has(f)));
   check('the copy holds nothing under /api, and no test or script file', ![...got].some(f => /^(api|scripts)\//.test(f)));
   check('every file in the copy is a real file of the folder', [...got].every(f => fs.existsSync(path.join(ROOT, f))), [...got].filter(f => !fs.existsSync(path.join(ROOT, f))));
   w.net.offline = true;
@@ -249,7 +258,7 @@ for (const [name, how] of [['a file that is not found (404)', w => { w.net.statu
 {
   const { canRegister, installCardHtml, OFFLINE_WORDS, BACK_ONLINE } = await import(new URL('../js/offline.js', import.meta.url).href);
   const loc = (protocol, hostname) => ({ protocol, hostname }), nav = { serviceWorker: {} };
-  same('a worker is registered on https and on this computer only', [canRegister(loc('https:', 'crophalo.earth'), nav), canRegister(loc('http:', 'localhost'), nav), canRegister(loc('http:', '127.0.0.1'), nav), canRegister(loc('http:', '[::1]'), nav), canRegister(loc('http:', 'crophalo.earth'), nav), canRegister(loc('http:', '192.168.1.5'), nav)], [true, true, true, true, false, false]);
+  same('a worker is registered on https and on this computer only', [canRegister(loc('https:', 'site.example.test'), nav), canRegister(loc('http:', 'localhost'), nav), canRegister(loc('http:', '127.0.0.1'), nav), canRegister(loc('http:', '[::1]'), nav), canRegister(loc('http:', 'site.example.test'), nav), canRegister(loc('http:', '192.168.1.5'), nav)], [true, true, true, true, false, false]);
   same('and only where the browser has workers', [canRegister(loc('https:', 'x.example'), {}), canRegister(loc('https:', 'x.example'), undefined)], [false, false]);
   same('the offline line has both halves: what still works and what does not', OFFLINE_WORDS, 'You are offline. Saved fields open, but a new report needs an internet connection.');
   same('the way back', BACK_ONLINE, 'You are back online.');

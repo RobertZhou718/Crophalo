@@ -6,7 +6,7 @@ import { own } from './words.js';
 import { isCrop, isGarden, isPreset } from './crops.js';
 
 export const STATE_VERSION = 1;
-export const IRRIGATION = ['none', 'limited', 'full'], TILLAGE = ['conventional', 'reduced', 'notill'], SOIL_MODES = ['auto', 'manual', 'assumed'];
+export const IRRIGATION = ['none', 'limited', 'full'], TILLAGE = ['conventional', 'reduced', 'notill'], SOIL_MODES = ['auto', 'manual', 'assumed', 'map'];   // map: a soil map's texture that a demo field comes with
 export const TEXTURES = ['sand', 'loam', 'silt', 'clay'], ORGANIC = ['low', 'med', 'high'];   // what the four feel tiles and three colour swatches stand for
 export const PRIORITIES = ['water', 'soil', 'erosion', 'income', 'weather'];
 export const PRIORITY_SETS = {   // the weights for Water fit, Soil health, Soil wash-off, Income, Weather safety
@@ -34,6 +34,7 @@ const within = (v, lo, hi) => finite(num(v)) && num(v) >= lo && num(v) <= hi ? n
 const oneOf = (list, v, fallback = null) => typeof v === 'string' && list.includes(v) ? v : fallback;
 const flag = (v, fallback) => typeof v === 'boolean' ? v : fallback;
 const round4 = v => Math.round(v * 1e4) / 1e4;
+const round5 = v => Math.round(v * 1e5) / 1e5;   // an outline corner: about 1 m, so a corner dragged at a close zoom lands where it was dropped (the pin keeps 4)
 const ids = (list, keep, most) => [...new Set(Array.isArray(list) ? list.filter(id => typeof id === 'string' && own(Object.fromEntries([[id, 1]]), id) && keep(id)) : [])].slice(0, most);
 
 // The place: finite latitude and longitude on Earth, four decimals. The only hard refusal: null means "bad place".
@@ -41,10 +42,12 @@ export function cleanLoc(raw) {
   const lat = within(raw?.lat, -90, 90), lon = within(raw?.lon, -180, 180);
   if (lat === null || lon === null) return null;
   const cc = typeof raw.cc === 'string' && /^[A-Za-z]{2}$/.test(raw.cc) ? raw.cc.toUpperCase() : '';
-  return { lat: round4(lat), lon: round4(lon), label: text(raw.label, LABEL_MAX), cc };
+  const ok = raw.fieldOk, fieldOk = ok && typeof ok === 'object' && within(ok.lat, -90, 90) === round4(lat) && within(ok.lon, -180, 180) === round4(lon) && Number.isInteger(ok.code) && ok.code >= 0 && ok.code <= 255
+    ? { lat: round4(lat), lon: round4(lon), code: ok.code, word: text(ok.word, 40) } : null;   // the farmer's own word that a pin the crop map calls forest or the like is a field (js/nearby.js fieldWord); gone when the pin moves
+  return { lat: round4(lat), lon: round4(lon), label: text(raw.label, LABEL_MAX), cc, ...(fieldOk ? { fieldOk } : {}) };
 }
 
-// ---- the field outline: at least three real corners, an area above zero, a believable slope, and the pin inside it
+// ---- the field outline: at least three real corners (kept to 5 decimals), an area above zero, a believable slope, and the pin in it (as near as its 4 decimals tell)
 const inside = (lat, lon, pts) => {   // ray casting
   let yes = false;
   for (let i = 0, j = pts.length - 1; i < pts.length; j = i++) {
@@ -53,6 +56,20 @@ const inside = (lat, lon, pts) => {   // ray casting
   }
   return yes;
 };
+// The pin is kept to 4 decimals, so it stands for a square about 11 m across: it holds when that square meets the outline (its middle inside, or an edge
+// of the outline through the square). A garden smaller than the square still keeps its pin; a pin further off is still refused.
+const PIN_HALF = 5e-5 + 1e-9;
+function edgeInSquare([y1, x1], [y2, x2], cy, cx) {   // the edge clipped to the square round the pin (Liang-Barsky): true when any of it is left
+  let t0 = 0, t1 = 1;
+  const dx = x2 - x1, dy = y2 - y1;
+  for (const [p, q] of [[-dx, x1 - (cx - PIN_HALF)], [dx, cx + PIN_HALF - x1], [-dy, y1 - (cy - PIN_HALF)], [dy, cy + PIN_HALF - y1]]) {
+    if (p === 0) { if (q < 0) return false; continue; }
+    const r = q / p;
+    if (p < 0) { if (r > t1) return false; if (r > t0) t0 = r; } else { if (r < t0) return false; if (r < t1) t1 = r; }
+  }
+  return true;
+}
+const holdsPin = (lat, lon, pts) => inside(lat, lon, pts) || pts.some((a, i) => edgeInSquare(a, pts[(i + 1) % pts.length], lat, lon));
 const shoelace = pts => Math.abs(pts.reduce((sum, [y, x], i) => { const [y2, x2] = pts[(i + 1) % pts.length]; return sum + (x * y2 - x2 * y); }, 0)) / 2;
 export function cleanArea(raw, loc) {
   if (!loc || !raw || !Array.isArray(raw.pts) || raw.pts.length < 3 || raw.pts.length > 2000) return null;
@@ -60,9 +77,9 @@ export function cleanArea(raw, loc) {
   for (const p of raw.pts) {
     const lat = within(p?.[0], -90, 90), lon = within(p?.[1], -180, 180);
     if (lat === null || lon === null) return null;
-    pts.push([round4(lat), round4(lon)]);
+    pts.push([round5(lat), round5(lon)]);
   }
-  if (!(shoelace(pts) > 0) || !inside(loc.lat, loc.lon, pts)) return null;
+  if (!(shoelace(pts) > 0) || !holdsPin(loc.lat, loc.lon, pts)) return null;
   const ha = within(raw.ha, 0, 1e6), slope = within(raw.slope, 0, 200);
   return { pts, ha: ha === null ? null : ha, slope: slope === null ? null : slope };
 }

@@ -1,5 +1,5 @@
-// Crophalo · brings the vendored libraries into the folder once: Leaflet, MapLibre GL JS with its Leaflet plugin, three.js,
-// and the accessibility checker that only the tests use. Every download is checked against its published SHA-512 first.
+// Crophalo · brings the vendored libraries into the folder once: Leaflet, MapLibre GL JS with its Leaflet plugin, three.js, satellite.js
+// (the orbits of the home's satellites) and the accessibility checker that only the tests use. Every download is checked against its published SHA-512 first.
 // Pure: LIBS, sri(), respec(), specs(), tarballUrl(), metaUrl(). Not pure: inspect(), vendorRun() (files, the system tar, the registry).
 // Checked by: `node scripts/vendor.mjs --check`; a suite can call vendorRun() with its own `libs` and `net` and no internet.
 
@@ -58,6 +58,30 @@ export const LIBS = [
         ['examples/jsm/loaders/GLTFLoader.js', 'addons/loaders/GLTFLoader.js', 108522, '0HO0OOagfhNZdB3V1sdslTQgzA1P2E6xvd6UMVVA5qM='],
         ['examples/jsm/utils/BufferGeometryUtils.js', 'addons/utils/BufferGeometryUtils.js', 31906, 'm+BB6WMId10A4mlcxgdkW5qbZP18DnWd2PfACo2Svss='],   // the loader imports it as ../utils/…, so the folders stay
         ['LICENSE', 'LICENSE', 1081, 'hS4OhpkWm/n2/ca9o+aC0HjcvHOLXTPnTfWUchv/Jx0='],
+      ] }] },
+  // satellite.js: SGP4, the U.S. Space Force's own orbit model for published orbital elements, as plain ES modules with no dependencies. Only the
+  // files the home imports and what they import in turn are kept (not dist/index.js, which also pulls in a WebAssembly propagator the app never uses).
+  { id: 'satellite', label: 'satellite.js 7.1.0 (SGP4 orbits)', dir: 'vendor/satellite', parts: [
+    { name: 'satellite.js', version: '7.1.0', licence: 'MIT', tgz: 160654,
+      integrity: 'sha512-U6nRml9Nb7dV9LJPiMNPyna7U7ry+1nXYkOeCEG7K/YbojQQLHHmcjPisp03VNY+HLcbQHqbt7t4t1vQMaKCLQ==',
+      files: [
+        ['dist/io.js', 'io.js', 9473, 'JPlhi9rf6mlRrAsffkuz2GfGZxnRxOs/egMwbeuzLXc='],   // json2satrec: an element set as CelesTrak sends it
+        ['dist/transforms.js', 'transforms.js', 4893, 'ATUKqwWa7rEJHThDH3/WCrs0YVL6hPp6YiCIapaI8ys='],   // eciToGeodetic, eciToEcf
+        ['dist/constants.js', 'constants.js', 645, 'Oe/tDoJZZAtxMq/v0RYZem7uQXFHkUOzY4KeTwQjffE='],
+        ['dist/ext.js', 'ext.js', 5780, 'VXAsGuEvaMpD5vzY6ewKTVphpAE8eHPbE068prmI2j0='],
+        ['dist/propagation/propagate.js', 'propagation/propagate.js', 1162, '6TdSGklDnZiBtGtcAV+djkcWrpZGeXs0o6VfTwDOfuQ='],
+        ['dist/propagation/gstime.js', 'propagation/gstime.js', 1823, 'qEt5EL7Jf4wHcj0AVO5NKe8cPpoMdG6EhSm2J7zI188='],
+        ['dist/propagation/sgp4.js', 'propagation/sgp4.js', 12835, 'HQtD1W22DadLAJRlcR4vIsWqtLp79iucUmCz+H6dDQ0='],
+        ['dist/propagation/sgp4init.js', 'propagation/sgp4init.js', 21291, 'zEe078+L+ezKc/QOepIuGGaNDecIL5QrS97d2soYK3g='],
+        ['dist/propagation/initl.js', 'propagation/initl.js', 4322, '/lerivlRvM/ZX45hZvHVN0qd0SYpH9oYO2WN36lSOsc='],
+        ['dist/propagation/dpper.js', 'propagation/dpper.js', 6542, 'zNXb3ngPEyKY2iQDaeaFoGVPb+7KLKmejBI0IG5jKyA='],
+        ['dist/propagation/dscom.js', 'propagation/dscom.js', 10456, 'QWPxdrt7wZbEbwXV9IX7tkx1n9R86f08gjYrdGxkHU0='],
+        ['dist/propagation/dsinit.js', 'propagation/dsinit.js', 11651, 'XX69wqKO78sQ4dhXyGz+5LPbJENUHRHVX8tqeaVh6ew='],
+        ['dist/propagation/dspace.js', 'propagation/dspace.js', 8063, 'WzTwzWTBIIBYOxt10dekgQCq3b+q0mfapFyzU44irhc='],
+        ['dist/propagation/check-for-decay.js', 'propagation/check-for-decay.js', 1325, 'zRPFyiMGV65vlPR8rIzCIB1gpfI/jd9qeb+T9YCETuE='],
+        ['dist/propagation/SatRec.js', 'propagation/SatRec.js', 1045, '7c/6XxPYlgtEgP+EQobKdsqdKVLpidnzL62CwUqm/Xs='],
+        ['LICENSE.md', 'LICENSE.md', 1135, 'FDL/i5S5HbnyQtkI4J8uyxoIBKA/drqETPBSx7thTZ4='],
+        ['ORIGINAL-PKG-INFO', 'ORIGINAL-PKG-INFO.txt', 5776, 'SrA5orVQbVUlYzvj82r2HvYlE8v7VlYCvq4cgymDm1c='],   // python-sgp4's own MIT notice, which the package keeps beside its port
       ] }] },
   { id: 'axe', label: 'axe-core 4.14.0 (tests only, never loaded by the app)', dir: 'scripts/vendor-test', parts: [
     { name: 'axe-core', version: '4.14.0', licence: 'MPL-2.0', tgz: 706680,

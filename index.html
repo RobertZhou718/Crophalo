@@ -8,7 +8,8 @@
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <script>
 // The kept look (text size, contrast, links, motion) goes on the page before its first paint, so nothing jumps; js/settings.js keeps it in step after.
-try { var kept = JSON.parse(localStorage.getItem('crophalo.settings.v1')) || {}, looks = { text: ['large', 'xlarge'], contrast: ['high'], links: ['underline'], motion: ['reduce'] };
+try { var kept = JSON.parse(localStorage.getItem('crophalo.settings.v1')) || {}, looks = { text: ['large', 'xlarge'], contrast: ['high'], links: ['underline'], motion: ['less', 'reduce'] };
+  if (kept.motion === 'still') kept.motion = 'reduce';   // Still is written "reduce" on the page, the value css/app.css reads
   for (var name in looks) if (looks[name].indexOf(kept[name]) >= 0) document.documentElement.setAttribute('data-' + name, kept[name]); } catch (e) { /* blocked storage: the defaults */ }
 </script>
 <title>Crophalo · Rotation planning with NASA data</title>
@@ -29,9 +30,10 @@ try { var kept = JSON.parse(localStorage.getItem('crophalo.settings.v1')) || {},
 <link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
 <link rel="preconnect" href="https://power.larc.nasa.gov" crossorigin>
 <link rel="preconnect" href="https://api.open-meteo.com" crossorigin>
-<link rel="preconnect" href="https://server.arcgisonline.com">
-<link rel="stylesheet" href="vendor/leaflet/leaflet.css">
+<link rel="preconnect" href="https://gibs.earthdata.nasa.gov" crossorigin>
+<link rel="preconnect" href="https://tiles.openfreemap.org" crossorigin>
 <link rel="stylesheet" href="css/app.css">
+<link rel="stylesheet" href="css/home.css">
 <link rel="stylesheet" href="css/setup.css">
 <link rel="stylesheet" href="css/map.css">
 <link rel="stylesheet" href="css/sources.css">
@@ -48,13 +50,21 @@ try { var kept = JSON.parse(localStorage.getItem('crophalo.settings.v1')) || {},
 <link rel="stylesheet" href="css/satellites.css">
 <link rel="stylesheet" href="css/field.css">
 <link rel="stylesheet" href="css/pages.css">
+<!-- exactly the Start page's own modules (app.js and what it imports before the first screen); the setup, the report, My farm and the info pages are fetched when first asked for -->
 <link rel="modulepreload" href="js/app.js">
 <link rel="modulepreload" href="js/settings.js">
 <link rel="modulepreload" href="js/words.js">
 <link rel="modulepreload" href="js/home.js">
+<link rel="modulepreload" href="js/places.js">
+<link rel="modulepreload" href="js/saved.js">
+<link rel="modulepreload" href="js/listen.js">
+<link rel="modulepreload" href="js/toast.js">
+<link rel="modulepreload" href="js/motion.js">
+<link rel="modulepreload" href="js/hooks.js">
 <link rel="modulepreload" href="js/welcome.js">
-<link rel="modulepreload" href="js/wizard.js">
-<link rel="modulepreload" href="js/report.js">
+<link rel="modulepreload" href="js/leaflet-load.js">
+<link rel="modulepreload" href="js/admin-view.js">
+<link rel="modulepreload" href="js/offline.js">
 </head>
 <body>
 <svg class="sr" width="0" height="0" aria-hidden="true" focusable="false">
@@ -78,6 +88,8 @@ try { var kept = JSON.parse(localStorage.getItem('crophalo.settings.v1')) || {},
   <symbol id="i-cloud" viewBox="0 0 24 24"><path d="M7 18a4.5 4.5 0 0 1-.5-9A6 6 0 0 1 18 9.5 4 4 0 0 1 17.5 18z"/></symbol>
   <symbol id="i-cal" viewBox="0 0 24 24"><rect x="4" y="5.5" width="16" height="14" rx="2"/><path d="M4 10h16M8.5 3.5v4M15.5 3.5v4"/></symbol>
   <symbol id="i-expand" viewBox="0 0 24 24"><path d="M4 9V4h5M20 9V4h-5M4 15v5h5M20 15v5h-5"/></symbol>
+  <symbol id="i-bell" viewBox="0 0 24 24"><path d="M6 17V11a6 6 0 0 1 12 0v6l2 2H4zM10 21h4"/></symbol>
+  <symbol id="i-share" viewBox="0 0 24 24"><path d="M12 15V4m0 0L8 8m4-4 4 4M5 12v7h14v-7"/></symbol>
   <symbol id="i-tick" viewBox="0 0 24 24"><path d="m5 12.5 4.5 4.5L19 7.5"/></symbol>
   <symbol id="i-back" viewBox="0 0 24 24"><path d="M19 12H5M11 6l-6 6 6 6"/></symbol>
   <symbol id="i-shieldok" viewBox="0 0 24 24"><path d="M12 3l7 3v5.5c0 4.4-3 7.7-7 9.5-4-1.8-7-5.1-7-9.5V6zM8.8 12l2.3 2.3 4.2-4.6"/></symbol>
@@ -108,43 +120,72 @@ try { var kept = JSON.parse(localStorage.getItem('crophalo.settings.v1')) || {},
 
 <main id="main">
   <section class="view" id="view-home">
-    <div class="hero">
-      <p class="eyebrow">Built with NASA Earth observations</p>
-      <h1 class="hero-h1">Know your field<br>before you plant.</h1>
-      <p class="lede">Find your field. Say what you grow. See what could grow better, from NASA weather since 2001 and fresh satellite pictures.</p>
-      <p class="hero-listen"><button type="button" class="listen" id="homeListen" hidden><svg class="ic" aria-hidden="true"><use href="#i-speaker"/></svg><span class="t">Listen to how it works</span></button></p>
-      <div class="bigbtns">
-        <button type="button" class="bigbtn primary" id="homeLocate"><svg class="ic" aria-hidden="true"><use href="#i-pin"/></svg><span><b>I am at my field</b><small>Use where I am now</small></span></button>
-        <button type="button" class="bigbtn" id="homeMapPick"><svg class="ic" aria-hidden="true"><use href="#i-map"/></svg><span><b>Find it on the map</b><small>Tap your field</small></span></button>
+    <div class="orbit" id="orbit">
+      <div class="orbit-flow">
+        <div class="hero">
+          <div class="hero-in">
+            <h1 class="hero-h1"><span class="ln"><span style="--i:0">Know your field</span></span><br><span class="ln"><span style="--i:1">before you plant.</span></span></h1>
+            <p class="lede">Pick your field: Crophalo compares three crop rotations for it, from NASA weather since 2001.</p>
+            <div class="home-card">
+              <div class="bigbtns">
+                <button type="button" class="bigbtn primary" id="homeLocate"><svg class="ic" aria-hidden="true"><use href="#i-pin"/></svg><span><b>I am at my field</b><small>Use where I am now</small></span></button>
+                <button type="button" class="bigbtn" id="homeMapPick"><svg class="ic" aria-hidden="true"><use href="#i-map"/></svg><span><b>Find it on the map</b><small>Tap your field</small></span></button>
+              </div>
+              <div class="search-box" id="searchBox">
+                <form class="search" role="search" id="searchForm" aria-label="Find your farm location">
+                  <svg class="ic search-ic" aria-hidden="true"><use href="#i-search"/></svg>
+                  <input type="text" id="searchInput" role="combobox" aria-label="Find your farm location" aria-autocomplete="list" aria-expanded="false" aria-controls="searchList" placeholder="Town or place"
+                    autocomplete="off" autocapitalize="words" autocorrect="off" spellcheck="false" inputmode="search" enterkeyhint="search">
+                  <button type="button" class="mic" id="searchMic" aria-label="Say the name of a place" title="Say the name of a place. In Chrome your speech is sent to Google to turn it into text." hidden><svg class="ic" aria-hidden="true"><use href="#i-mic"/></svg></button>
+                  <button type="submit" class="btn primary" id="searchGo">Search</button>
+                </form>
+                <div class="sugg" id="searchList" role="listbox" aria-label="Suggestions" hidden></div>
+              </div>
+              <p class="search-msg" id="searchMsg" role="status"></p>
+              <div class="home-card-foot">
+                <p class="search-try" id="searchTry" data-wait>Try a demo field: <button type="button" class="link" id="tryRegion">a demo field</button></p>
+                <p class="hero-listen"><button type="button" class="listen" id="homeListen" hidden><svg class="ic" aria-hidden="true"><use href="#i-speaker"/></svg><span class="t">Listen to how it works</span></button></p>
+              </div>
+            </div>
+            <p class="hero-hint" id="orbitHint" hidden></p>
+            <p class="hero-clock" id="orbitClock"><span id="orbitClockText"></span> <button type="button" class="link" id="orbitNow" hidden>Now</button></p>
+          </div>
+          <div class="hero-credit">
+            <p id="orbitCredit"><span id="orbitCreditShort"><b>Built with NASA Earth observations.</b> Earth picture: NASA Blue Marble (2004). Orbits: U.S. Space Force via CelesTrak. Not made, reviewed or endorsed by NASA, ESA or NOAA.</span> <button type="button" class="link credit-more" id="orbitCreditMore" aria-expanded="false" aria-controls="orbitCreditAll">Credits</button> <span id="orbitCreditAll"><span id="orbitCreditPic"></span> <span id="orbitCreditSats"></span> <span id="orbitCreditCraft"></span></span></p>
+            <button type="button" class="orbit-btn" id="orbitPause" aria-label="Pause the Earth and the satellites" hidden><svg aria-hidden="true" viewBox="0 0 16 16"><path d="M4 3h3v10H4zm5 0h3v10H9z"/></svg><span class="t">Pause</span></button>
+          </div>
+        </div>
       </div>
-      <div class="search-box" id="searchBox">
-        <form class="search" role="search" id="searchForm" aria-label="Find your farm location">
-          <svg class="ic search-ic" aria-hidden="true"><use href="#i-search"/></svg>
-          <input type="text" id="searchInput" role="combobox" aria-label="Find your farm location" aria-autocomplete="list" aria-expanded="false" aria-controls="searchList" placeholder="Town or place"
-            autocomplete="off" autocapitalize="words" autocorrect="off" spellcheck="false" inputmode="search" enterkeyhint="search">
-          <button type="button" class="mic" id="searchMic" aria-label="Say the name of a place" title="Say the name of a place. In Chrome your speech is sent to Google to turn it into text." hidden><svg class="ic" aria-hidden="true"><use href="#i-mic"/></svg></button>
-          <button type="submit" class="btn primary" id="searchGo">Search</button>
-        </form>
-        <div class="sugg" id="searchList" role="listbox" aria-label="Suggestions" hidden></div>
+      <div class="orbit-stage" id="orbitStage">
+        <div class="orbit-ph" aria-hidden="true"><svg viewBox="0 0 100 100" aria-hidden="true" focusable="false"><circle cx="50" cy="50" r="49.5"/><ellipse cx="50" cy="50" rx="24.7" ry="49.5"/><ellipse cx="50" cy="50" rx="42.9" ry="49.5"/><path d="M50 .5v99M.5 50h99M7.1 25.2h85.8M7.1 74.8h85.8"/></svg></div>
+        <h2 class="sr" id="satHead">Satellites over the Earth now</h2>
+        <div class="orbit-box" id="orbitBox" role="img" aria-labelledby="satAlt"><canvas class="orbit-canvas" id="orbitCanvas" aria-hidden="true"></canvas><canvas class="sat-canvas" id="satCanvas" aria-hidden="true"></canvas></div>
+        <p id="satAlt" hidden>The Earth seen from space. The satellites whose data Crophalo reads are drawn around it once their orbits have loaded.</p>
       </div>
-      <p class="search-msg" id="searchMsg" role="status"></p>
-      <p class="search-try" id="searchTry">Try <button type="button" class="link" id="tryRegion">Oxford County, Ontario</button> or <button type="button" class="link">42.03, -93.62</button></p>
-    </div>
-    <div class="wrap">
-      <section aria-labelledby="homeRegionsTitle">
-        <div class="sec-head"><h2 id="homeRegionsTitle">Try a demo region</h2></div>
-        <div class="grid" id="homeRegions"></div>
-      </section>
-      <section id="homeSaved" aria-labelledby="homeSavedTitle" hidden>
-        <div class="sec-head"><h2 id="homeSavedTitle">Your saved fields</h2></div>
-        <div class="grid" id="homeSavedGrid"></div>
-      </section>
-      <p class="foot">Crophalo · NASA Space Apps 2026</p>
+      <ul class="sat-list" id="satList" aria-labelledby="satHead"></ul>
+      <div class="orbit-card" id="satCard" role="group" aria-labelledby="satCardName" hidden>
+        <button type="button" class="sat-close" id="satClose" aria-label="Close the satellite card"><svg class="ic" aria-hidden="true" viewBox="0 0 24 24"><path d="M6 6l12 12M18 6 6 18"/></svg></button>
+        <h2 class="sat-name" id="satCardName">Satellite</h2>
+        <figure class="sat-pic" id="satCardPic">
+          <div class="sat-pic-win"><span class="sat-pic-mark" aria-hidden="true"></span><img id="satCardImg" alt="" decoding="async" hidden></div>
+          <figcaption id="satCardCredit"></figcaption>
+        </figure>
+        <p class="sat-does" id="satCardDoes"></p>
+        <p class="sat-page"><a id="satCardPage" href="https://science.nasa.gov/" target="_blank" rel="noopener noreferrer">The satellite’s own page<span class="sr"> (opens in a new tab)</span></a></p>
+        <details class="sat-more" id="satCardMore">
+          <summary>Show more</summary>
+          <p class="sat-by" id="satCardBy">NASA</p>
+          <p class="sat-gathers" id="satCardGathers"></p>
+          <p class="sat-uses"><span id="satCardUses"></span> <button type="button" class="link" id="satCardGo">Open the map</button></p>
+          <p class="sat-now" id="satCardNow"></p>
+          <p class="sat-src" id="satCardSrc"></p>
+        </details>
+      </div>
     </div>
   </section>
   <section class="view" id="view-setup" hidden><div class="setup" id="setupRoot"><h1>Farm setup</h1></div></section>
   <section class="view" id="view-info" hidden><div class="wrap"><div class="sec"><h1 id="infoTitle"></h1><div id="infoBody"></div></div></div></section>
-  <section class="view" id="view-admin" hidden><div class="wrap"><div class="sec"><h1>Admin</h1></div></div></section>
+  <section class="view" id="view-admin" hidden><div class="wrap"><div class="sec"><h1>Service status</h1></div></div></section>
   <section class="view" id="view-report" hidden><div id="reportRoot"><h1>Your field report</h1></div></section>
   <section class="view" id="view-farm" hidden><div class="wrap"><div class="sec"><h1>My farm</h1></div></div></section>
 </main>
@@ -156,7 +197,6 @@ try { var kept = JSON.parse(localStorage.getItem('crophalo.settings.v1')) || {},
 
 <div id="toast" class="toast" role="status"></div>
 
-<script src="vendor/leaflet/leaflet.js"></script>
 <script>
 // A file of the app did not arrive: say so and stop honestly, never run half an old release with half a new one.
 addEventListener('error', function (event) {

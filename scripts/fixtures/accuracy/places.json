@@ -1,0 +1,2412 @@
+{
+ "_about": "Places of the Ontario accuracy run (places-1000), each with the answer of the crop-map lookup scripts/live/cropsnear.py as the run kept it (AAFC Annual Crop Inventory 2025, Open Government Licence - Canada). aci is the map's class at the exact point, as the run read it. Recorded 2026-11-14.",
+ "places": [
+  {
+   "id": "P0001",
+   "label": "Leamington and Essex (vegetables)",
+   "group": "south-farmland",
+   "lat": 42.1343,
+   "lon": -82.6347,
+   "country": "CA",
+   "aci": 158,
+   "aci_name": "Soybeans",
+   "cell": "264_156",
+   "cropmap": {
+    "ok": true,
+    "source": "Agriculture and Agri-Food Canada (AAFC), Annual Crop Inventory 2025, 30 m",
+    "data_date": "2025",
+    "data_date_note": "One map a year, made after each harvest from satellite images; 2025 is the newest year it has published",
+    "units": "share: part of the farmland in the box (0 to 1), from the map's own pixel counts; ha: hectares on the ground (one 30 m pixel of the map's Web Mercator grid is 0.0495 ha here)",
+    "year": 2025,
+    "country": "CA",
+    "box": {
+     "south": 42.0093,
+     "west": -82.7597,
+     "north": 42.2593,
+     "east": -82.5097
+    },
+    "half_deg": 0.125,
+    "pixel_ha": 0.0495,
+    "box_ha": 57458.9,
+    "cropland_ha": 44632.4,
+    "cropland_share_of_box": 0.7768,
+    "not_read_share": 0,
+    "crops": [
+     {
+      "crop": "soy",
+      "share": 0.5385,
+      "ha": 24034.3
+     },
+     {
+      "crop": "corn",
+      "share": 0.1981,
+      "ha": 8841.7
+     },
+     {
+      "crop": "wheat",
+      "share": 0.1703,
+      "ha": 7600.8
+     },
+     {
+      "crop": "potato",
+      "share": 0.0114,
+      "ha": 507.9
+     },
+     {
+      "crop": "tomato",
+      "share": 0.0097,
+      "ha": 432.5
+     },
+     {
+      "crop": "pea",
+      "share": 0.0039,
+      "ha": 174.2
+     },
+     {
+      "crop": "barley",
+      "share": 0.0004,
+      "ha": 16.2
+     },
+     {
+      "crop": "bean",
+      "share": 0.0004,
+      "ha": 17.3
+     },
+     {
+      "crop": "sunflower",
+      "share": 0.0004,
+      "ha": 16.7
+     },
+     {
+      "crop": "oats",
+      "share": 0.0001,
+      "ha": 4
+     },
+     {
+      "crop": "rye",
+      "share": 0.0001,
+      "ha": 3
+     },
+     {
+      "crop": "sugarbeet",
+      "share": 0,
+      "ha": 0.1
+     },
+     {
+      "crop": "tobacco",
+      "share": 0,
+      "ha": 0.5
+     }
+    ],
+    "wider": [
+     {
+      "code": 122,
+      "name": "Pasture/forages",
+      "crops": [
+       "alfalfa",
+       "ley"
+      ],
+      "share": 0.041,
+      "ha": 1830.9
+     },
+     {
+      "code": 153,
+      "name": "Canola/rapeseed",
+      "crops": [
+       "canola",
+       "scanola"
+      ],
+      "share": 0.0068,
+      "ha": 303.3
+     },
+     {
+      "code": 134,
+      "name": "Other grains",
+      "crops": [
+       "rice",
+       "pmillet",
+       "fmillet",
+       "teff",
+       "quinoa",
+       "buckwheat",
+       "triticale",
+       "durum"
+      ],
+      "share": 0.0011,
+      "ha": 47.8
+     }
+    ],
+    "classes": [
+     {
+      "code": 158,
+      "name": "Soybeans",
+      "kind": "own",
+      "crops": [
+       "soy"
+      ],
+      "share": 0.5385,
+      "ha": 24034.3
+     },
+     {
+      "code": 147,
+      "name": "Corn for grain",
+      "kind": "own",
+      "crops": [
+       "corn"
+      ],
+      "share": 0.1981,
+      "ha": 8841.7
+     },
+     {
+      "code": 145,
+      "name": "Winter wheat",
+      "kind": "own",
+      "crops": [
+       "wheat"
+      ],
+      "share": 0.1703,
+      "ha": 7600.8
+     },
+     {
+      "code": 122,
+      "name": "Pasture/forages",
+      "kind": "wider",
+      "crops": [
+       "alfalfa",
+       "ley"
+      ],
+      "share": 0.041,
+      "ha": 1830.9
+     },
+     {
+      "code": 188,
+      "name": "Orchards",
+      "kind": "other",
+      "crops": [],
+      "share": 0.012,
+      "ha": 535.4
+     },
+     {
+      "code": 177,
+      "name": "Potatoes",
+      "kind": "own",
+      "crops": [
+       "potato"
+      ],
+      "share": 0.0114,
+      "ha": 507.9
+     },
+     {
+      "code": 176,
+      "name": "Tomatoes",
+      "kind": "own",
+      "crops": [
+       "tomato"
+      ],
+      "share": 0.0097,
+      "ha": 432.5
+     },
+     {
+      "code": 153,
+      "name": "Canola/rapeseed",
+      "kind": "wider",
+      "crops": [
+       "canola",
+       "scanola"
+      ],
+      "share": 0.0068,
+      "ha": 303.3
+     },
+     {
+      "code": 162,
+      "name": "Peas",
+      "kind": "own",
+      "crops": [
+       "pea"
+      ],
+      "share": 0.0039,
+      "ha": 174.2
+     },
+     {
+      "code": 179,
+      "name": "Other vegetables",
+      "kind": "other",
+      "crops": [],
+      "share": 0.0038,
+      "ha": 171
+     },
+     {
+      "code": 131,
+      "name": "Fallow",
+      "kind": "other",
+      "crops": [],
+      "share": 0.0011,
+      "ha": 48.9
+     },
+     {
+      "code": 134,
+      "name": "Other grains",
+      "kind": "wider",
+      "crops": [
+       "rice",
+       "pmillet",
+       "fmillet",
+       "teff",
+       "quinoa",
+       "buckwheat",
+       "triticale",
+       "durum"
+      ],
+      "share": 0.0011,
+      "ha": 47.8
+     },
+     {
+      "code": 190,
+      "name": "Vineyards",
+      "kind": "other",
+      "crops": [],
+      "share": 0.0005,
+      "ha": 22.1
+     },
+     {
+      "code": 194,
+      "name": "Nursery",
+      "kind": "other",
+      "crops": [],
+      "share": 0.0005,
+      "ha": 20.6
+     },
+     {
+      "code": 133,
+      "name": "Barley",
+      "kind": "own",
+      "crops": [
+       "barley"
+      ],
+      "share": 0.0004,
+      "ha": 16.2
+     },
+     {
+      "code": 157,
+      "name": "Sunflower",
+      "kind": "own",
+      "crops": [
+       "sunflower"
+      ],
+      "share": 0.0004,
+      "ha": 16.7
+     },
+     {
+      "code": 167,
+      "name": "Beans",
+      "kind": "own",
+      "crops": [
+       "bean"
+      ],
+      "share": 0.0004,
+      "ha": 17.3
+     },
+     {
+      "code": 136,
+      "name": "Oats",
+      "kind": "own",
+      "crops": [
+       "oats"
+      ],
+      "share": 0.0001,
+      "ha": 4
+     },
+     {
+      "code": 137,
+      "name": "Rye",
+      "kind": "own",
+      "crops": [
+       "rye"
+      ],
+      "share": 0.0001,
+      "ha": 3
+     },
+     {
+      "code": 148,
+      "name": "Tobacco",
+      "kind": "own",
+      "crops": [
+       "tobacco"
+      ],
+      "share": 0,
+      "ha": 0.5
+     },
+     {
+      "code": 149,
+      "name": "Ginseng",
+      "kind": "other",
+      "crops": [],
+      "share": 0,
+      "ha": 1.2
+     },
+     {
+      "code": 178,
+      "name": "Sugarbeets",
+      "kind": "own",
+      "crops": [
+       "sugarbeet"
+      ],
+      "share": 0,
+      "ha": 0.1
+     },
+     {
+      "code": 185,
+      "name": "Other berries",
+      "kind": "other",
+      "crops": [],
+      "share": 0,
+      "ha": 1.9
+     }
+    ],
+    "licence": "Open Government Licence - Canada",
+    "checked": "2026-11-15T00:38:00Z"
+   }
+  },
+  {
+   "id": "P0930",
+   "label": "Hudson Bay coast near Fort Severn",
+   "group": "hard",
+   "lat": 56,
+   "lon": -87.6,
+   "country": "CA",
+   "aci": null,
+   "aci_name": "no reading",
+   "cell": "292_148",
+   "cropmap": {
+    "ok": false,
+    "reason": "The Canadian crop map (AAFC Annual Crop Inventory) has no reading for this place",
+    "final": true
+   }
+  },
+  {
+   "id": "P0949",
+   "label": "Attawapiskat",
+   "group": "hard",
+   "lat": 52.93,
+   "lon": -82.43,
+   "country": "CA",
+   "aci": null,
+   "aci_name": "no reading",
+   "cell": "286_156",
+   "cropmap": {
+    "ok": false,
+    "reason": "The Canadian crop map (AAFC Annual Crop Inventory) has no reading for this place",
+    "final": true
+   }
+  },
+  {
+   "id": "P0950",
+   "label": "Peawanuck",
+   "group": "hard",
+   "lat": 54.98,
+   "lon": -85.43,
+   "country": "CA",
+   "aci": null,
+   "aci_name": "no reading",
+   "cell": "290_151",
+   "cropmap": {
+    "ok": false,
+    "reason": "The Canadian crop map (AAFC Annual Crop Inventory) has no reading for this place",
+    "final": true
+   }
+  },
+  {
+   "id": "P0986",
+   "label": "Zero, zero",
+   "group": "hard",
+   "lat": 0,
+   "lon": 0,
+   "country": "CA",
+   "cell": "180_288",
+   "cropmap": {
+    "ok": false,
+    "reason": "The Canadian crop map (AAFC Annual Crop Inventory) has no reading for this place",
+    "final": true
+   }
+  },
+  {
+   "id": "P0990",
+   "label": "Latitude and longitude swapped",
+   "group": "hard",
+   "lat": -80.75,
+   "lon": 43.13,
+   "country": "CA",
+   "cell": "19_357",
+   "cropmap": {
+    "ok": false,
+    "reason": "The Canadian crop map (AAFC Annual Crop Inventory) has no reading for this place",
+    "final": true
+   }
+  },
+  {
+   "id": "P0992",
+   "label": "Far-out Arctic Ocean",
+   "group": "hard",
+   "lat": 80,
+   "lon": -80,
+   "country": "CA",
+   "cell": "340_160",
+   "cropmap": {
+    "ok": false,
+    "reason": "The Canadian crop map (AAFC Annual Crop Inventory) has no reading for this place",
+    "final": true
+   }
+  },
+  {
+   "id": "P0853",
+   "label": "Sudbury to Timmins",
+   "group": "north-rest",
+   "lat": 48.5082,
+   "lon": -81.3239,
+   "country": "CA",
+   "aci": 50,
+   "aci_name": "Shrubland",
+   "cell": "277_158",
+   "cropmap": {
+    "ok": true,
+    "source": "Agriculture and Agri-Food Canada (AAFC), Annual Crop Inventory 2025, 30 m",
+    "data_date": "2025",
+    "data_date_note": "One map a year, made after each harvest from satellite images; 2025 is the newest year it has published",
+    "units": "share: part of the farmland in the box (0 to 1), from the map's own pixel counts; ha: hectares on the ground (one 30 m pixel of the map's Web Mercator grid is 0.0395 ha here)",
+    "year": 2025,
+    "country": "CA",
+    "box": {
+     "south": 48.3832,
+     "west": -81.4489,
+     "north": 48.6332,
+     "east": -81.1989
+    },
+    "half_deg": 0.125,
+    "pixel_ha": 0.0395,
+    "box_ha": 51322.4,
+    "cropland_ha": 2165.2,
+    "cropland_share_of_box": 0.0422,
+    "not_read_share": 0,
+    "crops": [],
+    "wider": [
+     {
+      "code": 120,
+      "name": "Agriculture (undifferentiated)",
+      "crops": [
+       "*"
+      ],
+      "share": 1,
+      "ha": 2165.2
+     }
+    ],
+    "classes": [
+     {
+      "code": 120,
+      "name": "Agriculture (undifferentiated)",
+      "kind": "wider",
+      "crops": [
+       "*"
+      ],
+      "share": 1,
+      "ha": 2165.2
+     }
+    ],
+    "licence": "Open Government Licence - Canada",
+    "checked": "2026-11-15T00:22:51Z"
+   }
+  },
+  {
+   "id": "P0889",
+   "label": "Hudson Bay lowlands",
+   "group": "north-rest",
+   "lat": 51.2908,
+   "lon": -81.8404,
+   "country": "CA",
+   "aci": null,
+   "aci_name": "no reading",
+   "cell": "283_157",
+   "cropmap": {
+    "ok": false,
+    "reason": "The Canadian crop map (AAFC Annual Crop Inventory) has no reading for this place",
+    "final": true
+   }
+  },
+  {
+   "id": "P0741",
+   "label": "Clay Belt: Hearst to Cochrane",
+   "group": "north-farmland",
+   "lat": 49.4389,
+   "lon": -82.5328,
+   "country": "CA",
+   "aci": 120,
+   "aci_name": "Agriculture (undifferentiated)",
+   "cell": "279_156",
+   "cropmap": {
+    "ok": true,
+    "source": "Agriculture and Agri-Food Canada (AAFC), Annual Crop Inventory 2025, 30 m",
+    "data_date": "2025",
+    "data_date_note": "One map a year, made after each harvest from satellite images; 2025 is the newest year it has published",
+    "units": "share: part of the farmland in the box (0 to 1), from the map's own pixel counts; ha: hectares on the ground (one 30 m pixel of the map's Web Mercator grid is 0.0381 ha here)",
+    "year": 2025,
+    "country": "CA",
+    "box": {
+     "south": 49.3139,
+     "west": -82.6578,
+     "north": 49.5639,
+     "east": -82.4078
+    },
+    "half_deg": 0.125,
+    "pixel_ha": 0.0381,
+    "box_ha": 50394.9,
+    "cropland_ha": 1939.8,
+    "cropland_share_of_box": 0.0385,
+    "not_read_share": 0,
+    "crops": [],
+    "wider": [
+     {
+      "code": 120,
+      "name": "Agriculture (undifferentiated)",
+      "crops": [
+       "*"
+      ],
+      "share": 1,
+      "ha": 1939.8
+     }
+    ],
+    "classes": [
+     {
+      "code": 120,
+      "name": "Agriculture (undifferentiated)",
+      "kind": "wider",
+      "crops": [
+       "*"
+      ],
+      "share": 1,
+      "ha": 1939.8
+     }
+    ],
+    "licence": "Open Government Licence - Canada",
+    "checked": "2026-11-15T00:21:32Z"
+   }
+  },
+  {
+   "id": "P0702",
+   "label": "New Liskeard and Temiskaming",
+   "group": "north-farmland",
+   "lat": 47.7371,
+   "lon": -79.7096,
+   "country": "CA",
+   "aci": 146,
+   "aci_name": "Spring wheat",
+   "cell": "275_160",
+   "cropmap": {
+    "ok": true,
+    "source": "Agriculture and Agri-Food Canada (AAFC), Annual Crop Inventory 2025, 30 m",
+    "data_date": "2025",
+    "data_date_note": "One map a year, made after each harvest from satellite images; 2025 is the newest year it has published",
+    "units": "share: part of the farmland in the box (0 to 1), from the map's own pixel counts; ha: hectares on the ground (one 30 m pixel of the map's Web Mercator grid is 0.0407 ha here)",
+    "year": 2025,
+    "country": "CA",
+    "box": {
+     "south": 47.6121,
+     "west": -79.8346,
+     "north": 47.8621,
+     "east": -79.5846
+    },
+    "half_deg": 0.125,
+    "pixel_ha": 0.0407,
+    "box_ha": 52093.4,
+    "cropland_ha": 20013.2,
+    "cropland_share_of_box": 0.3842,
+    "not_read_share": 0,
+    "crops": [
+     {
+      "crop": "oats",
+      "share": 0.2094,
+      "ha": 4191
+     },
+     {
+      "crop": "soy",
+      "share": 0.1631,
+      "ha": 3264.3
+     },
+     {
+      "crop": "swheat",
+      "share": 0.1231,
+      "ha": 2463.9
+     },
+     {
+      "crop": "barley",
+      "share": 0.0502,
+      "ha": 1004.7
+     },
+     {
+      "crop": "corn",
+      "share": 0.0301,
+      "ha": 602.3
+     },
+     {
+      "crop": "wheat",
+      "share": 0.0215,
+      "ha": 430.1
+     },
+     {
+      "crop": "potato",
+      "share": 0.0061,
+      "ha": 121.8
+     },
+     {
+      "crop": "pea",
+      "share": 0.0028,
+      "ha": 55.9
+     },
+     {
+      "crop": "flax",
+      "share": 0.0012,
+      "ha": 23.1
+     },
+     {
+      "crop": "buckwheat",
+      "share": 0.0005,
+      "ha": 9.5
+     },
+     {
+      "crop": "quinoa",
+      "share": 0.0001,
+      "ha": 1.9
+     }
+    ],
+    "wider": [
+     {
+      "code": 122,
+      "name": "Pasture/forages",
+      "crops": [
+       "alfalfa",
+       "ley"
+      ],
+      "share": 0.3147,
+      "ha": 6298.9
+     },
+     {
+      "code": 146,
+      "name": "Spring wheat",
+      "crops": [
+       "durum"
+      ],
+      "share": 0.1231,
+      "ha": 2463.9
+     },
+     {
+      "code": 153,
+      "name": "Canola/rapeseed",
+      "crops": [
+       "canola",
+       "scanola"
+      ],
+      "share": 0.0743,
+      "ha": 1486.9
+     }
+    ],
+    "classes": [
+     {
+      "code": 122,
+      "name": "Pasture/forages",
+      "kind": "wider",
+      "crops": [
+       "alfalfa",
+       "ley"
+      ],
+      "share": 0.3147,
+      "ha": 6298.9
+     },
+     {
+      "code": 136,
+      "name": "Oats",
+      "kind": "own",
+      "crops": [
+       "oats"
+      ],
+      "share": 0.2094,
+      "ha": 4191
+     },
+     {
+      "code": 158,
+      "name": "Soybeans",
+      "kind": "own",
+      "crops": [
+       "soy"
+      ],
+      "share": 0.1631,
+      "ha": 3264.3
+     },
+     {
+      "code": 146,
+      "name": "Spring wheat",
+      "kind": "own",
+      "crops": [
+       "swheat"
+      ],
+      "share": 0.1231,
+      "ha": 2463.9
+     },
+     {
+      "code": 153,
+      "name": "Canola/rapeseed",
+      "kind": "wider",
+      "crops": [
+       "canola",
+       "scanola"
+      ],
+      "share": 0.0743,
+      "ha": 1486.9
+     },
+     {
+      "code": 133,
+      "name": "Barley",
+      "kind": "own",
+      "crops": [
+       "barley"
+      ],
+      "share": 0.0502,
+      "ha": 1004.7
+     },
+     {
+      "code": 147,
+      "name": "Corn for grain",
+      "kind": "own",
+      "crops": [
+       "corn"
+      ],
+      "share": 0.0301,
+      "ha": 602.3
+     },
+     {
+      "code": 145,
+      "name": "Winter wheat",
+      "kind": "own",
+      "crops": [
+       "wheat"
+      ],
+      "share": 0.0215,
+      "ha": 430.1
+     },
+     {
+      "code": 177,
+      "name": "Potatoes",
+      "kind": "own",
+      "crops": [
+       "potato"
+      ],
+      "share": 0.0061,
+      "ha": 121.8
+     },
+     {
+      "code": 131,
+      "name": "Fallow",
+      "kind": "other",
+      "crops": [],
+      "share": 0.0029,
+      "ha": 58.9
+     },
+     {
+      "code": 162,
+      "name": "Peas",
+      "kind": "own",
+      "crops": [
+       "pea"
+      ],
+      "share": 0.0028,
+      "ha": 55.9
+     },
+     {
+      "code": 154,
+      "name": "Flaxseed",
+      "kind": "own",
+      "crops": [
+       "flax"
+      ],
+      "share": 0.0012,
+      "ha": 23.1
+     },
+     {
+      "code": 195,
+      "name": "Buckwheat",
+      "kind": "own",
+      "crops": [
+       "buckwheat"
+      ],
+      "share": 0.0005,
+      "ha": 9.5
+     },
+     {
+      "code": 143,
+      "name": "Quinoa",
+      "kind": "own",
+      "crops": [
+       "quinoa"
+      ],
+      "share": 0.0001,
+      "ha": 1.9
+     }
+    ],
+    "licence": "Open Government Licence - Canada",
+    "checked": "2026-11-15T00:20:58Z"
+   }
+  },
+  {
+   "id": "P0808",
+   "label": "Sudbury basin farms",
+   "group": "north-farmland",
+   "lat": 46.3283,
+   "lon": -81.459,
+   "country": "CA",
+   "aci": 122,
+   "aci_name": "Pasture/forages",
+   "cell": "273_158",
+   "cropmap": {
+    "ok": true,
+    "source": "Agriculture and Agri-Food Canada (AAFC), Annual Crop Inventory 2025, 30 m",
+    "data_date": "2025",
+    "data_date_note": "One map a year, made after each harvest from satellite images; 2025 is the newest year it has published",
+    "units": "share: part of the farmland in the box (0 to 1), from the map's own pixel counts; ha: hectares on the ground (one 30 m pixel of the map's Web Mercator grid is 0.0429 ha here)",
+    "year": 2025,
+    "country": "CA",
+    "box": {
+     "south": 46.2033,
+     "west": -81.584,
+     "north": 46.4533,
+     "east": -81.334
+    },
+    "half_deg": 0.125,
+    "pixel_ha": 0.0429,
+    "box_ha": 53484.2,
+    "cropland_ha": 571.7,
+    "cropland_share_of_box": 0.0107,
+    "not_read_share": 0,
+    "crops": [
+     {
+      "crop": "swheat",
+      "share": 0.0143,
+      "ha": 8.2
+     },
+     {
+      "crop": "soy",
+      "share": 0.0055,
+      "ha": 3.1
+     },
+     {
+      "crop": "potato",
+      "share": 0.0006,
+      "ha": 0.3
+     }
+    ],
+    "wider": [
+     {
+      "code": 122,
+      "name": "Pasture/forages",
+      "crops": [
+       "alfalfa",
+       "ley"
+      ],
+      "share": 0.9796,
+      "ha": 560
+     },
+     {
+      "code": 146,
+      "name": "Spring wheat",
+      "crops": [
+       "durum"
+      ],
+      "share": 0.0143,
+      "ha": 8.2
+     }
+    ],
+    "classes": [
+     {
+      "code": 122,
+      "name": "Pasture/forages",
+      "kind": "wider",
+      "crops": [
+       "alfalfa",
+       "ley"
+      ],
+      "share": 0.9796,
+      "ha": 560
+     },
+     {
+      "code": 146,
+      "name": "Spring wheat",
+      "kind": "own",
+      "crops": [
+       "swheat"
+      ],
+      "share": 0.0143,
+      "ha": 8.2
+     },
+     {
+      "code": 158,
+      "name": "Soybeans",
+      "kind": "own",
+      "crops": [
+       "soy"
+      ],
+      "share": 0.0055,
+      "ha": 3.1
+     },
+     {
+      "code": 177,
+      "name": "Potatoes",
+      "kind": "own",
+      "crops": [
+       "potato"
+      ],
+      "share": 0.0006,
+      "ha": 0.3
+     }
+    ],
+    "licence": "Open Government Licence - Canada",
+    "checked": "2026-11-15T00:22:22Z"
+   }
+  },
+  {
+   "id": "P0786",
+   "label": "Thunder Bay farms",
+   "group": "north-farmland",
+   "lat": 48.32,
+   "lon": -89.4716,
+   "country": "CA",
+   "aci": 133,
+   "aci_name": "Barley",
+   "cell": "277_145",
+   "cropmap": {
+    "ok": true,
+    "source": "Agriculture and Agri-Food Canada (AAFC), Annual Crop Inventory 2025, 30 m",
+    "data_date": "2025",
+    "data_date_note": "One map a year, made after each harvest from satellite images; 2025 is the newest year it has published",
+    "units": "share: part of the farmland in the box (0 to 1), from the map's own pixel counts; ha: hectares on the ground (one 30 m pixel of the map's Web Mercator grid is 0.0398 ha here)",
+    "year": 2025,
+    "country": "CA",
+    "box": {
+     "south": 48.195,
+     "west": -89.5966,
+     "north": 48.445,
+     "east": -89.3466
+    },
+    "half_deg": 0.125,
+    "pixel_ha": 0.0398,
+    "box_ha": 51519.1,
+    "cropland_ha": 9505.7,
+    "cropland_share_of_box": 0.1845,
+    "not_read_share": 0,
+    "crops": [
+     {
+      "crop": "barley",
+      "share": 0.1708,
+      "ha": 1623.6
+     },
+     {
+      "crop": "corn",
+      "share": 0.0787,
+      "ha": 747.9
+     },
+     {
+      "crop": "wheat",
+      "share": 0.0367,
+      "ha": 348.8
+     },
+     {
+      "crop": "swheat",
+      "share": 0.0109,
+      "ha": 103.2
+     },
+     {
+      "crop": "potato",
+      "share": 0.0057,
+      "ha": 54.6
+     },
+     {
+      "crop": "oats",
+      "share": 0.0043,
+      "ha": 41
+     },
+     {
+      "crop": "soy",
+      "share": 0.0039,
+      "ha": 37.3
+     }
+    ],
+    "wider": [
+     {
+      "code": 122,
+      "name": "Pasture/forages",
+      "crops": [
+       "alfalfa",
+       "ley"
+      ],
+      "share": 0.6189,
+      "ha": 5882.7
+     },
+     {
+      "code": 153,
+      "name": "Canola/rapeseed",
+      "crops": [
+       "canola",
+       "scanola"
+      ],
+      "share": 0.0603,
+      "ha": 573.1
+     },
+     {
+      "code": 146,
+      "name": "Spring wheat",
+      "crops": [
+       "durum"
+      ],
+      "share": 0.0109,
+      "ha": 103.2
+     },
+     {
+      "code": 134,
+      "name": "Other grains",
+      "crops": [
+       "rice",
+       "pmillet",
+       "fmillet",
+       "teff",
+       "quinoa",
+       "buckwheat",
+       "triticale",
+       "durum"
+      ],
+      "share": 0.0001,
+      "ha": 0.5
+     }
+    ],
+    "classes": [
+     {
+      "code": 122,
+      "name": "Pasture/forages",
+      "kind": "wider",
+      "crops": [
+       "alfalfa",
+       "ley"
+      ],
+      "share": 0.6189,
+      "ha": 5882.7
+     },
+     {
+      "code": 133,
+      "name": "Barley",
+      "kind": "own",
+      "crops": [
+       "barley"
+      ],
+      "share": 0.1708,
+      "ha": 1623.6
+     },
+     {
+      "code": 147,
+      "name": "Corn for grain",
+      "kind": "own",
+      "crops": [
+       "corn"
+      ],
+      "share": 0.0787,
+      "ha": 747.9
+     },
+     {
+      "code": 153,
+      "name": "Canola/rapeseed",
+      "kind": "wider",
+      "crops": [
+       "canola",
+       "scanola"
+      ],
+      "share": 0.0603,
+      "ha": 573.1
+     },
+     {
+      "code": 145,
+      "name": "Winter wheat",
+      "kind": "own",
+      "crops": [
+       "wheat"
+      ],
+      "share": 0.0367,
+      "ha": 348.8
+     },
+     {
+      "code": 146,
+      "name": "Spring wheat",
+      "kind": "own",
+      "crops": [
+       "swheat"
+      ],
+      "share": 0.0109,
+      "ha": 103.2
+     },
+     {
+      "code": 192,
+      "name": "Sod",
+      "kind": "other",
+      "crops": [],
+      "share": 0.0089,
+      "ha": 84.7
+     },
+     {
+      "code": 177,
+      "name": "Potatoes",
+      "kind": "own",
+      "crops": [
+       "potato"
+      ],
+      "share": 0.0057,
+      "ha": 54.6
+     },
+     {
+      "code": 136,
+      "name": "Oats",
+      "kind": "own",
+      "crops": [
+       "oats"
+      ],
+      "share": 0.0043,
+      "ha": 41
+     },
+     {
+      "code": 158,
+      "name": "Soybeans",
+      "kind": "own",
+      "crops": [
+       "soy"
+      ],
+      "share": 0.0039,
+      "ha": 37.3
+     },
+     {
+      "code": 131,
+      "name": "Fallow",
+      "kind": "other",
+      "crops": [],
+      "share": 0.0007,
+      "ha": 7
+     },
+     {
+      "code": 134,
+      "name": "Other grains",
+      "kind": "wider",
+      "crops": [
+       "rice",
+       "pmillet",
+       "fmillet",
+       "teff",
+       "quinoa",
+       "buckwheat",
+       "triticale",
+       "durum"
+      ],
+      "share": 0.0001,
+      "ha": 0.5
+     },
+     {
+      "code": 194,
+      "name": "Nursery",
+      "kind": "other",
+      "crops": [],
+      "share": 0.0001,
+      "ha": 1.4
+     }
+    ],
+    "licence": "Open Government Licence - Canada",
+    "checked": "2026-11-15T00:22:05Z"
+   }
+  },
+  {
+   "id": "P0964",
+   "label": "Exactly on a weather-square edge: north-south and east-west edge, Oxford area",
+   "group": "hard",
+   "lat": 43.25,
+   "lon": -80.3125,
+   "country": "CA",
+   "aci": 220,
+   "aci_name": "Broadleaf",
+   "cell": "267_160",
+   "cropmap": {
+    "ok": true,
+    "source": "Agriculture and Agri-Food Canada (AAFC), Annual Crop Inventory 2025, 30 m",
+    "data_date": "2025",
+    "data_date_note": "One map a year, made after each harvest from satellite images; 2025 is the newest year it has published",
+    "units": "share: part of the farmland in the box (0 to 1), from the map's own pixel counts; ha: hectares on the ground (one 30 m pixel of the map's Web Mercator grid is 0.0477 ha here)",
+    "year": 2025,
+    "country": "CA",
+    "box": {
+     "south": 43.125,
+     "west": -80.4375,
+     "north": 43.375,
+     "east": -80.1875
+    },
+    "half_deg": 0.125,
+    "pixel_ha": 0.0477,
+    "box_ha": 56450.2,
+    "cropland_ha": 30512.4,
+    "cropland_share_of_box": 0.5405,
+    "not_read_share": 0,
+    "crops": [
+     {
+      "crop": "corn",
+      "share": 0.3213,
+      "ha": 9804.7
+     },
+     {
+      "crop": "soy",
+      "share": 0.3172,
+      "ha": 9679.9
+     },
+     {
+      "crop": "wheat",
+      "share": 0.0776,
+      "ha": 2366.7
+     },
+     {
+      "crop": "swheat",
+      "share": 0.0134,
+      "ha": 408.6
+     },
+     {
+      "crop": "rye",
+      "share": 0.0097,
+      "ha": 296.2
+     },
+     {
+      "crop": "tobacco",
+      "share": 0.0022,
+      "ha": 68.5
+     },
+     {
+      "crop": "barley",
+      "share": 0.0011,
+      "ha": 33.3
+     },
+     {
+      "crop": "sorghum",
+      "share": 0.0008,
+      "ha": 24.5
+     },
+     {
+      "crop": "bean",
+      "share": 0.0006,
+      "ha": 19
+     },
+     {
+      "crop": "oats",
+      "share": 0.0005,
+      "ha": 15.6
+     },
+     {
+      "crop": "sunflower",
+      "share": 0.0001,
+      "ha": 2.1
+     }
+    ],
+    "wider": [
+     {
+      "code": 122,
+      "name": "Pasture/forages",
+      "crops": [
+       "alfalfa",
+       "ley"
+      ],
+      "share": 0.2404,
+      "ha": 7336.4
+     },
+     {
+      "code": 146,
+      "name": "Spring wheat",
+      "crops": [
+       "durum"
+      ],
+      "share": 0.0134,
+      "ha": 408.6
+     }
+    ],
+    "classes": [
+     {
+      "code": 147,
+      "name": "Corn for grain",
+      "kind": "own",
+      "crops": [
+       "corn"
+      ],
+      "share": 0.3213,
+      "ha": 9804.7
+     },
+     {
+      "code": 158,
+      "name": "Soybeans",
+      "kind": "own",
+      "crops": [
+       "soy"
+      ],
+      "share": 0.3172,
+      "ha": 9679.9
+     },
+     {
+      "code": 122,
+      "name": "Pasture/forages",
+      "kind": "wider",
+      "crops": [
+       "alfalfa",
+       "ley"
+      ],
+      "share": 0.2404,
+      "ha": 7336.4
+     },
+     {
+      "code": 145,
+      "name": "Winter wheat",
+      "kind": "own",
+      "crops": [
+       "wheat"
+      ],
+      "share": 0.0776,
+      "ha": 2366.7
+     },
+     {
+      "code": 146,
+      "name": "Spring wheat",
+      "kind": "own",
+      "crops": [
+       "swheat"
+      ],
+      "share": 0.0134,
+      "ha": 408.6
+     },
+     {
+      "code": 137,
+      "name": "Rye",
+      "kind": "own",
+      "crops": [
+       "rye"
+      ],
+      "share": 0.0097,
+      "ha": 296.2
+     },
+     {
+      "code": 188,
+      "name": "Orchards",
+      "kind": "other",
+      "crops": [],
+      "share": 0.0073,
+      "ha": 223.8
+     },
+     {
+      "code": 190,
+      "name": "Vineyards",
+      "kind": "other",
+      "crops": [],
+      "share": 0.0033,
+      "ha": 99.4
+     },
+     {
+      "code": 148,
+      "name": "Tobacco",
+      "kind": "own",
+      "crops": [
+       "tobacco"
+      ],
+      "share": 0.0022,
+      "ha": 68.5
+     },
+     {
+      "code": 149,
+      "name": "Ginseng",
+      "kind": "other",
+      "crops": [],
+      "share": 0.0018,
+      "ha": 56.2
+     },
+     {
+      "code": 133,
+      "name": "Barley",
+      "kind": "own",
+      "crops": [
+       "barley"
+      ],
+      "share": 0.0011,
+      "ha": 33.3
+     },
+     {
+      "code": 179,
+      "name": "Other vegetables",
+      "kind": "other",
+      "crops": [],
+      "share": 0.0009,
+      "ha": 29
+     },
+     {
+      "code": 194,
+      "name": "Nursery",
+      "kind": "other",
+      "crops": [],
+      "share": 0.0009,
+      "ha": 26.8
+     },
+     {
+      "code": 142,
+      "name": "Sorghum",
+      "kind": "own",
+      "crops": [
+       "sorghum"
+      ],
+      "share": 0.0008,
+      "ha": 24.5
+     },
+     {
+      "code": 167,
+      "name": "Beans",
+      "kind": "own",
+      "crops": [
+       "bean"
+      ],
+      "share": 0.0006,
+      "ha": 19
+     },
+     {
+      "code": 136,
+      "name": "Oats",
+      "kind": "own",
+      "crops": [
+       "oats"
+      ],
+      "share": 0.0005,
+      "ha": 15.6
+     },
+     {
+      "code": 185,
+      "name": "Other berries",
+      "kind": "other",
+      "crops": [],
+      "share": 0.0003,
+      "ha": 9
+     },
+     {
+      "code": 192,
+      "name": "Sod",
+      "kind": "other",
+      "crops": [],
+      "share": 0.0003,
+      "ha": 9.5
+     },
+     {
+      "code": 131,
+      "name": "Fallow",
+      "kind": "other",
+      "crops": [],
+      "share": 0.0001,
+      "ha": 3.1
+     },
+     {
+      "code": 157,
+      "name": "Sunflower",
+      "kind": "own",
+      "crops": [
+       "sunflower"
+      ],
+      "share": 0.0001,
+      "ha": 2.1
+     }
+    ],
+    "licence": "Open Government Licence - Canada",
+    "checked": "2026-11-15T00:24:05Z"
+   }
+  },
+  {
+   "id": "P0966",
+   "label": "Just inside the south-west square: north-south and east-west edge, Oxford area",
+   "group": "hard",
+   "lat": 43.249,
+   "lon": -80.3135,
+   "country": "CA",
+   "aci": 220,
+   "aci_name": "Broadleaf",
+   "cell": "266_159",
+   "cropmap": {
+    "ok": true,
+    "source": "Agriculture and Agri-Food Canada (AAFC), Annual Crop Inventory 2025, 30 m",
+    "data_date": "2025",
+    "data_date_note": "One map a year, made after each harvest from satellite images; 2025 is the newest year it has published",
+    "units": "share: part of the farmland in the box (0 to 1), from the map's own pixel counts; ha: hectares on the ground (one 30 m pixel of the map's Web Mercator grid is 0.0477 ha here)",
+    "year": 2025,
+    "country": "CA",
+    "box": {
+     "south": 43.124,
+     "west": -80.4385,
+     "north": 43.374,
+     "east": -80.1885
+    },
+    "half_deg": 0.125,
+    "pixel_ha": 0.0477,
+    "box_ha": 56452,
+    "cropland_ha": 30527.7,
+    "cropland_share_of_box": 0.5408,
+    "not_read_share": 0,
+    "crops": [
+     {
+      "crop": "corn",
+      "share": 0.3233,
+      "ha": 9868.6
+     },
+     {
+      "crop": "soy",
+      "share": 0.3163,
+      "ha": 9654.5
+     },
+     {
+      "crop": "wheat",
+      "share": 0.0776,
+      "ha": 2370.2
+     },
+     {
+      "crop": "swheat",
+      "share": 0.0135,
+      "ha": 411
+     },
+     {
+      "crop": "rye",
+      "share": 0.0098,
+      "ha": 299.1
+     },
+     {
+      "crop": "tobacco",
+      "share": 0.0025,
+      "ha": 77.5
+     },
+     {
+      "crop": "barley",
+      "share": 0.0011,
+      "ha": 33.3
+     },
+     {
+      "crop": "sorghum",
+      "share": 0.0008,
+      "ha": 24.5
+     },
+     {
+      "crop": "bean",
+      "share": 0.0006,
+      "ha": 19
+     },
+     {
+      "crop": "oats",
+      "share": 0.0005,
+      "ha": 15.5
+     },
+     {
+      "crop": "sunflower",
+      "share": 0.0001,
+      "ha": 2.1
+     }
+    ],
+    "wider": [
+     {
+      "code": 122,
+      "name": "Pasture/forages",
+      "crops": [
+       "alfalfa",
+       "ley"
+      ],
+      "share": 0.239,
+      "ha": 7294.8
+     },
+     {
+      "code": 146,
+      "name": "Spring wheat",
+      "crops": [
+       "durum"
+      ],
+      "share": 0.0135,
+      "ha": 411
+     }
+    ],
+    "classes": [
+     {
+      "code": 147,
+      "name": "Corn for grain",
+      "kind": "own",
+      "crops": [
+       "corn"
+      ],
+      "share": 0.3233,
+      "ha": 9868.6
+     },
+     {
+      "code": 158,
+      "name": "Soybeans",
+      "kind": "own",
+      "crops": [
+       "soy"
+      ],
+      "share": 0.3163,
+      "ha": 9654.5
+     },
+     {
+      "code": 122,
+      "name": "Pasture/forages",
+      "kind": "wider",
+      "crops": [
+       "alfalfa",
+       "ley"
+      ],
+      "share": 0.239,
+      "ha": 7294.8
+     },
+     {
+      "code": 145,
+      "name": "Winter wheat",
+      "kind": "own",
+      "crops": [
+       "wheat"
+      ],
+      "share": 0.0776,
+      "ha": 2370.2
+     },
+     {
+      "code": 146,
+      "name": "Spring wheat",
+      "kind": "own",
+      "crops": [
+       "swheat"
+      ],
+      "share": 0.0135,
+      "ha": 411
+     },
+     {
+      "code": 137,
+      "name": "Rye",
+      "kind": "own",
+      "crops": [
+       "rye"
+      ],
+      "share": 0.0098,
+      "ha": 299.1
+     },
+     {
+      "code": 188,
+      "name": "Orchards",
+      "kind": "other",
+      "crops": [],
+      "share": 0.0074,
+      "ha": 224.4
+     },
+     {
+      "code": 190,
+      "name": "Vineyards",
+      "kind": "other",
+      "crops": [],
+      "share": 0.0033,
+      "ha": 99.6
+     },
+     {
+      "code": 148,
+      "name": "Tobacco",
+      "kind": "own",
+      "crops": [
+       "tobacco"
+      ],
+      "share": 0.0025,
+      "ha": 77.5
+     },
+     {
+      "code": 149,
+      "name": "Ginseng",
+      "kind": "other",
+      "crops": [],
+      "share": 0.0018,
+      "ha": 56.3
+     },
+     {
+      "code": 133,
+      "name": "Barley",
+      "kind": "own",
+      "crops": [
+       "barley"
+      ],
+      "share": 0.0011,
+      "ha": 33.3
+     },
+     {
+      "code": 179,
+      "name": "Other vegetables",
+      "kind": "other",
+      "crops": [],
+      "share": 0.0009,
+      "ha": 29
+     },
+     {
+      "code": 194,
+      "name": "Nursery",
+      "kind": "other",
+      "crops": [],
+      "share": 0.0009,
+      "ha": 26.8
+     },
+     {
+      "code": 142,
+      "name": "Sorghum",
+      "kind": "own",
+      "crops": [
+       "sorghum"
+      ],
+      "share": 0.0008,
+      "ha": 24.5
+     },
+     {
+      "code": 167,
+      "name": "Beans",
+      "kind": "own",
+      "crops": [
+       "bean"
+      ],
+      "share": 0.0006,
+      "ha": 19
+     },
+     {
+      "code": 136,
+      "name": "Oats",
+      "kind": "own",
+      "crops": [
+       "oats"
+      ],
+      "share": 0.0005,
+      "ha": 15.5
+     },
+     {
+      "code": 185,
+      "name": "Other berries",
+      "kind": "other",
+      "crops": [],
+      "share": 0.0003,
+      "ha": 9
+     },
+     {
+      "code": 192,
+      "name": "Sod",
+      "kind": "other",
+      "crops": [],
+      "share": 0.0003,
+      "ha": 9.5
+     },
+     {
+      "code": 131,
+      "name": "Fallow",
+      "kind": "other",
+      "crops": [],
+      "share": 0.0001,
+      "ha": 3.1
+     },
+     {
+      "code": 157,
+      "name": "Sunflower",
+      "kind": "own",
+      "crops": [
+       "sunflower"
+      ],
+      "share": 0.0001,
+      "ha": 2.1
+     }
+    ],
+    "licence": "Open Government Licence - Canada",
+    "checked": "2026-11-15T00:24:06Z"
+   }
+  },
+  {
+   "id": "P0898",
+   "label": "Georgian Bay",
+   "group": "hard",
+   "lat": 45.3,
+   "lon": -80.9,
+   "country": "CA",
+   "aci": 20,
+   "aci_name": "Water",
+   "cell": "271_159",
+   "cropmap": {
+    "ok": true,
+    "source": "Agriculture and Agri-Food Canada (AAFC), Annual Crop Inventory 2025, 30 m",
+    "data_date": "2025",
+    "data_date_note": "One map a year, made after each harvest from satellite images; 2025 is the newest year it has published",
+    "units": "share: part of the farmland in the box (0 to 1), from the map's own pixel counts; ha: hectares on the ground (one 30 m pixel of the map's Web Mercator grid is 0.0445 ha here)",
+    "year": 2025,
+    "country": "CA",
+    "box": {
+     "south": 45.175,
+     "west": -81.025,
+     "north": 45.425,
+     "east": -80.775
+    },
+    "half_deg": 0.125,
+    "pixel_ha": 0.0445,
+    "box_ha": 54504.6,
+    "cropland_ha": 0,
+    "cropland_share_of_box": 0,
+    "not_read_share": 0,
+    "crops": [],
+    "wider": [],
+    "classes": [],
+    "licence": "Open Government Licence - Canada",
+    "checked": "2026-11-15T00:23:18Z"
+   }
+  },
+  {
+   "id": "P0900",
+   "label": "Lake Simcoe",
+   "group": "hard",
+   "lat": 44.42,
+   "lon": -79.35,
+   "country": "CA",
+   "aci": 20,
+   "aci_name": "Water",
+   "cell": "269_161",
+   "cropmap": {
+    "ok": true,
+    "source": "Agriculture and Agri-Food Canada (AAFC), Annual Crop Inventory 2025, 30 m",
+    "data_date": "2025",
+    "data_date_note": "One map a year, made after each harvest from satellite images; 2025 is the newest year it has published",
+    "units": "share: part of the farmland in the box (0 to 1), from the map's own pixel counts; ha: hectares on the ground (one 30 m pixel of the map's Web Mercator grid is 0.0459 ha here)",
+    "year": 2025,
+    "country": "CA",
+    "box": {
+     "south": 44.295,
+     "west": -79.475,
+     "north": 44.545,
+     "east": -79.225
+    },
+    "half_deg": 0.125,
+    "pixel_ha": 0.0459,
+    "box_ha": 55344.4,
+    "cropland_ha": 2800.5,
+    "cropland_share_of_box": 0.0506,
+    "not_read_share": 0,
+    "crops": [
+     {
+      "crop": "corn",
+      "share": 0.2398,
+      "ha": 671.5
+     },
+     {
+      "crop": "soy",
+      "share": 0.1393,
+      "ha": 390
+     },
+     {
+      "crop": "wheat",
+      "share": 0.0635,
+      "ha": 178
+     },
+     {
+      "crop": "swheat",
+      "share": 0.0055,
+      "ha": 15.5
+     },
+     {
+      "crop": "barley",
+      "share": 0.0007,
+      "ha": 1.8
+     },
+     {
+      "crop": "potato",
+      "share": 0.0006,
+      "ha": 1.6
+     }
+    ],
+    "wider": [
+     {
+      "code": 122,
+      "name": "Pasture/forages",
+      "crops": [
+       "alfalfa",
+       "ley"
+      ],
+      "share": 0.5017,
+      "ha": 1405
+     },
+     {
+      "code": 146,
+      "name": "Spring wheat",
+      "crops": [
+       "durum"
+      ],
+      "share": 0.0055,
+      "ha": 15.5
+     }
+    ],
+    "classes": [
+     {
+      "code": 122,
+      "name": "Pasture/forages",
+      "kind": "wider",
+      "crops": [
+       "alfalfa",
+       "ley"
+      ],
+      "share": 0.5017,
+      "ha": 1405
+     },
+     {
+      "code": 147,
+      "name": "Corn for grain",
+      "kind": "own",
+      "crops": [
+       "corn"
+      ],
+      "share": 0.2398,
+      "ha": 671.5
+     },
+     {
+      "code": 158,
+      "name": "Soybeans",
+      "kind": "own",
+      "crops": [
+       "soy"
+      ],
+      "share": 0.1393,
+      "ha": 390
+     },
+     {
+      "code": 145,
+      "name": "Winter wheat",
+      "kind": "own",
+      "crops": [
+       "wheat"
+      ],
+      "share": 0.0635,
+      "ha": 178
+     },
+     {
+      "code": 192,
+      "name": "Sod",
+      "kind": "other",
+      "crops": [],
+      "share": 0.0344,
+      "ha": 96.5
+     },
+     {
+      "code": 179,
+      "name": "Other vegetables",
+      "kind": "other",
+      "crops": [],
+      "share": 0.0092,
+      "ha": 25.8
+     },
+     {
+      "code": 146,
+      "name": "Spring wheat",
+      "kind": "own",
+      "crops": [
+       "swheat"
+      ],
+      "share": 0.0055,
+      "ha": 15.5
+     },
+     {
+      "code": 131,
+      "name": "Fallow",
+      "kind": "other",
+      "crops": [],
+      "share": 0.0049,
+      "ha": 13.8
+     },
+     {
+      "code": 133,
+      "name": "Barley",
+      "kind": "own",
+      "crops": [
+       "barley"
+      ],
+      "share": 0.0007,
+      "ha": 1.8
+     },
+     {
+      "code": 177,
+      "name": "Potatoes",
+      "kind": "own",
+      "crops": [
+       "potato"
+      ],
+      "share": 0.0006,
+      "ha": 1.6
+     },
+     {
+      "code": 188,
+      "name": "Orchards",
+      "kind": "other",
+      "crops": [],
+      "share": 0.0003,
+      "ha": 0.8
+     },
+     {
+      "code": 194,
+      "name": "Nursery",
+      "kind": "other",
+      "crops": [],
+      "share": 0.0001,
+      "ha": 0.4
+     }
+    ],
+    "licence": "Open Government Licence - Canada",
+    "checked": "2026-11-15T00:23:19Z"
+   }
+  },
+  {
+   "id": "P0901",
+   "label": "Lake Nipissing",
+   "group": "hard",
+   "lat": 46.27,
+   "lon": -79.75,
+   "country": "CA",
+   "aci": 20,
+   "aci_name": "Water",
+   "cell": "273_160",
+   "cropmap": {
+    "ok": true,
+    "source": "Agriculture and Agri-Food Canada (AAFC), Annual Crop Inventory 2025, 30 m",
+    "data_date": "2025",
+    "data_date_note": "One map a year, made after each harvest from satellite images; 2025 is the newest year it has published",
+    "units": "share: part of the farmland in the box (0 to 1), from the map's own pixel counts; ha: hectares on the ground (one 30 m pixel of the map's Web Mercator grid is 0.0430 ha here)",
+    "year": 2025,
+    "country": "CA",
+    "box": {
+     "south": 46.145,
+     "west": -79.875,
+     "north": 46.395,
+     "east": -79.625
+    },
+    "half_deg": 0.125,
+    "pixel_ha": 0.043,
+    "box_ha": 53558.3,
+    "cropland_ha": 10.1,
+    "cropland_share_of_box": 0.0002,
+    "not_read_share": 0,
+    "crops": [
+     {
+      "crop": "swheat",
+      "share": 0.2542,
+      "ha": 2.6
+     },
+     {
+      "crop": "oats",
+      "share": 0.0339,
+      "ha": 0.3
+     }
+    ],
+    "wider": [
+     {
+      "code": 122,
+      "name": "Pasture/forages",
+      "crops": [
+       "alfalfa",
+       "ley"
+      ],
+      "share": 0.7119,
+      "ha": 7.2
+     },
+     {
+      "code": 146,
+      "name": "Spring wheat",
+      "crops": [
+       "durum"
+      ],
+      "share": 0.2542,
+      "ha": 2.6
+     }
+    ],
+    "classes": [
+     {
+      "code": 122,
+      "name": "Pasture/forages",
+      "kind": "wider",
+      "crops": [
+       "alfalfa",
+       "ley"
+      ],
+      "share": 0.7119,
+      "ha": 7.2
+     },
+     {
+      "code": 146,
+      "name": "Spring wheat",
+      "kind": "own",
+      "crops": [
+       "swheat"
+      ],
+      "share": 0.2542,
+      "ha": 2.6
+     },
+     {
+      "code": 136,
+      "name": "Oats",
+      "kind": "own",
+      "crops": [
+       "oats"
+      ],
+      "share": 0.0339,
+      "ha": 0.3
+     }
+    ],
+    "licence": "Open Government Licence - Canada",
+    "checked": "2026-11-15T00:23:19Z"
+   }
+  },
+  {
+   "id": "P0902",
+   "label": "Lake of the Woods",
+   "group": "hard",
+   "lat": 49.1,
+   "lon": -94.5,
+   "country": "CA",
+   "aci": 20,
+   "aci_name": "Water",
+   "cell": "278_137",
+   "cropmap": {
+    "ok": true,
+    "source": "Agriculture and Agri-Food Canada (AAFC), Annual Crop Inventory 2025, 30 m",
+    "data_date": "2025",
+    "data_date_note": "One map a year, made after each harvest from satellite images; 2025 is the newest year it has published",
+    "units": "share: part of the farmland in the box (0 to 1), from the map's own pixel counts; ha: hectares on the ground (one 30 m pixel of the map's Web Mercator grid is 0.0386 ha here)",
+    "year": 2025,
+    "country": "CA",
+    "box": {
+     "south": 48.975,
+     "west": -94.625,
+     "north": 49.225,
+     "east": -94.375
+    },
+    "half_deg": 0.125,
+    "pixel_ha": 0.0386,
+    "box_ha": 50734,
+    "cropland_ha": 375.4,
+    "cropland_share_of_box": 0.0074,
+    "not_read_share": 0,
+    "crops": [],
+    "wider": [
+     {
+      "code": 122,
+      "name": "Pasture/forages",
+      "crops": [
+       "alfalfa",
+       "ley"
+      ],
+      "share": 1,
+      "ha": 375.4
+     }
+    ],
+    "classes": [
+     {
+      "code": 122,
+      "name": "Pasture/forages",
+      "kind": "wider",
+      "crops": [
+       "alfalfa",
+       "ley"
+      ],
+      "share": 1,
+      "ha": 375.4
+     }
+    ],
+    "licence": "Open Government Licence - Canada",
+    "checked": "2026-11-15T00:23:20Z"
+   }
+  },
+  {
+   "id": "P0903",
+   "label": "Lake St Clair",
+   "group": "hard",
+   "lat": 42.4,
+   "lon": -82.7,
+   "country": "CA",
+   "aci": 20,
+   "aci_name": "Water",
+   "cell": "265_156",
+   "cropmap": {
+    "ok": true,
+    "source": "Agriculture and Agri-Food Canada (AAFC), Annual Crop Inventory 2025, 30 m",
+    "data_date": "2025",
+    "data_date_note": "One map a year, made after each harvest from satellite images; 2025 is the newest year it has published",
+    "units": "share: part of the farmland in the box (0 to 1), from the map's own pixel counts; ha: hectares on the ground (one 30 m pixel of the map's Web Mercator grid is 0.0491 ha here)",
+    "year": 2025,
+    "country": "CA",
+    "box": {
+     "south": 42.275,
+     "west": -82.825,
+     "north": 42.525,
+     "east": -82.575
+    },
+    "half_deg": 0.125,
+    "pixel_ha": 0.0491,
+    "box_ha": 47151.6,
+    "cropland_ha": 4197.9,
+    "cropland_share_of_box": 0.089,
+    "not_read_share": 0,
+    "crops": [
+     {
+      "crop": "soy",
+      "share": 0.6133,
+      "ha": 2574.7
+     },
+     {
+      "crop": "wheat",
+      "share": 0.214,
+      "ha": 898.5
+     },
+     {
+      "crop": "corn",
+      "share": 0.1321,
+      "ha": 554.5
+     },
+     {
+      "crop": "swheat",
+      "share": 0.0047,
+      "ha": 19.8
+     },
+     {
+      "crop": "bean",
+      "share": 0.0004,
+      "ha": 1.8
+     },
+     {
+      "crop": "rye",
+      "share": 0,
+      "ha": 0.1
+     }
+    ],
+    "wider": [
+     {
+      "code": 122,
+      "name": "Pasture/forages",
+      "crops": [
+       "alfalfa",
+       "ley"
+      ],
+      "share": 0.0284,
+      "ha": 119.3
+     },
+     {
+      "code": 146,
+      "name": "Spring wheat",
+      "crops": [
+       "durum"
+      ],
+      "share": 0.0047,
+      "ha": 19.8
+     }
+    ],
+    "classes": [
+     {
+      "code": 158,
+      "name": "Soybeans",
+      "kind": "own",
+      "crops": [
+       "soy"
+      ],
+      "share": 0.6133,
+      "ha": 2574.7
+     },
+     {
+      "code": 145,
+      "name": "Winter wheat",
+      "kind": "own",
+      "crops": [
+       "wheat"
+      ],
+      "share": 0.214,
+      "ha": 898.5
+     },
+     {
+      "code": 147,
+      "name": "Corn for grain",
+      "kind": "own",
+      "crops": [
+       "corn"
+      ],
+      "share": 0.1321,
+      "ha": 554.5
+     },
+     {
+      "code": 122,
+      "name": "Pasture/forages",
+      "kind": "wider",
+      "crops": [
+       "alfalfa",
+       "ley"
+      ],
+      "share": 0.0284,
+      "ha": 119.3
+     },
+     {
+      "code": 146,
+      "name": "Spring wheat",
+      "kind": "own",
+      "crops": [
+       "swheat"
+      ],
+      "share": 0.0047,
+      "ha": 19.8
+     },
+     {
+      "code": 188,
+      "name": "Orchards",
+      "kind": "other",
+      "crops": [],
+      "share": 0.0026,
+      "ha": 11
+     },
+     {
+      "code": 131,
+      "name": "Fallow",
+      "kind": "other",
+      "crops": [],
+      "share": 0.0025,
+      "ha": 10.6
+     },
+     {
+      "code": 179,
+      "name": "Other vegetables",
+      "kind": "other",
+      "crops": [],
+      "share": 0.0014,
+      "ha": 6
+     },
+     {
+      "code": 167,
+      "name": "Beans",
+      "kind": "own",
+      "crops": [
+       "bean"
+      ],
+      "share": 0.0004,
+      "ha": 1.8
+     },
+     {
+      "code": 194,
+      "name": "Nursery",
+      "kind": "other",
+      "crops": [],
+      "share": 0.0004,
+      "ha": 1.6
+     },
+     {
+      "code": 137,
+      "name": "Rye",
+      "kind": "own",
+      "crops": [
+       "rye"
+      ],
+      "share": 0,
+      "ha": 0.1
+     }
+    ],
+    "licence": "Open Government Licence - Canada",
+    "checked": "2026-11-15T00:23:20Z"
+   }
+  }
+ ]
+}

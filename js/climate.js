@@ -18,7 +18,7 @@
 //   The second record of the coldest night is passed apart, as opts.cold: { night, night10, years } in °C (data.js coldFromDaily);
 //   a what-if may carry it as S.cold, so that it moves with the temperatures.
 //   The height correction is made before this file sees the record (data.js fitHeight).
-import { Y0, FULL_YEAR_DAYS, REAL, IMERG_SHARE, MONTH_READ, enough, monthTotal as wholeMonth, coldOf, mergeCold } from './data.js';
+import { Y0, FULL_YEAR_DAYS, REAL, IMERG_SHARE, MONTH_READ, enough, monthTotal as wholeMonth, coldOf, mergeCold, SEA_WORDS } from './data.js';
 
 export const THR = [28, 29, 30, 32, 33, 35, 36, 38, 40, 42, 45];   // °C; up to 45 because sisal and date palms count days above their own limit
 export const NOT_ENOUGH = 'Not enough complete years of weather';
@@ -28,8 +28,37 @@ const NORMAL_READ = 0.5;    // a monthly normal needs this share of the month's 
 const SO_FAR_READ = 0.95;   // "so far" needs nearly every day: a missing stretch is a gap, never a dry spell
 const MIN_YEARS = 5;        // fewer years than this make no trend and no "normal by now"
 const HEAVY = 20, HEAVY50 = 50, DRY_DAY = 1, DRY_SOIL = 0.4, TROPIC = 23.5;
-const SOUTH_SHIFT = 182, AUTUMN = 200;   // frost keys: half a year's shift in the south; keys from 200 are the autumn side
+export const SOUTH_SHIFT = 182, AUTUMN = 200;   // frost keys: half a year's shift in the south (365 ÷ 2, rounded down); keys from 200 are the autumn side
 const T_TOP = 1e6;          // a perfectly straight line has no scatter to divide by: its t is held here, not left infinite
+
+// The first autumn frost on NASA's record. NASA POWER's night lows run warm on the clear, still autumn nights that bring the first
+// frost: held against the daily records 2001 to 2025 of 35 Environment and Climate Change Canada stations in Ontario, NASA's first
+// autumn frost came a median 11 days after the stations' own, while the last spring frost agreed (a median day apart). So on NASA's
+// record, within 300 km of one of those stations, an autumn night whose low is under 2.5 °C counts as the first frost; the stations'
+// median difference is then a day (a margin chosen on the southern stations alone leaves the northern ones 2 days late, and one
+// chosen on the northern ones leaves the southern ones a day early; chosen on 34 and read on the one left out, each in turn, a day). The spring date and every count of frost nights stay at
+// 0 °C, and the back-up record is read as it is. Checked by scripts/test_accuracy.mjs on the stations' own recorded nights.
+export const AUTUMN_MARGIN = 2.5, MARGIN_KM = 300;   // °C; km from the nearest station
+export const MARGIN_STATIONS = Object.freeze([   // latitude, longitude: Ear Falls, Lansdowne House, Pickle Lake, Barwick, Rawson Lake, Cameron Falls, Upsala, Kapuskasing, Nagagami,
+  // Appleton, Cornwall, Hartington, Ompah, Ottawa, St. Albert, Shanty Bay, Udora, Goderich, Delhi, Harrow, Port Weller, Fergus, Mount Forest, Strathroy,
+  // Belleville, Centreville, Hamilton, Trenton, Bonner Lake, Drummond Centre, Petawawa, Atikokan, Bancroft, Toronto North York, Egbert
+  [50.63, -93.22], [52.20, -87.94], [51.45, -90.22], [48.63, -93.97], [49.65, -93.72], [49.15, -88.34], [49.03, -90.47], [49.41, -82.44], [49.75, -84.16],
+  [45.19, -76.11], [45.02, -74.75], [44.43, -76.69], [45.05, -76.78], [45.38, -75.72], [45.29, -75.06], [44.40, -79.63], [44.26, -79.16], [43.77, -81.72],
+  [42.87, -80.55], [42.03, -82.90], [43.25, -79.22], [43.73, -80.33], [43.98, -80.75], [42.98, -81.64], [44.15, -77.39], [44.40, -76.91], [43.29, -79.91],
+  [44.12, -77.53], [49.38, -82.12], [45.03, -76.25], [45.88, -77.25], [48.76, -91.63], [45.07, -77.88], [43.78, -79.47], [44.23, -79.78],
+].map(Object.freeze));
+export const MARGIN_LATE = 11;   // days NASA's first autumn frost came after the stations' own, as a median, read at 0 °C
+const km = (a, b, c, d) => { const r = Math.PI / 180, h = Math.sin((c - a) * r / 2) ** 2 + Math.cos(a * r) * Math.cos(c * r) * Math.sin((d - b) * r / 2) ** 2; return 12742 * Math.asin(Math.min(1, Math.sqrt(h))); };   // great-circle distance
+export const nearStations = (lat, lon) => Number.isFinite(lat) && Number.isFinite(lon) && MARGIN_STATIONS.some(([a, b]) => km(lat, lon, a, b) <= MARGIN_KM);
+export const autumnLine = (source, lat, lon) => source === 'power' && nearStations(lat, lon) ? AUTUMN_MARGIN : 0;
+// Nothing grows where no month averages above 5 °C: FAO and IIASA's Global Agro-Ecological Zones (GAEZ v4) count the temperature
+// growing period as the days with a daily mean above 5 °C.
+export const GROW_LINE = 5;
+// A place that is not farmland at all is said so in words, never shown with figures and plans (js/engine.js and js/report-load.js).
+export const NO_GROWTH_WORDS = `No month here averages above ${GROW_LINE} °C, the warmth crops need to grow (the growing season of FAO GAEZ), so this is not farmland: Crophalo cannot compare crops here.`;
+export const notFarmlandWords = C => (C?.noLand ? SEA_WORDS : C?.noGrowth ? NO_GROWTH_WORDS : '');
+// The one sentence about the weather square, said where the climate is shown (the frost-free season, the report's gaps).
+export const SQUARE_WORDS = 'Nearby fields can differ from these figures: NASA’s weather is the average of a square about 50 km across, so two fields on either side of a square’s edge can read about a degree apart and a week or more apart in frost-free days.';
 
 // ---- small sums
 const fin = Number.isFinite;
@@ -174,13 +203,18 @@ export function computeClimate(S, lat = S?.lat, opts = {}) {
   // One pass over the days for what a monthly sum cannot hold: frost dates, the coldest night, the wettest day, winter chill, dry spells.
   const rows = years.map(() => ({ nights: 0, frosts: 0, last: NaN, first: NaN, cold: NaN, top: NaN, chill: 0, chillRead: 0, run: 0 }));
   const coldHalf = m => south ? m >= 3 && m <= 8 : m <= 2 || m >= 9;
+  const line = autumnLine(R.source, lat, fin(opts.lon) ? opts.lon : S.lon);   // 0 °C, or the autumn margin on NASA's record in the stations' area
   let run = 0, before = NaN;
   for (let i = 0; i < R.n; i++) {
     const row = rows[pos.get(R.y[i])], lo = R.lo[i], rain = R.rain[i], m = R.m[i];
     if (!row) continue;
     if (fin(lo)) {
       row.nights++; if (!(lo >= row.cold)) row.cold = lo;
-      if (lo < 0) { const key = seasonKey(R.doy[i], south); row.frosts++; if (key < AUTUMN) { if (!(key <= row.last)) row.last = key; } else if (!(key >= row.first)) row.first = key; }
+      if (lo < line || lo < 0) {
+        const key = seasonKey(R.doy[i], south);
+        if (lo < 0) { row.frosts++; if (key < AUTUMN && !(key <= row.last)) row.last = key; }
+        if (key >= AUTUMN && !(key >= row.first)) row.first = key;
+      }
     }
     const chill = both[i] && coldHalf(m) ? chillHours(lo, R.hi[i]) : NaN;
     if (fin(chill)) { row.chill += chill; row.chillRead++; }   // a day whose high reads under its low is not a reading
@@ -194,7 +228,7 @@ export function computeClimate(S, lat = S?.lat, opts = {}) {
   const yearOf = g => idx.map(yi => yearTotal(g, yi)), at = line => G.heat[THR.indexOf(line)];
   const yearly = {
     P: yearOf(G.rain), T: idx.map(yi => yearTotal(G.mid, yi) / (leap(Y0 + yi) ? 366 : 365)), gsRain,
-    heat32: yearOf(at(32)), heat35: yearOf(at(35)), heavy: yearOf(G.heavy), heavy50: yearOf(G.heavy50), maxDay: [], dryRun: rows.map((row, k) => fin(gsRain[k]) ? row.run : NaN), stress,
+    heat32: yearOf(at(32)), heat35: yearOf(at(35)), heat35m: idx.map(yi => months12(m => monthTotal(at(35), yi, m))), heavy: yearOf(G.heavy), heavy50: yearOf(G.heavy50), maxDay: [], dryRun: rows.map((row, k) => fin(gsRain[k]) ? row.run : NaN), stress,
     frostLast: rows.map(row => row.last), frostFirst: rows.map(row => row.first),
     // No frost: the whole year is free. Every night read froze: none is. Else from the last spring frost to the first autumn frost.
     frostFree: rows.map(row => !row.frosts ? 365 : row.frosts === row.nights ? 0 : Math.min(365, (fin(row.first) ? row.first : 365) - (fin(row.last) ? row.last : 0))),
@@ -222,6 +256,9 @@ export function computeClimate(S, lat = S?.lat, opts = {}) {
     years, y0: Y0, y1: R.y1, through: day(pair(R.hi)), rainThrough: day(R.rain),   // the last day with both temperatures, and the last day of the rain record in use
     monthly, gaps, wet, season: fin(gsStart) ? { start: gsStart, months: Array.from({ length: 6 }, (_, j) => (gsStart + j) % 12) } : null,
     yearly, med,
+    frostMargin: line, frostSource: line ? 'power+eccc' : R.source,   // the autumn margin in use (0 or 2.5 °C), and what the frost dates rest on
+    noLand: S.noLand === true,   // NASA sent its "no value" mark for every day of soil wetness and water from the land: the square is sea or ice
+    noGrowth: known && Math.max(...monthly.tmean) <= GROW_LINE,   // no month of a normal year averages above 5 °C (FAO GAEZ): no growing season at all
     frostFreeClimate: rows.filter(row => fin(row.last)).length * 2 < years.length,   // fewer than half the years had a spring frost
     coldWinter: coolest < -3 ? true : known ? false : null,   // null: an unread month could be the cold one
     dry: med.P < 500 || med.gsRain < 260 ? true : fin(med.P) && fin(med.gsRain) ? false : null,
@@ -229,6 +266,10 @@ export function computeClimate(S, lat = S?.lat, opts = {}) {
     chill: median(yearly.chill),
     dryYears, dryOf, droughtYears: dryOf ? dryYears.length / dryOf : NaN,
     gwCal: idx.map(yi => months12(m => monthMean(G.gw, yi, m) - monthly.gw[m])),   // that month's soil wetness that year, less the month's normal
+    // Each month of each year that counts, for the counts by growth stage (js/compare.js): rain (mm), days of 20 mm or more, and days at or above each heat line; NaN where the month was not read well.
+    rainCal: idx.map(yi => months12(m => monthTotal(G.rain, yi, m))),
+    heavyCal: idx.map(yi => months12(m => well(G.heavy, yi, m) ? G.heavy.s[yi * 12 + m] : NaN)),
+    hotCal: Object.fromEntries(THR.map((line, j) => [line, idx.map(yi => months12(m => well(G.heat[j], yi, m) ? G.heat[j].s[yi * 12 + m] : NaN))])),
     trend: { P: trend(years, yearly.P), T: trend(years, yearly.T), heat32: trend(years, yearly.heat32), heavy: trend(years, yearly.heavy), stress: trend(years, stress) },
   };
 }
@@ -256,15 +297,17 @@ export function hotDaysAt(C, limit, how = 'near') {
 // a usual date is given only when at least half the years had one.
 export function computeFrost(S, lat = S?.lat, opts = {}) {
   if (!fin(lat)) throw new Error('The place has no latitude');
-  const R = read(S, opts), south = lat < 0, rows = new Map();
+  const R = read(S, opts), south = lat < 0, rows = new Map(), line = autumnLine(R.source, lat, fin(opts.lon) ? opts.lon : S.lon);
   for (let i = 0; i < R.n; i++) {
     const lo = R.lo[i], year = R.y[i], doy = R.doy[i];
     if (R.g[i] < 0 || !fin(lo)) continue;
     const row = rows.get(year) ?? rows.set(year, { nights: 0, last: NaN, first: NaN, months: new Set() }).get(year);
     row.nights++;
-    if (!(lo < 0)) continue;
-    row.months.add(R.m[i]);
-    if ((doy <= 182) !== south) { if (!(doy <= row.last)) row.last = doy; } else if (!(doy >= row.first)) row.first = doy;   // spring is the first half of the year in the north, the second half in the south
+    const frost = lo < 0, margin = !frost && lo < line && !south && doy >= AUTUMN;   // a night under the autumn margin counts for the autumn date only, from day 200 as in computeClimate
+    if (!frost && !margin) continue;
+    if (frost) row.months.add(R.m[i]);
+    const spring = (doy <= 182) !== south;   // spring is the first half of the year in the north, the second half in the south
+    if (spring) { if (!(doy <= row.last)) row.last = doy; } else if (!(doy >= row.first)) row.first = doy;
   }
   const kept = [...rows.values()].filter(row => row.nights >= FULL_YEAR_DAYS), M = kept.length, half = count => M > 0 && count * 2 >= M;
   const lasts = kept.map(row => row.last).filter(fin), firsts = kept.map(row => row.first).filter(fin);
@@ -272,7 +315,7 @@ export function computeFrost(S, lat = S?.lat, opts = {}) {
   const last = half(lasts.length) ? median(lasts) : NaN, first = half(firsts.length) ? median(firsts) : NaN;
   return {
     years: M, frostYears, rare: M ? frostYears * 2 < M : null, lastYears: lasts.length, firstYears: firsts.length, last, first,
-    free: first - last + (south ? 365 : 0), everyMonth, allYear: half(everyMonth), south,
+    free: first - last + (south ? 365 : 0), everyMonth, allYear: half(everyMonth), south, margin: line, source: R.source,
   };
 }
 
@@ -363,7 +406,14 @@ export function frostWords(F) {
   if (F.allYear) return `Frost in every month of the year (in ${F.everyMonth} of ${F.years} years).`;
   if (F.rare) return `Frost is rare here: ${of}. No reliable usual frost date here.`;
   if (!fin(F.last) && !fin(F.first)) return `Some years: ${of}, no reliable dates.`;   // a missing date has its own sentence, never the worst wording
-  return `${date('Last spring frost', F.last)} ${date('First autumn frost', F.first)}${fin(F.free) ? ` About ${num(F.free)} days lie between them.` : ''} Counted night by night: ${of}.`;
+  return `${date('Last spring frost', F.last)} ${date('First autumn frost', F.first)}${fin(F.free) ? ` About ${num(F.free)} days lie between them.` : ''} Counted night by night: ${of}.${fin(F.first) ? autumnWords(F.margin, F.source) : ''}`;
+}
+// Where the autumn date comes from, and the low spots: said after every first autumn frost date (the Weather tab and the report).
+export function autumnWords(margin, source) {
+  const low = ' Low, cold spots can get frost two weeks earlier, or more.';
+  if (margin > 0) return ` NASA’s night lows run warm in autumn, so here a night under ${margin} °C counts for the autumn date; read that way, it sits in the middle of what ${MARGIN_STATIONS.length} Ontario weather stations (Environment and Climate Change Canada) recorded.${low}`;
+  if (source === 'power') return ` This autumn date is NASA’s own: where it was held against weather stations, in Ontario, it came about ${MARGIN_LATE} days late.${low}`;
+  return low;
 }
 
 export function hotWords(C, Y) {

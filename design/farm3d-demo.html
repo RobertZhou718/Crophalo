@@ -8,17 +8,17 @@
 import { view3d } from '../js/farm3d.js';
 import { loadHeights } from '../js/heights3d.js';
 // a small rolling land: 65 × 65 heights over the block, a few metres of rise
-const hills = (block) => { const n = 65, h = new Float32Array(n * n); for (let j = 0; j < n; j++) for (let i = 0; i < n; i++) h[j * n + i] = 300 + 6 * Math.sin(i / 9) + 4 * Math.cos(j / 11) + i * 0.06; return { nx: n, ny: n, width: block.width, depth: block.depth, h }; };
+const hills = (block, ridge) => { const n = 65, h = new Float32Array(n * n); for (let j = 0; j < n; j++) for (let i = 0; i < n; i++) h[j * n + i] = 300 + 6 * Math.sin(i / 9) + 4 * Math.cos(j / 11) + i * 0.06 + (ridge ? 45 * Math.exp(-(((((j / (n - 1)) - 0.5) * block.depth - 120) / 25) ** 2)) : 0); return { nx: n, ny: n, width: block.width, depth: block.depth, h, name: 'NRCan HRDEM lidar', res_m: 2, kind: 'DTM', credit: 'Contains information licensed under the Open Government Licence - Canada (Natural Resources Canada)', licence: 'Open Government Licence - Canada' }; };   // ridge: a 45 m ridge 120 m south of the middle, for the shade checks
 const place = new URLSearchParams(location.search).get('place');
 const base = place === 'woodstock' ? { name: 'Oxford County demo', pin: { lat: 43.13, lon: -80.75 }, field: { id: 'demo', name: 'Demo field', polygon: null, areaEstimated: true } } : { name: 'Barrie demo', pin: { lat: 44.40, lon: -79.78 }, field: { id: 'demo', name: 'Demo field', polygon: null, areaEstimated: true } };
 window.demo = {
   async open(state, extra = {}) {
     const input = { ...base, planKind: 'proposed', date: '2027-10-05', ground: state, ...extra };
-    if (extra.hills) input.heights = hills({ width: 800, depth: 800 });
+    if (extra.hills) input.heights = hills({ width: 800, depth: 800 }, extra.ridge);
     window.view = await view3d(input, document.getElementById('host'), { onFallback: why => { window.fellBack = why; } });
     return window.view.status;
   },
-  async next(state, extra = {}) { const input = { ...base, planKind: 'proposed', date: '2027-11-05', ground: state, ...extra }; if (extra.hills) input.heights = hills({ width: 800, depth: 800 }); window.view.update(input); return window.view.status; },
+  async next(state, extra = {}) { const input = { ...base, planKind: 'proposed', date: '2027-11-05', ground: state, ...extra }; if (extra.hills) input.heights = hills({ width: 800, depth: 800 }, extra.ridge); window.view.update(input); return window.view.status; },
 };
 window.ready = true;
 // ?live=residue|wheat1|wheat2|corn opens at once with the real height lookup (a picture of the real land)

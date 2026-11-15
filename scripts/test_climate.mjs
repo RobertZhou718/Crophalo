@@ -50,8 +50,10 @@ const MAY_BE_NAN = [
   /^monthly\.(tmax|tmin|tmean|P|ET|gw|heavy|frostByMonth)\.\d+$/, /^monthly\.heatByMonth\.\d+\.\d+$/,   // a month read in too few years
   /^yearly\.(P|T|gsRain|heat32|heat35|heavy|heavy50|maxDay|dryRun|stress|chill)\.\d+$/,   // a year or a season with a badly read month
   /^yearly\.(frostLast|frostFirst)\.\d+$/,        // a year with no spring or no autumn frost has no date
+  /^yearly\.heat35m\.\d+\.\d+$/,                // the days of 35 °C or more of one month of one year: a month not read gives no count
   /^med\.(P|T|gsRain|heat32|heat35|heavy|heavy50|maxDay|dryRun|stress|frostLast|frostFirst)$/,   // no year gave the figure
   /^coldSecond(10)?$/,                            // no second record of the coldest night
+  /^(rainCal|heavyCal)\.\d+\.\d+$/, /^hotCal\.\d+\.\d+\.\d+$/,   // one month of one year read too badly to count: no figure for it, never a 0
   /^chill$/, /^droughtYears$/, /^gwCal\.\d+\.\d+$/, /^trend\.(P|T|heat32|heavy|stress)\.(slope|t)$/,   // fewer than five years: no trend
 ];
 const MAY_BE_NULL = [/^through$/, /^rainThrough$/, /^season$/, /^coldWinter$/, /^dry$/];   // unknown where a true-or-false or a date would be a claim
@@ -186,7 +188,9 @@ group('frost-free season', () => {
   same('Ontario: last spring frost day 120, first autumn frost day 293, 173 days between', [C.med.frostLast, C.med.frostFirst, C.med.frostFree], [120, 293, 173]);
   near('Ontario: October has 12 frost nights (the 20th to the 31st)', C.monthly.frostByMonth[9], 12);
   same('Ontario: the report\'s dates agree', [F.last, F.first, F.free, F.rare], [120, 293, 173, false]);
-  same('Ontario: said as dates', frostWords(F), 'Last spring frost: usually about Apr 30. First autumn frost: usually about Oct 20. About 173 days lie between them. Counted night by night: frost in 25 of 25 years.');
+  // A hand-made record has no longitude, so it is read as NASA's own, far from the stations the autumn date was held against: the words say
+  // so, and say that low, cold spots get frost earlier (the stations' margin itself is checked in scripts/test_accuracy.mjs).
+  same('Ontario: said as dates', frostWords(F), 'Last spring frost: usually about Apr 30. First autumn frost: usually about Oct 20. About 173 days lie between them. Counted night by night: frost in 25 of 25 years. This autumn date is NASA’s own: where it was held against weather stations, in Ontario, it came about 11 days late. Low, cold spots can get frost two weeks earlier, or more.');
   same('Ontario: not a frost-free climate', C.frostFreeClimate, false);
 
   // Southern hemisphere (35 S): frost from 1 June to 31 August. Last frost 31 August is day 243, first frost 1 June is day 152.
@@ -196,7 +200,7 @@ group('frost-free season', () => {
   same('south: the season keys are half a year on: 60 for 31 August, 334 for 1 June', [CS.med.frostLast, CS.med.frostFirst], [60, 334]);
   same('south: the keys turn back into the real days 243 and 152', [keyToDoy(CS.med.frostLast, true), keyToDoy(CS.med.frostFirst, true)], [243, 152]);
   same('south: the report\'s dates are the real ones, 274 days apart', [FS.last, FS.first, FS.free], [243, 152, 274]);
-  same('south: said as dates', frostWords(FS), 'Last spring frost: usually about Aug 31. First autumn frost: usually about Jun 1. About 274 days lie between them. Counted night by night: frost in 25 of 25 years.');
+  same('south: said as dates', frostWords(FS), 'Last spring frost: usually about Aug 31. First autumn frost: usually about Jun 1. About 274 days lie between them. Counted night by night: frost in 25 of 25 years. This autumn date is NASA’s own: where it was held against weather stations, in Ontario, it came about 11 days late. Low, cold spots can get frost two weeks earlier, or more.');
   near('south: July has 31 frost nights, January none', CS.monthly.frostByMonth[6] - CS.monthly.frostByMonth[0], 31);
   same('the key of a day and back again, both hemispheres', [1, 17, 18, 182, 183, 184, 365].map(doy => [keyToDoy(seasonKey(doy, true), true), keyToDoy(seasonKey(doy, false), false)]), [1, 17, 18, 182, 183, 184, 365].map(doy => [doy, doy]));
 

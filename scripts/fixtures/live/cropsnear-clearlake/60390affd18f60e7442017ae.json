@@ -1,0 +1,15 @@
+{
+ "method": "GET",
+ "url": "https://pdi.scinet.usda.gov/image/rest/services/CDL_WM/ImageServer/query?where=Category%3D1&outFields=OBJECTID%2CName%2CYear&orderByFields=Year+DESC&resultRecordCount=1&returnGeometry=false&f=json",
+ "recorded": "2026-11-15T00:45:59Z",
+ "hand_made": false,
+ "replies": [
+  {
+   "status": 200,
+   "headers": {
+    "content-type": "application/json; charset=UTF-8",
+    "content-length": "392"
+   }
+  }
+ ]
+}

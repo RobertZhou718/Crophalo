@@ -1,0 +1,15 @@
+{
+ "method": "POST",
+ "url": "https://overpass-api.de/api/interpreter",
+ "recorded": "2026-11-15T05:49:32Z",
+ "hand_made": false,
+ "replies": [
+  {
+   "status": 200,
+   "headers": {
+    "content-type": "application/json"
+   }
+  }
+ ],
+ "edited": "Before publishing, the address, e-mail, phone, website and operator tags were taken out of this recorded answer; shapes and the tags the 3D view draws from are unchanged."
+}

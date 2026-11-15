@@ -9,7 +9,9 @@ import path from 'node:path';
 import zlib from 'node:zlib';
 import { spawn, spawnSync } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
-import { findLogin, parseNetrc, netrcWords, LOGIN_PLACES } from './earthdata.mjs';
+import * as earthdata from './earthdata.mjs';
+import { DIRECT } from './status.mjs';
+const { findLogin, parseNetrc, netrcWords, LOGIN_PLACES } = earthdata;
 
 // ---- the counting
 let passed = 0, failed = 0;
@@ -36,6 +38,10 @@ const FILES = {
   'js/tiny.js': '// a test script under 1 KB\n',
   'css/app.css': lines('/* test styles for the server suite, line', 40).replace(/(\d+)\n/g, '$1 */\n'),
   'data/regions.json': JSON.stringify({ test: true, lines: lines('test data line', 60) }),
+  'img/craft/test.webp': 'RIFFtest',
+  'img/earth/test.webp': 'RIFFtest',
+  'img/other/test.webp': 'RIFFtest',
+  'img/craft/notes.md': 'not a picture',
   'data/spam/index.json': JSON.stringify({ test: true }),
   'design/tokens.json': JSON.stringify({ test: true }),
   'icons/mark.svg': '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 8 8">' + lines('<!-- test icon, line', 40).replace(/(\d+)\n/g, '$1 -->\n') + '</svg>\n',
@@ -56,10 +62,36 @@ const FILES = {
 };
 for (const [rel, content] of Object.entries(FILES)) put(SITE, rel, content);
 put(TMP, 'outside.txt', 'OUTSIDE-THE-FOLDER\n');   // a file next to the site: no request may ever reach it
+put(TMP, 'outside-dir/outside.txt', 'OUTSIDE-THE-FOLDER\n');
+// Links inside the app's own folders whose real file is a place the server never serves: outside the folder, hidden, runtime/, scripts/.
+// The name a visitor asks for looks harmless; only the file the link leads to tells.
+const LINKS = {
+  'data/link-outside.txt': path.join(TMP, 'outside.txt'), 'data/link-relative.txt': path.join('..', '..', 'outside.txt'), 'data/link-dir': path.join(TMP, 'outside-dir'),
+  'js/link-hidden.js': path.join(SITE, '.secrets', 'earthdata.netrc'), 'data/link-secrets': path.join(SITE, '.secrets'), 'js/link-dotfile.js': path.join(SITE, '.hidden'),
+  'js/link-runtime.js': path.join(SITE, 'runtime', 'last-port'), 'data/link-runtime': path.join(SITE, 'runtime'),
+  'js/link-scripts.js': path.join(SITE, 'scripts', 'serve.mjs'), 'js/link-starter.js': path.join(SITE, 'MOVING.md'),
+  'js/link-ok.js': path.join(SITE, 'js', 'tiny.js'), 'js/link-nowhere.js': path.join(SITE, 'js', 'no-such-file.js'),
+};
+for (const [rel, target] of Object.entries(LINKS)) fs.symlinkSync(target, path.join(SITE, rel));
 put(SITE2, 'index.html', FILES['index.html']);
 put(HOME_LOGIN, '.netrc', `machine urs.earthdata.nasa.gov login ${USER} password ${WORD}\n`);
 fs.mkdirSync(HOME_EMPTY);
-const PYTHON = put(TMP, 'stand-in/python', '');   // only has to exist: nothing runs it in this suite
+// A stand-in for the folder's Python: it writes down every run (and the trust roots it was handed), and answers the server's own questions.
+function standInPython(name, { libsMissing = false, login = 'yes' } = {}) {
+  const state = path.join(TMP, `python-${name}`);
+  put(state, 'certs.pem', 'test trust roots\n'); put(state, 'login', login + '\n');
+  if (libsMissing) put(state, 'libs-missing', '');
+  const file = put(state, 'python', ['#!/bin/sh', '# Stand-in for Python in the server suite.', `S='${state}'`,
+    'seen() { printf \'%s|ssl=%s\\n\' "$1" "${SSL_CERT_FILE:-}" >> "$S/runs.log"; }',
+    'case "$2" in',
+    '  *crophalo_python*) seen check; echo CROPHALO_PY; [ -e "$S/libs-missing" ] && exit 1; printf \'{"crophalo_python": "3.12.99", "certifi": "%s"}\\n\' "$S/certs.pem" ;;',
+    '  *earthaccess.login*) seen login; echo "LOGIN $(cat "$S/login")" ;;',
+    '  *) seen "$1 $2"; exit 3 ;;', 'esac', ''].join('\n'));
+  fs.chmodSync(file, 0o755);
+  return { file, state, runs: () => { try { return fs.readFileSync(path.join(state, 'runs.log'), 'utf8').split('\n').filter(Boolean); } catch { return []; } } };
+}
+const PY_R = standInPython('R'), PY_LIBS = standInPython('libs', { libsMissing: true }), PY_Y = standInPython('Y'), PY_Z = standInPython('Z', { login: 'no' });
+const PYTHON = PY_R.file;
 
 // The server finds its root from its own file, so each site gets its own copy of the two scripts.
 function SERVE_LIVE() { const line = fs.readFileSync(path.join(HERE, 'serve.mjs'), 'utf8').split('\n').find(l => l.startsWith('const LIVE = {')); return line.slice(0, line.indexOf('};') + 2); }   // the table as written in the server: the suite swaps it for test rows in its own copy
@@ -73,7 +105,9 @@ ${Array.from({ length: 8 }, (_, i) => `  fill${i}: { name: 'Test row: filler ${i
 };`;
 put(SITE, 'scripts/serve.mjs', SOURCE);
 put(SITE2, 'scripts/serve.mjs', SOURCE.replace(LIVE_LINE, TEST_ROWS));   // the server as written, plus test rows in its empty table
-for (const root of [SITE, SITE2]) fs.copyFileSync(path.join(HERE, 'earthdata.mjs'), path.join(root, 'scripts', 'earthdata.mjs'));
+const SITE3 = path.join(TMP, 'site3');   // as SITE2, with a scripts/live folder, so a test row's lookup really starts the stand-in Python
+put(SITE3, 'index.html', FILES['index.html']); put(SITE3, 'scripts/serve.mjs', SOURCE.replace(LIVE_LINE, TEST_ROWS)); fs.mkdirSync(path.join(SITE3, 'scripts', 'live'));
+for (const root of [SITE, SITE2, SITE3]) for (const name of ['earthdata.mjs', 'hostmode.mjs', 'status.mjs', 'portable.sh']) fs.copyFileSync(path.join(HERE, name), path.join(root, 'scripts', name));
 
 // ---- servers and requests
 const children = [];
@@ -114,7 +148,7 @@ const SECURE = {
   'permissions-policy': 'geolocation=(self), camera=(), microphone=(), payment=()',
   'content-security-policy': "frame-ancestors 'self'; object-src 'none'; base-uri 'self'", vary: 'accept-encoding',
 };
-const secure = (name, r) => { const missing = Object.keys(SECURE).filter(k => r.headers[k] !== SECURE[k]); check(`${name} carries every security header`, !missing.length, 'wrong or missing: ' + missing.join(', ')); };
+const secure = (name, r) => { const missing = Object.keys(SECURE).filter(k => k === 'content-security-policy' ? !(r.headers[k] === SECURE[k] || /^default-src 'self'; script-src 'self'/.test(r.headers[k] || '')) : r.headers[k] !== SECURE[k]); check(`${name} carries every security header`, !missing.length, 'wrong or missing: ' + missing.join(', ')); };
 const OTHER_SITE = 'Requests from other websites are not allowed';
 const refused = (name, r) => { same(`${name}: 403`, r.status, 403); same(`${name}: the exact reason`, r.text, JSON.stringify({ ok: false, reason: OTHER_SITE })); };
 
@@ -133,6 +167,9 @@ async function filesOfTheApp(A) {
   same('a folder path gives that folder\'s index.html', (await get('/data/sub/')).text, FILES['data/sub/index.html']);
   same('a folder path without its slash is not a file: 404', (await get('/data/sub')).status, 404);
   same('the design page, the install file and the robots file are served', await Promise.all(['/design.html', '/manifest.json', '/robots.txt'].map(async u => (await get(u)).status)), [200, 200, 200]);
+  { const r = await get('/img/craft/test.webp'); same('a spacecraft picture under img/craft is served as image/webp and kept a day', [r.status, r.headers['content-type'], r.headers['cache-control']], [200, 'image/webp', 'public, max-age=86400']); }
+  { const r = await get('/img/earth/test.webp'); same('the Earth pictures under img/earth are served as image/webp and kept a day', [r.status, r.headers['content-type'], r.headers['cache-control']], [200, 'image/webp', 'public, max-age=86400']); }
+  same('another folder under img, and a file there that is not a picture, are still refused', [(await get('/img/other/test.webp')).status, (await get('/img/craft/notes.md')).status], [403, 403]);
   same('a missing /favicon.ico is a plain 404', (await get('/favicon.ico')).status, 404);
   // The page never asks for these: the server's own code, its tests, the starters and the folder's own pages stay on this computer, never on the public site.
   const NOT_APP = ['/scripts/serve.mjs', '/scripts/earthdata.mjs', '/scripts/', '/scripts', '/Start%20Crophalo.command', '/Start%20Crophalo%20(Add%20NASA%20login).bat', '/Start%20Crophalo.bat',
@@ -182,6 +219,18 @@ async function filesOfTheApp(A) {
     check(`${pathname} never serves a file from outside the folder`, [403, 404].includes(r.status) && !r.text.includes('OUTSIDE') && !r.text.includes('root:') && r.bytes.length <= 9, `status ${r.status}, ${r.bytes.length} bytes`);
   }
   same('an encoded climb out of the folder: 403', (await get('/..%2foutside.txt')).status, 403);
+
+  // A link is judged by the file it really leads to: the same refusals as for the name itself (outside, hidden, runtime/, scripts/, a file the page never asks for).
+  const LINKED = ['/data/link-outside.txt', '/data/link-relative.txt', '/data/link-dir/outside.txt', '/js/link-hidden.js', '/data/link-secrets/earthdata.netrc', '/js/link-dotfile.js',
+    '/js/link-runtime.js', '/data/link-runtime/last-port', '/js/link-scripts.js', '/js/link-starter.js'];
+  for (const pathname of LINKED) {
+    for (const method of ['GET', 'HEAD']) {
+      const r = await ask(p, pathname, { method, headers: { 'accept-encoding': 'br, gzip' } });
+      same(`${method} ${pathname}: a link to a place the server never serves is refused: 403, empty`, [r.status, r.bytes.length, r.headers['content-length']], [403, 0, '0']);
+    }
+  }
+  same('a link to another file of the app is served like that file', [(await get('/js/link-ok.js')).status, (await get('/js/link-ok.js')).text], [200, FILES['js/tiny.js']]);
+  same('a link that leads nowhere: 404', (await get('/js/link-nowhere.js')).status, 404);
 
   const st = fs.statSync(path.join(SITE, 'index.html')), etag = index.headers.etag;
   same('the ETag is weak, from size and modified time in base 36', etag, `W/"${st.size.toString(36)}-${Math.floor(st.mtimeMs).toString(36)}"`);
@@ -241,19 +290,23 @@ async function statusRoutes(A) {
   const health = await askJson(p, '/api/health');
   same('/api/health: 200', health.status, 200); secure('an API answer', health);
   same('/api/health: JSON, never stored', [health.headers['content-type'], health.headers['cache-control']], ['application/json', 'no-store']);
-  same('health fields, in the recorded order', Object.keys(health.json), ['ok', 'python', 'root', 'cache', 'netrc', 'login', 'userdata', 'uptime_s', 'busy', 'queued', 'live']);
+  same('health fields, in the recorded order', Object.keys(health.json), ['ok', 'python', 'root', 'cache', 'netrc', 'login', 'login_works', 'ca', 'userdata', 'uptime_s', 'busy', 'queued', 'live_max', 'memory_mb', 'memory_limit_mb', 'live']);   // plus how many lookups run at once and the memory, so a small host's owner sees why a lookup waits
   const h = health.json;
   same('health: ok, no Python here, nothing running or waiting', [h.ok, h.python, h.busy, h.queued], [true, false, 0, 0]);
+  same('health: the login was never tried, and with no Python there are no trust roots of its own', [h.login_works, h.ca], [null, 'system']);
   same('health: where the cache is (this computer only)', h.cache, path.join(CACHE, 'api'));
   same('health: which Crophalo folder answers (this computer only), so a start never takes another folder\'s server for its own', h.root, SITE);
   same('health: a login was found, in the folder', [h.netrc, h.login], [true, 'folder']);
   same('health: the saved-fields copy is off until its route exists', h.userdata, false);
   check('health: uptime in whole seconds', Number.isInteger(h.uptime_s) && h.uptime_s >= 0, show(h.uptime_s));
   const ROWS = [['smaproot', 'NASA SMAP root-zone soil moisture', 6], ['dem', 'Land heights (the finest free height map)', 720], ['imergrain', 'NASA GPM IMERG satellite rain, last 30 days', 6], ['gracecell', 'NASA GRACE-FO regional water storage', 168],
-    ['ecopass', 'NASA ECOSTRESS ground temperature passes', 6], ['hlsndvi', 'NASA HLS greenness (Landsat and Sentinel-2)', 24], ['cropsnear', 'Crops grown nearby (AAFC and USDA crop maps)', 720],
+    ['ecopass', 'NASA ECOSTRESS ground temperature passes', 6], ['hlsndvi', 'NASA HLS greenness (Landsat and Sentinel-2)', 24], ['hlsbox', 'NASA HLS greenness inside the field', 168], ['cropsnear', 'Crops grown nearby (AAFC and USDA crop maps)', 720],
+    ['crophist', 'Crops on this field by year (AAFC and USDA crop maps)', 720],
     ['prices', 'World crop prices (World Bank Pink Sheet)', 24], ['faostat', 'National crop yields and farm-gate prices (FAOSTAT)', 24],
-    ['ndvihist', 'NASA MODIS greenness since 2001, each season at its greenest', 720], ['firms', 'NASA FIRMS fires and hot spots, last 24 hours', 3]];   // id, name, hours a whole answer is kept
-  same('health: the eleven lookups the server has, each with how long a whole answer is kept, never run yet', h.live, Object.fromEntries(ROWS.map(([id, , hours]) => [id, { last_ok: null, error: null, ttl_hours: hours }])));
+    ['ndvihist', 'NASA MODIS greenness since 2001, each season at its greenest', 720], ['firms', 'NASA FIRMS fires and hot spots, last 24 hours', 3],
+    ['osm', 'OpenStreetMap buildings, roads, water, woods and hedges', 24], ['osmextra', 'OpenStreetMap fences, gates, power lines and tanks', 24],   // the 3D view's land details: two lookups added on purpose (the 3D paper, its server rows, kept 24 h)
+    ['orbits', 'Satellite orbits for the home (U.S. Space Force elements, via CelesTrak)', 12]];   // id, name, hours a whole answer is kept
+  same('health: the sixteen lookups the server has, each with how long a whole answer is kept, never run yet', h.live, Object.fromEntries(ROWS.map(([id, , hours]) => [id, { last_ok: null, error: null, ttl_hours: hours }])));
   check('health never holds the login itself', !health.text.includes(USER) && !health.text.includes(WORD));
   const named = await askJson(p, '/api/health', { headers: { host: 'uptime-checker.example', origin: 'https://uptime-checker.example' } });
   same('health answers for any Host name', [named.status, named.json?.ok], [200, true]);
@@ -269,7 +322,9 @@ async function statusRoutes(A) {
   same('POST to health from another name: refused', (await ask(p, '/api/health', { method: 'POST', headers: { host: 'evil.example' } })).status, 403);
 
   const sources = await askJson(p, '/api/sources');
-  same('/api/sources: 200, a list: one row per lookup, in order, nothing run, nothing kept', [sources.status, sources.json.map(r => [r.id, r.name, r.last_ok_time, r.cache_items, r.ttl_hours])], [200, ROWS.map(([id, name, hours]) => [id, name, null, 0, hours])]);
+  // The answer is now the status module's (scripts/status.mjs): each lookup's count of kept answers is "kept", and the services the browser asks directly follow the lookups, with no keep time.
+  same('/api/sources: 200, a list: one row per lookup, in order, nothing run, nothing kept', [sources.status, sources.json.slice(0, ROWS.length).map(r => [r.id, r.name, r.last_ok_time, r.kept, r.ttl_hours, r.state])], [200, ROWS.map(([id, name, hours]) => [id, name, null, 0, hours, 'not_asked_yet'])]);
+  same('/api/sources: after the lookups, the services the browser asks itself, with no keep time', sources.json.slice(ROWS.length).map(r => [r.id, r.ttl_hours]), DIRECT.map(d => [d.id, null]));
   // The new lookups check what they are asked before any Python runs: a plain 400 with the reason.
   const asked = async q => { const r = await askJson(p, q); return [r.status, r.json?.reason]; };
   same('crop map with no country: 400, the country is asked for', await asked('/api/cropsnear?lat=43.13&lon=-80.75'), [400, 'The country of the field is needed to read the crop map (country=CA or US)']);
@@ -307,7 +362,7 @@ async function publicServer(A, B, D) {
   check('a public server says so when it starts', /^Crophalo on http:\/\/0\.0\.0\.0:\d+ \(public\)$/m.test(B.out), show(B.out));
   for (const pathname of ['/api/health', '/api/ready']) {
     const r = await askJson(B.port, pathname);
-    same(`public ${pathname}: no root or cache folder, no login place`, Object.keys(r.json || {}).filter(k => k !== 'reason'), ['ok', 'python', 'netrc', 'userdata', 'uptime_s', 'busy', 'queued', 'live']);
+    same(`public ${pathname}: no root or cache folder, no login place`, Object.keys(r.json || {}).filter(k => k !== 'reason'), ['ok', 'python', 'netrc', 'login_works', 'ca', 'userdata', 'uptime_s', 'busy', 'queued', 'live_max', 'memory_mb', 'memory_limit_mb', 'live']);   // the host adds how many lookups run at once and the memory (never a folder)
     check(`public ${pathname}: nothing about its folders or the login in the whole answer`, ![TMP, 'site', '.cache', 'folder', '.secrets', USER, WORD].some(word => r.text.includes(word)), r.text);
     same(`public ${pathname}: still says a login exists, and no saved-fields copy`, [r.json?.netrc, r.json?.userdata], [true, false]);
   }
@@ -365,10 +420,12 @@ async function liveFrontDoor(C, A) {
   const list = sources.headers['content-encoding'] === 'br' ? JSON.parse(zlib.brotliDecompressSync(sources.bytes).toString()) : [];
   same('an API answer over 1 KB is sent br when asked', sources.headers['content-encoding'], 'br');
   same('sources: one row per LIVE row, in order', list.map(row => row.id).slice(0, 4), ['probe', 'shared', 'boom', 'late']);
-  same('sources: the recorded fields, in order', Object.keys(list[0] || {}), ['id', 'name', 'last_ok_time', 'last_ms', 'last_error', 'cache_items', 'last_time', 'ttl_hours', 'in_flight']);
-  same('sources: kept answers counted by file time (old, final- and .tmp files left out)', [list[0]?.cache_items, list[0]?.last_ok_time], [1, new Date(fs.statSync(fresh).mtimeMs).toISOString()]);
-  same('sources: shared data is one file under its bare name', [list[1]?.cache_items, list[1]?.ttl_hours], [1, 2]);
-  same('sources: nothing has run, so nothing is claimed', [list[2]?.last_ok_time, list[2]?.last_ms, list[2]?.last_error, list[2]?.last_time, list[2]?.in_flight, list[2]?.name], [null, null, null, null, 0, 'Test row: its check throws']);
+  // The answer is now the status module's (scripts/status.mjs, its fields as the Admin page reads them): the count of kept answers is "kept", a problem is "last_problem" in plain words,
+  // the time of the last check or run is "checked_at", and the count of runs under way is no longer sent. The newest kept answer still gives the last answer time.
+  same('sources: the recorded fields, in order', Object.keys(list[0] || {}), ['id', 'name', 'state', 'last_ok_time', 'last_ms', 'last_problem', 'kept', 'ttl_hours', 'needs_key', 'key_set', 'needs_login', 'login_set', 'checked_at', 'can_check']);
+  same('sources: kept answers counted by file time (old, final- and .tmp files left out)', [list[0]?.kept, list[0]?.last_ok_time], [1, new Date(fs.statSync(fresh).mtimeMs).toISOString()]);
+  same('sources: shared data is one file under its bare name', [list[1]?.kept, list[1]?.ttl_hours], [1, 2]);
+  same('sources: nothing has run, so nothing is claimed', [list[2]?.last_ok_time, list[2]?.last_ms, list[2]?.last_problem, list[2]?.checked_at, list[2]?.state, list[2]?.name], [null, null, null, null, 'not_asked_yet', 'Test row: its check throws']);
   const gz = await ask(p, '/api/sources', { headers: { 'accept-encoding': 'gzip' } });
   same('...gzip when only gzip', [gz.headers['content-encoding'], JSON.parse(zlib.gunzipSync(gz.bytes).toString()).length], ['gzip', list.length]);
   const plain = await askJson(p, '/api/sources', { headers: { 'accept-encoding': 'br;q=0, gzip;q=0' } });
@@ -395,6 +452,66 @@ async function liveFrontDoor(C, A) {
   same('the server still answers after both', [(await ask(p, '/api/health')).status, (await ask(p, '/')).status], [200, 200]);
 }
 
+// Readiness: Python is run ONCE at the start (does it run, do the NASA data libraries load); the login is found at the start and kept;
+// whether NASA accepts the login is asked only when someone asks for it (POST /api/login-check), never by health or ready.
+const NOT_YET = 'The Python check of the live lookups has not finished yet';
+async function settled(port) {   // the ready answer once the start's one Python check is done
+  for (let i = 0; i < 300; i++) { const r = await askJson(port, '/api/ready'); if (r.json?.reason !== NOT_YET) return r; await wait(100); }   // 30 s at most: a busy computer starts programs slowly
+  return askJson(port, '/api/ready');
+}
+async function readiness({ NX, ND, NL, R, Y, Z, YP }) {
+  const DOES_NOT_RUN = 'Python for the live lookups does not run', NO_LIBS = 'Python runs, but the NASA data libraries do not load';
+  for (const [name, server, reason] of [['a file that is not a program (index.html)', NX, DOES_NOT_RUN], ['a folder', ND, DOES_NOT_RUN], ['a Python whose libraries do not load', NL, NO_LIBS]]) {
+    const r = await settled(server.port), h = (await askJson(server.port, '/api/health')).json;
+    same(`ready with FW_PYTHON at ${name}: 503, python false, the plain reason`, [r.status, r.json?.ok, r.json?.python, r.json?.reason, h?.ok, h?.python], [503, false, false, reason, true, false]);
+  }
+  same('a Python whose libraries do not load was asked once, at the start', PY_LIBS.runs().length, 1);
+
+  const r = await settled(R.port);
+  same('ready with a Python that runs and loads its libraries: 200, no reason', [r.status, r.json?.ok, r.json?.python, r.json?.reason], [200, true, true, undefined]);
+  for (let i = 0; i < 6; i++) { await ask(R.port, '/api/health'); await ask(R.port, '/api/ready'); await ask(R.port, '/api/ready', { method: 'HEAD' }); }
+  same('Python is run once at the start, never by health or ready (18 calls later still one run)', PY_R.runs().map(l => l.split('|')[0]), ['check']);
+
+  // the trust roots: the installed certifi bundle when the owner set no SSL_CERT_FILE, else the owner's own; handed to every lookup
+  await settled(Y.port);
+  same('trust roots: with no SSL_CERT_FILE the server says it uses the certifi bundle', (await askJson(Y.port, '/api/health')).json?.ca, 'certifi');
+  const looked = await askJson(Y.port, '/api/probe?lat=1&lon=2');
+  same('a lookup really ran the stand-in (it answers nothing valid)', looked.json?.reason, 'The probe script gave no valid answer (exit 3)');
+  same('...and was handed the certifi bundle as SSL_CERT_FILE', PY_Y.runs().at(-1), `-u probe.py|ssl=${path.join(PY_Y.state, 'certs.pem')}`);
+  await settled(Z.port);
+  same('trust roots: an SSL_CERT_FILE the owner set wins, for the server and every lookup', [(await askJson(Z.port, '/api/health')).json?.ca, (await askJson(Z.port, '/api/probe?lat=3&lon=4')).json?.reason, PY_Z.runs().at(-1)],
+    ['owner', 'The probe script gave no valid answer (exit 3)', `-u probe.py|ssl=${path.join(TMP, 'owner-roots.pem')}`]);
+
+  // the login: present (found at the start and kept) is told apart from accepted by NASA (asked on demand only)
+  let h = (await askJson(Y.port, '/api/health')).json;
+  same('login: none at the start, never tried', [h?.netrc, h?.login, h?.login_works], [false, null, null]);
+  const runsBefore = PY_Y.runs().length;
+  let c = await askJson(Y.port, '/api/login-check', { method: 'POST' });
+  same('login check with no login: nothing to try, and Python is not started for it', [c.status, c.json, PY_Y.runs().length], [200, { ok: true, netrc: false, login_works: null }, runsBefore]);
+  put(SITE3, '.secrets/earthdata.netrc', `machine urs.earthdata.nasa.gov login ${USER} password ${WORD}\n`);
+  same('login: a login added later is not looked for by health (it was worked out at the start)', (await askJson(Y.port, '/api/health')).json?.netrc, false);
+  c = await askJson(Y.port, '/api/login-check', { method: 'POST' });
+  same('login check: it looks again, and NASA (the stand-in) accepts it', [c.status, c.json?.ok, c.json?.netrc, c.json?.login_works, typeof c.json?.checked], [200, true, true, true, 'string']);
+  check('login check: one Python run, handed the trust roots', PY_Y.runs().length === runsBefore + 1 && PY_Y.runs().at(-1) === `login|ssl=${path.join(PY_Y.state, 'certs.pem')}`, PY_Y.runs());
+  for (let i = 0; i < 5; i++) { await ask(Y.port, '/api/health'); await ask(Y.port, '/api/ready'); }
+  h = (await askJson(Y.port, '/api/health')).json;
+  same('login: health now keeps what the check found, and asked NASA no more', [h?.netrc, h?.login, h?.login_works, PY_Y.runs().length], [true, 'folder', true, runsBefore + 1]);
+  const again = await Promise.all([1, 2, 3].map(() => askJson(Y.port, '/api/login-check', { method: 'POST' })));
+  same('login check asked again at once (three at a time): the answer NASA just gave, with its time, and NASA is not asked again', [again.map(r => [r.status, r.json?.login_works, r.json?.checked]), PY_Y.runs().length], [[1, 2, 3].map(() => [200, true, c.json?.checked]), runsBefore + 1]);
+  check('login check: the answer never holds the login itself', !c.text.includes(USER) && !c.text.includes(WORD));
+  same('login check on a server whose login NASA refuses: works false, ready still 200 (the login only dims the satellite parts)',
+    [(await askJson(Z.port, '/api/login-check', { method: 'POST' })).json?.login_works, (await askJson(Z.port, '/api/health')).json?.login_works, (await ask(Z.port, '/api/ready')).status], [false, false, 200]);
+  same('login check without a usable Python: 503 with the plain reason', [(await askJson(NX.port, '/api/login-check', { method: 'POST' })).status, (await askJson(NX.port, '/api/login-check', { method: 'POST' })).json?.reason], [503, DOES_NOT_RUN]);
+  same('GET to the login check: 405 (it starts a program, so only a POST does)', (await ask(Y.port, '/api/login-check')).status, 405);
+  refused('a login check asked by another website', await ask(Y.port, '/api/login-check', { method: 'POST', headers: { origin: 'https://evil.example' } }));
+
+  // a public server: the same flags, nothing private
+  await settled(YP.port);
+  const pub = [await askJson(YP.port, '/api/login-check', { method: 'POST' }), await askJson(YP.port, '/api/health'), await askJson(YP.port, '/api/ready')];
+  same('public: the flags are there (Python runs, no login set here, the login check is not there, certifi)', [pub[1].json?.python, pub[1].json?.netrc, pub[0].status, pub[1].json?.ca, pub[2].status], [true, false, 404, 'certifi', 200]);   // on a public server the login check is not there (a stranger cannot make it ask NASA): scripts/test_security.mjs
+  check('public: no folder, no file, no login and no place word in health, ready or the login check', pub.every(r => ![TMP, 'site', 'certs.pem', '.secrets', 'folder', USER, WORD].some(w => r.text.includes(w))), pub.map(r => r.text));
+}
+
 async function rateLimit(R, R0, R2, R3) {
   const TOO_MANY = '{"ok":false,"reason":"Too many requests. Wait a moment and try again."}';
   const probe = (server, forwarded) => ask(server.port, '/api/probe', { headers: forwarded ? { 'x-forwarded-for': forwarded } : {} });
@@ -408,7 +525,7 @@ async function rateLimit(R, R0, R2, R3) {
   same('without the header the connection\'s own address counts', (await probe(R, null)).status, 400);
   const free = []; for (const pathname of ['/api/health', '/api/ready', '/api/sources', '/api/nothing', '/']) for (let i = 0; i < 4; i++) free.push((await ask(R.port, pathname, { headers: { 'x-forwarded-for': '9.9.9.9, 1.1.1.1' } })).status);
   same('health, ready, sources, unknown paths and files never count against the limit', free, [200, 200, 200, 200, 200, 200, 200, 200, 200, 200, 200, 200, 404, 404, 404, 404, 200, 200, 200, 200]);
-  same('ready with Python and a login in the server settings: 200, no reason', [(await askJson(R.port, '/api/ready')).json?.ok, (await askJson(R.port, '/api/ready')).json?.reason, (await askJson(R.port, '/api/health')).json?.login], [true, undefined, 'env']);
+  same('ready with Python and a login in the server settings: 200, no reason', [(await askJson(R.port, '/api/ready')).json?.ok, (await askJson(R.port, '/api/ready')).json?.reason, (await askJson(R.port, '/api/health')).json?.netrc, (await askJson(R.port, '/api/health')).json?.login], [true, undefined, true, undefined]);   // behind a proxy (TRUST_PROXY_HOPS=1) the server is public: it says a login is set, never where
   same('a test row whose Python cannot start says so plainly (the runner itself is tested in test_smap_route.mjs and test_server_dem.mjs)', (await askJson(R.port, '/api/probe?lat=1&lon=2', { headers: { 'x-forwarded-for': '3.3.3.3' } })).json.reason.startsWith('Could not start Python'), true);
 
   const alone = []; for (const forwarded of ['1.1.1.1', '2.2.2.2', '3.3.3.3', '4.4.4.4']) alone.push((await probe(R0, forwarded)).status);
@@ -496,6 +613,40 @@ function theLogin() {
   const printed = [found, findLogin(bare, { env, home }), findLogin(bare, { env: {}, home })].map(f => JSON.stringify(f) + Object.keys(f).join() + Object.values(f).join()).join();
   check('login: an answer that is printed or sent shows no username and no password', !/folder-user|folder-word|env-user|env-word|home-user|home-word/.test(printed), printed);
   check('login: looking never puts the login into this process\'s own environment', !('NETRC' in process.env) && process.env.EARTHDATA_USERNAME !== 'folder-user' && process.env.EARTHDATA_PASSWORD !== 'folder-word');
+
+  // A new NASA login takes out the words of the NASA entry only: every other entry stays, on the same line or not, with its comments and quotes.
+  const without = t => (typeof earthdata.withoutEntry === 'function' ? earthdata.withoutEntry(t) : undefined);
+  const N = HOSTLINE, OTHER = 'machine other.example login user1 password pw1-other';
+  const KEEPS = [
+    ['NASA first on a line shared with another service', `${N} login user1 password pw1 ${OTHER}\n`, `${OTHER}\n`],
+    ['NASA last on a shared line', `${OTHER} ${N} login user1 password pw1\n`, `${OTHER}\n`],
+    ['NASA between two others on one line', `machine one.example login user1 password pw1-a ${N} login user1 password pw1 machine two.example login user1 password pw1-b\n`,
+      'machine one.example login user1 password pw1-a machine two.example login user1 password pw1-b\n'],
+    ['one word a line', `machine one.example\n  login user1\n  password pw1-a\n${N}\n  login user1\n\tpassword pw1\nmachine two.example\n  login user1\n  password pw1-b\n`,
+      'machine one.example\n  login user1\n  password pw1-a\nmachine two.example\n  login user1\n  password pw1-b\n'],
+    ['quoted words, a quoted "machine" and a quoted #', `${N} login "user 1" password "pw1 machine x" machine other.example login "user 1" password "pw1 # \\"q"\n`,
+      'machine other.example login "user 1" password "pw1 # \\"q"\n'],
+    ['comments, inside the NASA entry and around it', `# my logins\n${N} login user1 # the NASA one\n  password pw1\n# other.example below\n${OTHER} # kept\n`,
+      `# my logins\n# the NASA one\n# other.example below\n${OTHER} # kept\n`],
+    ['a NASA line commented out is a comment, and stays', `# ${N} login user1 password pw1\n${OTHER}\n`, `# ${N} login user1 password pw1\n${OTHER}\n`],
+    ['a password that reads "machine" is still NASA\'s', `${N} login user1 password machine ${OTHER}\n`, `${OTHER}\n`],
+    ['two NASA entries: both go, so an old one cannot be found first', `${N} login user1 password pw1\n${OTHER}\n${N} login user1 password pw1-old\n`, `${OTHER}\n`],
+    ['a default entry after NASA stays', `${N} login user1 password pw1 default login user1 password pw1-any\n`, 'default login user1 password pw1-any\n'],
+    ['Windows line ends', `${OTHER}\r\n${N} login user1 password pw1\r\n`, `${OTHER}\r\n`],
+    ['a name that only starts like ours stays', 'machine urs.earthdata.nasa.gov.example login user1 password pw1\n', 'machine urs.earthdata.nasa.gov.example login user1 password pw1\n'],
+    ['no NASA entry: byte for byte as it was', `${OTHER}\n\n# the end, no line end`, `${OTHER}\n\n# the end, no line end`],
+    ['an empty file', '', ''],
+  ];
+  for (const [name, input, want] of KEEPS) same(`netrc, a new NASA login: ${name}`, without(input), want);
+  check('netrc, a new NASA login: what is left never holds a NASA login, and every other entry reads as before',
+    KEEPS.every(([, input]) => parseNetrc(without(input)) === null && ['other.example', 'one.example', 'two.example'].every(h => JSON.stringify(parseNetrc(without(input) ?? '', h)) === JSON.stringify(parseNetrc(input, h)))));
+  // The starters ask the same code, through Node: the rest of the file, byte for byte (a "ü" too), always ending with a line end; base64 for Windows PowerShell.
+  const file = put(TMP, 'netrc-others/netrc', Buffer.from(`${N} login user1 password pw1 machine other.example login "user ü1" password pw1-other`, 'utf8'));
+  const cli = (...args) => spawnSync(process.execPath, [path.join(HERE, 'earthdata.mjs'), '--others', file, ...args], { cwd: TMP, env: { PATH: process.env.PATH, HOME: HOME_EMPTY } });
+  const rest = Buffer.from('machine other.example login "user ü1" password pw1-other\n', 'utf8'), plainOut = cli(), b64 = cli('--base64');
+  same('netrc for the starters: the other entries, byte for byte, with a line end', [plainOut.status, plainOut.stdout.equals(rest), plainOut.stdout.toString('utf8')], [0, true, rest.toString('utf8')]);
+  same('netrc for the starters: the same bytes as base64 after "ok:", for Windows PowerShell', [b64.status, b64.stdout.toString().trim()], [0, 'ok:' + rest.toString('base64')]);
+  same('netrc for the starters: a file that cannot be read gives exit 1 and nothing', [spawnSync(process.execPath, [path.join(HERE, 'earthdata.mjs'), '--others', path.join(TMP, 'no-such-netrc')]).status, spawnSync(process.execPath, [path.join(HERE, 'earthdata.mjs'), '--others', path.join(TMP, 'no-such-netrc')]).stdout.length], [1, 0]);
 }
 
 // ---- the run
@@ -504,11 +655,15 @@ try {
   const C = start(SITE2, { HOME: HOME_LOGIN }), D = start(SITE2, { HOST: '0.0.0.0', ALLOWED_HOSTS: 'farm.example, other.example', RENDER_EXTERNAL_HOSTNAME: 'crophalo.example' });
   const R = start(SITE2, { RATE_PER_MIN: '5', TRUST_PROXY_HOPS: '1', FW_PYTHON: PYTHON, EARTHDATA_USERNAME: USER, EARTHDATA_PASSWORD: WORD });
   const R0 = start(SITE2, { RATE_PER_MIN: '3' }), R2 = start(SITE2, { RATE_PER_MIN: '2', TRUST_PROXY_HOPS: '2' }), R3 = start(SITE2, { RATE_PER_MIN: '2', HOST: '0.0.0.0', RENDER: 'true' });
-  await group('starting the test servers', () => Promise.all([A, B, C, D, R, R0, R2, R3].map(s => s.up)));
+  const NX = start(SITE2, { FW_PYTHON: path.join(SITE, 'index.html') }), ND = start(SITE2, { FW_PYTHON: path.join(SITE, 'js') }), NL = start(SITE2, { FW_PYTHON: PY_LIBS.file });
+  const Y = start(SITE3, { FW_PYTHON: PY_Y.file }), Z = start(SITE3, { FW_PYTHON: PY_Z.file, SSL_CERT_FILE: path.join(TMP, 'owner-roots.pem') });
+  const YP = start(SITE3, { FW_PYTHON: standInPython('P').file, HOST: '0.0.0.0' });
+  await group('starting the test servers', () => Promise.all([A, B, C, D, R, R0, R2, R3, NX, ND, NL, Y, Z, YP].map(s => s.up)));
   await group('files of the app', () => filesOfTheApp(A));
   await group('health, ready, sources and who may ask', () => statusRoutes(A));
   await group('a public server', () => publicServer(A, B, D));
   await group('the front door of the live lookups', () => liveFrontDoor(C, A));
+  await group('readiness: Python, the login and the trust roots', () => readiness({ NX, ND, NL, R, Y, Z, YP }));
   await group('the rate limit', () => rateLimit(R, R0, R2, R3));
   await group('starting and stopping', () => startAndStop(A));
   await group('the NASA login', async () => theLogin());

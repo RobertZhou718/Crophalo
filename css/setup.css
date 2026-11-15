@@ -18,7 +18,7 @@
 .wstep.now { background: var(--accent-soft); color: var(--accent-text); box-shadow: inset 0 0 0 2px var(--accent); }
 .wstep.now .wnum { background: var(--card); color: var(--accent-text); }
 .wnum .ic { width: 14px; height: 14px; }
-@media (max-width: 380px) { .wstep { font-size: 11.5px; } }
+@media (max-width: 380px) { .wstep { font-size: 12px; } }
 .listen-row { margin: 0; }
 
 .wbody { display: grid; gap: var(--space-12); align-content: start; }
@@ -35,10 +35,33 @@
 
 .wheel { padding: var(--space-12); border-radius: var(--r2); background: var(--card2); box-shadow: inset 0 0 0 .5px var(--sep); text-align: center; }
 .wheel-name { font-size: var(--fs-headline); font-weight: var(--fw-semi); }
-.rcards { display: grid; gap: 8px; }
-.rcard { align-items: flex-start; text-align: left; min-height: 56px; }
+.rcards { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(240px, 100%), 1fr)); gap: var(--space-8); }
+.rcards.compact { grid-template-columns: repeat(auto-fill, minmax(min(200px, 100%), 1fr)); }
+.rcards.own { grid-template-columns: 1fr; margin-top: var(--space-12); }
+.rcard { position: relative; align-items: flex-start; justify-content: flex-start; text-align: left; min-height: 56px; gap: var(--space-4); padding: var(--space-12) 44px var(--space-12) var(--space-12); transition: box-shadow .2s var(--ease), background-color .2s var(--ease); }
+.rcard.rbig { min-height: 96px; }
 .rcard.own { align-items: flex-start; }
-.rcard small { font-weight: var(--fw-regular); color: var(--ink2); }
+.rcard small { font-weight: var(--fw-regular); color: var(--ink2); font-size: max(12px, var(--fs-caption)); }
+.rcard .rc-source { font-size: var(--fs-caption); }
+.rc-tag { font-size: var(--fs-caption); font-weight: var(--fw-semi); color: var(--accent-text); }
+.rc-suggest { margin-bottom: var(--space-12); } .rc-suggest .rcard { width: 100%; }
+.rc-helper { margin: 0 0 var(--space-12); color: var(--ink2); }
+.rc-msg { margin: 0 0 var(--space-12); padding: var(--space-12); border-radius: var(--r2); background: var(--card2); box-shadow: inset 0 0 0 .5px var(--sep); }
+.rc-wait { display: flex; flex-direction: column; gap: var(--space-4); padding: var(--space-12); border-radius: var(--r2); background: var(--card2); box-shadow: inset 0 0 0 .5px var(--sep); }
+.rc-bar { display: block; height: 4px; width: 60%; border-radius: 2px; background: var(--sep); }
+.rc-check { position: absolute; top: var(--space-12); right: var(--space-12); width: 24px; height: 24px; padding: 3px; border-radius: 50%; background: var(--accent); stroke: #fff; stroke-width: 2.4; stroke-linecap: round; stroke-linejoin: round; fill: none; opacity: 0; }
+.rc-check { transition: opacity .15s linear; }   /* Full and Less: the check fades in; Full also draws it */
+.rcard:has(input:checked) .rc-check { opacity: 1; }
+.rcard:has(input:checked) .rc-check path { stroke-dasharray: 20; stroke-dashoffset: 0; animation: rc-draw .22s ease-out both; }
+.yearlist { list-style: none; margin: 0; padding: 0; display: grid; gap: var(--space-8); }
+.rc-preview { margin: var(--space-12) 0 var(--space-4); font-weight: var(--fw-semi); }
+@keyframes rc-draw { from { stroke-dashoffset: 20; } to { stroke-dashoffset: 0; } }
+@keyframes rc-wait { 0%, 100% { opacity: .45; } 50% { opacity: 1; } }
+html:not([data-motion]) .rc-bar, html[data-motion=""] .rc-bar { animation: rc-wait 1.8s ease-in-out infinite; }
+/* Less: a short fade, no drawing, nothing that loops. Still: nothing moves. */
+html[data-motion=less] .rcard:has(input:checked) .rc-check path { animation: none; }
+html[data-motion=reduce] .rcard, html[data-motion=reduce] .rc-check, html[data-motion=reduce] .rc-check path, html[data-motion=reduce] .rc-bar { animation: none !important; transition: none !important; }
+@media (prefers-reduced-motion: reduce) { .rcard, .rc-check, .rc-check path, .rc-bar { animation: none !important; transition: none !important; } }
 .rc-row .croprow { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 6px; }
 .croprow-crop { display: inline-flex; align-items: center; gap: 4px; font-size: var(--fs-row); }
 .croprow .pic, .chipc .pic { width: 28px; height: 28px; }
@@ -70,7 +93,8 @@
 @media (max-width: 860px) {
   .setup { grid-template-columns: minmax(0, 1fr); }
   .mapcol { position: static; order: -1; height: 46vh; min-height: 260px; }
-  .setup:not([data-step=field]) .mapcol { height: 18vh; min-height: 120px; }   /* once the field is chosen the questions come first */
+  .setup[data-step=field] .mapcol { height: max(60svh, 320px); }   /* the field step is the map's step: room to see the field and draw it with a thumb */
+  .setup:not([data-step=field]) .mapcol { height: 18vh; min-height: 120px; }   /* once the field is chosen the questions come first: the map is a strip that only shows the field */
   .panel { padding: var(--space-12) var(--space-12) 0; } .cta { margin: 0 calc(-1 * var(--space-12)); padding-left: var(--space-12); padding-right: var(--space-12); }
 }
 @media (forced-colors: active) { .panel, .fold-card, .soilcard, .wheel { border: 1px solid CanvasText; } .wstep.now { outline: 2px solid Highlight; } }
@@ -105,3 +129,10 @@
 .wsteps { align-items: stretch; }
 .wstep { hyphens: manual; overflow-wrap: break-word; }
 .cta { margin-top: auto; }   /* the bar rests at the bottom of the column, not under the last question */
+
+/* the demo block of step 1: its sentence and its button never touch */
+.demo-ready { display: grid; gap: var(--space-8); justify-items: start; margin: 0 0 var(--space-12); }
+.demo-ready p { margin: 0; }
+/* the soil-test boxes: a gap between one box and the next, in a row and between rows */
+.st-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: var(--space-12); margin: 0 0 var(--space-12); }
+@media (max-width: 420px) { .st-grid { grid-template-columns: minmax(0, 1fr); } }

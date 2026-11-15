@@ -7,9 +7,9 @@ import { FIELDS, FIELD_LABEL, METHODS, NP_UNITS, EC_UNITS, fieldProblem, partsPr
 
 const WORDS = {
   fold: 'I have a soil test', optional: '(optional)',
-  lead: 'Type what your lab report says. Every box is optional. A number you type replaces the map’s guess for that property and is marked “from your soil test”. Your soil test stays on this device.',
+  lead: 'Type what your lab report says; empty boxes are fine. Your numbers replace the map’s guess.',
   date: 'Date of the test', notSure: 'Not sure', parts: 'Soil parts, if your report gives them (%)', partsHelp: 'Two of the three are enough.',
-  share: 'Include my soil test when I share a link. Off means the link carries no soil test.', remove: 'Remove my soil test',
+  share: 'Include my soil test in shared links.', remove: 'Remove my soil test',
   ecHelp: 'If your lab gives a saturated-paste value (ECe), use that one.',
 };
 const LABEL = { ...FIELD_LABEL, ph: 'pH', om: 'Organic matter (%)', n: 'Nitrate (N)', p: 'Phosphorus (P)', k: 'Potassium (K)', ec: 'Salt (EC)', clay: 'Clay', sand: 'Sand', silt: 'Silt' };

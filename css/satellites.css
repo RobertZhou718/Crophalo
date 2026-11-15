@@ -19,3 +19,9 @@
 .sat-card h4 { margin: var(--space-8) 0 var(--space-4); font-size: var(--fs-subhead, 1rem); } .eco-means { flex: 1 1 14rem; margin: 0; }
 .hl-dot { fill: var(--c-g); stroke: var(--ink); stroke-width: .75; }
 .sat-grid { align-items: start; }   /* a short card stays short: no empty white boxes stretched to the tallest card */
+/* the GRACE-FO tile: one word (Falling, Rising, Roughly stable) and what it covers; the word is also written, so colour is never the only cue */
+.sat-tile { display: flex; flex-wrap: wrap; align-items: baseline; gap: var(--space-4) var(--space-8); margin: var(--space-8) 0; padding: var(--space-8) var(--space-12); border-radius: 10px; background: var(--fill2); border-left: 4px solid var(--ink2); font-size: var(--fs-small); line-height: 1.35; }
+.sat-tile b { font-size: var(--fs-headline); color: var(--ink); }
+.sat-tile span { flex: 1 1 14rem; color: var(--ink2); }
+.sat-tile[data-dir=fall] { border-left-color: var(--c-hi); }
+.sat-tile[data-dir=rise] { border-left-color: var(--c-rain); }

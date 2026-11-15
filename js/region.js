@@ -1,8 +1,9 @@
 // Crophalo's regional reading: a value that a satellite or model gives for a whole square of land (soil moisture about 9 km wide, for example), shown as one value
 // with its footprint drawn on a small picture round the field and its date. Never a pattern painted inside the field: the square is the unit of the reading.
-// Pure: footprintView(), valueWords(), dateWords(), cleanReading(), regionHtml(). wireRegion() only attaches the picture's fallback.
+// Pure: footprintView(), pictureBox(), valueWords(), dateWords(), cleanReading(), regionHtml(). wireRegion() asks NASA for the picture (js/nasabase.js stillFor), names its day and credit, and leaves a calm box when none comes.
 // Checked by scripts/test_region.mjs (the footprint maths, the words, a missing value stays "not read yet", hostile input) and scripts/e2e_map.mjs (fit and axe at five widths).
 import { srcButton } from './srci.js';
+import { stillFor } from './nasabase.js';
 
 const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[c]);
 const KM_PER_DEG = 111.195, MONTHS = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
@@ -27,11 +28,9 @@ export function cleanEdges(raw) {
   return [n, s, w, ea].every(v => typeof v === 'number' && Number.isFinite(v)) && Math.abs(n) <= 90 && Math.abs(s) <= 90 && n > s && ea > w && n - s <= 5 && ea - w <= 5 ? { n, s, w, e: ea } : null;
 }
 
-// The satellite picture of the frame: 360 by 360 px, from Esri World Imagery (the same service as the map under the field).
-export function pictureUrl(view) {
-  const { n, s, e, w } = view.bbox, f = v => v.toFixed(4);
-  return `https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/export?bbox=${f(w)},${f(s)},${f(e)},${f(n)}&bboxSR=4326&imageSR=3857&size=${PICTURE},${PICTURE}&format=jpg&f=image`;
-}
+// The frame's box as NASA's picture service wants it: { w, s, e, n } in degrees. The picture itself is NASA's (HLS 30 m on the newest clear day, else MODIS 250 m): see wireRegion.
+export const pictureBox = view => ({ w: +view.bbox.w.toFixed(5), s: +view.bbox.s.toFixed(5), e: +view.bbox.e.toFixed(5), n: +view.bbox.n.toFixed(5) });
+export const PICTURE_SIZE = PICTURE;
 
 // A water share (0 to 1 of the soil's volume) as a farmer reads it: "31% water by volume".
 export function valueWords(value) {
@@ -65,19 +64,27 @@ export function regionHtml(raw) {
   const alt = `A picture of the land round your field. A dashed outline, ${shape}, shows the area this reading covers, and a dot marks your field.`;
   const forFigure = r.value == null ? '' : `${r.label} for ${shape} that holds the field${when ? `, ${when}` : ''}. One value for the whole area.`;
   return `<figure class="region" data-region>
-    <div class="region-pic" role="img" aria-label="${esc(alt)}"><img alt="" width="${PICTURE}" height="${PICTURE}" loading="lazy" decoding="async" data-src="${esc(pictureUrl(v))}">
+    <div class="region-pic" role="img" aria-label="${esc(alt)}"><img alt="" width="${PICTURE}" height="${PICTURE}" loading="lazy" decoding="async" data-box="${esc(JSON.stringify(pictureBox(v)))}" data-lat="${r.lat}" data-lon="${r.lon}">
       <svg viewBox="0 0 100 100" preserveAspectRatio="none" aria-hidden="true" focusable="false"><rect x="${pct(rect.x).slice(0, -1)}" y="${pct(rect.y).slice(0, -1)}" width="${pct(rect.w).slice(0, -1)}" height="${pct(rect.h).slice(0, -1)}" class="region-box"/><circle cx="${(v.dot.x * 100).toFixed(2)}" cy="${(v.dot.y * 100).toFixed(2)}" r="2.2" class="region-dot"/></svg></div>
     <figcaption class="region-text"><span class="region-label">${esc(r.label)} ${r.source ? srcButton(r.source, forFigure) : ''}</span>
-      <span class="region-value">${words ? esc(words) : 'Not read yet'}</span>
+      <span class="region-value">${words ? esc(words) : 'No value for this area'}</span>
       <span class="cap">${words ? `${when ? `${esc(when)}. ` : ''}A regional value: one figure for the whole area, ${shape}. It is not a reading inside your field.` : `Crophalo has no reading for the area that holds your field, so it shows none. It will not guess one.`}</span>
       ${r.why ? `<span class="small">${esc(r.why)}</span>` : ''}
-      <span class="cap">The dashed outline is the area this reading covers. The dot is your field.</span></figcaption></figure>`;
+      <span class="cap">The dashed outline is the area this reading covers. The dot is your field.</span>
+      <span class="cap region-pictext" role="status"></span></figcaption></figure>`;
 }
 
-// Put the picture in once the card is on the page; a picture that does not arrive leaves the calm dark box, never a broken-picture mark.
-export function wireRegion(root = document) {
-  for (const img of root.querySelectorAll('.region-pic img[data-src]')) {
-    img.addEventListener('error', () => { img.removeAttribute('src'); img.classList.add('gone'); }, { once: true });
-    img.src = img.dataset.src; img.removeAttribute('data-src');
+// Put the picture in once the card is on the page: NASA's, with the day and the satellite said under it. A picture that does not arrive leaves the calm dark box, never a broken-picture mark. ask: stands in for the network in checks.
+export function wireRegion(root = document, ask = stillFor) {
+  for (const img of root.querySelectorAll('.region-pic img[data-box]')) {
+    let box, lat = +img.dataset.lat, lon = +img.dataset.lon;
+    try { box = JSON.parse(img.dataset.box); } catch { continue; }
+    img.removeAttribute('data-box');
+    const words = img.closest('.region')?.querySelector('.region-pictext');
+    img.addEventListener('error', () => { img.removeAttribute('src'); img.classList.add('gone'); if (words) words.textContent = 'The NASA picture of this area did not arrive. The reading above does not depend on it.'; }, { once: true });
+    Promise.resolve(ask({ lat, lon, box, width: PICTURE, height: PICTURE })).then(still => {
+      if (words) words.textContent = `${still.words}. ${still.credit}.`;
+      img.src = still.url;
+    }, () => img.dispatchEvent(new Event('error')));
   }
 }

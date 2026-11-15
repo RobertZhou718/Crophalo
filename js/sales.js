@@ -36,7 +36,7 @@ export function assumptions({ country, cropName, yieldInfo, price, currency, rat
 
 // The world price of a crop from the prices lookup's answer, or the reason there is none. Never a guess.
 export function priceOf(prices, cropId) {
-  if (!prices || prices.ok === false) return { ok: false, reason: prices?.reason ? `World prices could not be read: ${prices.reason}` : 'World prices were not read yet.' };
+  if (!prices || prices.ok === false) return { ok: false, reason: prices?.reason ? `World prices could not be read: ${prices.reason}` : 'World prices did not answer.' };
   const s = prices.series && Object.hasOwn(prices.series, cropId) ? prices.series[cropId] : null;
   if (!s) return { ok: false, reason: `The World Bank's price sheet has no world price for ${cropId}.`, noPrice: true };
   if (s.proxy) return { ok: false, reason: `The World Bank's price sheet has no price for ${cropId} itself, only for a product made from it, so no figure is shown.`, noPrice: true };

@@ -1,0 +1,11 @@
+/* Crophalo's report scenes: the weather band of the loading screen, the glyph beside the place name, the overlay the band curls on, and the caption under the score.
+   Fetched by js/macro-report.js only when it loads, so with that file absent the report has none of these rules. Light mode, no blue of its own; the band's colours are drawn from the scale in js/macro-record.js.
+   Every moving rule sits under prefers-reduced-motion: no-preference and html:not([data-motion]); Less and Still show the band and the caption without any movement. */
+
+.rv-macro:not(:empty) { margin: var(--space-16) 0; }
+.rv-band { display: block; width: 100%; height: 7.5rem; border-radius: var(--r2); background: var(--card2); image-rendering: pixelated; }
+.rv-band-cap, .rv-curl-cap { margin: var(--space-8) 0 0; max-width: 62ch; }
+.rv-glyph:empty { display: none; }
+
+/* the overlay the 25 rows curl on: the whole window, never catching a press */
+.m-curl { position: fixed; inset: 0; width: 100%; height: 100%; z-index: var(--z-pop); pointer-events: none; }

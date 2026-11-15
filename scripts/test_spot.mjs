@@ -82,6 +82,15 @@ same('a card beside the pin stays clear of the view buttons', card.clampCard({ l
   const wide = { w: 1000, h: 700 }, o = card.placeCard({ anchor: { x: 400, y: 300 }, size, box: wide, avoid: [{ left: 430, top: 200, w: 220, h: 200 }] });
   check('with an outline right of the pin the card goes to the pin\'s left, clear of both', o.left + size.w <= 400 - 22 && !o.bottom, o);
   same('on a map under 520 px wide the card lies along the bottom', card.placeCard({ anchor: pinAt, size: { w: 300, h: 300 }, box: { w: 400, h: 500 } }), { left: 8, top: 192, bottom: true });
+  // a closed outline's card on a wide map: on the right, left of the view buttons, under the bars, never into the dock; the outline is fitted into the room left of it
+  const map = { w: 1000, h: 700 }, side = card.sideCard({ size: { w: 340, h: 420 }, box: map, top: 64, dock: 120 });
+  same('the result card stands on the right, clear of the view buttons, under the bars', [side.left, side.top], [1000 - 340 - 8 - card.STACK_ROOM, 64]);
+  same('and is never taller than the room above the dock', side.maxH, 700 - 64 - 120 - 8);
+  same('the outline is fitted left of the card (its width, its margin, the buttons and a gap), below the bars and above the dock', card.fitPadding({ w: 340 }, map, 64, 120), { topLeft: [16, 80], bottomRight: [340 + 8 + card.STACK_ROOM + 16, 136] });
+  const free = 1000 - card.fitPadding({ w: 340 }, map, 64, 120).bottomRight[0], cardLeft = card.sideCard({ size: { w: 340, h: 420 }, box: map, top: 64 }).left;
+  same('so the fitted outline ends 16 px short of the card', cardLeft - free, 16);
+  same('with no card only the buttons are kept clear', card.fitPadding(null, map, 64, 120).bottomRight, [16 + card.STACK_ROOM, 136]);
+  same('a card shows on the side from a 760 px map', card.SIDE_FROM, 760);
 }
 
 console.log(`${passed} passed, ${failed} failed`);

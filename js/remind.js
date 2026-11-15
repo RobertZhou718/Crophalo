@@ -31,7 +31,7 @@ export function cleanReminder(raw) {
   if (!raw || typeof raw !== 'object' || Array.isArray(raw) || typeof raw.id !== 'string' || !/^r[a-z0-9]{6,30}$/.test(raw.id)) return null;
   const get = k => own(raw, k) ? raw[k] : undefined, when = cleanWhen(get('when')), title = text(get('title'), TITLE_MAX);
   if (!when || !title) return null;
-  const field = typeof get('fieldId') === 'string' && /^-?\d{1,2}\.\d{4},-?\d{1,3}\.\d{4}$/.test(raw.fieldId) ? raw.fieldId : '';
+  const field = typeof get('fieldId') === 'string' && /^(-?\d{1,2}\.\d{4},-?\d{1,3}\.\d{4}|[A-Za-z0-9_-]{1,40})$/.test(raw.fieldId) ? raw.fieldId : '';   // a field of the report (its place) or a field of My farm (its own id)
   const out = { id: raw.id, title, when, repeat: get('repeat') === 'yearly' ? 'yearly' : 'none', kind: KINDS.includes(get('kind')) ? raw.kind : 'other', source: SOURCES.includes(get('source')) ? raw.source : 'farmer',
     note: noteText(get('note'), NOTE_MAX), farmId: text(get('farmId'), 60), fieldId: field, done: get('done') === true, doneAt: /^\d{4}-\d{2}-\d{2}/.test(String(get('doneAt'))) ? String(raw.doneAt).slice(0, 30) : '',
     seen: typeof get('seen') === 'string' ? raw.seen.slice(0, 16) : '', notify: get('notify') !== false, push: get('push') === true, made: Number.isFinite(get('made')) ? raw.made : 0 };
@@ -113,7 +113,7 @@ const CRLF = '\r\n';
 export const icsEscape = value => String(value ?? '').replace(/[\u0000-\u0008\u000b\u000c\u000e-\u001f\u007f]/g, '').replace(/\\/g, '\\\\').replace(/;/g, '\;').replace(/,/g, '\\,').replace(/\r\n|\r|\n/g, '\\n');
 export function icsFold(line) {   // lines of at most 75 octets, a continuation starts with one space, and no character is cut in two
   const out = []; let cur = '', size = 0;
-  for (const ch of line) { const n = Buffer.byteLength(ch), limit = out.length ? 74 : 75; if (size + n > limit) { out.push(cur); cur = ''; size = 0; } cur += ch; size += n; }
+  for (const ch of line) { const n = new TextEncoder().encode(ch).length, limit = out.length ? 74 : 75; if (size + n > limit) { out.push(cur); cur = ''; size = 0; } cur += ch; size += n; }
   out.push(cur);
   return out.map((l, i) => i ? ' ' + l : l).join(CRLF);
 }
@@ -252,7 +252,7 @@ export function remindCardHTML(r, nowLocal) {
 export const GROUP_WORDS = Object.freeze({ due: 'Due now', week: 'This week', month: 'This month', later: 'Later', done: 'Done' });
 // The Reminders list as the Remind tab and Notes show it: grouped, with the empty state.
 export function remindListHTML(list, nowLocal) {
-  if (!list.length) return `<div class="remind-empty"><svg class="ic big" aria-hidden="true"><use href="#i-bell"/></svg><p><b>No reminders yet</b></p><p class="cap">Pick one below or make your own.</p><button type="button" class="btn primary lg" data-act="new">New reminder</button></div>`;
+  if (!list.length) return `<div class="remind-empty"><svg class="ic big" aria-hidden="true"><use href="#i-bell"/></svg><p><b>No reminders yet</b></p><p class="cap">Pick one below or make your own.</p><button type="button" class="btn lg" data-act="new">New reminder</button></div>`;
   const g = groups(list, nowLocal);
   return Object.entries(GROUP_WORDS).filter(([k]) => g[k].length).map(([k, label]) => `<section class="remind-group" aria-labelledby="rg-${k}"><h3 id="rg-${k}">${label}${k === 'done' ? ` (${g.done.length})` : ''}</h3><ul class="remind-list">${g[k].map(r => remindCardHTML(r, nowLocal)).join('')}</ul></section>`).join('')
     + `<p class="btnrow"><button type="button" class="btn" data-act="new">New reminder</button><button type="button" class="btn" data-act="calendar-all">Add all to my phone’s calendar</button></p>`;

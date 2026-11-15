@@ -1,4 +1,4 @@
-// Crophalo's crop table: 63 field crops, 6 cover crops and fallow (CROPS), 43 trees, bushes, vines and palms plus
+// Crophalo's crop table: 64 field crops, 6 cover crops and fallow (CROPS), 43 trees, bushes, vines and palms plus
 // "Other trees or bushes" (GARDENS), and the 24 ready rotations (PRESETS), every row with its published source.
 // Pure: no page, no storage, no network. Rule-of-thumb values for whole regions, NOT local recommendations.
 // Checked by scripts/test_crops.mjs.
@@ -31,11 +31,13 @@ import { own } from './words.js';
 // maxAlt   highest ground, m, where it is grown      needDry  months under 60 mm it needs to ripen      heatMargin  °C above heat before "far too hot"
 // scl      host of sclerotinia stem rot (hosts are no clean break from each other)      legumeMix  a grass and legume mix
 // soilTest { ph: [best low, best high, lowest, highest], salt: [threshold ECe dS/m, % yield lost per dS/m above it] }, used only with a typed lab test
+// winterKill  °C the hardened crop survives through the winter rest      winterSnow  cm of snow that keeps colder nights off it      winterBy  who says so
+//             (js/engine.js winterCold: where a normal winter's coldest night is colder than winterKill, the crop only just suits)
 export const CROPS = {
   corn: { name: 'Corn (maize)', type: 'cash', group: 'grain', fam: 'grass', water: 650, days: 150, root: 1.7, nfix: 0, om: 0.9, cover: 0.55, resid: 0.55, drought: 0.3, heat: 32, frost: 0.1, minT: 14,   // water FAO Manual 3 and FAO-56; days FAO-56 Table 11; root FAO-56 Table 22; drought FAO 33/66 Ky and ECOCROP rain
     tMin: 10, tOpt: [18, 33], tMax: 47, major: true, income: 0.7, forage: 0.4, sow: 4, harv: 10, ffd: 125, color: '#f5b83d' },   // temperatures FAO ECOCROP; major by FAOSTAT harvested area
   wheat: { name: 'Winter wheat', type: 'cash', group: 'grain', fam: 'grass', water: 550, days: 270, root: 1.8, nfix: 0, om: 0.7, cover: 0.7, resid: 0.45, drought: 0.55, heat: 30, frost: 0.85, minT: 3,   // water FAO Manual 3 and FAO-56; days a regional rule of thumb (FAO-56 Table 11 prints 180, 240 and 335 for winter wheat); root FAO-56 Table 22; drought FAO 33/66 Ky and ECOCROP rain
-    tMin: 5, tOpt: [15, 23], tMax: 27, major: true, income: 0.5, forage: 0.3, sow: 10, harv: 7, tropic: false, color: '#d9a441' },   // temperatures FAO ECOCROP; major by FAOSTAT harvested area
+    tMin: 5, tOpt: [15, 23], tMax: 27, major: true, income: 0.5, forage: 0.3, sow: 10, harv: 7, tropic: false, color: '#d9a441', winterKill: -24, winterSnow: 7.5, winterBy: 'OMAFRA' },   // temperatures FAO ECOCROP; major by FAOSTAT harvested area; winterKill and winterSnow OMAFRA Field Crop News, "Winter Survival": hardened-off plants survive down to −24 °C, and 7.5 cm of snow protects the crop from colder temperatures
   barley: { name: 'Spring barley', type: 'cash', group: 'grain', fam: 'grass', water: 450, days: 110, root: 1.5, nfix: 0, om: 0.6, cover: 0.6, resid: 0.4, drought: 0.65, heat: 30, frost: 0.55, minT: 5,   // water FAO Manual 3 and FAO-56; days a regional rule of thumb (the sowing calendar's rows from FAO-56 Table 11 run 120, 130, 135, 150, 160, 200); root FAO-56 Table 22; drought FAO 33/66 Ky and ECOCROP rain
     tMin: 2, tOpt: [15, 20], tMax: 40, major: true, income: 0.42, forage: 0.55, sow: 3, harv: 7, color: '#c9a95c' },   // temperatures FAO ECOCROP; major by FAOSTAT harvested area
   sorghum: { name: 'Sorghum (milo)', type: 'cash', group: 'grain', fam: 'grass', water: 550, days: 125, root: 2, nfix: 0, om: 0.8, cover: 0.6, resid: 0.55, drought: 0.85, heat: 38, frost: 0, minT: 17,   // water FAO Manual 3 and FAO-56; days FAO-56 Table 11; root FAO-56 Table 22; drought FAO 33/66 Ky and ECOCROP rain
@@ -52,6 +54,8 @@ export const CROPS = {
     tMin: 12, tOpt: [25, 35], tMax: 40, major: true, income: 0.35, forage: 0.5, sow: 6, harv: 9, ffd: 90, color: '#b8a46e' },   // temperatures FAO ECOCROP; major by FAOSTAT harvested area
   fmillet: { name: 'Finger millet', type: 'cash', group: 'grain', fam: 'grass', water: 400, days: 120, root: 1, nfix: 0, om: 0.5, cover: 0.55, resid: 0.35, drought: 0.7, heat: 34, frost: 0.05, minT: 14,   // water a regional rule of thumb (FAO Manual 3 prints 450 to 650 mm for sorghum and millet); days a regional rule of thumb (the sowing calendar's rows from FAO-56 Table 11 run 105, 140); root FAO-56 Table 22; drought FAO 33/66 Ky and ECOCROP rain
     tMin: 8, tOpt: [18, 30], tMax: 35, income: 0.4, forage: 0.4, sow: 5, harv: 9, ffd: 100, color: '#a5714a' },   // temperatures FAO ECOCROP
+  proso: { name: 'Proso millet', type: 'cash', group: 'grain', fam: 'grass', water: 650, days: 140, root: 1, nfix: 0, om: 0.5, cover: 0.55, resid: 0.35, drought: 0.85, heat: 32, frost: 0, minT: 15,   // water FAO Manual 3 and FAO-56 (Manual 3 Table 14, Sorghum/Millet 450 to 650 mm: the maximum, as 140 days is the long end of its Table 6 millet 105 to 140); days FAO-56 Table 11 (Millet, April, Central USA: 20, 30, 55, 35); root FAO-56 Table 22 (Millet 1.0 to 2.0 m: the low end, as FAO ECOCROP calls proso "shallow rooted"); nfix 0, a grass; the own estimates of this row are named under the table; drought from FAO ECOCROP rain
+    tMin: 15, tOpt: [20, 32], tMax: 45, income: 0.35, forage: 0.5, sow: 4, harv: 8, ffd: 90, minRain: 200, color: '#cdb27a' },   // temperatures FAO ECOCROP, Panicum miliaceum (id 8280); rain limit ECOCROP (its lowest yearly rain, 200 mm)
   teff: { name: 'Teff', type: 'cash', group: 'grain', fam: 'grass', water: 350, days: 110, root: 0.6, nfix: 0, om: 0.45, cover: 0.6, resid: 0.3, drought: 0.6, heat: 32, frost: 0.05, minT: 12,   // water, days and root regional rules of thumb (in neither FAO Manual 3's table nor FAO-56 Tables 11 and 22); drought from FAO ECOCROP rain
     tMin: 2, tOpt: [22, 28], tMax: 30, income: 0.6, forage: 0.4, sow: 6, harv: 9, color: '#c9a57a' },   // temperatures FAO ECOCROP
   quinoa: { name: 'Quinoa', type: 'cash', group: 'grain', fam: 'chenopod', water: 400, days: 150, root: 1.5, nfix: 0, om: 0.4, cover: 0.45, resid: 0.25, drought: 0.8, heat: 30, frost: 0.55, minT: 6,   // water, days and root regional rules of thumb (in neither FAO Manual 3's table nor FAO-56 Tables 11 and 22); drought from FAO ECOCROP rain
@@ -114,7 +118,7 @@ export const CROPS = {
     tMin: 7, tOpt: [15, 30], tMax: 35, income: 0.8, forage: 0, sow: 5, harv: 9, ffd: 100, color: '#8aa84a' },   // temperatures FAO ECOCROP
   alfalfa: { name: 'Alfalfa hay', type: 'forage', group: 'forage', fam: 'legume', water: 1000, days: 200, root: 2, om: 0.85, cover: 0.95, resid: 0.9, drought: 0.65, heat: 35, frost: 0.8, minT: 6,   // water FAO Manual 3 and FAO-56; days a regional rule of thumb for a hay stand; root FAO-56 Table 22; drought FAO 33/66 Ky and ECOCROP rain
     tMin: 5, tOpt: [21, 27], tMax: 45, income: 0.6, forage: 1, sow: 4, harv: 10, tropic: false, color: '#2e9d57' },   // temperatures FAO ECOCROP
-  ley: { name: 'Grass-clover ley', type: 'forage', group: 'forage', fam: 'grass', water: 750, days: 210, root: 1, nfix: 0.5, om: 0.9, cover: 0.95, resid: 0.9, drought: 0.4, heat: 28, frost: 0.85, minT: 5,   // water, days and root regional rules of thumb (in neither FAO Manual 3's table nor FAO-56 Tables 11 and 22); drought from FAO ECOCROP rain
+  ley: { name: 'Grass hay (grass-clover ley)', type: 'forage', group: 'forage', fam: 'grass', water: 750, days: 210, root: 1, nfix: 0.5, om: 0.9, cover: 0.95, resid: 0.9, drought: 0.4, heat: 28, frost: 0.85, minT: 5,   // water, days and root regional rules of thumb (in neither FAO Manual 3's table nor FAO-56 Tables 11 and 22); drought from FAO ECOCROP rain
     tMin: 4, tOpt: [14, 25], tMax: 35, income: 0.4, forage: 0.95, sow: 4, harv: 10, tropic: false, color: '#6fbf5f' },   // temperatures FAO ECOCROP
   ryecover: { name: 'Cereal rye cover', type: 'cover', group: 'cover', fam: 'grass', water: 130, days: 200, root: 1.3, nfix: 0, om: 0.8, cover: 0.9, resid: 0.7, drought: 0.7, heat: 30, frost: 1, minT: 1,   // water, days and root from university extension cover-crop guides (no guide is named on record); drought from FAO ECOCROP rain
     tMin: 3, tOpt: [15, 20], tMax: 31, income: -0.05, forage: 0.5, sow: 10, harv: 4, tropic: false, color: '#4f8a5b' },   // temperatures FAO ECOCROP
@@ -146,7 +150,7 @@ export const CROPS = {
     tMin: 12, tOpt: [16, 24], tMax: 38, income: 0.7, forage: 0.4, sow: 5, harv: 8, ffd: 90, color: '#f7d65a' },   // temperatures FAO ECOCROP
   spinach: { name: 'Spinach', type: 'cash', group: 'veg', fam: 'chenopod', water: 320, days: 80, root: 0.5, nfix: 0, om: 0.1, cover: 0.4, resid: 0.05, drought: 0.15, heat: 26, frost: 0.8, minT: 4,   // water a regional rule of thumb (not in FAO Manual 3's table); days a regional rule of thumb (the sowing calendar's rows from FAO-56 Table 11 run 60, 70, 100; FAO Manual 3 gives 60 to 100); root FAO-56 Table 22; drought FAO 33/66 Ky and ECOCROP rain
     tMin: 2, tOpt: [13, 20], tMax: 27, income: 0.75, forage: 0.05, sow: 3, harv: 5, tropic: false, color: '#3f8a3a' },   // temperatures FAO ECOCROP
-  greenbean: { name: 'Green beans', type: 'cash', group: 'veg', fam: 'legume', water: 350, days: 85, root: 0.7, nfix: 0.13, om: 0.25, cover: 0.4, resid: 0.15, drought: 0.25, heat: 30, frost: 0.05, minT: 10,   // water FAO Manual 3 and FAO-56 (its bean row); days a regional rule of thumb (the sowing calendar's rows from FAO-56 Table 11 run 75, 90; FAO Manual 3 gives 75 to 90); root FAO-56 Table 22; drought FAO 33/66 Ky and ECOCROP rain
+  greenbean: { name: 'Green beans (snap beans)', type: 'cash', group: 'veg', fam: 'legume', water: 350, days: 85, root: 0.7, nfix: 0.13, om: 0.25, cover: 0.4, resid: 0.15, drought: 0.25, heat: 30, frost: 0.05, minT: 10,   // water FAO Manual 3 and FAO-56 (its bean row); days a regional rule of thumb (the sowing calendar's rows from FAO-56 Table 11 run 75, 90; FAO Manual 3 gives 75 to 90); root FAO-56 Table 22; drought FAO 33/66 Ky and ECOCROP rain
     tMin: 7, tOpt: [16, 25], tMax: 32, income: 0.75, forage: 0.1, sow: 5, harv: 7, ffd: 70, color: '#6aae4a' },   // temperatures FAO ECOCROP
   melon: { name: 'Melons (cantaloupe)', type: 'cash', group: 'veg', fam: 'cucurbit', water: 500, days: 120, root: 1.5, nfix: 0, om: 0.2, cover: 0.5, resid: 0.1, drought: 0.45, heat: 35, frost: 0, minT: 16,   // water FAO Manual 3 and FAO-56; days FAO-56 Table 11; root FAO-56 Table 22; drought FAO 33/66 Ky and ECOCROP rain
     tMin: 9, tOpt: [18, 30], tMax: 35, income: 0.75, forage: 0.05, sow: 5, harv: 8, ffd: 100, tropic: false, color: '#e2b86a' },   // temperatures FAO ECOCROP
@@ -173,6 +177,12 @@ export const CROPS = {
   fallow: { name: 'Fallow', type: 'fallow', group: 'fallow', fam: 'none', water: 0, root: 0, nfix: 0, om: 0, cover: 0.05, resid: 0.05, drought: 0, heat: 99, frost: 1, minT: -99,   // no crop in the ground: nothing to cite, the 0, 99 and -99 switch every crop check off
     income: 0, forage: 0, sow: 1, harv: 12, color: '#a9856a' },   // bare soil the whole year
 };
+// Proso millet (FAO ECOCROP, Panicum miliaceum, id 8280; FAO-56 Tables 11, 12 and 22; FAO Manual 3 Table 14). No publication on record gives these values, so they are
+// Crophalo's own estimates, set by the table's own rule: om, cover and resid as for finger millet (also short and shallow rooted); heat 32 °C, the top of ECOCROP's
+// best range; frost 0 and minT 15 °C, ECOCROP's lowest growing temperature; drought 0.85 as for sorghum, its row in Manual 3 Table 14, which rates the drought
+// sensitivity "low" (FAO papers 33 and 66 print no Ky for millet), with ECOCROP's lowest yearly rain of 200 mm; income and forage as for pearl millet (ECOCROP: grain
+// for food and feed, green plants for fodder); sow April, the month of FAO-56's Central USA row, and harv August, 140 days on; ffd 90, the long end of the 55 to 90
+// days ECOCROP gives for the usual harvest. FAO-56 (140 days) and ECOCROP (55 to 90 days) differ on the season; the row keeps FAO-56. The colour is a drawing choice.
 
 // ---- soil-test limits: a crop with no published value here is never ruled out by a soil test
 export const TEST_PH = {
@@ -181,7 +191,7 @@ export const TEST_PH = {
   bean: [6, 7, 5, 8], faba: [6, 7.5, 5, 8.5], groundnut: [5.5, 7, 4.5, 8], sunflower: [6, 7.5, 5, 8.5], canola: [6, 7.5, 5, 8.5], cotton: [6, 7.5, 5, 8.5],   // pH: FAO ECOCROP, rounded to 0.5
   potato: [5, 6.5, 4.5, 7.5], sugarbeet: [6, 7.5, 5.5, 8.5], tomato: [5.5, 7, 5, 8], onion: [6, 7, 5.5, 8], cabbage: [6, 7.5, 5, 8.5], pepper: [5.5, 7, 5, 8],   // pH: FAO ECOCROP, rounded to 0.5
   alfalfa: [6.5, 7.5, 5.5, 8.5], carrot: [5.5, 7, 5, 8], lettuce: [6, 7, 5.5, 8], cucumber: [5.5, 7, 5, 8], sweetcorn: [5.5, 7.5, 5, 8.5], greenbean: [6, 7, 5, 8],   // pH: FAO ECOCROP, rounded to 0.5
-  triticale: [5.5, 7.5, 4.5, 8.5], durum: [6, 8, 5, 8.5],   // pH: FAO ECOCROP, rounded to 0.5
+  triticale: [5.5, 7.5, 4.5, 8.5], durum: [6, 8, 5, 8.5], proso: [6, 6.5, 5, 8],   // pH: FAO ECOCROP, rounded to 0.5
 };
 export const TEST_SAL = {
   corn: [1.7, 12], wheat: [6, 7.1], barley: [8, 5], sorghum: [6.8, 16], swheat: [6, 7.1],   // salt: Maas & Hoffman 1977; FAO Irrigation and Drainage Paper 29 rev. 1, Table 4
@@ -613,12 +623,12 @@ export const WHAT_IT_DOES = {
 
 // ---- what a country's and a district's records call each crop (read by the "grown here" checks)
 // FAOSTAT counts some crops under another crop's item, or only inside a catch-all item that cannot name the crop.
-export const FAO_ALIAS = { pmillet: 'millet', fmillet: 'millet', swheat: 'wheat', durum: 'wheat', scanola: 'canola', robusta: 'coffee' };   // FAOSTAT has one item for all millets, all wheat, all rapeseed, all coffee
+export const FAO_ALIAS = { pmillet: 'millet', fmillet: 'millet', proso: 'millet', swheat: 'wheat', durum: 'wheat', scanola: 'canola', robusta: 'coffee' };   // FAOSTAT has one item for all millets, all wheat, all rapeseed, all coffee
 export const FAO_KIND = { pecan: 'nuts_nec', macadamia: 'nuts_nec', lychee: 'tropfruit_nec', passionfruit: 'tropfruit_nec', pomegranate: 'fruit_nec', guava: 'mango', mung: 'bean' };   // an empty item means none is grown; a filled one cannot say which crop
 export const FAO_ONLY = { teff: ['ET', 'ER'] };   // teff is nearly all of "cereals n.e.c." in Ethiopia and Eritrea, and counted nowhere else
 // The MapSPAM crop map (IFPRI): its own short names. A crop mapped on its own, or only inside a wider group.
 export const SPAM_OF = {
-  corn: ['maiz'], wheat: ['whea'], swheat: ['whea'], durum: ['whea'], barley: ['barl'], sorghum: ['sorg'], rice: ['rice'], pmillet: ['pmil'], fmillet: ['mill'],   // MapSPAM cereals
+  corn: ['maiz'], wheat: ['whea'], swheat: ['whea'], durum: ['whea'], barley: ['barl'], sorghum: ['sorg'], rice: ['rice'], pmillet: ['pmil'], fmillet: ['mill'], proso: ['mill'],   // MapSPAM cereals
   soy: ['soyb'], chickpea: ['chic'], lentil: ['lent'], bean: ['bean'], cowpea: ['cowp'], groundnut: ['grou'], pigeonpea: ['pige'],   // MapSPAM pulses and soybeans
   sunflower: ['sunf'], canola: ['rape'], scanola: ['rape'], sesame: ['sesa'], cotton: ['cott'], potato: ['pota'], sweetpotato: ['swpo'], cassava: ['cass'], yam: ['yams'],   // MapSPAM oil crops, cotton, roots
   sugarbeet: ['sugb'], tobacco: ['toba'], tomato: ['toma'], onion: ['onio'], tea: ['teas'], coffee: ['coff'], robusta: ['rcof'], cocoa: ['coco'], oilpalm: ['oilp'],   // MapSPAM sugar, vegetables, stimulants
@@ -659,7 +669,7 @@ export const cropsOfType = type => cropIds(crop => crop.type === type);
 export const cropsOfGroup = group => cropIds(crop => crop.group === group);
 export const gardenIds = () => Object.keys(GARDENS);
 export const presetIds = () => Object.keys(PRESETS);
-export const pickerGroups = () => GROUPS.map(group => ({ group, ids: cropsOfGroup(group) }));   // the chooser's list of field entries, group by group, all 70; the 44 garden entries have their own list (gardenIds)
+export const pickerGroups = () => GROUPS.map(group => ({ group, ids: cropsOfGroup(group) }));   // the chooser's list of field entries, group by group, all 71; the 44 garden entries have their own list (gardenIds)
 export const budTables = id => (gardenOf(id)?.budCold ?? []).map(key => BUD_COLD_F[key]);   // the bud-frost tables for a garden; none for most
 
 // The chooser's search: every crop whose name holds the typed words. A whole word comes first ("pear" finds apples and pears before

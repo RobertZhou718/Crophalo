@@ -19,16 +19,17 @@ const pin = { lat: 44.4, lon: -79.78 }, frame = frameAt(pin.lat, pin.lon);
 const ll = (x, z) => { const p = frame.toLatLon(x, z); return [p.lat, p.lon]; };
 const hash = (...n) => { let h = 2166136261; for (const v of n) { h ^= Math.round(v * 1000) | 0; h = Math.imul(h, 16777619); h ^= h >>> 13; } return ((h >>> 0) % 100000) / 100000; };
 
-// ---- the ten switches
-same('ten switches in this order', L.SWITCHES.map(s => s.id), ['scale', 'edges', 'contours', 'soil', 'cover', 'buildings', 'roads', 'water', 'hedges', 'wet']);
-same('their labels', L.SWITCHES.map(s => s.name), ['Scale, high, low', 'Edge lengths', 'Contour lines', 'Soil colour', 'Land cover', 'Buildings', 'Roads, tracks', 'Water paths', 'Hedges, woods', 'Wet spots']);
+// ---- the switches: the note's ten, and three more from OpenStreetMap's second question (fences and gates, power lines and poles, silos and tanks)
+same('fourteen switches in this order (the shade is worded by js/shade3d.js)', L.SWITCHES.map(s => s.id), ['scale', 'edges', 'contours', 'soil', 'cover', 'buildings', 'roads', 'water', 'hedges', 'shade', 'fences', 'power', 'things', 'wet']);
+same('their labels', L.SWITCHES.map(s => s.name), ['Scale, high, low', 'Edge lengths', 'Contour lines', 'Soil colour', 'Land cover', 'Buildings', 'Roads, tracks', 'Water paths', 'Hedges, woods', 'Shade', 'Fences, gates', 'Power lines, poles', 'Silos, tanks, towers', 'Wet spots']);
 same('only "Scale, high, low" is on at first', L.cleanChoice(undefined), { scale: true });
 same('a saved choice is cleaned: unknown ids and non-true values dropped', L.cleanChoice({ edges: true, contours: 1, nope: true, __proto__: { wet: true }, soil: 'yes', wet: true }), { edges: true, wet: true });
 same('rubbish gives the default', [L.cleanChoice('x'), L.cleanChoice([true]), L.cleanChoice(null)], [{ scale: true }, { scale: true }, { scale: true }]);
 check('the storage key carries the product prefix only', L.STORAGE_KEY === 'crophalo.farm3d.land');
 same('a switch that is off costs nothing: the first view needs only the heights', L.sourcesNeeded({ scale: true }), ['heights']);
 same('nothing on needs nothing', L.sourcesNeeded({}), []);
-same('every switch on needs the heights, the soil map, the land cover, OpenStreetMap and the tree map, once each', L.sourcesNeeded(Object.fromEntries(L.SWITCHES.map(s => [s.id, true]))), ['cover', 'heights', 'osm', 'soil', 'trees']);
+same('every switch on needs the heights, the soil map, the land cover, OpenStreetMap (both questions) and the tree map, once each', L.sourcesNeeded(Object.fromEntries(L.SWITCHES.map(s => [s.id, true]))), ['cover', 'heights', 'osm', 'osmx', 'soil', 'trees']);
+same('fences, power lines and silos on need only the second OpenStreetMap question', L.sourcesNeeded({ fences: true, power: true, things: true }), ['osmx']);
 same('buildings and roads on need only OpenStreetMap', L.sourcesNeeded({ buildings: true, roads: true }), ['osm']);
 same('toggle words', [L.toggleWords('edges', true), L.toggleWords('edges', false), L.toggleWords('nope', true)], ['Edge lengths on. The length of each side of the chosen field and the height at its corners.', 'Edge lengths off.', '']);
 same('unknown, inherited switches are not switches', [L.switchOf('toString'), L.switchOf('__proto__')], [null, null]);
@@ -188,13 +189,36 @@ same('and in feet', [L.scaleBar(516, 'ft').label, L.scaleBar(1000, 'ft').label],
   same('no heights: said, nothing invented', L.wetLayer({ heights: heightModel({ nx: 3, ny: 3, width: 9, depth: 9, h: new Float32Array(9).fill(NaN) }) }).words, ['Heights not read, so this cannot be worked out.']);
 }
 
+// ---- 11. fences, power lines, silos and tanks: only where a mapper drew them, at typical sizes unless a size is mapped
+{
+  const line = (a, b) => [ll(a[0], a[1]), ll(b[0], b[1])];
+  const osmx = { fences: [{ p: line([0, 0], [40, 0]), k: 'fence' }, { p: line([0, 10], [40, 10]), k: 'wall', h: 2.4 }, { p: line([0, 20], [40, 20]), k: 'fence', h: 1.8 }], gates: [{ p: ll(20, 0), k: 'gate' }, { p: ll(30, 0), k: 'grid' }],
+    power: [{ p: line([0, 50], [200, 50]), k: 'line' }, { p: line([0, 60], [200, 60]), k: 'minor' }], poles: [{ p: ll(0, 50), k: 'pole' }, { p: ll(100, 50), k: 'tower' }],
+    things: [{ p: ll(70, 70), k: 'silo' }, { p: ll(80, 70), k: 'tank', r: 5.5 }, { p: ll(90, 70), k: 'well' }, { p: ll(95, 70), k: 'mystery' }] };
+  const f = L.fencesLayer({ osmx, frame });
+  same('fences: heights are the mapped ones, else 1.2 m for a fence and 1.5 m for a wall', f.items.map(i => [i.kind, i.height, i.heightMapped]), [['fence', 1.2, false], ['wall', 2.4, true], ['fence', 1.8, true]]);
+  same('fences: gates and a cattle grid come with their place', f.gates.map(g => [g.kind, Math.round(g.x), Math.round(g.z)]), [['gate', 20, 0], ['grid', 30, 0]]);
+  same('fences: the words count them and say what is typical', f.words[0], '3 fences and walls and 2 gates drawn. A fence is 1.2 m and a wall 1.5 m high unless a height is mapped.');
+  same('fences: nothing mapped is said so, never drawn', L.fencesLayer({ osmx: { fences: [], gates: [] }, frame }).words, ['No fences, walls or gates are mapped on this land.']);
+  same('fences: failed and waiting', [L.fencesLayer({ osmx: { failed: 'OpenStreetMap could not be read right now' }, frame }).words, L.fencesLayer({ osmx: undefined, frame }).state], [['Fences, gates: OpenStreetMap could not be read right now. Nothing is drawn.'], 'waiting']);
+  const p = L.powerLayer({ osmx, frame });
+  same('power: lines by kind, poles 10 m and towers 30 m', [p.items.map(i => i.kind), p.poles.map(q => [q.kind, q.height])], [['line', 'minor'], [['pole', 10], ['tower', 30]]]);
+  same('power: nothing mapped is said so', L.powerLayer({ osmx: { power: [], poles: [] }, frame }).words, ['No power lines or poles are mapped on this land.']);
+  const t = L.thingsLayer({ osmx, frame });
+  same('things: a typical size, or the mapped radius; a kind it does not know is drawn as a tower, not skipped', t.items.map(i => [i.kind, i.r, i.height, i.rMapped]), [['silo', 3, 20, false], ['tank', 5.5, 6, true], ['well', 0.9, 1.4, false], ['mystery', 1.5, 15, false]]);
+  same('things: nothing mapped is said so', L.thingsLayer({ osmx: { things: [] }, frame }).words, ['No silos, tanks, towers, windmills or wells are mapped on this land.']);
+  const cut = L.fencesLayer({ osmx: { fences: Array.from({ length: 1600 }, (_, i) => ({ p: line([i, 0], [i + 1, 0]), k: 'fence' })), gates: [], note: 'fences: the 1,500 nearest the middle are given, of 1,600 mapped' }, frame, phone: false });
+  check('fences: the cap is 1,500 on a computer (600 on a phone) and the lookup\'s own note about what was cut is passed on', cut.items.length === 1500 && L.fencesLayer({ osmx: { fences: Array.from({ length: 1600 }, (_, i) => ({ p: line([i, 0], [i + 1, 0]), k: 'fence' })), gates: [] }, frame, phone: true }).items.length === 600 && cut.words.some(w => /1,500 nearest the middle are given, of 1,600 mapped/.test(w)), cut.words);
+  same('the OpenStreetMap credit is shown for these layers when something is drawn, and not when nothing is', [L.osmCredit([f]) === L.OSM_CREDIT, L.osmCredit([p]) === L.OSM_CREDIT, L.osmCredit([t]) === L.OSM_CREDIT, L.osmCredit([L.fencesLayer({ osmx: { fences: [], gates: [] }, frame })]), L.osmCredit([L.layerOf('contours', { heights: { failed: 'x' }, frame })])], [true, true, true, null, null]);
+}
+
 // ---- every switch: failed sources say so, waiting sources wait, nothing is drawn from nothing
 {
   const ctx = { span: 400, frame, fields: [], phone: false };
-  for (const s of L.SWITCHES) {
-    const wait = L.layerOf(s.id, { ...ctx, heights: undefined, soil: undefined, cover: undefined, osm: undefined, chosen: { id: 'a', name: 'A', polygon: box(0, 0, 50, 50) } });
+  for (const s of L.SWITCHES.filter(x => x.id !== 'shade')) {   // the shade has no source of its own here: js/shade3d.js words it
+    const wait = L.layerOf(s.id, { ...ctx, heights: undefined, soil: undefined, cover: undefined, osm: undefined, osmx: undefined, chosen: { id: 'a', name: 'A', polygon: box(0, 0, 50, 50) } });
     check(`${s.id}: with the source not yet answered it waits and draws nothing`, wait.state === 'waiting' && /^Reading .+…$/.test(wait.words[0]) && (wait.items || []).length === 0, wait);
-    const fail = L.layerOf(s.id, { ...ctx, heights: { failed: 'x' }, soil: { failed: 'The soil map did not answer right now' }, cover: { failed: 'The land-cover map did not answer right now' }, osm: { failed: 'OpenStreetMap could not be read right now' }, chosen: { id: 'a', name: 'A', polygon: box(0, 0, 50, 50) } });
+    const fail = L.layerOf(s.id, { ...ctx, heights: { failed: 'x' }, soil: { failed: 'The soil map did not answer right now' }, cover: { failed: 'The land-cover map did not answer right now' }, osm: { failed: 'OpenStreetMap could not be read right now' }, osmx: { failed: 'OpenStreetMap could not be read right now' }, chosen: { id: 'a', name: 'A', polygon: box(0, 0, 50, 50) } });
     check(`${s.id}: with the source failed it says so in words and draws nothing`, fail.state === 'cannot' && !/undefined|NaN|\[object/.test(fail.words.join(' ')) && (Array.isArray(fail.items) ? fail.items.length === 0 : true) && !fail.ponds?.length && !fail.rain?.length && !fail.woods?.length, fail);
   }
   same('an unknown switch says so', L.layerOf('zzz', ctx).state, 'cannot');
@@ -251,5 +275,13 @@ check('the marks are navy, and every band differs in pattern and tint', S.BANDS.
   same('the one-line description', S.SLOPE_LINE, 'Slope shown on the fields: patterns for four slope bands, contour lines and arrows where water runs.');
 }
 
+// ---- OpenStreetMap's credit: linked, and only while its features are drawn
+{
+  const drawn = id => ({ id, state: 'ready', items: [{}], words: [] }), empty = id => ({ id, state: 'ready', items: [], woods: [], words: [] });
+  same('the credit is the contributors line, linked to the copyright page', [L.OSM_CREDIT.text, L.OSM_CREDIT.href], ['\u00A9 OpenStreetMap contributors', 'https://www.openstreetmap.org/copyright']);
+  same('buildings, roads, water or hedges drawn: the credit is shown', ['buildings', 'roads', 'water', 'hedges'].map(id => L.osmCredit([drawn(id)]) === L.OSM_CREDIT), [true, true, true, true]);
+  same('woods alone, or ponds alone, count as drawn', [L.osmCredit([{ id: 'hedges', state: 'ready', items: [], woods: [{}] }]) !== null, L.osmCredit([{ id: 'water', state: 'ready', items: [], ponds: [{}], rain: [] }]) !== null], [true, true]);
+  same('nothing drawn, waiting, cannot, or only layers made from the heights: no credit', [L.osmCredit([empty('buildings')]), L.osmCredit([{ id: 'buildings', state: 'waiting', items: [{}] }]), L.osmCredit([{ id: 'roads', state: 'cannot', items: [{}] }]), L.osmCredit([drawn('contours'), drawn('wet'), drawn('soil')]), L.osmCredit([]), L.osmCredit(null)], [null, null, null, null, null, null]);
+}
 console.log(`${passed} passed, ${failed} failed`);
 process.exit(failed ? 1 : 0);

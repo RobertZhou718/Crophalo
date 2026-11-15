@@ -43,7 +43,7 @@ same('a network error and a non-JSON answer are the 3D view\'s plain sentences',
 same('a grid for another piece of land is refused', (await loadDem(pin, est, async url => ({ json: async () => ({ ...answerFor(() => 1)(url), grid: { nx: 129, ny: 129, w: 5000, d: 5000 } }) }))).reason, 'The land heights were for another piece of land.');
 same('no place, no outline, no function: the plain sentence', await Promise.all([loadDem({ lat: 'x', lon: 1 }, est, serve(() => 1)), loadDem(pin, null, serve(() => 1)), loadDem(pin, est, null)]).then(l => l.map(x => x.reason)), Array(3).fill(DEM_DOWN));
 check('mostly missing heights give a reason, not a slope', (await loadDem(pin, est, serve(() => NaN))).ok === false);
-same('the source note follows the map named: Canada, the United States, the world', [demKey('NRCan HRDEM lidar'), demKey('USGS 3DEP 1 m'), demKey('Copernicus GLO-30'), demKey('Some other map'), demKey(undefined)], ['hrdem', 'usgs3dep', 'glo30', 'dem', 'dem']);
+same('the source note follows the map named: Canada, the United States, the world', [demKey('NRCan HRDEM lidar'), demKey('USGS 3DEP 1 m'), demKey('Copernicus GLO-30'), demKey('NASADEM'), demKey('Some other map'), demKey(undefined)], ['hrdem', 'usgs3dep', 'glo30', 'nasadem', 'dem', 'dem']);
 
 // ---- words
 same('slope classes at their edges', [0, 1.99, 2, 4.99, 5, 9.99, 10, 14.99, 15, 40].map(slopeWords), ['Nearly flat', 'Nearly flat', 'Gently sloping', 'Gently sloping', 'Moderately sloping', 'Moderately sloping', 'Strongly sloping', 'Strongly sloping', 'Steep', 'Steep']);

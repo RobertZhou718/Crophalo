@@ -26,6 +26,8 @@
 9. **Start it again.** This time it should take seconds: no download, no login question, the same address.
 10. **While it runs, double-click `Start Crophalo.bat` once more.** The second window should say `Crophalo is already running from this folder: ...`, open the browser and close by itself.
 11. **Double-click `Start Crophalo (Add NASA login).bat`** (stop Crophalo first). It should ask for the login again, then start as usual.
+11b. **While Crophalo runs, double-click `Start Crophalo (Add NASA login).bat`.** It should ask for the login, say where it was saved and `The running Crophalo uses this login from its next lookup.`, then `Crophalo is already running from this folder: ...`, and close by itself. No second Crophalo starts: the first window keeps running.
+11c. **If you chose `1` and the file `.netrc` in your home folder holds logins of other services too**, they must still be there afterwards, also one written on the same line as the NASA one. Look with Notepad: `notepad $HOME\.netrc` in a PowerShell window.
 12. **Copy the whole Crophalo folder to a second place** (the Desktop, say) and, while the first copy runs, double-click `Start Crophalo.bat` in the second one. It must not say `already running`: it starts its own server on the next port (`Port 5480 is in use by another program, so Crophalo uses 5481.`). Delete the second copy afterwards.
 
 Afterwards the folder holds new parts: `runtime`, `.venv` and, if you chose it, `.secrets`. Nothing else on the PC should have changed, apart from the file `.netrc` in your home folder if you chose `1`.

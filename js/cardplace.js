@@ -1,6 +1,6 @@
-// Crophalo's placement of the spot card on the map: kept inside the map, beside the pin, off the outline, along the bottom of a narrow map.
-// All of it is pure: numbers in, a position out.
-// Checked by scripts/test_spot.mjs (clamping from every corner, the side with room, keeping off the pin and an outline, the narrow map).
+// Crophalo's placement of the spot card on the map: kept inside the map, beside the pin, off the outline, along the bottom of a narrow map, and on the right for a result.
+// All of it is pure: numbers in, a position out (and the room an outline is fitted into beside the card).
+// Checked by scripts/test_spot.mjs (clamping from every corner, the side with room, keeping off the pin and an outline, the narrow map, the fit beside the card).
 
 export const MARGIN = 8, TOP = 56, WIDE = 340, NARROW_BELOW = 520;
 
@@ -26,3 +26,17 @@ export function placeCard({ anchor, size, box, avoid = [], top = TOP }) {
   return { left: best.left, top: best.top, bottom: false };
 }
 
+// A result card (the area of a closed outline) on a map this wide or wider stands on the right, and the outline is fitted into the room left of it.
+export const SIDE_FROM = 760, GAP = 16;
+// The card on the right: under the top bars, left of the view buttons, never down into the dock at the foot. Returns { left, top, maxH }.
+export function sideCard({ size, box, top = TOP, dock = 0 }) {
+  const p = clampCard({ left: box.w, top }, size, box, MARGIN, top, STACK_ROOM);
+  return { left: p.left, top, maxH: Math.max(160, box.h - top - dock - MARGIN) };
+}
+// The padding for fitting an outline into the free part of the map: left of the card (its width, a gap and the view buttons), below the bars,
+// above the dock. card is { w } or null when no card stands on the map. Returns { topLeft: [x, y], bottomRight: [x, y] } in px, as Leaflet asks.
+export function fitPadding(card, box, bars, dock, stack = STACK_ROOM) {
+  const right = card ? card.w + MARGIN + stack + GAP : GAP + stack, top = bars + GAP, bottom = dock + GAP;   // the card stands a margin left of the view buttons; the outline keeps a gap from the card
+  const left = Math.min(GAP, Math.max(0, box.w - right - 1));
+  return { topLeft: [left, top], bottomRight: [right, bottom] };
+}

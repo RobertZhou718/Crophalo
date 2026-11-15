@@ -21,7 +21,7 @@ export function money(usd, code, rates, locale = 'en-US') {
 export function fxNote(code, rates) {
   if (!isCode(code) || code === 'USD') return 'Amounts are in US dollars.';
   const r = rates?.rates?.[code];
-  return r ? `Shown in ${code}, converted from US dollars at 1 US$ = ${r < 10 ? r.toFixed(2) : r.toFixed(1)} ${code} (central-bank reference rate, ${rates.date}).` : 'Exchange rates could not be read, so amounts stay in US dollars.';
+  return r ? `Shown in ${code}, converted from US dollars at 1 US$ = ${r < 10 ? r.toFixed(2) : r.toFixed(1)} ${code}. Exchange rates from the European Central Bank, via Frankfurter, ${rates.date}.` : 'Exchange rates could not be read, so amounts stay in US dollars.';
 }
 export function readRates(storage = globalThis.localStorage, now = Date.now()) {
   try { const kept = JSON.parse(storage.getItem(RATES_KEY)), rates = cleanRates(kept?.rates); return rates && Number.isFinite(kept.at) && now - kept.at >= 0 && now - kept.at < KEEP_MS ? rates : null; } catch { return null; }

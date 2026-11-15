@@ -1,0 +1,60 @@
+/* The Data page's "How to read Crophalo" folds, their square-size pictures and the word "i" card. Loaded by js/explain-page.js when the Data page is drawn.
+   Only the app's own tokens; no motion of its own (the folds' arrow follows the app's motion switch). Checked by scripts/e2e_explain.mjs (fit at 320 and 1280, axe). */
+.ex { margin: var(--space-24, 24px) 0; }
+.ex > h2 { margin-bottom: var(--space-8); }
+.ex-remind { max-width: var(--lead-w); margin: var(--space-12) 0 var(--space-16); padding: var(--space-12) var(--space-16); border-radius: var(--r2); background: var(--card); box-shadow: var(--shadow); }
+.ex-folds { max-width: var(--lead-w); }
+.ex-b { padding-left: var(--space-16); overflow-wrap: anywhere; }
+.ex-b > * + *, .ex-b section > * + * { margin-top: var(--space-8); }
+.ex-b h3 { margin-top: var(--space-16); font-size: var(--fs-headline); }
+.ex-say { display: flex; flex-wrap: wrap; align-items: center; gap: var(--space-8) var(--space-12); padding: var(--space-8) 0; }
+.ex-say > p { flex: 1 1 14em; min-width: 0; }
+.ex-say .listen { min-height: var(--touch, 44px); }
+.ex-plain { font-weight: var(--fw-regular); color: var(--ink2); font-size: var(--fs-small); }
+.ex-src a, #wordPop a { text-decoration: underline; text-decoration-thickness: 1px; text-underline-offset: 2px; }
+.ex-src { line-height: 2; }   /* sources in a sentence: lines far enough apart that two links never touch */
+.ex-src a { display: inline; min-height: 0; }
+.ex-first a { display: inline-flex; align-items: center; min-height: var(--touch, 44px); }   /* a link alone on its line is a target of its own */
+.ex-fold + .ex-fold { margin-top: var(--space-8); }
+.ex-more { margin-top: var(--space-8); }
+.ex-more > summary { display: flex; align-items: center; min-height: var(--touch, 44px); }
+.ex-b { padding-bottom: var(--space-8); }
+#wordPop .ex-card-title { margin: 0; font-size: var(--fs-headline); line-height: 1.3; }
+#wordPop a[data-word-go] { display: inline-flex; align-items: center; min-height: var(--touch, 44px); }
+.ex-local { font-weight: var(--fw-semi); }
+.ex-parts dt { margin-top: var(--space-8); font-weight: var(--fw-semi); }
+.ex-parts dd { margin: 2px 0 0; }
+.ex-sure, .ex-b ul { padding-left: 1.2em; }
+.ex-panels { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 260px), 1fr)); gap: var(--space-12); }
+.ex-panel { margin: 0; min-width: 0; }
+.ex-panel svg { display: block; width: 100%; height: auto; }
+.ex-panel figcaption { margin-top: 4px; }
+.ex-frame { fill: var(--card2); stroke: var(--sep); stroke-width: 1; }
+.ex-cell { fill: none; stroke: var(--ink2); stroke-width: 1.2; }
+.ex-field { fill: var(--soil); stroke: var(--ink); stroke-width: 1.2; }
+.ex-next { fill: none; stroke: var(--ink); stroke-width: 1; stroke-dasharray: 3 2; }
+.ex-lead { stroke: var(--ink3); stroke-width: .8; }
+.ex-key-dot { fill: var(--card); stroke: var(--ink2); stroke-width: 1; }
+.ex-lab { fill: var(--ink); font-size: 13px; font-weight: 600; }
+.ex-key { margin: 4px 0 0; padding-left: 1.6em; font-size: var(--fs-small); }
+.ex-key .ex-size { color: var(--ink2); }
+.ex, .ex-folds, .ex-fold, .ex-b { min-width: 0; max-width: 100%; }
+.ex .tbl { contain: inline-size; }   /* the table's own width never widens the page: it scrolls inside its box */
+.ex-table caption { text-align: left; padding: var(--space-8) 0; font-weight: var(--fw-semi); }
+.ex-table th[scope=row] { min-width: 8em; }
+.ex-table td:nth-child(3) { min-width: 12em; }
+@media (forced-colors: active) {
+  .ex-cell, .ex-next, .ex-lead, .ex-field, .ex-frame { stroke: CanvasText; }
+  .ex-field { fill: Canvas; }
+  .ex-lab { fill: CanvasText; }
+  .ex-key-dot { fill: Canvas; stroke: CanvasText; }
+}
+
+/* the whole width, like the other pages: the five folds in a grid (two columns from about 900 px, three from about 1400 px), one column on a phone; each fold opens on its short lead and one link */
+.ex-folds { display: grid; grid-template-columns: minmax(0, 1fr); gap: var(--space-16); align-items: start; }
+@media (min-width: 900px) { .ex-folds { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+@media (min-width: 1400px) { .ex-folds { grid-template-columns: repeat(3, minmax(0, 1fr)); } }
+.ex-lead { margin: 0 0 var(--space-8); }
+.ex-more { margin-top: var(--space-8); border-top: .5px solid var(--sep); }
+.ex-more > summary { display: flex; align-items: center; min-height: var(--touch); color: var(--link); font-size: var(--fs-small); font-weight: var(--fw-medium); cursor: pointer; }
+.ex-more > summary:focus-visible { outline: 3px solid var(--sel); outline-offset: 2px; border-radius: var(--r2); }

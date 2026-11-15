@@ -4,7 +4,7 @@
 // Checked by scripts/test_satellites2.mjs (each state, the chart's gaps and trend, day and night apart, plain-text escaping).
 import { esc } from './words.js';
 import { infoButton } from './report-view.js';
-import { graceWords, ecoWords, hlsWords, monthWords, dayShort, clock, GRACE_DOI, HLS_CREDIT } from './satellites2-data.js';
+import { readSoFar, graceWords, ecoWords, hlsWords, monthWords, dayShort, clock, graceDirection, GRACE_TILE, GRACE_PUMPING, GRACE_NO_DECLINE, GRACE_RULE, GRACE_DOI, HLS_CREDIT, HOT_C } from './satellites2-data.js';
 
 const card = (id, title, keys, body, figure = '') => `<article class="card pad sat-card" data-card="${esc(id)}"><h3>${esc(title)} ${infoButton(keys, figure || title)}</h3>${body}</article>`;
 const monthIndex = m => +m.slice(0, 4) * 12 + (+m.slice(5) - 1);
@@ -36,28 +36,37 @@ export const regionDiagram = km => `<svg class="gr-region" viewBox="0 0 120 120"
 export function graceTable(g) {
   return `<div class="tbl" tabindex="0" role="region" aria-label="The numbers: water stored by month"><table><caption class="sr">Regional water storage by month</caption><thead><tr><th scope="col">Month</th><th scope="col">Water (cm)</th><th scope="col">Give or take (cm)</th></tr></thead><tbody>${[...g.months].reverse().map(m => `<tr><th scope="row">${esc(monthWords(m.month))}</th><td>${m.cm === null ? 'No data' : m.cm}</td><td>${m.unc === null ? '' : m.unc}</td></tr>`).join('')}</tbody></table></div>`;
 }
+// The tile: one word for where the water is heading over the record's own years, with what the figure covers. Shown only when there is enough record for a word.
+export function graceTile(g) {
+  const d = graceDirection(g);
+  if (!d.word) return `<p class="sat-tile" data-dir="none"><b>No direction given</b> <span>There is not enough record in the trend\u2019s years to say whether the water is falling or rising.</span></p>`;
+  return `<p class="sat-tile" data-dir="${d.word === 'Falling' ? 'fall' : d.word === 'Rising' ? 'rise' : 'flat'}"><b>${esc(d.word)}</b> <span>${esc(GRACE_TILE(g, g.km))}</span></p>`;
+}
 export function graceCardHTML(g) {
   const T = 'Regional water storage';
   if (!g || g.loading) return card('grace', T, ['grace'], '<p class="cap" role="status" aria-live="polite">Reading NASA’s GRACE-FO water-storage record for your region…</p>');
-  if (!g.ok) return card('grace', T, ['grace'], `<p class="rv-notread"><b>Not read yet.</b> ${esc(g.reason)}</p>`);
+  if (!g.ok) return card('grace', T, ['grace'], `<p class="rv-notread">${esc(g.reason)}</p>`);
   const w = graceWords(g);
   return card('grace', T, ['grace'], `<div class="gr-head"><p class="wk-big num">${esc(w.head)}</p>${regionDiagram(g.km)}</div>${graceChartSVG(g)}
     <p class="ch-legend"><span><i class="ch-key rain" aria-hidden="true"></i>Month read</span>${g.trend ? '<span><i class="ch-key trend" aria-hidden="true"></i>Trend</span>' : ''}${g.gaps.length ? '<span><i class="ch-key gap" aria-hidden="true"></i>No data</span>' : ''}</p>
-    ${w.lines.map(l => `<p class="cap">${esc(l)}</p>`).join('')}<p class="cap">NASA GRACE-FO, DOI ${esc(GRACE_DOI)}.</p><details class="disc"><summary>The numbers</summary>${graceTable(g)}</details>`, `Water stored over a region about ${g.km} km wide, ${monthWords(g.newest.month)}.`);
+    ${graceTile(g)}${w.lines.map(l => `<p class="cap">${esc(l)}</p>`).join('')}<p class="cap">NASA GRACE-FO, DOI ${esc(GRACE_DOI)}.</p><details class="disc"><summary>The numbers</summary>${graceTable(g)}</details>`, `Water stored over a region about ${g.km} km wide, ${monthWords(g.newest.month)}.`);
 }
 
 // ---- ECOSTRESS
 const passRow = p => `<li class="eco-pass"><b class="num">${esc(String(p.c))} °C</b> <span>${esc(dayShort(p.solarDate))}, ${esc(clock(p))}</span>${p.err !== null ? ` <span class="cap">give or take ${esc(String(p.err))} °C</span>` : ''}</li>`;
 export const pixelDot = m => `<svg class="eco-dot" viewBox="0 0 60 60" width="44" height="44" role="img" aria-label="${esc(`One reading covers a square about ${m} metres wide, drawn here as a dot.`)}" focusable="false"><circle cx="30" cy="30" r="5" class="eco-pix"/></svg>`;
+const ecoTable = e => `<div class="tbl" tabindex="0" role="region" aria-label="The numbers: every clear pass of the year"><table><caption class="sr">Clear passes of the year, newest first</caption><thead><tr><th scope="col">Day</th><th scope="col">Local solar time</th><th scope="col">Day or night</th><th scope="col">Ground temperature</th></tr></thead><tbody>${e.passes.map(p => `<tr><td>${esc(dayShort(p.solarDate))}</td><td>${esc(p.solar || '')}</td><td>${p.dn === 'day' ? 'Day' : 'Night'}</td><td class="num">${esc(String(p.c))} °C${p.dn === 'day' && p.c >= HOT_C ? ' (45 °C or more)' : ''}</td></tr>`).join('')}</tbody></table></div>`;
 export function ecoCardHTML(e) {
   const T = 'Ground surface temperature';
-  if (!e || e.loading) return card('ecostress', T, ['ecostress'], '<p class="cap" role="status" aria-live="polite">Looking for clear passes of NASA’s heat camera over your field. The first time this can take a minute.</p>');
-  if (!e.ok) return card('ecostress', T, ['ecostress'], `<p class="rv-notread"><b>Not read yet.</b> ${esc(e.reason)}</p>`);
-  const w = ecoWords(e), day = e.passes.filter(p => p.dn === 'day'), night = e.passes.filter(p => p.dn === 'night');
-  const group = (label, list) => list.length ? `<section aria-label="${esc(label)}"><h4>${esc(label)}</h4><ul class="eco-list">${list.map(passRow).join('')}</ul></section>` : '';
-  const body = e.passes.length ? `${group('Daytime passes', day)}${group('Night passes', night)}` : `<p class="rv-notread"><b>No clear pass.</b> ${esc(w.lines[0])}</p>`;
+  if (!e || e.loading) return card('ecostress', T, ['ecostress'], '<p class="cap" role="status" aria-live="polite">Looking for clear passes of NASA’s heat camera over your field, over the last year. The first time this can take a minute.</p>');
+  if (!e.ok) return card('ecostress', T, ['ecostress'], `<p class="rv-notread">${esc(e.reason)}</p>`);
+  const w = ecoWords(e), day = e.passes.filter(p => p.dn === 'day'), night = e.passes.filter(p => p.dn === 'night'), sm = e.summary;
+  const group = (label, list, more) => list.length ? `<section aria-label="${esc(label)}"><h4>${esc(label)}</h4><ul class="eco-list">${list.slice(0, more).map(passRow).join('')}</ul>${list.length > more ? `<p class="cap">The newest ${more} of ${list.length}; every pass is in “The numbers”.</p>` : ''}</section>` : '';
+  const part = e.coverage && !e.coverage.complete && e.coverage.found > 0, so = part ? ' so far' : '';
+  const big = sm.dayDays ? `<p class="wk-big num" data-eco="hot">${esc(w.head)}</p><p class="cap">${sm.hotDays ? `clear days${so} with the ground at ${HOT_C} °C or more` : `clear days${so}: the ground never reached ${HOT_C} °C`}</p>${part ? `<p class="cap" data-eco="part" role="status" aria-live="polite">${e.again ? `Reading more passes (ask ${e.again.n} of ${e.again.of})… ` : ''}${esc(`Read so far: ${readSoFar(e.coverage)}.`)}</p>` : ''}` : '';
+  const body = e.passes.length ? `${big}${group('Daytime passes', day, 6)}${group('Night passes', night, 3)}` : `<p class="rv-notread"><b>No clear pass.</b> ${esc(w.lines[0])}</p>`;
   return card('ecostress', T, ['ecostress'], `<div class="eco-head">${pixelDot(e.pixel)}<p class="cap eco-means">${esc(`Ground temperature seen from space at about ${e.pixel} m, not the air temperature.`)}</p></div>${body}
-    ${w.lines.slice(e.passes.length ? 0 : 1).filter(l => !/seen from space at about/.test(l)).map(l => `<p class="cap">${esc(l)}</p>`).join('')}<p class="cap">NASA ECOSTRESS, ECO_L2T_LSTE, LP DAAC.</p>`, e.newest ? `Newest clear pass: ${dayShort(e.newest)}.` : '');
+    ${w.lines.slice(e.passes.length ? 0 : 1).filter(l => !/seen from space at about/.test(l)).map(l => `<p class="cap">${esc(l)}</p>`).join('')}<p class="cap">NASA ECOSTRESS, ECO_L2T_LSTE, LP DAAC.</p>${e.passes.length ? `<details class="disc"><summary>The numbers</summary>${ecoTable(e)}</details>` : ''}`, e.newest ? `Newest clear pass: ${dayShort(e.newest)}.` : '');
 }
 
 // ---- HLS greenness: one dot for each clear photo on a 0 to 1 scale, no line across days with no photo
@@ -72,7 +81,7 @@ export function hlsChartSVG(h, { w = 320, h: ht = 150 } = {}) {
 export function hlsCardHTML(h) {
   const T = 'Greenness of your field';
   if (!h || h.loading) return card('hls', T, ['hls'], '<p class="cap" role="status" aria-live="polite">Looking for clear satellite photos of your field…</p>');
-  if (!h.ok) return card('hls', T, ['hls'], `<p class="rv-notread"><b>Not read yet.</b> ${esc(h.reason)}</p>`);
+  if (!h.ok) return card('hls', T, ['hls'], `<p class="rv-notread">${esc(h.reason)}</p>`);
   const w = hlsWords(h);
   if (!h.passes.length) return card('hls', T, ['hls'], `<p class="rv-notread"><b>No clear photo.</b> ${esc(w.lines[0])}</p><p class="cap">${esc(w.lines.at(-1))}</p><p class="cap">${esc(HLS_CREDIT)}</p>`);
   return card('hls', T, ['hls'], `<p class="wk-big num">${esc(w.head)}</p>${hlsChartSVG(h)}${w.lines.map(l => `<p class="cap">${esc(l)}</p>`).join('')}<p class="cap">${esc(HLS_CREDIT)}</p>

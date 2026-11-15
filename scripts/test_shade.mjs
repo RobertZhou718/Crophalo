@@ -193,5 +193,53 @@ check('a sunless strip says there is no direct sun', shade.stripWords({ edge: 'n
   else check('the near job on about 12,000 spots takes under 4 s of processor time', ms < 4000, ms);
 }
 
+
+// ---- the 3D view's shade (js/shade3d.js): the cells in shade drawn on the ground, the sentence, "about, to the half hour", and nothing filled in
+{
+  const S3 = await import('../js/shade3d.js'), R3 = await import('../js/farm3d-rule.js');
+  const sceneOf = (ground, { sunHeight = 22, azimuth = 180, polygon = box(-50, -50, 50, 50), half = 150, cell = 5 } = {}) => {
+    const g = gridOf(half, cell, ground), nx = g.nx;
+    return { slab: { lat: LAT, lon: LON, width: 2 * half, depth: 2 * half }, field: { id: 'f', name: 'North field', polygon: polygon.map(([x, z]) => ({ x, z })) },
+      heights: { model: { nx, ny: nx, width: 2 * half, depth: 2 * half, cellX: cell, cellZ: cell, h: g.ground, base: 0, flat: false } }, sun: { azimuth, height: sunHeight } };
+  };
+  const settle = async fn => { for (let k = 0; k < 8; k++) { const r = fn(); if (r.state !== 'waiting') return r; await new Promise(res => setTimeout(res, 0)); } return fn(); };
+  const run = sc => { const c = S3.createShade({ ask: msg => Promise.resolve(shade.runJob(msg)) }); return { c, get: () => settle(() => c.stateFor(true, sc, false)) }; };
+  const wall = (x, z) => (z >= 30 && z <= 32 ? 10 : 0);   // a 10 m wall along the south side of the field, 30 m south of its middle
+  const sc = sceneOf(wall), { c, get } = run(sc), r = await get();
+  check('shade: the job is built and the moment worked out, and the answer is ready', r.state === 'ready' && r.mask && r.lattice, r.state);
+  const rects = S3.shadeRects(r.lattice, r.mask), words = S3.shadeWords({ field: sc.field, mask: r.mask, lattice: r.lattice, momentMs: sun.sunEvents(DEC21, LAT, LON).noon });
+  check('shade: a 10 m wall 30 m south casts its shadow north onto the field at winter noon: cells in shade, all of them on the wall side (south of the middle)', rects.length > 0 && rects.every(q => q.z + q.d / 2 > -1), rects.slice(0, 3));
+  const share = words.share;
+  check(`shade: a fair part of the field is in its shade: the shadow is 25 m long at this sun, on a lattice of 5 m cells (${Math.round(share * 100)}%)`, share > 0.1 && share < 0.4, share);
+  check('shade: the sentence names the field, the share to 5% and the cause', /North field: about \d+% of it is in the shade of the land\./.test(words.lines[0]), words.lines);
+  same('shade: the sentence that must be on screen', words.lines[1], 'Shade figures are about, to the half hour.');
+  check('shade: the recipe in the "i" is the shade module\'s own', shade.RECIPE.startsWith('About, to the half hour.'));
+  const flat = await run(sceneOf(() => 0)).get(), wf = S3.shadeWords({ field: sc.field, mask: flat.mask, lattice: flat.lattice, momentMs: 0 });
+  check('shade: flat ground at noon is in sun and says so, with no hatching', S3.shadeRects(flat.lattice, flat.mask).length === 0 && /in sun\.$/.test(wf.lines[0]), wf.lines);
+  const night = await run(sceneOf(wall, { sunHeight: -5 })).get(), wn = S3.shadeWords({ field: sc.field, mask: night.mask, lattice: night.lattice, momentMs: 0 });
+  check('shade: with the sun down no shade is drawn and it says so', S3.shadeRects(night.lattice, night.mask).length === 0 && /the sun is down/.test(wn.lines[0]), wn.lines);
+  const holey = await run(sceneOf((x, z) => (x > -80 ? NaN : 0))).get(), wh = S3.shadeWords({ field: sc.field, mask: holey.mask, lattice: holey.lattice, momentMs: 0 });
+  check('shade: where heights are missing nothing is shaded and nothing is cleared: it says it could not be worked out, and draws nothing there', S3.shadeRects(holey.lattice, holey.mask).length === 0 && /could not be worked out for most of it/.test(wh.lines[0]), wh.lines);
+  const none = S3.createShade({ ask: () => Promise.resolve({}) }), flatScene = { ...sc, heights: { model: { flat: true } } };
+  same('shade: with no heights it says so and works nothing out', none.stateFor(true, flatScene, false), { state: 'cannot', words: ['Heights not read, so the shade cannot be worked out.'] });
+  same('shade: switched off it costs nothing', none.stateFor(false, sc, false), { state: 'off' });
+  check('shade: the lattice step keeps the job quick: 5 m for a small field, 10 m for 64 ha, 20 m for a very large one', [S3.stepFor(1e4), S3.stepFor(64e4), S3.stepFor(3e6)].join() === '5,10,20', [S3.stepFor(1e4), S3.stepFor(64e4), S3.stepFor(3e6)]);
+  c.dispose();
+
+  // ---- the first-open rule (js/farm3d-rule.js)
+  const strong = { webgl: true, memoryGB: 8, forcedColors: false, highContrast: false, software: false, caveat: false };
+  same('device rule: a strong device', R3.deviceRule(strong), { strong: true, why: '' });
+  same('device rule: 2 GB or less is not strong; "not known" never lowers it', [R3.deviceRule({ ...strong, memoryGB: 2 }).why, R3.deviceRule({ ...strong, memoryGB: 0 }).strong, R3.deviceRule({ ...strong, memoryGB: undefined }).strong], ['memory', true, true]);
+  same('device rule: no WebGL, a software renderer, a major performance caveat', [R3.deviceRule({ ...strong, webgl: false }).why, R3.deviceRule({ ...strong, software: true }).why, R3.deviceRule({ ...strong, caveat: true }).why], ['no-webgl', 'software', 'caveat']);
+  same('first open: a strong device with nothing remembered opens in 3D, by the rule (not written)', R3.firstView(strong, null), { view: '3d', say: '', auto: true });
+  same('first open: a weak device with nothing remembered opens on the board, and says why', R3.firstView({ ...strong, memoryGB: 2 }, null).view, 'board');
+  same('first open: a remembered choice stands: board stays the board, 3D stays 3D', [R3.firstView(strong, 'board').view, R3.firstView(strong, '3d').view], ['board', '3d']);
+  same('HIGH CONTRAST gives the board with its sentence, even when 3D was remembered', [R3.firstView({ ...strong, highContrast: true }, '3d'), R3.firstView({ ...strong, forcedColors: true }, null).view], [{ view: 'board', say: 'High contrast colours are on, so the board is shown.', auto: true }, 'board']);
+  const memory = { v: null, setItem(k, v) { this.v = [k, v]; }, getItem() { return this.v?.[1] ?? null; } };
+  R3.remember(memory, '3d'); same('the farmer\'s press is kept under crophalo.farm3d.v1 and read back', [memory.v, R3.recall(memory)], [['crophalo.farm3d.v1', '3d'], '3d']);
+  same('a storage that refuses keeps nothing and breaks nothing', [R3.recall({ getItem() { throw new Error('no'); } }), (() => { R3.remember({ setItem() { throw new Error('no'); } }, 'board'); return 'fine'; })()], [null, 'fine']);
+  same('graphics memory lost: the first time "3D paused" with Try 3D again; the second time the board', [R3.lossStep(1), R3.lossStep(2)], [{ action: 'pause', say: '3D paused. The device needed its graphics memory.', again: 'Try 3D again' }, { action: 'board', say: 'The 3D view stopped twice, so the board is shown.' }]);
+}
+
 console.log(`${passed} passed, ${failed} failed`);
 process.exit(failed ? 1 : 0);

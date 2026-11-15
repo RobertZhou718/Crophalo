@@ -1,7 +1,7 @@
 // Where the NASA Earthdata login lives: in the Crophalo folder, in the server settings, or in the home folder.
-// netrcWords() and parseNetrc() are pure; findLogin() only reads. Nothing here logs or writes. Run as a program, it prints one line for
+// netrcWords(), parseNetrc() and withoutEntry() are pure; findLogin() only reads. Nothing here logs or writes. Run as a program, it prints one line for
 // the starters, "yes <where>" or "no" and never a value, so they count a login as the server does: an active entry with a login and a password.
-// Checked by scripts/test_server.mjs (the netrc parser, the finding order and the one line).
+// Checked by scripts/test_server.mjs (the netrc parser, the order of the places, the one line and the NASA entry taken out of a netrc file).
 import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
@@ -45,6 +45,44 @@ export function parseNetrc(text, host = EARTHDATA_HOST) {
   return whole();
 }
 
+// The netrc text without the words of every entry for `host`: "machine <host>" and its login, password and account, up to the next
+// machine, default or macdef. Other entries stay exactly as written, on the same line or not, with their comments and quotes;
+// a line left with nothing but spaces is dropped, and a line that lost words loses its trailing spaces. The starters call this through Node
+// (node scripts/earthdata.mjs --others FILE), so a new NASA login never takes another service's login with it.
+export function withoutEntry(text, host = EARTHDATA_HOST) {
+  const all = String(text ?? ''), words = [], re = /\s+|#[^\n]*|"((?:[^"\\]|\\[\s\S])*)"|(\S+)/g;
+  for (let m; (m = re.exec(all));) if (m[1] != null || m[2] != null) words.push({ start: m.index, end: m.index + m[0].length, word: m[1] != null ? m[1].replace(/\\(["\\])/g, '$1') : m[2] });
+  const cut = [];   // [start, end) of each word to take out
+  for (let i = 0, mine = false; i < words.length; i++) {
+    const w = words[i].word;
+    if (w === 'machine' || w === 'default' || w === 'macdef') {
+      mine = w === 'machine' && words[i + 1]?.word === host;
+      if (mine) cut.push(words[i], words[i + 1]);
+      if (w !== 'default') i++;   // the word after machine is its host, after macdef the macro's name, as parseNetrc() reads them
+    } else if (w === 'login' || w === 'password' || w === 'account') {
+      if (mine) cut.push(words[i], ...(words[i + 1] ? [words[i + 1]] : []));
+      i++;   // the word after a key is its value, even when it reads "machine"
+    } else if (mine) cut.push(words[i]);
+  }
+  if (!cut.length) return all;
+  let out = '', at = 0;
+  const touched = new Set();   // the start of each line that lost a word
+  for (const w of cut) {
+    let end = w.end; while (all[end] === ' ' || all[end] === '\t') end++;   // the spaces after a word go with it
+    out += all.slice(at, w.start); at = end;
+    touched.add(out.lastIndexOf('\n') + 1);
+  }
+  out += all.slice(at);
+  let lines = '', from = 0;
+  for (const line of out.split(/(?<=\n)/)) {
+    const mark = from; from += line.length;
+    if (!touched.has(mark)) { lines += line; continue; }
+    const body = line.replace(/\r?\n$/, ''), ending = line.slice(body.length), kept = body.replace(/[ \t]+$/, '');
+    if (kept.trim()) lines += kept + ending;
+  }
+  return lines;
+}
+
 const readText = file => { try { return fs.readFileSync(file, 'utf8'); } catch { return null; } };
 
 // First found wins: the folder, then the server settings, then the home folder.
@@ -61,7 +99,21 @@ export function findLogin(root, { env = process.env, home = os.homedir() } = {})
 
 // node scripts/earthdata.mjs: the starters' one question, answered for the Crophalo folder above scripts/.
 const HERE = fileURLToPath(import.meta.url), real = file => { try { return fs.realpathSync(file); } catch { return path.resolve(file); } };
+// node scripts/earthdata.mjs --others FILE [--base64]: the starters' way to keep every other service's entry when the NASA login is written again.
+// It prints FILE without its NASA entries, byte for byte, ending with a line end; with --base64 as "ok:<base64>" for Windows PowerShell.
+// It holds other services' passwords, so it is only ever written into a file: to a terminal it prints nothing and exits 2.
 if (process.argv[1] && real(process.argv[1]) === real(HERE)) {
-  const { where } = findLogin(path.resolve(path.dirname(HERE), '..'));
-  process.stdout.write(where ? `yes ${where}\n` : 'no\n');
+  const args = process.argv.slice(2);
+  if (args[0] === '--others') {
+    let bytes = null;
+    try { bytes = fs.readFileSync(args[1] ?? ''); } catch { process.exit(1); }
+    if (process.stdout.isTTY) process.exit(2);
+    let rest = withoutEntry(bytes.toString('latin1'));   // one byte, one letter: the other lines go back exactly as they were
+    if (rest && !rest.endsWith('\n')) rest += '\n';
+    const out = Buffer.from(rest, 'latin1');
+    process.stdout.write(args.includes('--base64') ? `ok:${out.toString('base64')}\n` : out);
+  } else {
+    const { where } = findLogin(path.resolve(path.dirname(HERE), '..'));
+    process.stdout.write(where ? `yes ${where}\n` : 'no\n');
+  }
 }

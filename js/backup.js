@@ -6,7 +6,7 @@ export const PREFIX = 'crophalo.', MAX_BYTES = 25 * 1024 * 1024, MAX_VALUE = 8 *
 export const NOT_KEPT = Object.freeze(['crophalo.fx.v1', 'crophalo.perf.v1', 'crophalo.backup.id', 'crophalo.admin']);   // rates and logs are made again; the admin and backup id never travel
 const KEY_OK = /^crophalo\.[a-z0-9][a-z0-9._-]{0,99}$/;
 export const isKept = key => typeof key === 'string' && KEY_OK.test(key) && !NOT_KEPT.includes(key);
-const LISTS = ['crophalo.saved.v1', 'crophalo.notes.v1', 'crophalo.remind.v1', 'crophalo.farms.v1'], OBJECTS = ['crophalo.settings.v1', 'crophalo.units.v1', 'crophalo.answers.v1', 'crophalo.costs.v1', 'crophalo.welcome.v1'];
+const LISTS = ['crophalo.saved.v1', 'crophalo.notes.v1', 'crophalo.todo.v1', 'crophalo.remind.v1', 'crophalo.farms.v1'], OBJECTS = ['crophalo.settings.v1', 'crophalo.units.v1', 'crophalo.answers.v1', 'crophalo.costs.v1', 'crophalo.welcome.v1'];
 export const WORDS = Object.freeze({ notBackup: 'That file is not a Crophalo backup, so nothing was changed.', noRoom: 'This browser has no room for that backup, so nothing was changed.', tooBig: 'That file is too big to be a Crophalo backup, so nothing was changed.' });
 
 const keysOf = storage => { const out = []; try { for (let i = 0; i < storage.length; i++) { const k = storage.key(i); if (isKept(k)) out.push(k); } } catch { /* an unreadable store has nothing to give */ } return out.sort(); };

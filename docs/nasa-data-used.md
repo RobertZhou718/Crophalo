@@ -42,7 +42,7 @@ Every figure in Crophalo that comes from outside carries a small "i" button. It 
 ### NASA ECOSTRESS ground temperature (on the Satellites tab)
 
 - **What it is.** A thermal camera on the International Space Station that sees the temperature of the ground surface at about 70 m. It passes at different hours of the day, because the station's orbit drifts through the day.
-- **What Crophalo does with it.** It reads the one 70 m pixel that holds the field, in the newest clear passes of the last 60 days. A pixel with cloud, lower quality or water is never used. Each pass names its date and its local solar time, and passes made at different hours are not compared. It is the temperature of the surface, not of the air.
+- **What Crophalo does with it.** It reads the one 70 m pixel that holds the field, in every clear pass of the last 365 days, and counts the clear daytime days with the ground at 45 °C or more. A pixel with cloud, lower quality or water is never used. Each pass names its date and its local solar time, and passes made at different hours are not compared. It is the temperature of the surface, not of the air.
 - **Version in use.** ECOSTRESS Tiled Land Surface Temperature and Emissivity Instantaneous L2 Global 70 m, version 003, and version 002 for a pass that version 003 does not have yet (checked 14 November 2026), from NASA's Land Processes DAAC (LP DAAC).
 - **Credit.** DOI 10.5067/ECOSTRESS/ECO_L2T_LSTE.003 and 10.5067/ECOSTRESS/ECO_L2T_LSTE.002.
 - **More.** https://ecostress.jpl.nasa.gov/
@@ -56,6 +56,7 @@ Every figure in Crophalo that comes from outside carries a small "i" button. It 
 - **More.** https://lpdaac.usgs.gov/products/hlss30v002/
 
 ### NASA GIBS satellite images (the Layers on the setup map)
+- **The satellite base of the map.** The Satellite base is NASA's own picture, never a licensed photograph: the Harmonized Landsat Sentinel-2 true colour (HLS S30 and L30, 30 m, layers HLS_S30_Nadir_BRDF_Adjusted_Reflectance and HLS_L30_Nadir_BRDF_Adjusted_Reflectance) near the ground, and MODIS Terra true colour (250 m) under it and when zoomed out. Crophalo picks the newest clear day for the place at run time and always shows its date. Credit on the map: "Imagery: NASA GIBS / Worldview" with each picture's name and date. The 30 m pictures are blurrier than an aerial photo, so field edges are approximate.
 - **What Crophalo does.** Draws NASA's daily pictures of plant greenness (MODIS), soil moisture (SMAP), rain rate (GPM IMERG) and land temperature (MODIS) over the map, each with its date, its colour bar and a sentence where NASA has no image.
 - **Credit.** We acknowledge the use of imagery provided by services from NASA's Global Imagery Browse Services (GIBS), part of NASA's Earth Science Data and Information System (ESDIS).
 - **More.** https://nasa-gibs.github.io/gibs-api-docs/
@@ -76,8 +77,6 @@ These are not NASA's. They are listed because the contest asks for every source 
 | ISRIC SoilGrids | A first guess at the soil where there is no soil test | ISRIC, World Soil Information |
 | FAOSTAT | What crops each country grows | Food and Agriculture Organization of the United Nations |
 | MapSPAM 2020 | Where crops are grown near the field | International Food Policy Research Institute |
-| Esri World Imagery | The satellite photograph under the map | Esri and its imagery partners |
-| Esri light grey map | The plain light map where the detailed one cannot load or near the poles | Esri and its partners |
 | OpenFreeMap, with OpenMapTiles and OpenStreetMap data | The Light map and the names of countries, regions and places over the satellite photo (never the name of any water) | OpenFreeMap, OpenMapTiles and OpenStreetMap contributors |
 | OpenStreetMap, through Nominatim | Looking up a place name | OpenStreetMap contributors |
 | Leaflet, MapLibre GL JS, three.js | The map and the 3D view | Their open-source authors |

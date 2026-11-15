@@ -179,9 +179,17 @@ export function cleanContractPlan(raw, cropOk = () => true) {
   });
   if (!seasons.length || seasons.some(x => !x)) return null;
   const sc = raw.scores && typeof raw.scores === 'object' ? Object.fromEntries(['water', 'soil', 'erosion', 'income', 'weather'].map(k => [k, num(raw.scores[k], 0, 100, null)])) : null;
+  const evidence = stressLine(raw.evidence);
   return { id: ID_OK.test(raw.id || '') ? raw.id : 'plan', name: text(raw.name, 60) || 'Plan', kind: raw.kind === 'proposed' ? 'proposed' : 'current', seasons,
-    score: num(raw.score, 0, 100, null), scores: sc, flag: pick(raw.flag, ['holds', 'borderline', 'fails'], null), fit: text(raw.fit, 40), why: text(raw.why, 400), bareMonths: num(raw.bareMonths, 0, 12, null),
+    score: num(raw.score, 0, 100, null), scores: sc, flag: pick(raw.flag, ['holds', 'borderline', 'fails'], null), fit: text(raw.fit, 40), why: text(raw.why, 400), bareMonths: num(raw.bareMonths, 0, 12, null), role: pick(raw.role, ['suggest', 'chosen', 'now'], null), ...(evidence ? { evidence } : {}),
     slots: Array.isArray(raw.slots) && raw.slots.length && raw.slots.length <= 12 && raw.slots.every(c => ID_OK.test(c || '') && cropOk(c)) ? raw.slots.slice() : null };   // the crop cycle the engine planned: its seasons repeat it over three years or more
+}
+// The report's own past-years line ("No stress thresholds crossed in 24 of 25 tested years…") with its rules and sources, kept with the plan so My farm
+// says what the report said; every other line of evidence stays in the report.
+function stressLine(raw) {
+  const e = Array.isArray(raw) ? raw.find(x => x && typeof x.text === 'string' && /^No stress thresholds crossed in \d+/.test(x.text)) : null;
+  if (!e) return null;
+  return [{ text: text(e.text, 400), rules: (Array.isArray(e.rules) ? e.rules : []).map(r => text(r, 200)).filter(Boolean).slice(0, 8), sources: (Array.isArray(e.sources) ? e.sources : []).filter(v => typeof v === 'string' && /^[a-z0-9-]{1,24}$/.test(v)).slice(0, 8) }];
 }
 export function cleanReport(raw, cropOk = () => true) {
   if (!raw || typeof raw !== 'object') return null;
@@ -469,13 +477,13 @@ export function readScore(farm, field, scenario = 'base') {
   const plan = planOf(farm, field.id, scenario);
   if (field.kind === 'garden') return { state: 'trees', words: 'Trees and bushes are not scored' };
   if (!plan) return { state: 'unplanted', words: 'Not planted' };
-  if (!ENGINE?.score) return { state: 'unread', words: 'Not read yet' };
+  if (!ENGINE?.score) return { state: 'unread', words: 'No score yet' };
   let res;
-  try { res = ENGINE.score({ farm, field, plan, scenario }); } catch { return { state: 'unread', words: 'Not read yet' }; }
-  if (!res || typeof res !== 'object') return { state: 'unread', words: 'Not read yet' };
+  try { res = ENGINE.score({ farm, field, plan, scenario }); } catch { return { state: 'unread', words: 'No score yet' }; }
+  if (!res || typeof res !== 'object') return { state: 'unread', words: 'No score yet' };
   if (res.state === 'needs-soil') return { state: 'needs-soil', words: 'Needs a soil' };
   if (res.state === 'waiting') return { state: 'waiting', words: 'Waiting for weather' };
-  if (!Number.isFinite(res.score)) return { state: 'unread', words: 'Not read yet' };
+  if (!Number.isFinite(res.score)) return { state: 'unread', words: 'No score yet' };
   const score = Math.round(num(res.score, 0, 100)), years = res.years && Number.isFinite(res.years.total) ? { hurt: num(res.years.hurt, 0, 99, 0), close: num(res.years.close, 0, 99, 0), total: num(res.years.total, 0, 99, 0), hurtYears: (Array.isArray(res.years.hurtYears) ? res.years.hurtYears : []).filter(Number.isFinite).slice(0, 40) } : null;
   return { state: 'scored', score, fit: fitWord(score), words: `${score} · ${fitWord(score)}`, parts: res.parts && typeof res.parts === 'object' ? res.parts : null,
     bareMonths: Number.isFinite(res.bareMonths) ? num(res.bareMonths, 0, 12) : null, sales: res.sales && typeof res.sales === 'object' ? res.sales : null, years, suits: res.suits ?? null };
@@ -614,7 +622,7 @@ export function applyReport(store, { place, area, areaEstimated, current, propos
   }
   const farm = getFarm(cur, farmId);
   if (farm.fields.length >= LIMITS.fields) return { refused: 'A farm holds up to 40 fields.' };
-  const added = addField(cur, farmId, { ring, name: text(place?.fieldName || '', LIMITS.nameField) || undefined, soil: { texture: 'loam', om: 'med', source: 'assumed until the soil lookup answers', assumed: true } }, { now, random });
+  const added = addField(cur, farmId, { ring, name: text(place?.fieldName || '', LIMITS.nameField) || undefined, soil: { texture: 'loam', om: 'med', source: 'assumed until the soil map answers', assumed: true } }, { now, random });
   if (added.refused) return { refused: added.refused };
   let st = mapFarm(added.store, farmId, f => touch({ ...f, fields: f.fields.map(x => x.id === added.field.id ? { ...x, estimated, report, terrain: slopeIn != null && !estimated ? cleanTerrain({ v: 1, slope: slopeIn, source: 'your drawn field' }) : x.terrain } : x) }, now));
   const cp = report.current;   // the rotation the field runs now, so the Fields table and the score have a plan to read
@@ -729,9 +737,11 @@ export function judgeSeason(season, series, crop, ctx = {}) {
       for (let n = mid0; n <= mid1; n++) { const v = low(n); if (v < 0) add('hit', 'frost-flowering', n, 'Frost at flowering', v); }
       for (let n = mid1 + 1; n <= late1; n++) { const v = low(n); if (v <= -2) add('hit', 'frost-ripening', n, 'Frost before ripe', v); else if (v < 0) add('close', 'frost-ripening', n, 'Frost before ripe', v); }
     }
-    if (winter) {
-      for (let n = mid0 - 40; n <= mid0 - 10; n++) { const v = low(n); if (v <= -4) add('hit', 'frost-winter', n, 'A hard frost before flowering', v); }
-      for (let n = mid0; n <= mid1; n++) { const v = low(n); if (v <= -2) add('hit', 'frost-flowering', n, 'Frost at flowering', v); }
+    if (winter) {   // a winter cereal flowers at the end of its mid stage (the crop table's own rule: ten days before it ends), early to mid June in southern Ontario
+      const flower = crop.fl === 'end' ? mid1 - 10 : mid0;
+      for (let n = flower - 40; n <= flower - 10; n++) { const v = low(n); if (v <= -4) add('hit', 'frost-winter', n, 'A hard frost before flowering', v); }
+      for (let n = flower; n <= mid1; n++) { const v = low(n); if (v <= -2) add('hit', 'frost-flowering', n, 'Frost at flowering', v); }
+      notes.push('Winter survival is not judged: it needs snow cover, which this record does not have.');
     }
     if (Number.isFinite(crop.heat) && crop.heat < 60) {
       const line = crop.heat + 2; let hot = 0, first = null;
@@ -749,7 +759,8 @@ export function judgeSeason(season, series, crop, ctx = {}) {
     if (ratio < hard) add('hit', 'dry', harvest, `A dry season (${Math.round(ratio * 100)}% of the water the crop needs)`);
     else if (ratio < 0.75 && Number.isFinite(ctx.usual?.ratio) && ctx.usual.ratio - ratio >= 0.1) add('close', 'dry', harvest, `A dry season (${Math.round(ratio * 100)}% of the water the crop needs)`);
   }
-  if (Number.isFinite(crop.maxGs) && rain > crop.maxGs) add('close', 'wet', harvest, `A very wet season (${Math.round(rain)} mm)`);
+  if (Number.isFinite(crop.maxGs)) { if (rain > crop.maxGs) add('close', 'wet', harvest, `A very wet season (${Math.round(rain)} mm)`); }
+  else notes.push('Very wet seasons are not judged for this crop.');
   // one line per kind of trouble in a year: its worst night (or day), and how many nights it happened on
   const causes = [];
   for (const kind of [...new Set(raw.map(c => c.kind))]) {

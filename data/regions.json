@@ -1,6 +1,262 @@
 [
-  { "id": "oxford", "name": "Oxford County, Ontario", "country": "Canada", "lat": 43.13, "lon": -80.75, "rotation": "corn-soy", "defaults": { "irrigation": "none", "soil": "assumed" },
-    "try": ["corn", "soy", "wheat"],
-    "aliases": ["Ontario", "Oxford", "Woodstock"],
-    "blurb": "Corn and soybean country in south-central Ontario, where winter wheat is often sown after soybeans." }
+ {
+  "id": "mead-field",
+  "name": "A research field near Mead, Nebraska",
+  "country": "United States",
+  "lat": 41.179469,
+  "lon": -96.439756,
+  "area_ha": 64.1,
+  "area_ac": 158.4,
+  "outline": [
+   [
+    -96.444624,
+    41.182989
+   ],
+   [
+    -96.434949,
+    41.183009
+   ],
+   [
+    -96.434882,
+    41.182928
+   ],
+   [
+    -96.434909,
+    41.17593
+   ],
+   [
+    -96.44395,
+    41.17592
+   ],
+   [
+    -96.444651,
+    41.176356
+   ],
+   [
+    -96.444624,
+    41.182989
+   ]
+  ],
+  "rotation": "corn-soy",
+  "defaults": {
+   "irrigation": "none",
+   "tillage": "notill",
+   "soil": "map",
+   "soil_texture": "silt",
+   "soil_note": "USDA SSURGO soil survey (Soil Data Access): Tomek silt loam, 0 to 2 percent slopes, 85 % of the map unit; top 15 cm 6 % sand, 68 % silt, 26 % clay, organic matter 3.5 %, pH 5.7. A soil map, not a test of this field."
+  },
+  "aliases": [
+   "Nebraska",
+   "Mead",
+   "Lincoln",
+   "Omaha",
+   "United States",
+   "USA",
+   "US",
+   "Midwest"
+  ],
+  "blurb": "A rain-fed field of the University of Nebraska's Agricultural Research and Development Center near Mead, Nebraska (AmeriFlux site US-Ne3), strictly no-till since 2001, with corn in odd years and soybeans in even years. Hot summers, cold winters; in a normal year rain covers about four-fifths of what corn needs.",
+  "try": {
+   "label": "Corn, then soybeans (no-till, rain-fed)",
+   "rotation": "corn-soy",
+   "note": "The field as it is grown. The engine finds it holds up; a cover crop after harvest is not a firm change (see the report)."
+  }
+ },
+ {
+  "id": "beltsville-field",
+  "name": "A research field near Beltsville, Maryland",
+  "country": "United States",
+  "lat": 39.031031,
+  "lon": -76.844119,
+  "area_ha": 6.3,
+  "area_ac": 15.6,
+  "outline": [
+   [
+    -76.846,
+    39.032042
+   ],
+   [
+    -76.844952,
+    39.032042
+   ],
+   [
+    -76.844612,
+    39.03173
+   ],
+   [
+    -76.843109,
+    39.031727
+   ],
+   [
+    -76.842673,
+    39.031878
+   ],
+   [
+    -76.842236,
+    39.03196
+   ],
+   [
+    -76.842091,
+    39.031808
+   ],
+   [
+    -76.841829,
+    39.031645
+   ],
+   [
+    -76.841815,
+    39.031318
+   ],
+   [
+    -76.841931,
+    39.031085
+   ],
+   [
+    -76.842193,
+    39.030922
+   ],
+   [
+    -76.842469,
+    39.03077
+   ],
+   [
+    -76.842731,
+    39.030595
+   ],
+   [
+    -76.843182,
+    39.029805
+   ],
+   [
+    -76.844321,
+    39.030117
+   ],
+   [
+    -76.846,
+    39.030253
+   ],
+   [
+    -76.846,
+    39.032042
+   ]
+  ],
+  "rotation": "corn-soy",
+  "defaults": {
+   "irrigation": null,
+   "tillage": null,
+   "soil": "map",
+   "soil_texture": "loam",
+   "soil_note": "USDA SSURGO soil survey (Soil Data Access): Russett-Christiana complex, 2 to 5 percent slopes. Main part Russett (40 % of the map unit): top 10 cm 57.4 % sand, 37.7 % silt, 4.9 % clay, organic matter 5 %, pH 3.9, shown as Loam. Christiana (35 %): top 15 cm 22 % sand, 66 % silt, 12 % clay, organic matter 2 %, pH 4.3. A soil map, not a test of this field."
+  },
+  "aliases": [
+   "Maryland",
+   "Beltsville",
+   "Greenbelt",
+   "Goddard",
+   "Washington",
+   "Prince George's County",
+   "United States",
+   "USA",
+   "US"
+  ],
+  "blurb": "The north part of the OPE3 research field of the USDA Beltsville Agricultural Research Center in Maryland, about 2.7 miles (4.3 km) north of the NASA Goddard Visitor Center. On the USDA crop map it grew corn about two years for each soybean year from 2016 to 2022, and soybeans on nearly all of the field in each of the last three years (2023 to 2025). About 45 inches (1,156 mm) of rain in a normal year and July highs near 88 °F (31 °C). The owner's pages do not say whether it is watered or how it is tilled.",
+  "try": {
+   "label": "Corn, then soybeans",
+   "rotation": "corn-soy",
+   "note": "Corn and soybeans in turn: the nearest plain rotation to what the USDA crop map shows here (corn about two years for each soybean year until 2022, then soybeans three years running). The engine finds it holds up; a cover crop after harvest is not called a clear change (see the report)."
+  }
+ },
+ {
+  "id": "barrie-field",
+  "name": "A field near Barrie, Ontario",
+  "country": "Canada",
+  "lat": 44.441139,
+  "lon": -79.657324,
+  "area_ha": 67.1,
+  "outline": [
+   [
+    -79.664107,
+    44.441871
+   ],
+   [
+    -79.661381,
+    44.443468
+   ],
+   [
+    -79.658654,
+    44.444629
+   ],
+   [
+    -79.655718,
+    44.44591
+   ],
+   [
+    -79.654041,
+    44.445579
+   ],
+   [
+    -79.653307,
+    44.444328
+   ],
+   [
+    -79.652468,
+    44.442896
+   ],
+   [
+    -79.652153,
+    44.442217
+   ],
+   [
+    -79.651105,
+    44.440258
+   ],
+   [
+    -79.650581,
+    44.43973
+   ],
+   [
+    -79.653831,
+    44.438374
+   ],
+   [
+    -79.658654,
+    44.436565
+   ],
+   [
+    -79.660122,
+    44.436866
+   ],
+   [
+    -79.66159,
+    44.438374
+   ],
+   [
+    -79.663163,
+    44.440183
+   ],
+   [
+    -79.664107,
+    44.441871
+   ]
+  ],
+  "rotation": "corn-soy-wheat",
+  "defaults": {
+   "irrigation": "none",
+   "soil": "map",
+   "soil_texture": "loam",
+   "soil_note": "SoilGrids (250 m model, CC BY 4.0) at the field: 53% sand, 35% silt, 12% clay in the top 5 cm, so a sandy loam, shown as Loam; a map, not a test of this field"
+  },
+  "aliases": [
+   "Ontario",
+   "Simcoe",
+   "Barrie",
+   "Barrie field"
+  ],
+  "blurb": "A large grain field south-east of Barrie, Ontario, between Highway 400 and a farm road. The 2025 crop map shows corn on it; neighbours grow winter wheat, corn and soybeans: cold snowy winters, a short frost-free season and wet springs.",
+  "try": {
+   "label": "Corn, soybeans, then winter wheat",
+   "rotation": "corn-soy-wheat",
+   "note": "The plan the report starts from (see the report for how it fits this field)."
+  }
+ }
 ]

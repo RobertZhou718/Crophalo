@@ -3,6 +3,7 @@
 // squareWords(); loadImerg() asks the server's own route once. Checked by scripts/test_satellites.mjs (the lookup's own answer, gaps, first estimates, a refusal, hostile input, every sentence).
 /* The answer read (GET /api/imergrain?lat=&lon=): { ok, source, data_date, cell: { lat, lon, width_km, height_km, edges }, days: [[YYYY-MM-DD, mm | null, 'late' | 'early' | null] x30],
    days_read, total_mm, late, early, not_published, read_errors, first_estimate: [day], newest_day, incomplete?, note } or { ok: false, reason }. */
+import { plainReason } from './satellites2-data.js';
 const fin = v => typeof v === 'number' && Number.isFinite(v);
 const isDay = d => typeof d === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(d) && Number.isFinite(Date.parse(d + 'T00:00:00Z'));
 const MON = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'], FULL = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
@@ -13,7 +14,7 @@ const num = (v, d = 1) => v.toFixed(d).replace(/\.0$/, '');
 
 // The answer rebuilt from known parts: { ok: true, days: [{ day, mm, run }], read, total, newest, early: [day], cell: { w, h }, missing, note } or { ok: false, reason }.
 export function cleanRain(raw) {
-  if (!raw || typeof raw !== 'object' || raw.ok !== true || !Array.isArray(raw.days)) return { ok: false, reason: typeof raw?.reason === 'string' && raw.reason ? raw.reason.slice(0, 240) : RAIN_DOWN };
+  if (!raw || typeof raw !== 'object' || raw.ok !== true || !Array.isArray(raw.days)) return { ok: false, reason: plainReason(raw?.reason, RAIN_DOWN) };   // the reason in a farmer's words: never a program path, a program name or a status code
   const days = [];
   for (const row of raw.days.slice(0, 40)) {
     if (!Array.isArray(row) || !isDay(row[0])) continue;

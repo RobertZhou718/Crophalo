@@ -137,6 +137,8 @@ export function droughtWords({ weeks, county, state, from, to }) {
   const [code, words] = CLASS[worst];
   return `Half or more of ${place} was in drought (D1, moderate, or worse) for ${wet} of the season's ${n} ${n === 1 ? 'week' : 'weeks'}.${worst === 'd1' ? '' : ` At its worst, ${words} (${code}), in the week of ${longDay(week.date)}.`}`;
 }
+// The credit the Drought Monitor's own Permission page asks for, copied exactly (page read 14 November 2026), with [Map / Data] read as Data.
+export const DROUGHT_CREDIT = 'The U.S. Drought Monitor is jointly produced by the National Drought Mitigation Center at the University of Nebraska-Lincoln, the U.S. Department of Agriculture, the National Oceanic and Atmospheric Administration and NASA. Data courtesy of NDMC, via https://droughtmonitor.unl.edu.';
 export const DROUGHT_ASK = 'For the US Drought Monitor line, your field’s position goes to the Crophalo server, which asks the US FCC for your county.';
 
 // ---- the whole record
@@ -147,7 +149,7 @@ export function buildRecord(input) {
   const drought = d?.weeks ? droughtWords({ weeks: d.weeks, county: d.county, state: d.state, from: win.start, to: win.end }) : d?.reason ? d.reason : '';
   const sow = input.crop ? `${input.crop}, you sow about ${shortDay(win.start)}. ` : '';
   return { title: 'Crophalo season weather record', name: input.name || 'My field', place: input.place || '', seasonLine: `${sow}Season: ${longDay(win.start)} to ${longDay(win.end)}${win.soFar ? ' (the season so far)' : ''}.`, fixedLine: FIXED_LINE,
-    rows: built.rows, notes: built.notes, ok: built.ok, drought, myNotes: (input.notes ?? []).map(String), madeOn: input.madeOn ?? '', sources: input.sources ?? [], footer: FOOTER };
+    rows: built.rows, notes: built.notes, ok: built.ok, drought, droughtCredit: d?.weeks && drought ? DROUGHT_CREDIT : '', myNotes: (input.notes ?? []).map(String), madeOn: input.madeOn ?? '', sources: input.sources ?? [], footer: FOOTER };
 }
 // What the record offers and when: needs 30 days of this season's weather (rotations only).
 export const OFFER_WORDS = 'The season weather record needs 30 days of this season’s weather.';
@@ -159,7 +161,7 @@ export function recordHTML(rec) {
     <p class="st-fixed">${esc(rec.fixedLine)}</p>
     ${rec.ok ? `<table class="st-table"><thead><tr><th scope="col">What</th><th scope="col">This season</th><th scope="col">Rank</th><th scope="col">Middle season</th></tr></thead><tbody>${rows}</tbody></table>` : ''}
     ${rec.notes.length ? `<ul class="st-notes">${rec.notes.map(n => `<li>${esc(n)}</li>`).join('')}</ul>` : ''}
-    ${rec.drought ? `<section class="st-drought"><h3>US Drought Monitor</h3><p>${esc(rec.drought)}</p></section>` : ''}
+    ${rec.drought ? `<section class="st-drought"><h3>US Drought Monitor</h3><p>${esc(rec.drought)}</p>${rec.droughtCredit ? `<p class="st-credit">${esc(rec.droughtCredit).replace('https://droughtmonitor.unl.edu', '<a href="https://droughtmonitor.unl.edu">https://droughtmonitor.unl.edu</a>')}</p>` : ''}</section>` : ''}
     ${rec.myNotes.length ? `<section class="st-mine"><h3>My notes (written by me)</h3><ul>${rec.myNotes.map(n => `<li>${esc(n)}</li>`).join('')}</ul></section>` : ''}
     <footer><p>${esc(rec.footer)} Made ${esc(rec.madeOn ? longDay(rec.madeOn) : '')} from NASA and other public data. A guide, not advice. You decide.</p>${rec.sources.length ? `<ol class="st-sources">${rec.sources.map(s => `<li>${esc(s)}</li>`).join('')}</ol>` : ''}</footer></article>`;
 }

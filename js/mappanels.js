@@ -23,7 +23,7 @@ export function initPanels(ui, env = {}) {
     close(false); env.beforeOpen?.(id);
     opener = buttonOf(id); open = id;
     ui.host.innerHTML = `<section class="mapx-panel" role="dialog" aria-label="${esc(def.label)}" id="mapxPanel-${esc(id)}" tabindex="-1">
-      <header class="mapx-phead"><h3 id="mapxPanelTitle-${esc(id)}">${esc(def.title ?? def.label)}</h3><button type="button" class="mapx-pclose" aria-label="Close ${esc(def.label)}">${CLOSE_ICON}</button></header><div class="mapx-pbody"></div></section>`;
+      <header class="mapx-phead"><h2 id="mapxPanelTitle-${esc(id)}">${esc(def.title ?? def.label)}</h2><button type="button" class="mapx-pclose" aria-label="Close ${esc(def.label)}">${CLOSE_ICON}</button></header><div class="mapx-pbody"></div></section>`;
     card = ui.host.firstElementChild;
     card.setAttribute('aria-labelledby', `mapxPanelTitle-${id}`);
     opener?.setAttribute('aria-expanded', 'true');

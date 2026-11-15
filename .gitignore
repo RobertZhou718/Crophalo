@@ -13,3 +13,14 @@ scripts/_cache/
 __pycache__/
 *.pyc
 *.part
+
+# Keys and logins: a host setting, never a file of the repository (a stray one is kept out by name)
+.env
+.env.*
+*.key
+*.pem
+*.p12
+*.pfx
+.netrc
+_netrc
+*.secret

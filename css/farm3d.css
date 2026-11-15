@@ -1,26 +1,94 @@
 /* The 3D look of one field. Light mode, the one blue, calm. Everything the farmer reads is page text beside the picture.
    Every colour, size, space and corner is a token of css/app.css (the demo page loads it too), so the 3D block spaces and looks like the cards around it. */
-.f3d { display: grid; gap: var(--space-12); padding: var(--space-12) var(--space-16) var(--space-16); background: var(--bg); color: var(--ink); font-size: var(--fs-body); line-height: var(--lh-body); box-sizing: border-box; min-height: 100%; }   /* its own paper and padding, so it sits the same inside any page */
+.f3d { display: grid; align-content: start; gap: var(--space-12); padding: var(--space-12) var(--space-16) var(--space-16); background: var(--bg); color: var(--ink); font-size: var(--fs-body); line-height: var(--lh-body); box-sizing: border-box; min-height: 100%; }   /* its own paper and padding, so it sits the same inside any page */
 .f3d-bar { display: flex; align-items: center; justify-content: space-between; gap: var(--space-8); }
 .f3d-label { margin: 0; font-size: var(--fs-headline); overflow-wrap: anywhere; }
+.f3d-main { display: grid; gap: var(--space-12); min-width: 0; }
 .f3d-stage { position: relative; height: clamp(300px, 56vh, 620px); border: 1px solid var(--sep); border-radius: var(--r1); overflow: hidden; touch-action: none; background: var(--cell); }
 .f3d-stage:focus-visible { outline: 3px solid var(--accent); outline-offset: 2px; }
 .f3d-canvas { display: block; width: 100%; height: 100%; }
-.f3d-tools { position: absolute; left: var(--space-8); bottom: var(--space-8); display: flex; flex-wrap: wrap; justify-content: flex-start; gap: var(--space-8); max-width: calc(100% - var(--space-16)); }   /* on the left: a side panel opens over the right; 8 px between buttons so a thumb cannot hit the next one */
+.f3d-tools { position: absolute; z-index: 2; left: var(--space-8); top: var(--space-8); display: flex; flex-wrap: wrap; justify-content: flex-start; gap: var(--space-8); max-width: calc(100% - var(--space-16)); }   /* at the top, clear of the time bar; 8 px between buttons so a thumb cannot hit the next one */
 .f3d-btn { display: inline-flex; align-items: center; justify-content: center; min-width: var(--touch); min-height: var(--touch); padding: 0 var(--space-12); border: 1px solid var(--accent); border-radius: var(--r2); background: var(--card); color: var(--accent-text); font: inherit; font-size: var(--fs-btn); font-weight: var(--fw-semi); cursor: pointer; transition: background-color var(--t-fast) var(--ease); }
-.f3d-btn[aria-label] { font-size: var(--fs-lede); line-height: 1; }   /* the four icon buttons (turn, zoom): their glyphs are read at 20 px, the words button at the button size */
-.f3d-btn:hover { background: var(--accent-soft); }
+.f3d-btn svg { display: block; flex: none; }
+.f3d-btn:hover:not(:disabled) { background: var(--accent-soft); }
+.f3d-btn:disabled { border-color: var(--sep); color: var(--ink3); cursor: default; }   /* the camera waits for the picture */
 .f3d-btn:focus-visible { outline: 3px solid var(--accent); outline-offset: 2px; }
 .f3d-reset { white-space: nowrap; }
-.f3d-wait { position: absolute; left: var(--space-8); top: var(--space-8); right: var(--space-8); margin: 0; padding: var(--space-8) var(--space-12); border-radius: var(--r3); background: var(--glass); color: var(--ink); font-size: var(--fs-row); }
-.f3d-keys, .f3d-note { margin: 0; font-size: var(--fs-small); color: var(--ink2); }
+.f3d-wait { position: absolute; z-index: 2; left: var(--space-8); bottom: var(--space-8); right: var(--space-8); margin: 0; padding: var(--space-8) var(--space-12); border-radius: var(--r3); background: var(--glass); color: var(--ink); font-size: var(--fs-row); }
+.f3d-wait[hidden] { display: none; }
+.f3d-side { display: grid; align-content: start; gap: var(--space-12); min-width: 0; }
+.f3d-keys, .f3d-note, .f3d-credit { margin: 0; font-size: var(--fs-small); color: var(--ink2); }
 .f3d-legend { display: flex; flex-wrap: wrap; gap: var(--space-8); margin: 0; padding: 0; list-style: none; }
 .f3d-legend li { display: inline-flex; align-items: center; gap: var(--space-8); min-height: var(--row); padding: var(--space-4) var(--space-12); border: 1px solid var(--sep); border-radius: 999px; color: var(--ink2); background: var(--card); font-size: var(--fs-row); }   /* a pill: the corner is half the height on purpose */
 .f3d-legend li.is-on { border-color: var(--accent); color: var(--accent-text); font-weight: var(--fw-semi); box-shadow: inset 0 0 0 1px var(--accent); }
 .f3d-words { display: grid; gap: var(--space-8); }
+.f3d-more { margin: 0; }
+.f3d-more summary { display: flex; align-items: center; min-height: var(--touch, 44px); color: var(--link); font-size: var(--fs-small); font-weight: var(--fw-medium); cursor: pointer; }
+.f3d-more summary:focus-visible { outline: 3px solid var(--sel); outline-offset: 2px; border-radius: var(--r2); }
+.f3d-more-body, .f3d-more-lines { display: grid; gap: var(--space-8); }
+.f3d-more-body p { margin: 0; overflow-wrap: anywhere; }
 .f3d-words p { margin: 0; overflow-wrap: anywhere; }
+.f3d-words p:empty { display: none; }   /* a line with nothing to say (no height map credit while the land is flat) takes no room */
 .f3d-cover { font-weight: var(--fw-semi); }
 .f3d-plain { margin: 0; padding: var(--space-12) var(--space-16); border: 1px solid var(--sep); border-radius: var(--r2); background: var(--card); }
-@media (max-width: 599px) { .f3d { padding: var(--space-8) var(--space-12) var(--space-12); } .f3d-tools { gap: var(--space-4); } .f3d-reset { padding: 0 var(--space-8); }   /* the five buttons stay on one row and cover less of the picture */ .f3d-stage { height: clamp(260px, 52vh, 440px); } .f3d-legend li { flex: 1 1 auto; } }
-@media (prefers-reduced-motion: reduce) { .f3d-btn { transition: none; } }
-@media (forced-colors: active) { .f3d-btn, .f3d-legend li { border: 1px solid ButtonText; } .f3d-legend li.is-on { border-width: 3px; } }
+
+/* ---- the skeleton: a still sketch of the land, what is happening in words, a progress line with real steps, and the way back. It covers the picture's place
+   until the first picture is drawn, so nothing jumps; the shimmer of the app's skeletons runs only under Motion: Full. */
+.f3d-sk { position: absolute; inset: 0; z-index: 1; display: grid; place-items: center; padding: var(--space-16); transition: opacity var(--t-fast) var(--ease); }
+.f3d-sk[hidden] { display: none; }
+.f3d-sk.is-done { opacity: 0; }
+.f3d-sk-land { position: absolute; inset: 0; display: grid; place-items: center; perspective: 900px; pointer-events: none; }
+.f3d-sk-land .sk { grid-area: 1 / 1; display: block; max-width: none; height: auto; aspect-ratio: 1; border-radius: var(--r3); transform: rotateX(56deg) rotateZ(-20deg); }
+.f3d-sk-slab { width: min(56%, 440px); background-color: rgba(46, 139, 87, .1); }   /* a still sketch of the slab of land and its field, in the land's own soft green */
+.f3d-sk-field { width: min(30%, 236px); background-color: rgba(164, 113, 72, .14); box-shadow: inset 0 0 0 2px var(--sep); }
+.f3d[data-state=building] .f3d-tools { visibility: hidden; }   /* the camera has nothing to move yet: its buttons keep their place and appear with the picture */
+.f3d-sk-card { position: relative; display: grid; justify-items: center; gap: var(--space-8); width: min(340px, 100%); box-sizing: border-box; padding: var(--space-16) var(--space-20); border-radius: var(--r1); background: var(--glass); box-shadow: var(--shadow-lg); text-align: center; }
+.f3d-sk-title { margin: 0; font-size: var(--fs-headline); font-weight: var(--fw-semi); }
+.f3d-sk-step { margin: 0; min-height: 1.47em; font-size: var(--fs-small); color: var(--ink2); }
+.f3d.is-slow .f3d-sk-step { color: var(--ink); }
+.f3d-sk-bar { width: 100%; max-width: 240px; height: 6px; border-radius: 3px; background: var(--fill); overflow: hidden; }
+.f3d-sk-bar i { display: block; height: 100%; border-radius: inherit; background: var(--accent); transform-origin: 0 50%; transition: transform var(--t-base) var(--ease); }
+.f3d-back { margin-top: var(--space-4); }
+.f3d-sk-rows { display: grid; gap: var(--space-8); }
+.f3d-legend.f3d-sk-rows { display: flex; flex-wrap: wrap; }
+.f3d-sk-rows .sk { height: 14px; } .f3d-sk-rows .sk.title { height: 18px; } .f3d-sk-rows .sk.pill { width: 140px; height: var(--row); border-radius: 999px; }
+.f3d-sk-rows .sk:nth-child(3) { width: 82%; } .f3d-sk-rows .sk:nth-child(4) { width: 64%; }
+html[data-motion=less] .f3d-sk, html[data-motion=less] .f3d-sk-bar i { transition: none; }   /* Less: the progress line jumps, the skeleton goes at once */
+
+/* ---- My farm: the board's top row already says the date, the plan and Planned, so 3D shows none of them again. The picture and its words share the
+   board above the time bar: beside each other on a wide screen, one under the other (scrolling above the bar) on a narrow one. */
+.f3d-compact { container-type: size; height: 100%; min-height: 0; padding: var(--space-12) var(--gutter) calc(var(--strip-room, 0px) + var(--space-12)); overflow-y: auto; overscroll-behavior: contain; scroll-padding-bottom: calc(var(--strip-room, 0px) + var(--space-12)); }   /* what is scrolled into view (a focused word, a tab) stops above the time bar */
+.f3d-compact .f3d-stage { height: clamp(240px, 48vh, 520px); height: max(220px, 100cqh); }   /* the whole picture shows above the time bar (the board less its padding and the bar's room); the words follow below it */
+@container (min-width: 760px) {   /* the board's own width, so an open Compare panel beside it is counted */
+  .f3d-compact .f3d-main { grid-template-columns: minmax(0, 1fr) minmax(240px, 300px); height: max(260px, 100cqh); }
+  .f3d-compact .f3d-stage { height: auto; min-height: 0; }
+  .f3d-compact .f3d-side { min-height: 0; overflow-y: auto; padding-right: var(--space-4); }
+}
+@media (max-width: 599px) { .f3d { padding: var(--space-8) var(--space-12) var(--space-12); } .f3d-compact { padding-bottom: calc(var(--strip-room, 0px) + var(--space-12)); } .f3d-tools { gap: var(--space-4); } .f3d-reset { padding: 0 var(--space-8); }   /* the five buttons stay on one row and cover less of the picture */ .f3d-stage { height: clamp(260px, 52vh, 440px); } .f3d-legend li { flex: 1 1 auto; } .f3d-sk-card { padding: var(--space-12); } }
+@media (prefers-reduced-motion: reduce) { .f3d-btn, .f3d-sk, .f3d-sk-bar i { transition: none; } }
+@media (forced-colors: active) { .f3d-btn, .f3d-legend li { border: 1px solid ButtonText; } .f3d-legend li.is-on { border-width: 3px; } .f3d-sk-bar i { background: Highlight; } }
+
+/* ---- shade: the switch, the hour shown and the shade job's words; the year replay's legend; Try 3D again */
+.f3d-shade { display: grid; gap: var(--space-8); margin-top: var(--space-16); }
+.f3d-shade h3 { margin: 0; font-size: var(--fs-headline); }
+.f3d-sw { display: flex; align-items: center; gap: var(--space-12); min-height: var(--touch); cursor: pointer; }
+.f3d-sw input { width: 22px; height: 22px; flex: none; accent-color: var(--accent); }
+.f3d-hour { display: grid; gap: var(--space-4); }
+.f3d-hour input[type=range] { width: 100%; min-height: var(--touch); accent-color: var(--accent); }
+.f3d-hour-out { font-weight: var(--fw-semi); font-variant-numeric: tabular-nums; }
+.f3d-shade-words { display: grid; gap: var(--space-4); }
+.f3d-sw-words { margin: 0; color: var(--ink2); font-size: var(--fs-small); }
+.f3d-shade-words[data-state=cannot] .f3d-sw-words:first-child { color: var(--warn); }
+.f3d-past { margin: 0; font-weight: var(--fw-semi); color: var(--ink); }
+.f3d-past:empty { display: none; }
+.f3d-again { margin-inline-start: var(--space-8); }
+
+/* ---- details on the land: the switches, each a 44 px row, with the words of its state under it; OpenStreetMap's credit under the list */
+.f3d-land { display: grid; gap: var(--space-8); margin-top: var(--space-16); }
+.f3d-land h3 { margin: 0; font-size: var(--fs-headline); }
+.f3d-land-hint { margin: 0; font-size: var(--fs-small); color: var(--ink2); }
+.f3d-switches { list-style: none; margin: 0; padding: 0; display: grid; gap: var(--space-4); }
+.f3d-lw-words { display: block; margin: 0 0 var(--space-8) calc(22px + var(--space-12)); color: var(--ink2); font-size: var(--fs-small); }
+.f3d-lw-words[data-state=cannot], .f3d-lw-words[data-state=waiting] { color: var(--warn); }
+.f3d-land-credit { margin: 0; font-size: var(--fs-small); }
+.f3d-land-credit a { color: var(--link); display: inline-flex; align-items: center; min-height: var(--touch); }

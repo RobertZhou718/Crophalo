@@ -60,7 +60,7 @@ SOURCES = {   # kind: DTM = the bare ground; DSM = the top of whatever covers it
     "ign-fr": dict(name="IGN RGE ALTI (France)", by="IGN France", native_m=1, kind="DTM", wait=30,
                    credit="RGE ALTI (c) IGN France", licence="Licence Ouverte 2.0 (Etalab)", datum="NGF-IGN69"),
     "glo30": dict(name="Copernicus DEM GLO-30", by="ESA and the European Union", native_m=30, kind="DSM", wait=50,
-                  credit="Copernicus DEM GLO-30 (c) DLR e.V. 2010-2014 and (c) Airbus Defence and Space GmbH 2014-2018, provided under COPERNICUS by the European Union and ESA",
+                  credit="Produced using Copernicus WorldDEM-30 (c) DLR e.V. 2010-2014 and (c) Airbus Defence and Space GmbH 2014-2018 provided under COPERNICUS by the European Union and ESA; all rights reserved",
                   licence="Copernicus DEM licence (free, including commercial use)", datum="EGM2008"),
     "nasadem": dict(name="NASADEM", by="NASA JPL, through Microsoft Planetary Computer", native_m=30, kind="DSM", wait=45,
                     credit="NASADEM, NASA JPL (2020), through Microsoft Planetary Computer", licence="Public domain", datum="EGM96"),

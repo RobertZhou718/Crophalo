@@ -12,7 +12,7 @@
  */
 import { own } from './words.js';
 import { cropOf, cropName } from './crops.js';
-import { hotDaysAt, gddDay, gapWords } from './climate.js';
+import { hotDaysAt, gddDay, gapWords, keyToDoy, SOUTH_SHIFT } from './climate.js';
 
 const fin = Number.isFinite;
 const lock = thing => { if (thing && typeof thing === 'object' && !Object.isFrozen(thing)) { Object.freeze(thing); Object.values(thing).forEach(lock); } return thing; };
@@ -37,8 +37,8 @@ export const SEASON = lock({
   rye: { au: [null, [25, 35, 65, 40], null], fl: 'end', tc: 35, tb: 0 },   // Rye: the one FAO-56 row, 165 days
   sorghum: { sp: [[20, 35, 40, 30], null, [20, 35, 45, 30]], fl: 'mid', tc: 40, tb: 8 },   // Sorghum (grain): 125 (May–June, USA, Pakistan), 130 (March, arid region)
   rice: { sp: [null, [30, 30, 60, 30], [30, 30, 80, 40]], fl: 'end', tc: 37, tb: 8 },   // Rice: 150 (Dec, May; Tropics, Mediterranean), 180 (May, Tropics); 37 °C on the daily high, flowers open in the late morning
-  pmillet: { sp: [[15, 25, 40, 25], null, [20, 30, 55, 35]], fl: 'mid' }, fmillet: { sp: [[15, 25, 40, 25], null, [20, 30, 55, 35]], fl: 'mid' },   // Millet: 105 (June, Pakistan), 140 (April, Central USA)
-  soy: { sp: [[15, 15, 40, 15], [20, 35, 60, 25], [20, 25, 75, 30]], fl: 'mid', tc: 38, tb: 6 },   // Soybeans: 85 (December, Tropics), 140 (May, Central USA), 150 (May–June, Japan)
+  pmillet: { sp: [[15, 25, 40, 25], null, [20, 30, 55, 35]], fl: 'mid' }, fmillet: { sp: [[15, 25, 40, 25], null, [20, 30, 55, 35]], fl: 'mid' }, proso: { sp: [[15, 25, 40, 25], null, [20, 30, 55, 35]], fl: 'mid' },   // Millet: 105 (June, Pakistan), 140 (April, Central USA)
+  soy: { sp: [[15, 15, 40, 15], [20, 35, 60, 25], [20, 25, 75, 30]], fl: 'mid', tc: 38, tb: 6, rowSow: 5 },   // Soybeans: 85 (December, Tropics), 140 (May, Central USA), 150 (May–June, Japan); rowSow: the month of the middle row, May
   lentil: { sp: [null, [20, 30, 60, 40], null], au: [null, [25, 35, 70, 40], null], fl: 'mid' },   // Lentil: 150 (April, Europe), 170 (October–November, Arid region)
   pea: { sp: [[15, 25, 35, 15], [20, 30, 35, 15], [35, 25, 30, 20]], fl: 'mid' },   // Peas, fresh: 90 (May, Europe), 100 (March, Mediterranean), 110 (Idaho)
   bean: { sp: [[15, 25, 35, 20], [25, 25, 30, 20], [20, 30, 40, 20]], fl: 'mid', tc: 34 },   // Beans, dry: 95 (May–June, Continental), 100 (June, Pakistan), 110 (June, Idaho)
@@ -119,6 +119,30 @@ export function flowerLine(id) {
 }
 const farTooHot = crop => crop.heat + (fin(crop.heatMargin) ? crop.heatMargin : crop.heat >= 35 ? 5 : 3);
 
+// ---- a crop sown in autumn where the winter is not cold (winter wheat, triticale, rye): its season runs on warmth.
+// FAO-56 prints one season length per row for the climate it was measured in (winter wheat 180 days in East Africa and the Mediterranean),
+// so a fixed count of days ripens wheat in March in Kansas and in February in Ireland. Here a day counts as one day of the FAO-56 row when
+// its normal mean sits at the low end of the crop's best warmth (FAO ECOCROP: 15 °C for winter wheat), as part of a day when cooler and
+// as more when warmer, up to the high end of that range (23 °C): (mean − base) ÷ (best low − base). Under its base (the stage table's
+// base for heat units, 0 °C for winter wheat) the crop does not grow: the count pauses through a cold spell and goes on after it, so
+// there is no cliff at one winter line. No number here is new: each is the crop's own; the way of counting is Crophalo's own (neither
+// FAO-56 nor ECOCROP gives it as a rule) and says so on the ECOCROP card. A crop with no base in the stage table (canola)
+// keeps its FAO-56 row as printed.
+function warmthOf(id) {
+  const crop = cropOf(id), rule = ruleOf(id);
+  if (!crop || !(crop.sow > crop.harv) || own(ESTIMATED, id) || !own(SEASON, id) || !SEASON[id].au || !fin(rule.tb) || !Array.isArray(crop.tOpt)) return null;
+  const base = rule.tb, [low, high] = crop.tOpt;
+  return fin(base) && fin(low) && fin(high) && low > base && high >= low ? { base, low, high } : null;
+}
+// The day the crop sown on day sow has gathered `days` days of FAO-56 growth on the normal year; NaN when a year is not enough.
+function warmEnd(Y, sow, days, w) {
+  let got = 0;
+  for (let d = sow; d < sow + 365; d++) { got += Math.max(0, Math.min(Y.tmean(d), w.high) - w.base) / (w.low - w.base); if (got >= days) return d + 1; }
+  return NaN;
+}
+// FAO-56's four stages shared out over the days the season takes here, in the row's own proportions.
+const spread = (stages, span) => { const all = sumOf(stages), out = stages.map(s => Math.round(s / all * span)); out[3] = span - out[0] - out[1] - out[2]; return out; };
+
 // ---- the normal year, day by day: a straight line through the middles of the months (wrapping past December)
 const line12 = (v12, d) => {
   const day = ((Math.round(d) - 1) % 365 + 365) % 365 + 1;
@@ -148,9 +172,15 @@ export function normalYear(C) {
 }
 const total = (from, to, f) => { let s = 0; for (let d = from; d < to; d++) s += f(d); return s; };   // a sum over the days [from, to)
 const meanOver = (from, to, f) => to > from ? total(from, to, f) / (to - from) : NaN;
-export const frostDoy = key => fin(key) ? key : NaN;   // north of the equator a frost key is the day of the year
-const springFrost = C => C.south ? NaN : frostDoy(C.med?.frostLast);   // the normal last spring frost (north); the south is read on its own season keys
-const autumnFrost = C => C.south ? NaN : frostDoy(C.med?.frostFirst);
+export const frostDoy = (key, south = false) => fin(key) ? south ? keyToDoy(key, true) : key : NaN;   // north of the equator a frost key is the day of the year; south of it, half a year on (js/climate.js seasonKey)
+const springFrost = C => frostDoy(C.med?.frostLast, C.south);   // the normal last spring frost, as a day of the year
+const autumnFrost = C => frostDoy(C.med?.frostFirst, C.south);   // the normal first autumn frost: in the south it comes in May or June, before that year's spring
+// The crop table's months are those of the northern temperate zone. South of the equator the seasons come half a year later, so its
+// usual days move on by half a year there (an October sowing becomes an April one); everything read from the field's own weather needs no move.
+const HALF = SOUTH_SHIFT;   // half of the 365-day year, rounded down: the same shift as the south's frost keys (js/climate.js)
+const halfOf = C => C?.south ? HALF : 0;
+const moved = (C, sow, harvest) => { const h = halfOf(C); let a = sow - h, b = harvest - h; if (a < 1) { a += 365; b += 365; } return [a, b]; };
+const firstAfter = (C, first, day) => C.south && fin(first) && fin(day) && first < day ? first + 365 : first;   // the south's first autumn frost after a spring sowing falls the next calendar year
 
 // ---- dates and words
 export const monthDay = doy => { let d = ((Math.round(doy) - 1) % 365 + 365) % 365 + 1, m = 0; while (m < 11 && d > MONTH_DAYS[m]) d -= MONTH_DAYS[m++]; return [m, d]; };
@@ -166,13 +196,25 @@ export const roughWord = doy => { if (!fin(doy)) return 'an unknown time'; const
 
 // ---- what kind of sowing a crop gets here
 const coolest = C => Math.min(...C.monthly.tmean.filter(fin));
+// Where frost does not set the season (frost in under half the years, js/climate.js frostFreeClimate), the coolest month is still too cool
+// to sow the crop, and the rains come in the warm half of the year (a monsoon), the rains set the season as in the tropics: FAO-56 Table 11
+// times such rows by the rains ("June, Nigeria; October, India"). Without this the first warm enough day after the coldest one falls in
+// the dry winter (soybeans in January in Punjab). The warm half: the six wettest months in a row average warmer than the other six.
+// No new number: six months is the growing season's own length, and the sowing warmth is the crop's own.
+const warmRains = C => {
+  const s = C.wet?.[6], T = C.monthly?.tmean;
+  if (C.frostFreeClimate !== true || !fin(s) || !T || T.some(v => !fin(v))) return false;
+  const wet = Array.from({ length: 6 }, (_, j) => T[(s + j) % 12]), dry = Array.from({ length: 6 }, (_, j) => T[(s + 6 + j) % 12]);
+  return sumOf(wet) > sumOf(dry);
+};
 export function kindOf(id, C) {
   const crop = cropOf(id);
   if (!crop || crop.type === 'fallow' || crop.type === 'cover' || crop.type === 'forage') return 'calendar';
   if (!ruleOf(id)) return 'calendar';
   const autumnSown = crop.sow > crop.harv;   // sown in one year, harvested in the next (the crop table's months)
   if (autumnSown) return C.coldWinter === false ? 'autumn' : 'winter';
-  if (C.tropic && crop.tropic !== false && Array.isArray(C.wet)) return 'rains';
+  const sowT = fin(ruleOf(id).sow) ? ruleOf(id).sow : crop.minT;
+  if ((C.tropic || (warmRains(C) && fin(coolest(C)) && coolest(C) < sowT)) && crop.tropic !== false && Array.isArray(C.wet)) return 'rains';
   if (crop.mildAutumn && fin(coolest(C)) && coolest(C) >= crop.minT && lengthsOf(id, 'au').length) return 'autumn';   // it keeps growing through a winter whose coolest month stays at its lowest growing temperature
   return 'spring';
 }
@@ -187,7 +229,7 @@ export function cropTiming(id, C, opts = {}) {
   const name = cropName(id, true), kind = kindOf(id, C), gaps = C.gaps?.temp ?? [];
   const base = { id, kind, ok: true, why: '', len: null, stages: null, estimated: false, window: null, room: NaN, wake: NaN, units: NaN, unitsNeed: NaN, hot: NaN, line: NaN, flower: NaN, remarks: [] };
   const calendar = why => {   // the crop table's usual months: sown in the middle of its sowing month, ready in the middle of its harvest month
-    const sow = BEFORE[crop.sow - 1] + 15, harvest = BEFORE[crop.harv - 1] + 15 + (crop.harv < crop.sow ? 365 : 0);
+    const [sow, harvest] = moved(C, BEFORE[crop.sow - 1] + 15, BEFORE[crop.harv - 1] + 15 + (crop.harv < crop.sow ? 365 : 0));
     return { ...base, kind: 'calendar', sow, harvest, total: harvest - sow, remarks: why ? [why] : [] };
   };
   if (kind === 'calendar') return calendar('');
@@ -197,50 +239,66 @@ export function cropTiming(id, C, opts = {}) {
   const usual = usualOf(id, lengthsOf(id, way).length ? way : 'sp');
   if (!rows.length || !usual) return calendar('');
   const tender = crop.frost < 0.3, rule = ruleOf(id), sowT = fin(rule.sow) ? rule.sow : crop.minT, last = springFrost(C);
+  const warm = kind === 'autumn' ? warmthOf(id) : null;   // a winter cereal where the winter is not cold (canola has no base in the stage table and keeps its FAO-56 row): its season runs on warmth
+  // The sowing month of the FAO-56 row itself (soybeans: the 140-day row is "May, Central USA"). Where the winter is not cold, the spring
+  // warmth comes weeks before that month, and the row would be sown in March; so there the crop is not sown before the first day of that
+  // month (in the south half a year later). Where the winter is cold, the field's own warmth sets the day as before. No new number: the
+  // month is FAO-56's own, the cold-winter line is js/climate.js coldWinter.
+  const floor = kind === 'spring' && C.coldWinter === false && fin(rule.rowSow) ? moved(C, BEFORE[rule.rowSow - 1] + 1, 0)[0] : NaN;
+  let fromCold = d => d;
   // the usual sowing day
   let start = NaN;
   if (kind === 'spring') {
     const temps = Array.from({ length: 365 }, (_, i) => Y.tmean(i + 1)), cold = temps.indexOf(Math.min(...temps)) + 1;
-    if (Math.min(...temps) >= sowT) start = BEFORE[crop.sow - 1] + 1;   // warm all year: no window from temperature, its usual sowing month, still judged for heat
+    fromCold = d => ((Math.round(d) - cold) % 365 + 365) % 365;   // days since the coldest day of the normal year
+    if (Math.min(...temps) >= sowT) start = moved(C, BEFORE[crop.sow - 1] + 1, 0)[0];   // warm all year: no window from temperature, its usual sowing month, still judged for heat
     else for (let k = 1; k <= 365; k++) { const d = (cold + k - 1) % 365 + 1; if (Y.tmean(d) >= sowT && (!tender || !fin(last) || d > last)) { start = d; break; } }
     if (!fin(start)) return { ...base, ok: false, why: 'cold', words: `${name}: in a normal year the daily mean never reaches ${sowT} °C, the warmth it is sown at.` };
   } else if (kind === 'autumn') {
-    const usualDay = BEFORE[crop.sow - 1] + 1;
-    let d17 = NaN; for (let d = 182; d <= 335; d++) if (Y.tmean(d) <= 17) { d17 = d; break; }   // the normal mean falls to 17 °C (FAO-56), or 1 December
-    start = Math.max(Math.min(fin(d17) ? d17 : 335, 335), usualDay - 30);
+    const usualDay = BEFORE[crop.sow - 1] + 1, h = halfOf(C);   // worked on the northern count, then moved back half a year in the south
+    let d17 = NaN; for (let d = 182; d <= 335; d++) if (Y.tmean(d - h) <= 17) { d17 = d; break; }   // the normal mean falls to 17 °C (FAO-56), or 1 December (1 June in the south)
+    start = moved(C, Math.max(Math.min(fin(d17) ? d17 : 335, 335), usualDay - (warm ? 0 : 30)), 0)[0];   // a crop sown in autumn: never before its usual sowing month, the same first day as where winters are cold
   } else {   // the rains
     const months = Math.max(1, Math.min(12, Math.ceil(usual.total / 30))), first = C.wet[months];
-    start = fin(first) ? BEFORE[first] + 1 : BEFORE[crop.sow - 1] + 1;
+    start = fin(first) ? BEFORE[first] + 1 : moved(C, BEFORE[crop.sow - 1] + 1, 0)[0];
   }
   const judge = (sow, row) => {
-    const [i, dv, mid] = row.stages, harvest = sow + row.total, line = flowerLine(id);
+    const end = warm ? warmEnd(Y, sow, row.total, warm) : sow + row.total;
+    const stages = warm && fin(end) ? spread(row.stages, end - sow) : row.stages;
+    const [i, dv, mid] = stages, harvest = end, line = flowerLine(id), span = harvest - sow;
     const flower = rule.fl === 'mid' ? sow + i + dv : rule.fl === 'end' ? sow + i + dv + mid - 10 : NaN;
     const hot = fin(flower) && fin(line) ? total(flower - 10, flower + 11, d => Y.hot(line, d)) : NaN;
     const farLine = farTooHot(crop), far = total(sow, harvest, d => Y.hot(farLine, d));
     const late = tender ? total(sow + i + dv, harvest, d => Y.frost(d)) : 0;   // frosty nights once it has grown past its first two stages
     let why = '';
-    if (late >= 10) why = 'frost'; else if (hot > 10.5) why = 'flower'; else if (far > row.total / 2) why = 'season';
-    return { sow, harvest, flower, hot, line, far, late, why, row };
+    if (!fin(end)) why = 'ripen'; else if (late >= 10) why = 'frost'; else if (hot > 10.5) why = 'flower'; else if (far > span / 2) why = 'season';
+    return { sow, harvest, flower, hot, line, far, late, why, row, stages, span };
   };
-  const words = (t, mine) => t.why === 'frost' ? `${name}: about ${Math.round(t.late)} frosty nights fall after its first two stages in a normal year: a grown crop standing in the frost season.`
+  const words = (t, mine) => t.why === 'ripen' ? `${name}: in a normal year it does not gather the warmth to ripen within a year of sowing.`
+    : t.why === 'frost' ? `${name}: about ${Math.round(t.late)} frosty nights fall after its first two stages in a normal year: a grown crop standing in the frost season.`
     : t.why === 'flower' ? `${name}: in a normal year about ${Math.round(t.hot)} of the 21 days around flowering reach ${t.line} °C or more, ${mine ? 'with the sowing date and variety you gave' : 'whatever the sowing date or variety length'}. Its flowers fail in that heat.`
       : t.why === 'season' ? `${name}: most of its season is far too hot here.` : '';
   const pick = (t, extra = []) => {
-    const out = { ...base, ok: !t.why, why: t.why, len: t.row.len, stages: [...t.row.stages], total: t.row.total, estimated: t.row.estimated, sow: t.sow, harvest: t.harvest, flower: t.flower, hot: t.hot, line: t.line, words: words(t, !!opts.len), remarks: [...extra] };
+    const out = { ...base, ok: !t.why, why: t.why, len: t.row.len, stages: [...t.stages], total: t.span, estimated: t.row.estimated, sow: t.sow, harvest: t.harvest, flower: t.flower, hot: t.hot, line: t.line, words: words(t, !!opts.len), remarks: [...extra] };
+    if (warm) { out.rowTotal = t.row.total; out.byWarmth = true; }
     if (out.ok && t.hot >= 2) out.remarks.push(`In a normal year about ${Math.round(t.hot)} of the 21 days around flowering reach ${t.line} °C or more.`);
     if (id === 'corn' || id === 'sweetcorn') {
-      const first = autumnFrost(C), need = CORN_UNITS[t.row.len];
+      const first = firstAfter(C, autumnFrost(C), t.sow), need = CORN_UNITS[t.row.len];
       if (fin(first) && first > t.sow) {
         out.units = total(t.sow, first, d => Y.gdd(d)); out.unitsNeed = need;
         if (fin(need) && out.units < need) out.remarks.push(`The summer gives about ${Math.round(out.units).toLocaleString('en-US')} corn heat units (°C days above 10 °C) before the normal first frost; hybrids of this length need about ${need.toLocaleString('en-US')} (National Corn Handbook NCH-40), so a shorter hybrid may be needed.`);
       }
     }
-    const first = autumnFrost(C);
-    if (out.ok && tender && fin(first) && t.harvest > first) out.remarks.push(`FAO's season lengths come from warmer places; cold regions grow shorter varieties than FAO lists. Here this one would be ready about ${dayWord(t.harvest)}, after the normal first autumn frost (${dayWord(first)}).`);
+    const first = firstAfter(C, autumnFrost(C), t.sow);
+    // ready on the day of the normal first autumn frost or after it: a same-day harvest is said as such, not as "after"
+    if (out.ok && tender && fin(first) && Math.round(t.harvest) >= Math.round(first)) out.remarks.push(`FAO's season lengths come from warmer places; cold regions grow shorter varieties than FAO lists. Here this one would be ready about ${dayWord(t.harvest)}, ${Math.round(t.harvest) > Math.round(first) ? 'after' : 'on the day of'} the normal first autumn frost (${dayWord(first)}).`);
     return out;
   };
   const chosen = opts.len ? rows.filter(r => r.len === opts.len) : [usual];
   if (!chosen.length) return { ...base, ok: false, why: 'len', words: `${name}: no ${LEN_WORDS[opts.len] ?? ''} row is listed for it.` };
+  // not before the month of the FAO-56 row (above), unless the heat on that later day fails the crop where its own warmth day passes:
+  // in a hot summer farmers sow early against the heat, as the flowering-heat search below does
+  if (fin(floor) && fromCold(start) < fromCold(floor)) { const at = judge(floor, chosen[0]); if (!(at.why === 'flower' || at.why === 'season') || judge(start, chosen[0]).why) start = floor; }
   const first = judge(fin(opts.sow) ? opts.sow : start, chosen[0]);
   if (!first.why || opts.len || fin(opts.sow) || first.why !== 'flower') return pick(first);
   // Only heat at flowering moves the timing: earlier sowings, in 10-day steps from two months before (one in autumn), every length;
@@ -248,11 +306,15 @@ export function cropTiming(id, C, opts = {}) {
   const tries = [];
   for (let s = start - (kind === 'autumn' ? 30 : 60); s <= start; s += 10) {
     if (kind === 'spring' && tender && fin(last) && s <= last) continue;
-    if (kind === 'spring' && Y.tmean(s) < crop.minT) continue;
+    if (kind === 'spring' && Y.tmean(s) < crop.minT) continue;   // heat at flowering may still move a crop before the month of its FAO-56 row (above), as farmers sow early against the summer heat
     rows.forEach(row => tries.push(judge(s, row)));
   }
   if (crop.minT >= 10) for (let s = start + 45; s <= start + 120; s += 10) rows.forEach(row => { const t = judge(s, row); if (total(s, s + row.total, d => Y.tmean(d) >= crop.minT ? 0 : 1) === 0) tries.push(t); });
-  const good = tries.filter(t => !t.why).sort((a, b) => a.hot - b.hot || Math.abs(a.sow - start) - Math.abs(b.sow - start));
+  // An autumn crop takes the sowing (up to a month earlier) whose flowering meets the least heat, as farmers sow wheat early against the
+  // spring heat. A summer crop is moved no further than the heat needs: the passing sowing nearest its usual day, so it is not pushed to
+  // the end of the summer only to shave off a hot day or two.
+  const near = (a, b) => Math.abs(a.sow - start) - Math.abs(b.sow - start);
+  const good = tries.filter(t => !t.why).sort(kind === 'autumn' ? (a, b) => a.hot - b.hot || near(a, b) : (a, b) => near(a, b) || a.hot - b.hot);
   return good.length ? pick(good[0], [`${name}: sown about ${roughWord(good[0].sow)} instead of ${roughWord(start)}, so it flowers before or after the hottest weeks.`]) : pick(first);
 }
 
@@ -264,10 +326,10 @@ export function cropTiming(id, C, opts = {}) {
 function winterTiming(id, C, opts, base) {
   const crop = cropOf(id), Y = normalYear(C), name = cropName(id, true), usual = usualOf(id, 'au');
   if (!usual) return { ...base, kind: 'winter', ok: false, why: 'rows', words: `${name}: FAO-56 lists no autumn row for it.` };
-  const earliest = BEFORE[crop.sow - 1] + 1, init = usual.stages[0];
+  const [earliest, harvest] = moved(C, BEFORE[crop.sow - 1] + 1, BEFORE[crop.harv - 1] + 15 + 365), init = usual.stages[0];
   let cold = NaN; for (let d = earliest; d < earliest + 300; d++) if (Y.tmean(d) < crop.minT) { cold = d; break; }
   let wake = NaN; if (fin(cold)) for (let d = cold; d < cold + 300; d++) if (Y.tmean(d) >= crop.minT) { wake = d; break; }
-  const harvest = BEFORE[crop.harv - 1] + 15 + 365, latest = fin(cold) ? cold - init : NaN;
+  const latest = fin(cold) ? cold - init : NaN;
   const out = { ...base, kind: 'winter', len: usual.len, estimated: usual.estimated, window: { earliest, latest, cold, init, minT: crop.minT }, wake, harvest };
   if (!fin(cold)) return { ...out, ok: false, why: 'nowinter', words: `${name}: the normal year never cools under ${crop.minT} °C, so the cold-winter calendar does not apply.` };
   if (latest < earliest) return { ...out, ok: false, why: 'autumn', words: `${name}: the normal daily mean drops under ${crop.minT} °C about ${dayWord(cold)}, too soon after ${dayWord(earliest)} for its ${init} days of coming up and rooting (FAO-56).` };
@@ -321,13 +383,15 @@ export function secondFit(mainId, secondId, C, opts = {}) {
   if (kindOf(secondId, C) === 'winter') return { ok: false, why: 'winter', words: say('where winters are cold it rests through the winter and is harvested next summer, so it is the next year\'s main crop, not a second crop.') };
   const rows = lengthsOf(secondId, 'sp'), sow = m.harvest + TURN;
   let first = autumnFrost(C); if (fin(first)) while (first < sow) first += 365;   // the first autumn frost after it is sown
+  const day = ((Math.round(sow) - 1) % 365 + 365) % 365 + 1, af = autumnFrost(C), sf = springFrost(C);
+  const late = fin(af) && (C.south ? day >= af && (!fin(sf) || day <= sf) : day > af);   // sown after that year's first autumn frost: the frost season has begun, and no day is free (in the south it runs from about May to the last spring frost)
   if (!rows.length) return { ok: false, why: 'rows', words: say('FAO-56 lists no season length for it.') };
-  const shortest = rows[0].total, free = fin(first) ? first - sow : NaN;
+  const shortest = rows[0].total, free = fin(first) ? (late ? 0 : first - sow) : NaN;
   if (fin(free) && free < shortest) return { ok: false, why: 'window', words: say(`only about ${Math.max(0, Math.round(free))} days are free between the ${main} harvest and the first autumn frost, and even its shortest variety needs about ${shortest}.`) };
   const rule = ruleOf(secondId), sowT = fin(rule?.sow) ? rule.sow : crop.minT;
   if (Y.tmean(sow) < sowT) return { ok: false, why: 'cold', words: say(`it is too cool to sow it after the ${main} harvest.`) };
   const row = rows.find(r => !fin(first) || sow + r.total <= first) ?? rows[0];
-  const shift = fin(first) ? first - autumnFrost(C) : 0, yearsFirst = (C.yearly?.frostFirst ?? []).filter(fin), early = yearsFirst.filter(f => f + shift < sow + row.total).length;
+  const shift = fin(first) ? first - autumnFrost(C) : 0, yearsFirst = (C.yearly?.frostFirst ?? []).filter(fin).map(f => frostDoy(f, C.south)), early = yearsFirst.filter(f => f + shift < sow + row.total).length;
   if (yearsFirst.length && early * 4 > yearsFirst.length) return { ok: false, why: 'frostyears', words: say(`in ${early} of the last ${yearsFirst.length} years the first autumn frost came before it would be ready.`) };
   const slack = fin(first) ? first - (sow + row.total) : NaN;
   return { ok: true, why: '', sow, harvest: sow + row.total, len: row.len, total: row.total, share: row.total / (crop.days || row.total), tight: fin(slack) && slack < TIGHT, frostYears: early, of: yearsFirst.length,
@@ -343,5 +407,5 @@ export function timingWords(t) {
   if (t.kind === 'calendar') return `${name}: sow about ${MONTHS[monthDay(t.sow)[0]]} · harvest about ${MONTHS[monthDay(t.harvest)[0]]}.`;
   return `${name}: sow from ${roughWord(t.sow)}${fin(t.flower) ? ` · flowers about ${roughWord(t.flower)}` : ''} · ready about ${roughWord(t.harvest)}.`;
 }
-export const varietyWords = t => t?.len && t.total ? `${LEN_WORDS[t.len][0].toUpperCase()}${LEN_WORDS[t.len].slice(1)} variety: about ${t.rowTotal ?? t.total} days${t.estimated ? ' (estimated from a similar crop in FAO tables)' : ' in FAO tables'}${t.rowTotal ? `, spread here over ${t.total} days from sowing to the usual harvest month` : ''}.` : '';
+export const varietyWords = t => t?.len && t.total ? `${LEN_WORDS[t.len][0].toUpperCase()}${LEN_WORDS[t.len].slice(1)} variety: about ${t.rowTotal ?? t.total} days${t.estimated ? ' (estimated from a similar crop in FAO tables)' : ' in FAO tables'}${t.rowTotal ? t.byWarmth ? `, here ${t.total} days from sowing: it grows faster when warm, slower when cool and not at all in the cold` : `, spread here over ${t.total} days from sowing to the usual harvest month` : ''}.` : '';
 export const SEASON_FOOT = 'Season lengths from FAO-56 (Allen et al. 1998, Table 11), dates from your normal weather. Local sowing dates and varieties can differ by a few weeks. We count one week from a harvest to the next sowing.';

@@ -5,7 +5,7 @@ import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 import http from 'node:http';
-import { rankWords, median, seasonWindow, pastWindows, longestDry, buildRows, buildRecord, droughtWords, recordHTML, canOffer, daysWithData, FIXED_LINE, FOOTER, shortDay, longDay } from '../js/statement.js';
+import { DROUGHT_CREDIT, rankWords, median, seasonWindow, pastWindows, longestDry, buildRows, buildRecord, droughtWords, recordHTML, canOffer, daysWithData, FIXED_LINE, FOOTER, shortDay, longDay } from '../js/statement.js';
 import { createDrought, parseWeeks, inUS, LIMITS } from './drought.mjs';
 const YR = 2026;   // the year of the suite's own today (14 November): every date below is written from it
 
@@ -117,6 +117,10 @@ check('a record that cannot be ranked has no table but still has its fixed line'
 // ---- the drought words
 const week = (date, d0, d1, d2 = 0, d3 = 0, d4 = 0) => ({ date, d0, d1, d2, d3, d4 });
 const weeks = [week(`${YR}-10-13`, 90, 60, 20), week(`${YR}-10-14`, 90, 70, 55), week(`${YR}-10-20`, 90, 70, 10), week(`${YR}-10-27`, 80, 55, 0), week(`${YR}-11-03`, 70, 10, 0), week(`${YR}-11-10`, 60, 0, 0), week(`${YR}-10-12`, 100, 100, 100)];
+{
+  const withD = buildRecord({ name: 'N', crop: 'Corn', series: dry, win: WIN, units, drought: { weeks, county: 'Story County', state: 'IA' }, madeOn: `${YR}-11-14`, sources: [], notes: [] }), noD = buildRecord({ name: 'N', crop: 'Corn', series: dry, win: WIN, units, drought: null, madeOn: `${YR}-11-14`, sources: [], notes: [] });
+  check('the Drought Monitor credit is the exact line from its Permission page, shown only with the drought line, with a link', DROUGHT_CREDIT.endsWith('Data courtesy of NDMC, via https://droughtmonitor.unl.edu.') && DROUGHT_CREDIT.startsWith('The U.S. Drought Monitor is jointly produced by the National Drought Mitigation Center at the University of Nebraska-Lincoln, the U.S. Department of Agriculture, the National Oceanic and Atmospheric Administration and NASA. ') && recordHTML(withD).includes('Data courtesy of NDMC, via <a href="https://droughtmonitor.unl.edu">') && !recordHTML(noD).includes('courtesy of NDMC'));
+}
 check('a county in drought for part of the season, worst week named', droughtWords({ weeks, county: 'Story County', state: 'IA', from: `${YR}-10-12`, to: `${YR}-11-14` }) === `Half or more of Story County, Iowa was in drought (D1, moderate, or worse) for 5 of the season's 7 weeks. At its worst, severe drought (D2), in the week of 12 Oct ${YR}.`, droughtWords({ weeks, county: 'Story County', state: 'IA', from: `${YR}-10-12`, to: `${YR}-11-14` }));
 const calm = [week(`${YR}-10-13`, 60, 5), week(`${YR}-10-20`, 55, 0), week(`${YR}-10-27`, 20, 0), week(`${YR}-11-03`, 5, 0)];
 same('a county with no drought, and the weeks that were abnormally dry', droughtWords({ weeks: calm, county: 'Story County', state: 'IA', from: `${YR}-10-12`, to: `${YR}-11-14` }), "Half or more of Story County, Iowa was not in drought (D1, moderate, or worse) in any of the season's 4 weeks. It was abnormally dry (D0) for 2 of them.");

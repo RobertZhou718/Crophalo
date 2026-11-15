@@ -12,15 +12,17 @@ const num = v => Math.round(v).toLocaleString('en-US');
 const INITIAL = m => MONTHS[m][0];
 const GLYPH = { crop: '', cover: '', residue: '', bare: '' };   // the pattern is in CSS; the word is in the title and the table
 
+// ---- the month header, shown above every grid: the short name on a wide screen, one letter on a narrow one
+const monthHead = () => `<div class="fc-row fc-head" aria-hidden="true">${MONTHS.map((m, i) => `<span class="fc-m"><span class="fc-full">${m}</span><span class="fc-ini">${INITIAL(i)}</span></span>`).join('')}</div>`;
 // ---- the climate card
 function climateCard(c) {
   if (!c) return `<div class="rv-notread" role="status"><p>${esc(NOT_READ)}</p></div>`;
   const top = Math.max(...c.rain.filter(fin), 1) * 1.25;
-  const head = `<div class="fc-row fc-head" aria-hidden="true">${MONTHS.map((m, i) => `<span class="fc-m"><span class="fc-full">${m}</span><span class="fc-ini">${INITIAL(i)}</span></span>`).join('')}</div>`;
+  const head = monthHead();
   const rain = `<div class="fc-row fc-rain" aria-hidden="true">${c.rain.map((v, i) => `<span class="fc-col" title="${esc(fin(v) ? `${FULL[i]}: about ${num(v)} mm of rain` : `${FULL[i]}: rain not read`)}"><span class="fc-fig num">${fin(v) ? num(v) : ''}</span><span class="fc-bar" style="height:${fin(v) ? Math.max(4, v / top * 100).toFixed(0) : 0}%"></span></span>`).join('')}</div>`;
   const marks = `<div class="fc-row fc-marks" aria-hidden="true">${c.frost.map((f, i) => `<span class="fc-mk" title="${esc([fin(f) && f >= 1 ? frostTitle(i, f) : '', fin(c.hot[i]) && c.hot[i] >= 2 ? hotTitle(i, c.hot[i]) : ''].filter(Boolean).join('. ') || `${FULL[i]}: no frost or hot days in a normal year`)}">${fin(f) && f >= 1 ? '<i class="fc-frost">❄</i>' : ''}${fin(c.hot[i]) && c.hot[i] >= 2 ? '<i class="fc-sun">☀</i>' : ''}</span>`).join('')}</div>`;
   const table = `<table class="sr"><caption>Month by month: rain, frost and hot days in a normal year</caption><thead><tr><th scope="col">Month</th><th scope="col">Rain (mm)</th><th scope="col">Frost</th><th scope="col">Hot days</th></tr></thead><tbody>${MONTHS.map((m, i) => `<tr><th scope="row">${FULL[i]}</th><td>${fin(c.rain[i]) ? num(c.rain[i]) : 'not read'}</td><td>${esc(frostTitle(i, c.frost[i]).split(': ')[1])}</td><td>${esc(hotTitle(i, c.hot[i]).split(': ')[1])}</td></tr>`).join('')}</tbody></table>`;
-  return `<div class="card pad fcal"><div class="fc-labels" aria-hidden="true"><span></span><span class="fc-lab fc-lab-rain">Rain (mm)</span><span class="fc-lab">Frost · heat</span></div><div class="fc-grid">${head}${rain}${marks}</div>${table}
+  return `<div class="card pad fcal"><div class="fc-labels" aria-hidden="true"><span></span><span class="fc-lab fc-lab-rain">Rain (mm)</span><span class="fc-lab">Frost · heat</span></div><p class="cap fc-unit">Rain in millimetres (mm) for each month, in a normal year</p><div class="fc-grid">${head}${rain}${marks}</div>${table}
     <p class="cap">The middle of ${c.years} years (${c.first}–${c.last}). ❄ a month with frosty nights; ☀ a month with two or more days above 32 °C.</p></div>`;
 }
 
@@ -33,7 +35,7 @@ function planBlock(p) {
   }).join('')}</div></div>`).join('');
   const table = `<table class="sr"><caption>${esc(p.label)}: the ground, month by month</caption><thead><tr><th scope="col">Year</th><th scope="col">Month</th><th scope="col">Ground</th></tr></thead><tbody>${p.years.flatMap(y => y.cells.filter(c => c.state).map(c => `<tr><td>${y.year}</td><th scope="row">${FULL[c.month]}</th><td>${esc(c.state === 'crop' ? `${c.crop ? shortWord(c.crop) : 'a crop'} growing` : STATE_WORDS[c.state])}${c.window ? ` (sowing window for ${esc(c.window)})` : ''}</td></tr>`)).join('')}</tbody></table>`;
   return `<section class="fc-plan" aria-labelledby="fp-${esc(p.plan.id)}"><h3 id="fp-${esc(p.plan.id)}">${esc(p.label)} <span class="chip">Planned</span> ${infoButton(['rules', 'power'], `${p.label}: what the ground has on it, month by month`)}</h3>
-    <p class="cap">${esc(p.name ?? '')}</p><div class="card pad fcal">${rows}${table}</div></section>`;
+    <p class="cap">${esc(p.name ?? '')}</p><div class="card pad fcal"><div class="fc-yearrow fc-yearhead" aria-hidden="true"><span class="fc-year"></span>${monthHead()}</div>${rows}${table}</div></section>`;
 }
 const shortWord = id => { try { return cropName(id, true) || String(id); } catch { return String(id); } };
 export const legendHTML = () => `<ul class="fc-legend" aria-label="What the colours and patterns mean">

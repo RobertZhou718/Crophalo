@@ -65,16 +65,22 @@ function freePorts(n = 1) {   // n neighbours, free on both loopback addresses; 
   return mine;
 }
 const health = port => fetch(`http://127.0.0.1:${port}/api/health`, { signal: AbortSignal.timeout(3000) }).then(r => r.json()).catch(() => null);
+async function healthOnce(port, done, ms = 15000) {   // the server checks its Python once, just after it starts: its health, once that check is done (or the time is up)
+  let h = null;
+  for (const end = Date.now() + ms; Date.now() < end; await wait(100)) { h = await health(port); if (done(h)) break; }
+  return h;
+}
 
 // ---- a throwaway Crophalo folder with its own home, stand-ins and notes of what they were asked
 const COPIED = ['Start Crophalo.command', '.gitignore', 'index.html', 'css/app.css', 'scripts/run.sh', 'scripts/portable.sh', 'scripts/pack-runtimes.sh',
-  'scripts/preflight.mjs', 'scripts/earthdata.mjs', 'scripts/serve.mjs', 'scripts/vendor.mjs', 'scripts/requirements.txt'];
+  'scripts/preflight.mjs', 'scripts/earthdata.mjs', 'scripts/hostmode.mjs', 'scripts/status.mjs', 'scripts/serve.mjs', 'scripts/vendor.mjs', 'scripts/requirements.txt'];
 let UP = null, made = 0;
 function standIns(state, web) {
   const python = ['#!/bin/sh', '# Stand-in for Python in the portable suite: it answers the few questions the start and the doctor ask.', `S=${sq(state)}`,
     'case "$1" in', '  -c) case "$2" in',
-    '      *earthaccess.login*) echo "LOGIN $(cat "$S/login" 2>/dev/null || echo no)" ;;',
-    '      *PYTHON*) [ -e "$S/libs-missing" ] && exit 1; echo "PYTHON $(cat "$S/pyver")" ;;',
+    '      *crophalo_python*) echo CROPHALO_PY; [ -e "$S/libs-missing" ] && exit 1; printf \'{"crophalo_python": "%s", "certifi": "%s"}\\n\' "$(cat "$S/pyver")" "$S/certs.pem" ;;',
+    '      *earthaccess.login*) printf %s "${SSL_CERT_FILE:-}" > "$S/login-ssl"; echo "LOGIN $(cat "$S/login" 2>/dev/null || echo no)" ;;',
+    '      *PYTHON*) [ -e "$S/libs-missing" ] && exit 1; echo "PYTHON $(cat "$S/pyver")"; echo "CERTS $S/certs.pem" ;;',
     '      *python_version*) cat "$S/pyver" ;;',
     '      *) [ -e "$S/libs-missing" ] && exit 1; exit 0 ;;',
     '    esac ;;',
@@ -106,7 +112,8 @@ function makeFolder({ tools = true, vendor = false } = {}) {
   if (vendor) fs.cpSync(path.join(PROJECT, 'vendor'), path.join(root, 'vendor'), { recursive: true });
   for (const dir of [c.home, c.state, path.join(c.web, 'files')]) fs.mkdirSync(dir, { recursive: true });
   c.scripts = standIns(c.state, c.web);
-  put(path.join(c.state, 'python'), c.scripts.python, 0o755); put(path.join(c.state, 'pyver'), PYVER + '\n');
+  put(path.join(c.state, 'python'), c.scripts.python, 0o755); put(path.join(c.state, 'pyver'), PYVER + '\n'); put(path.join(c.state, 'certs.pem'), 'stand-in trust roots\n');
+  fs.cpSync(path.join(PROJECT, 'js'), path.join(root, 'js'), { recursive: true });   // the modules the page needs to start: the doctor checks them
   for (const dir of [c.bin, c.bare]) { put(path.join(dir, 'curl'), c.scripts.curl, 0o755); put(path.join(dir, 'open'), c.scripts.open, 0o755); put(path.join(dir, 'sw_vers'), c.scripts.swVers, 0o755); }
   fs.symlinkSync(process.execPath, path.join(c.bin, 'node'));   // "the Mac's own Node"; bin-bare is a Mac without one
   c.env = { PATH: `${c.bin}:${SYSTEM_PATH}`, HOME: c.home, FW_CHECK_UPSTREAM: UP?.url ?? 'http://127.0.0.1:9', ...(process.env.TZ ? { TZ: process.env.TZ } : {}) };   // a clean environment: nothing of the owner's reaches a test start
@@ -151,7 +158,7 @@ async function start(c, args = QUIET, opts, cmd = runSh(c)) {   // sh scripts/ru
 }
 async function stop(s) { if (!s.gone) s.child.kill('SIGTERM'); await within(s.exit, 10000); await within(s.closed, 2000); }   // by its own process number, nothing else; then its last words are read
 async function once(c, args, opts, cmd = runSh(c)) { const s = launch('/bin/sh', [cmd, ...args.map(String)], c, opts); await within(s.closed, 40000); if (!s.gone) await stop(s); return s; }
-async function terminal(c, args, typed = [], during) {   // the same start inside a real terminal (script gives it one); typed = [[what to wait for, what to type], …]
+async function terminal(c, args, typed = [], during, last = RUNNING) {   // the same start inside a real terminal (script gives it one); typed = [[what to wait for, what to type], …]
   // cat stands between this suite and script: script wants a plain pipe or a terminal to read the typing from, and Node hands a child a socket
   const s = launch('/bin/sh', ['-c', 'cat | /usr/bin/script -q /dev/null /bin/sh "$@"', 'terminal', runSh(c), '--no-open', ...args.map(String)], c, { input: true });
   let from = 0;
@@ -160,8 +167,9 @@ async function terminal(c, args, typed = [], during) {   // the same start insid
     if (!m) { s.stuck = String(question); break; }
     from += m.index + m[0].length; s.child.stdin.write(keys);
   }
-  const m = s.stuck ? null : await until(s, RUNNING, from);
-  s.port = m ? +m[1] : 0; if (s.port) ports.add(s.port);
+  const m = s.stuck ? null : await until(s, last, from);
+  s.port = m && last === RUNNING ? +m[1] : 0; if (s.port) ports.add(s.port);
+  s.ended = !!m;
   if (s.port && during) await during(s);
   s.child.stdin.end('\x03');   // Control-C, the way a farmer stops Crophalo
   if (!s.gone) await within(s.exit, 8000);
@@ -198,6 +206,14 @@ function reading() {
   check('the port: none of these files names the older Crophalo\'s port, and with nothing remembered the start takes 5480', mine.every(t => !t.includes(oldPort)) && text(path.join(HERE, 'run.sh')).includes('is_port "$PORT" || PORT=5480'));
   const code = SHELL.map(f => text(path.join(PROJECT, f)).split('\n').filter(l => !l.trim().startsWith('#')).join('\n')).join('\n');
   check('the shell scripts use nothing a Mac lacks and stop no other program (timeout, pkill, killall, sed -i -e)', !/(^|[\s;(|&])(timeout|pkill|killall)\s|sed -i -e/m.test(code));
+
+  // HTTPS: certificates are always checked. No file of the app, its server, its lookups or its starters may switch that off (this suite itself is left out: it names the words).
+  const OFF = new RegExp(['verify' + '\\s*=\\s*False', 'CERT_' + 'NONE', '_create_' + 'unverified_context', 'check_' + 'hostname\\s*=\\s*False', 'reject' + 'Unauthorized\\s*:\\s*false',
+    'NODE_TLS_' + 'REJECT_UNAUTHORIZED', 'Skip' + 'CertificateCheck', 'ServerCertificate' + 'ValidationCallback', '--' + 'insecure', 'curl\\b[^\\n|]*\\s-k\\b'].join('|'));
+  const ours = [], walk = dir => { for (const e of fs.readdirSync(dir, { withFileTypes: true })) { const p = path.join(dir, e.name); if (e.isDirectory()) { if (!['vendor', '_cache', 'fixtures', 'node_modules'].includes(e.name) && !e.name.startsWith('.') && e.name !== 'runtime') walk(p); } else if (/\.(py|mjs|js|sh|ps1|bat|command|html)$/.test(e.name) && p !== fileURLToPath(import.meta.url)) ours.push(p); } };
+  walk(PROJECT);
+  const off = ours.filter(f => OFF.test(text(f))).map(f => path.relative(PROJECT, f));
+  check(`HTTPS: no file switches certificate checks off (${ours.length} files read)`, ours.length > 50 && !off.length, off);
 }
 
 // ---- 1b · the browser checks: asked for by default, so a missing browser or WebSocket is a failure with a plain line, never a silent pass
@@ -242,6 +258,24 @@ function windowsLogin() {
   const six = ps.match(/# ---- 6 - already running[\s\S]*?\r\n\r\n/)?.[0] ?? '';
   check('start-windows.ps1: "already running" compares the folder the server names (root), not only its cache', /\$health\.root\) -ieq/.test(six) && !/\$health\.cache\) -ieq/.test(six), six);
   check('start-windows.ps1: plain ASCII with Windows line ends only', /^[\x00-\x7f]*$/.test(ps) && !/[^\r]\n/.test(ps) && ps.includes('\r\n'));
+
+  // --login while this folder's Crophalo runs: the login is asked first, then the start ends without a second server (as run.sh, which a suite runs on a Mac)
+  const at = re => ps.search(re), step = n => at(new RegExp(`^# ---- ${n} - `, 'm'));
+  check('start-windows.ps1: "already running" ends the start at once only when no login was asked for; with --login it is remembered',
+    /if \(\$Ask -ne 'yes'\) \{[^\n]*exit 0/.test(six) && /\$Running = \$true/.test(six), six);
+  check('start-windows.ps1: while it runs, the Python set-up (step 8) is left alone', /^if \(\$Running\) \{[^\n]*\} elseif \(Test-Venv\)/m.test(ps));
+  const ends = at(/^if \(\$Running\) \{[^\n]*exit 0 \}/m), asked = at(/^if \(\$Ask -eq 'yes'\) \{/m);
+  check('start-windows.ps1: with --login the login is asked (step 9), then the start ends before the check-up and before any server starts', asked > step(9) && ends > asked && ends < step(10) && step(10) < at(/Diagnostics\.Process\]::Start/), [step(9), asked, ends, step(10)]);
+  // a new login keeps every other service's entry: the same code as the Mac start, in scripts\earthdata.mjs, byte for byte through base64
+  const others = ps.match(/^function Get-OtherLogins[\s\S]*?\r\n\}\r\n/m)?.[0] ?? '';
+  check('start-windows.ps1: Get-OtherLogins asks scripts\\earthdata.mjs --others --base64 and reads no lines itself', /earthdata\.mjs/.test(others) && /'--others'/.test(others) && /'--base64'/.test(others) && /FromBase64String/.test(others) && !/-split/.test(others), others);
+  // the old file stays until the new one is in its place: one replace, never a delete first; a first file is only moved
+  const over = ps.match(/^function Move-Over[^\r\n]*(?:\r\n {2}[^\r\n]*)*/m)?.[0] ?? '';   // its first line and the lines indented under it
+  check('start-windows.ps1: Move-Over replaces an existing file in one step, never deletes it first, and puts it back when a swap stops halfway',
+    /\[IO\.File\]::Replace\(\$from, \$to, \$before\)/.test(over) && !/Delete|Remove-File \$to\b/.test(over) && /if \(-not \[IO\.File\]::Exists\(\$to\)\) \{ \[IO\.File\]::Move\(\$from, \$to\); return \}/.test(over) &&
+    /catch \{ if \(-not \[IO\.File\]::Exists\(\$to\) -and \[IO\.File\]::Exists\(\$before\)\) \{ \[IO\.File\]::Move\(\$before, \$to\) \}; throw \}/.test(over), over);
+  const save = ps.match(/^function Save-Login[\s\S]*?\r\n\}\r\n/m)?.[0] ?? '';
+  check('start-windows.ps1: Save-Login closes the old file to others before the new one replaces it (a replace keeps the old file\'s rights)', save.indexOf('Protect-File $real') > 0 && save.indexOf('Protect-File $real') < save.indexOf('Move-Over'), save);
 }
 
 // ---- 2 · the pure parts of the doctor
@@ -251,6 +285,23 @@ function doctorParts() {
   const bare = path.join(TMP, 'bare'); put(path.join(bare, 'index.html'));
   same('must-have files: a missing one is named, a present one is not', missingFiles(bare, ['index.html', 'css/app.css']), ['css/app.css']);
   same('the six library names are read from portable.sh', importList(PROJECT), 'earthaccess, h5py, netCDF4, numpy, rasterio, openpyxl');
+
+  // The modules the page needs to start come from the page itself: index.html's module scripts and every static import they reach.
+  const page = path.join(TMP, 'page'), js = f => path.join(page, f), app = text(path.join(PROJECT, 'js', 'app.js'));
+  put(js('index.html'), text(path.join(PROJECT, 'index.html'))); fs.cpSync(path.join(PROJECT, 'js'), js('js'), { recursive: true });
+  for (const f of ['scripts/serve.mjs', 'scripts/earthdata.mjs', 'scripts/hostmode.mjs', 'scripts/status.mjs', 'scripts/vendor.mjs', 'scripts/run.sh', 'scripts/portable.sh', 'scripts/requirements.txt', 'css/app.css', 'Start Crophalo.command']) put(js(f), text(path.join(PROJECT, f)));
+  same('page modules: with every module there, nothing is missing', missingFiles(page), []);
+  for (const f of ['js/app.js', 'js/settings.js', 'js/words.js']) {
+    fs.renameSync(js(f), js(f + '.away'));
+    check(`page modules: without ${f} the check names it`, missingFiles(page).includes(f), missingFiles(page));
+    fs.renameSync(js(f + '.away'), js(f));
+  }
+  put(js('js/app.js'), `${app}\nimport './added-test.js';\n// import './commented-test.js';\nconst later = () => import('./later-test.js');\n`);
+  same('page modules: a static import added to the page is followed (read from the page, not from a list); a commented one and a later import() are not needed to start', missingFiles(page), ['js/added-test.js']);
+  put(js('js/added-test.js'), "import { nothing } from './deeper-test.js';\nexport const added = nothing;\n");
+  same('page modules: imports are followed to any depth', missingFiles(page), ['js/deeper-test.js']);
+  put(js('index.html'), text(path.join(PROJECT, 'index.html')).replace('src="js/app.js"', 'src="js/boot-test.js"'));
+  same('page modules: the module script index.html names is the start of it all', missingFiles(page), ['js/boot-test.js']);
 
   const packed = path.join(TMP, 'packed'), tool = (...p) => put(path.join(packed, 'runtime', ...p));
   same('packed tools: an empty folder has none', packedTools(packed), { whole: [], any: false });
@@ -349,7 +400,11 @@ async function theDoctor() {
     same('doctor: when NASA could not be asked, the login is not called wrong', [d.out.includes('  note  The NASA login (kept inside the Crophalo folder (.secrets), so it moves with the folder) could not be tried just now'), fixes(d)], [true, 0]);
     flag(c, 'login', 'no\n'); svc.status[3] = 503; d = await ask(); svc.status[3] = 200;
     same('doctor: a "no" while NASA\'s login service is down blames the service, not the login', [d.out.includes('did not accept'), d.out.includes('  FIX   NASA Earthdata login service not reachable: it answered with an error (503)\n        -> the trouble is on their side: try again later'), fixes(d)], [false, true, 1]);
-    flag(c, 'login', 'yes\n'); d = await ask('--doctor', { FW_CHECK_UPSTREAM: 'http://127.0.0.1:9' });
+    flag(c, 'login', 'yes\n'); d = await ask();
+    same('doctor: the login check is handed the certifi bundle of the folder\'s Python as SSL_CERT_FILE', text(path.join(c.state, 'login-ssl')), path.join(c.state, 'certs.pem'));
+    d = await ask('--doctor', { SSL_CERT_FILE: path.join(c.base, 'owner roots.pem') });
+    same('doctor: an SSL_CERT_FILE the owner set wins', text(path.join(c.state, 'login-ssl')), path.join(c.base, 'owner roots.pem'));
+    d = await ask('--doctor', { FW_CHECK_UPSTREAM: 'http://127.0.0.1:9' });
     same('doctor: with no internet each of the five services is named, and it still exits 0', [(d.out.match(/not reachable: no connection\n {8}-> check the internet connection/g) || []).length, d.out.includes('  5 things to fix'), d.code], [5, true, 0]);
 
     d = await ask();
@@ -372,7 +427,7 @@ async function firstStarts() {
   const c = makeFolder(), P = await freePorts(2);
   const a = await start(c, [...QUIET, '--port', P]);
   check('first start: in a folder with a space and a "Ü" it sets itself up and says where it runs', a.port === P && c.root.includes(' ') && c.root.includes('Ü') && a.out.includes('The NASA data tools are ready.'), a.out);
-  const h = await health(P);
+  const h = await healthOnce(P, x => x?.python === true);
   same('first start: the server answers from this very folder and has found its Python', [h?.ok, h?.python, h?.cache], [true, true, path.join(c.root, '.cache', 'api')]);
   same('fingerprint: five lines: its version, the kind of Mac, the Python, the list of libraries, the folder', text(c.stamp), goodStamp(c));
   same('port memory: the port is written into runtime/last-port', text(path.join(c.rt, 'last-port')), `${P}\n`);
@@ -589,7 +644,7 @@ async function packing() {
 async function logins() {
   const c = makeFolder(), P = await freePorts(), ASK = /NASA Earthdata username: /, PASS = /Password \(it does not show while you type\): /, WHERE = /Type 1 or 2, then Return \(Return alone means 1\): /;
   const folderLogin = path.join(c.root, '.secrets', 'earthdata.netrc'), homeLogin = path.join(c.home, '.netrc'), skipped = path.join(c.rt, 'earthdata-skipped'), screens = [];
-  const typed = async (args, keys, during) => { const s = await terminal(c, [...args, '--port', P], keys, during); screens.push(s.out); return s; };
+  const typed = async (args, keys, during, last) => { const s = await terminal(c, [...args, '--port', P], keys, during, last); screens.push(s.out); return s; };
 
   let s = await start(c, ['--no-open', '--port', P]); await stop(s);
   check('no terminal: with no login and no terminal the start does not ask, does not wait and does not count it as skipped', s.port === P && !ASK.test(s.out) && !exists(skipped), s.out);
@@ -624,11 +679,32 @@ async function logins() {
     [s.stuck, rows(homeLogin)[0], parseNetrc(text(homeLogin)), mode(homeLogin), exists(folderLogin), seen?.login, s.out.includes('Saved in your home folder (~/.netrc), so it stays on this Mac.')],
     [undefined, 'machine other.example login someone password something', { login: USER, password: WORD }, 0o600, false, 'home', true]);
 
+  // another service on the SAME line as the old NASA entry, quoted words and the owner's comments: all of it stays; only the NASA words go
+  const mixed = 'machine urs.earthdata.nasa.gov login user1 password pw1-old machine other.example login "user 1" password "pw1 other" # kept\n# the owner\'s own words\n';
+  put(homeLogin, mixed, 0o600);
+  s = await typed(['--login'], [[ASK, USER + '\n'], [PASS, WORD + '\n'], [WHERE, '\n']]);
+  same('a new NASA login in a ~/.netrc whose NASA entry shares its line with another service: that service, its quotes and the comments stay as written',
+    [s.stuck, rows(homeLogin).slice(0, 2), parseNetrc(text(homeLogin), 'other.example'), parseNetrc(text(homeLogin)), rows(homeLogin).length, text(homeLogin).includes('pw1-old')],
+    [undefined, ['machine other.example login "user 1" password "pw1 other" # kept', '# the owner\'s own words'], { login: 'user 1', password: 'pw1 other' }, { login: USER, password: WORD }, 3, false]);
+
   const real = path.join(c.base, 'kept elsewhere', 'netrc'); put(real, 'machine other.example login someone password something\n', 0o600);
   fs.rmSync(homeLogin); fs.symlinkSync(path.join('..', 'kept elsewhere', 'netrc'), homeLogin);
   s = await typed(['--login'], [[ASK, USER + '\n'], [PASS, WORD + '\n'], [WHERE, '1\n']]);
   same('a ~/.netrc that is a link: it stays a link, and the login is written into the file it leads to',
     [s.stuck, fs.lstatSync(homeLogin).isSymbolicLink(), rows(real).length, parseNetrc(text(real)), mode(real), fs.readdirSync(c.home)], [undefined, true, 2, { login: USER, password: WORD }, 0o600, ['.netrc']]);
+
+  // --login (the "Add NASA login" starter) while this folder's Crophalo runs: the login is asked and saved, and no second server starts
+  const first = await start(c, ['--no-open', '--no-login', '--port', P]), ALREADY = /Crophalo is already running from this folder: http:\/\/localhost:\d+\//;
+  s = await typed(['--login'], [[ASK, USER + '\n'], [PASS, WORD + '\n'], [WHERE, '1\n']], undefined, ALREADY);
+  const still = await health(P), ofThisFolder = (await Promise.all(Array.from({ length: 50 }, (_, i) => health(P + i)))).filter(h => h?.root === c.root).length;   // the start's whole port range; other programs' servers do not count
+  same('--login while Crophalo runs from this folder: it asks, saves the login, says Crophalo is already running and starts no second server',
+    [first.port, s.stuck, s.ended, s.out.includes('Saved in your home folder (~/.netrc), so it stays on this Mac.'), parseNetrc(text(real)), still?.root, ofThisFolder, first.gone, RUNNING.test(s.out), text(path.join(c.rt, 'last-port'))],
+    [P, undefined, true, true, { login: USER, password: WORD }, c.root, 1, false, false, `${P}\n`]);
+  check('--login while Crophalo runs: the start says the running Crophalo uses the new login from its next lookup', s.out.includes('The running Crophalo uses this login from its next lookup.'), s.out);
+  s = await once(c, ['--no-open', '--login', '--port', P]);
+  same('--login with no terminal while Crophalo runs: it says where the login can be typed, then that Crophalo already runs, and ends',
+    [s.code, s.out.trim().split('\n')], [0, ['The NASA login can only be typed in a Terminal window: double-click Start Crophalo.command.', `Crophalo is already running from this folder: http://localhost:${P}/`]]);
+  await stop(first);
 
   const shown = screens.join('\n');
   check('the screen: the questions were shown (so the screen was really read), and the password never was', ASK.test(shown) && PASS.test(shown) && !shown.includes(WORD) && !shown.includes('pw1'), shown.match(/.*pw1.*/)?.[0]);

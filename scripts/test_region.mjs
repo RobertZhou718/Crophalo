@@ -18,7 +18,8 @@ near('the footprint is 9 km of the 19.8 km frame', v.footprint.w * 19.8, 9, 0.01
 same('and sits in the middle, with the field dot at the centre', [v.footprint.x + v.footprint.w / 2, v.footprint.y + v.footprint.h / 2, v.dot], [0.5, 0.5, { x: 0.5, y: 0.5 }]);
 near('the frame is centred on the field', (v.bbox.n + v.bbox.s) / 2, 44.4, 1e-9); near('both ways', (v.bbox.e + v.bbox.w) / 2, -79.78, 1e-9);
 check('a field near the pole keeps the frame on the map', R.footprintView(84.9, 10, 9).bbox.n <= 85);
-check('the picture is asked for as 360 by 360 px from the satellite photo service', /^https:\/\/server\.arcgisonline\.com\/ArcGIS\/rest\/services\/World_Imagery\/MapServer\/export\?bbox=-?\d+\.\d{4},-?\d+\.\d{4},-?\d+\.\d{4},-?\d+\.\d{4}&bboxSR=4326&imageSR=3857&size=360,360&format=jpg&f=image$/.test(R.pictureUrl(v)), R.pictureUrl(v));
+check('the picture is asked for the frame\'s own box, west before east and south before north, to five decimals', (() => { const v = R.footprintView(44.4, -79.78, 9), b = R.pictureBox(v); return b.w < b.e && b.s < b.n && Math.abs(b.n - v.bbox.n) < 1e-5 && Math.abs(b.w - v.bbox.w) < 1e-5; })());
+check('the box is centred on the field and 360 by 360 px is asked of NASA, never of Esri', R.PICTURE_SIZE === 360 && !/esri|arcgis/i.test(R.regionHtml({ label: 'Soil moisture', value: 0.31, date: '2026-11-14', km: 9, lat: 44.4, lon: -79.78, source: 'smap' })));
 
 // ---- the words
 same('water by volume, rounded', [R.valueWords(0.314), R.valueWords(0.005), R.valueWords(0.7), R.valueWords(0)], ['31% water by volume', '1% water by volume', '70% water by volume', '0% water by volume']);
@@ -45,7 +46,7 @@ check('the picture is described for a screen reader, and decorative to it otherw
 check('the "i" for the source sits beside the label, solid for NASA, with "For this figure" holding the date and the square', /srci nasa/.test(html) && /data-note="Moisture around the roots for a square about 9 km wide that holds the field, 14 November 2026\. One value for the whole area\."/.test(html), html.slice(0, 600));
 check('nothing is painted inside the field: the only shapes are the dashed square and the dot', (html.match(/<rect /g) || []).length === 1 && (html.match(/<circle /g) || []).length === 1 && !/<path|<polygon|<image|gradient|pattern/i.test(html));
 const none = R.regionHtml({ ...GOOD, value: null });
-check('with no value it says "Not read yet", says Crophalo will not guess, and shows no number', none.includes('Not read yet') && /will not guess one/.test(none) && /area that holds your field/.test(none) && !/\d+% water/.test(none));
+check('with no value it says plainly there is none (never "not read yet"), says Crophalo will not guess, and shows no number', none.includes('No value for this area') && !/not read yet/i.test(none) && /will not guess one/.test(none) && /area that holds your field/.test(none) && !/\d+% water/.test(none));
 check('with no value the "i" still opens the source, but its "For this figure" does not claim a reading', /srci nasa/.test(none) && !/data-note=/.test(none));
 same('nothing at all is drawn for a reading that is not one', R.regionHtml({ nonsense: true }), '');
 check('words with marks in them cannot break the markup', !/<script|<img src=x/i.test(R.regionHtml({ ...GOOD, label: '<img src=x onerror=1>', why: '"><script>' })));
@@ -67,5 +68,19 @@ check('the "For this figure" line names the box and the date', /data-note="Moist
 check('there is still only one dashed outline and one dot', (withCell.match(/<rect /g) || []).length === 1 && (withCell.match(/<circle /g) || []).length === 1);
 const old = ['Tur', 'key'].join('');
 check('the country is never written the English way', !html.includes(old));
+
+// ---- every demo field gives an engine answer with three plans, on the NASA POWER answer recorded for its own cell (no score is written anywhere: the engine's answer changes as its rules do)
+{
+  const { recordedField } = await import(pathToFileURL(path.join(ROOT, 'scripts', 'hand_climates.mjs')).href), E = await import(pathToFileURL(path.join(ROOT, 'js', 'engine.js')).href);
+  const fs = await import('node:fs'), regions = JSON.parse(fs.readFileSync(path.join(ROOT, 'data', 'regions.json'), 'utf8'));
+  for (const [id, file, cc] of [['mead-field', 'mead', 'US'], ['beltsville-field', 'beltsville', 'US'], ['barrie-field', 'barriefield', 'CA']]) {
+    const r = regions.find(x => x.id === id), { C, cellElev } = recordedField(file, { lat: r.lat, lon: r.lon });
+    const state = { rotation: { preset: r.rotation, custom: [], garden: null, second: {} }, farm: { irrigation: r.defaults.irrigation ?? 'none', tillage: r.defaults.tillage ?? 'reduced', livestock: false, coverOK: true, labor: false }, soil: { mode: 'map', texture: r.defaults.soil_texture, om: null, omPct: null }, soilTest: null, avoid: [], prio: [3, 3, 3, 3, 3] };
+    const answer = E.optionsFor(state, C, { lat: r.lat, lon: r.lon, elev: cellElev, country: cc, fieldDrawn: true, soil: { texture: r.defaults.soil_texture, source: 'map' } }, { today: '2026-11-14' });
+    const plans = answer?.current ? [answer.current, answer.recommended, ...(answer.others ?? [])].filter(Boolean) : [];
+    check(`${id}: the engine gives an answer on its recorded weather, with at least three different plans`, !!answer?.current && new Set(plans.map(p => p.id)).size >= 3 && plans.every(p => Array.isArray(p.seasons) && p.seasons.length >= 2), plans.map(p => p.name));
+    check(`${id}: its plans name only crops of the rotation or a known alternative, each with a sowing and a harvest day`, plans.every(p => p.seasons.every(se => typeof se.crop === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(se.sow ?? '') && /^\d{4}-\d{2}-\d{2}$/.test(se.harvest ?? ''))), plans.map(p => p.id));
+  }
+}
 console.log(`${passed} passed, ${failed} failed`);
 process.exit(failed ? 1 : 0);

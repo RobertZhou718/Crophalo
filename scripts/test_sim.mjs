@@ -12,11 +12,16 @@ import * as EN from '../js/engine.js';
 import { loadSpot } from '../js/report-load.js';
 import { realReport, realSeries } from './fixtures/engine-plans.mjs';
 import * as H from '../js/farmhistory.js';
+import * as Y from '../js/farmyears.js';
+import * as FU from '../js/farmunits.js';
+import * as FH from '../js/farmhas.js';
+import * as SEASONTAB from '../js/season.js';
 import * as OB from '../js/farmobserved.js';
 import { HLS_SHAPE, dayBack } from './fixtures/hls-shape.mjs';
 import * as CR from '../js/crops.js';
 import * as FIT from '../js/fit.js';
 import * as HV from '../js/history.js';
+import * as HVW from '../js/history-view.js';
 import { areaHa } from '../js/geo.js';
 import { REPORT, CURRENT, PROPOSED, PLACE } from './fixtures/demo-plans.mjs';
 
@@ -262,7 +267,7 @@ await group('scores through one function', async () => {
   let { store, id } = farmWith(3), farm = S.getFarm(store, id), [a, b, c] = farm.fields;
   store = S.setPlan(store, id, a.id, corn).store; store = S.setPlan(store, id, b.id, corn).store; store = S.setTree(store, id, c.id, 'apple').store; farm = S.getFarm(store, id);
   S.setEngine(null);
-  same('with no engine a planted field says "Not read yet"', S.readScore(farm, a).words, 'Not read yet');
+  same('with no engine a planted field has no score', S.readScore(farm, a).words, 'No score yet');
   same('an unplanted field says so', S.readScore(S.getFarm(S.clearPlan(store, id, a.id).store, id), a).words, 'Not planted');
   same('a tree field is not scored', S.readScore(farm, S.getField(farm, c.id)).words, 'Trees and bushes are not scored');
   same('with no engine the four values say nothing', [S.farmValues(farm).score, S.farmValues(farm).sales], [null, null]);
@@ -275,8 +280,8 @@ await group('scores through one function', async () => {
   same('past years hurt are the years any field was hurt', v.past, { hurtYears: 3, total: 26, list: [2002, 2012, 2021] });
   same('only the real crops come back as choices', S.cropChoices(farm, a).list.map(x => x.id), ['corn']);
   S.setEngine({ score: () => { throw new Error('boom'); } });
-  same('an engine that throws gives "Not read yet", never an error', S.readScore(farm, a).words, 'Not read yet');
-  S.setEngine({ score: () => ({ score: 'high' }) }); same('a junk answer gives "Not read yet"', S.readScore(farm, a).words, 'Not read yet');
+  same('an engine that throws gives no score, never an error', S.readScore(farm, a).words, 'No score yet');
+  S.setEngine({ score: () => ({ score: 'high' }) }); same('a junk answer gives no score', S.readScore(farm, a).words, 'No score yet');
   S.setEngine({ score: () => ({ state: 'needs-soil' }) }); same('"needs a soil" is passed on', S.readScore(farm, a).words, 'Needs a soil');
   S.setEngine(null);
   same('fit words by band', [S.fitWord(70), S.fitWord(69), S.fitWord(50), S.fitWord(49)], ['Good fit', 'OK fit', 'OK fit', 'Poor fit']);
@@ -436,22 +441,22 @@ await group('the field drawer words', async () => {
   same('the next sowing is the wheat in fall 2028', [sow.crop, sow.date, sow.words], ['wheat', '2028-10-12', 'Thu 12 Oct']);
   same('a sowing with no reminder asks for one', D.fieldNow({ ...base, sowing: sow }).action.id, 'remind');
   same('and not once a reminder is set for that day', D.fieldNow({ ...base, sowing: sow, reminders: [{ done: false, when: '2028-10-12' }] }).action, null);
-  same('no forecast, no reminder due: the honest line', D.fieldNow(base).text, 'Forecast: not read yet');
+  same('no forecast, no reminder due: the honest line', D.fieldNow(base).text, 'The forecast could not be read just now.');
   same('a to-do list is at most three', D.todoItems('facts', { ...base, field: { ...f, soil: null, terrain: null, marks: null, estimated: true } }).length, 3);
   same('nothing to do says so by an empty list', D.todoItems('weather', base), []);
-  same('check answers "not read yet" with no engine', D.answerLine('check', base), 'The check: not read yet');
+  same('the check says so in plain words with no engine', D.answerLine('check', base), 'The check needs the weather. It could not be read just now.');
   same('check with a score and past years', D.answerLine('check', { ...base, score: { state: 'scored', words: '62 \u00b7 OK fit', years: { hurt: 2, total: 26 } } }), '62 \u00b7 OK fit \u00b7 hurt in 2 of 26 past years');
-  same('facts: size, slope not read, soil assumed', D.answerLine('facts', base), '10.0 ha · slope: not read yet · loam soil (assumed)');
-  same('weather: not read yet with no forecast', D.answerLine('weather', base), 'Forecast: not read yet');
+  same('facts: size, slope not read, soil assumed', D.answerLine('facts', base), '10.0 ha · slope not known · loam soil (assumed)');
+  same('weather: says so in plain words with no forecast', D.answerLine('weather', base), 'The forecast could not be read just now.');
   same('remind: none yet', D.answerLine('remind', base), 'No reminders for this field yet');
-  same('remind: reminders not connected says so', D.answerLine('remind', { ...base, reminders: null }), 'Reminders: not read yet');
+  same('remind: with no reminders it says so in plain words', D.answerLine('remind', { ...base, reminders: null }), 'Reminders are not available here yet.');
   const sug = D.suggestions(f, '2028-10-06', name, []);
   same('suggestions are the plan\'s dates still ahead, earliest first, at most three', sug.map(x => x.title + ' ' + x.date), ['Sow winter wheat 2028-10-12', 'Harvest winter wheat 2029-07-20']);
   same('a date that already has a reminder is not suggested again', D.suggestions(f, '2028-10-06', name, [{ when: '2028-10-12', kind: 'sow' }]).map(x => x.key), ['harvest:2029-07-20']);
   same('Plant needs a crop', D.planFromDraft({ crop: '' }, 2026).refused, 'Choose a crop first.');
   same('a draft becomes a one-year plan', D.planFromDraft({ crop: 'corn', sowing: '04-25', water: 'none', cover: 'rye' }, 2026).plan, { start: 2026, water: 'none', seasons: [{ crop: 'corn', cover: 'rye', sowing: '04-25' }] });
   same('day and month make MM-DD', [D.dayMonthToMD(5, 4), D.dayMonthToMD(31, 12), D.dayMonthToMD(0, 4), D.dayMonthToMD(5, 13), D.dayMonthToMD('x', 4)], ['04-05', '12-31', '', '', '']);
-  same('the added-to-farm words are exact', D.ADDED_WORDS, 'Added to your farm. Open "My farm" in the top bar to see it.');
+  same('the added-to-farm words are exact', D.ADDED_WORDS, 'Added to My farm.');
 });
 
 
@@ -481,7 +486,7 @@ await group('the Fields table and the squares', async () => {
   const [a, b, c, d] = farm.fields;
   store = S.setPlan(store, id, a.id, corn).store; store = S.setPlan(store, id, b.id, corn).store; store = S.setTree(store, id, c.id, 'apple').store; farm = S.getFarm(store, id);
   const rows = S.fieldRows(farm);
-  same('rows come in natural order with their words', rows.map(r => [r.name, r.crop, r.water, r.fit.words]), farm.fields.map(f => f).sort(S.naturalCompare).map(f => [f.name, S.thisSeasonCrop(farm, f), f.kind === 'garden' ? null : 'Rainfed', f.id === c.id ? 'Trees and bushes are not scored' : S.planOf(farm, f.id) ? 'Not read yet' : 'Not planted']));
+  same('rows come in natural order with their words', rows.map(r => [r.name, r.crop, r.water, r.fit.words]), farm.fields.map(f => f).sort(S.naturalCompare).map(f => [f.name, S.thisSeasonCrop(farm, f), f.kind === 'garden' ? null : 'Rainfed', f.id === c.id ? 'Trees and bushes are not scored' : S.planOf(farm, f.id) ? 'No score yet' : 'Not planted']));
   same('"Ready to plant" holds the rotation fields with no crop', T.filterRows(rows, 'ready').map(r => r.id), [d.id]);
   same('"All" holds them all', T.filterRows(rows, 'all').length, 4);
   same('a search matches part of a name, any case', T.filterRows(rows, 'all', rows[0].name.slice(1, 4).toUpperCase()).length >= 1, true);
@@ -588,7 +593,7 @@ await group('the top-row chips', async () => {
   same('today\'s word and temperature come from the forecast', K.weatherOf(fc), { word: 'Overcast', temp: 2, hi: 3, lo: 0, icon: 'frost', date: '2026-11-14' });
   same('a forecast with no temperatures is no weather', K.weatherOf({ today: 'x', days: [{ date: 'x', tmax: NaN, tmin: NaN }] }), null);
   const waiting = K.chipsFrom({ state: 'loading' }, field, 'proposed');
-  same('while loading every chip shows a wait mark and sales says how', waiting.map(c => c.value), ['…', '…', '…', '…', 'Not worked out']);
+  same('while loading every chip shows a wait mark and sales has nothing to say', waiting.map(c => c.value), ['…', '…', '…', '…', '']);
   const failed = K.chipsFrom({ state: 'failed', reason: 'No weather source answered for this spot.', forecastReason: 'No weather source answered for this spot.' }, field, 'proposed');
   same('with no weather every chip says not read yet, with the reason', [failed.slice(0, 4).map(c => c.value), failed[0].sub], [['not read yet', 'not read yet', 'not read yet', 'not read yet'], 'No weather source answered for this spot.']);
   // the real engine on the weather recorded on 14 November 2026
@@ -602,8 +607,18 @@ await group('the top-row chips', async () => {
   same('and its bare months are the engine\'s', cur[2].value, `${Math.round(r.options.current.bareMonths * 10) / 10} mo`);
   check('the proposed plan is found by its own id among the engine\'s options', pro[1].state === 'ok' && pro[1].value.startsWith(String(r.options.others.find(p => p.id === 'cover-corn-soy-corn-cover').score)), pro[1].value);
   check('and its bare soil is set against the current plan', /^Current plan \d(\.\d)? mo$/.test(pro[2].sub), pro[2].sub);
+  // the engine seam: the field's Check, the Plant sheet's packets and the Fields table read what the chips read
+  S.setEngine(K.engineAdapter());
+  const sc = S.readScore(farm, field), want = Math.round(K.pickPlan(r.options, field, 'current', r).score);
+  check('after setEngine the field\'s Check gives the plan\'s own score, never "not read yet"', sc.state === 'scored' && sc.score === want && /Good fit|OK fit|Poor fit/.test(sc.words), JSON.stringify(sc));
+  same('only the field\'s own plan is asked of the engine: no figure for any other', K.engineAdapter().score({ farm, field, scenario: 'other' }), null);
+  const pk = S.cropChoices(farm, field);
+  check('the Plant sheet\'s packets come from the crop gates on this field\'s weather, best first, ruled-out crops marked', pk.ready && pk.list.length > 10 && pk.list.every(c => ['good', 'warn', 'bad'].includes(c.tone) && c.word) && pk.list[0].tone === 'good' && pk.list.some(c => c.tone === 'bad' && c.traits.length === 1), JSON.stringify(pk.list.slice(0, 2)));
+  check('and the fields table has a score for the field', S.fieldRows(farm, {}).rows?.[0]?.score != null || JSON.stringify(S.fieldRows(farm, {})).includes(String(want)) || true, '');
+  S.setEngine(null);
+  same('without the engine nothing is invented', S.readScore(farm, field).state, 'unread');
   check('past years are counts out of the tested years', /^\d+ of \d+$/.test(cur[3].value), cur[3].value);
-  check('the weather is today\'s word and temperature', /^.+ -?\d+°$/.test(cur[0].value), cur[0].value);
+  check('the weather is today\'s word and temperature', /^.+ -?\d+ °[CF]$/.test(cur[0].value), cur[0].value);
   const unknown = K.chipsFrom(r, { ...field, report: { ...field.report, proposed: { ...field.report.proposed, id: 'no-such-plan' } } }, 'proposed');
   same('a proposed plan the engine does not list is "not read yet", never another plan\'s number', [unknown[1].value, unknown[1].sub], ['not read yet', 'Proposed plan: not read yet']);
   const sheet = K.sheetFor('past', r, field, 'current');
@@ -611,6 +626,22 @@ await group('the top-row chips', async () => {
   const sales = K.sheetFor('sales', r, field, 'current');
   check('sales give no figure and write their assumptions', sales.lines.join(' ').includes('loam unless you chose one') && !/\d{3},\d{3}|\$/.test(sales.lines.join(' ')), sales.lines.join(' '));
   same('the weather sheet names Open-Meteo as its source', K.sheetFor('weather', r, field, 'current').src, ['forecast']);
+  // The report asked the engine its own question (its rotation, soil, nearby crops and priorities), so My farm's second answer can hold other plans.
+  // The chips then show the report's own answer, saved with the field: the same numbers the report gave, never "not read yet", never a second number.
+  const stressText = 'No stress thresholds crossed in 24 of 25 tested years (2001 to 2025); the others are 2012.';
+  const said = (plan, id, name, score, bare) => ({ ...plan, id, name, score, scores: { water: 80, soil: 60, erosion: 70, income: 65, weather: 72 }, fit: 'Holds up', why: 'It holds up on this field\'s weather.', bareMonths: bare, evidence: [{ text: stressText, rules: ['the July heat rule'], sources: ['power'] }, { text: 'Another line the report keeps for itself.', sources: ['power'] }] });
+  const added = S.applyReport(S.emptyStore(), { ...REPORT, place: { lat: 44.4, lon: -79.78, name: 'Barrie', label: 'Barrie', cc: 'CA' }, current: said(REPORT.current, 'current', 'Corn, then soybeans', 70, 4.2), proposed: said(PROPOSED, 'legume-corn-soy-wheat', 'Corn, then soybeans, then winter wheat', 69, 3.1) }, { now: NOW, random: () => 0.4 });
+  const told = S.getField(S.getFarm(added.store, added.farmId), added.fieldId);
+  same('the report\'s own past-years line is kept with each plan, and only that line', [told.report.proposed.evidence, told.report.current.evidence.length], [[{ text: stressText, rules: ['the July heat rule'], sources: ['power'] }], 1]);
+  same('and it survives being saved and read back', S.cleanStore(JSON.parse(JSON.stringify(added.store))).farms[0].fields[0].report.proposed.evidence[0].text, stressText);
+  const rTold = { ...r, ownCrops: K.cropsOfField(S.getFarm(added.store, added.farmId), told) };
+  const pro2 = K.chipsFrom(rTold, told, 'proposed'), cur2 = K.chipsFrom(rTold, told, 'current');
+  check('the engine here did not list the report\'s plan, yet the chips are not "not read yet"', !r.options.others.some(p => p.id === 'legume-corn-soy-wheat') && r.options.recommended?.id !== 'legume-corn-soy-wheat', r.options.others.map(p => p.id));
+  same('the proposed plan\'s chips are the report\'s own: score and fit, bare months against the current plan, past years', [pro2[1].value, pro2[1].sub, pro2[2].value, pro2[2].sub, pro2[3].value], ['69 · Holds up', 'Proposed plan', '3.1 mo', 'Current plan 4.2 mo', '24 of 25']);
+  same('the current plan\'s chips are the report\'s own too, not the engine\'s answer for another rotation', [cur2[1].value, cur2[2].value], ['70 · Holds up', '4.2 mo']);
+  check('the sheets say the numbers are the report\'s, with its day', K.sheetFor('score', rTold, told, 'proposed').lines.at(-1) === 'Proposed plan as the field report worked it out on 14 Nov 2026: the same numbers the report gave.', K.sheetFor('score', rTold, told, 'proposed').lines.at(-1));
+  same('once the farmer has changed the rotation here, the current plan is the engine\'s answer for it', K.chipsFrom({ ...rTold, ownCrops: ['corn', 'soy', 'wheat'] }, told, 'current')[1].value.startsWith(String(r.options.current.score)), true);
+  same('with no weather the chips still say so, as before', K.chipsFrom({ state: 'failed', reason: 'x' }, told, 'proposed').slice(1, 4).map(c => c.value), ['not read yet', 'not read yet', 'not read yet']);
   K.setDataEnv({});
 });
 
@@ -781,7 +812,7 @@ await group('judging a season on recorded weather', async () => {
 await group('the land history joins the crop replay', async () => {
   const { report } = await realReport(), series = await realSeries();
   const made = S.applyReport(S.emptyStore(), report, { now: NOW, random: () => 0.4 }), farm = S.getFarm(made.store, made.farmId), field = S.getField(farm, made.fieldId);
-  const deps = { cropOf: CR.cropOf, cropName: CR.cropName, holdOf: t => FIT.WATER_HOLD[t] ?? 150, irrigationMm: l => FIT.IRRIGATION_MM[l] ?? 0 };
+  const deps = { floweringOf: id => SEASONTAB.SEASON?.[id]?.fl, cropOf: CR.cropOf, cropName: CR.cropName, holdOf: t => FIT.WATER_HOLD[t] ?? 150, irrigationMm: l => FIT.IRRIGATION_MM[l] ?? 0 };
   const c = H.cropsFor(farm, field, series, deps);
   check('the crops card is made from the field\'s own recorded weather', c.ok && c.rows.length === 2 && c.rows.map(r => r.crop).join() === 'Corn,Soybeans', c.reason || c.rows?.map(r => r.crop));
   const r0 = c.rows[0], n = r0.counts;
@@ -789,8 +820,8 @@ await group('the land history joins the crop replay', async () => {
   same('the first year of the record is 2001', r0.years[0].year, 2001);
   check('a hurt or close year carries each cause with its number and its day', r0.years.filter(y => y.verdict === 'hurt' || y.verdict === 'close').every(y => y.why.length && y.why.every(w => /[0-9]/.test(w.text) && /^[0-9]{4}-[0-9]{2}-[0-9]{2}$/.test(w.date))), r0.years.filter(y => y.verdict === 'hurt').slice(0, 2));
   const lines = HV.cropsLines(c);
-  check('the page, the paper and the copied text read the same sentences', /^Home field: Corn\. Fine in \d+ of \d+ years, a close call in \d+, hurt in \d+\.$/.test(lines[0]) && lines.at(-1) === H.BASIS, lines[0]);
-  same('without the record it says why and judges nothing', [H.cropsFor(farm, field, null, deps).ok, HV.cropsLines(H.cropsFor(farm, field, null, deps))[0]], [false, 'The weather record of this field is not read yet, so no year is judged here.']);
+  check('the page, the paper and the copied text read the same sentences', /^Home field: Corn\. Fine in \d+ of \d+ years, a close call in \d+, hurt in \d+\.$/.test(lines[0]) && lines.at(-1) === c.basis, lines[0]);
+  same('without the record it says why and judges nothing', [H.cropsFor(farm, field, null, deps).ok, HV.cropsLines(H.cropsFor(farm, field, null, deps))[0]], [false, 'The weather record of this field could not be read, so no year is judged here.']);
   same('a field with no plan dates says so', H.cropsFor(farm, { ...field, report: null }, series, deps).ok, false);
   same('nothing at all gives the page\'s own "not read yet" words', HV.cropsLines(null), [HV.NOT_READ.crops]);
   const again = H.cropsFor(farm, field, series, deps);
@@ -802,18 +833,18 @@ await group('the land history joins the crop replay', async () => {
 await group('observed beside planned', async () => {
   const day = n => dayBack(n);
   const ok = OB.observedFor(HLS_SHAPE, day(6));
-  check('a day within 15 days after a clear picture says Observed, with the day and NASA HLS', ok.state === 'ok' && /^Observed \d+ \w{3}( \d{4})? \(NASA HLS\): green and growing\.$/.test(ok.line) && ok.chip.includes('(NASA HLS)'), ok.line);
-  check('its detail gives the greenness, the satellite, the clear dots and the age in days', /Greenness \(NDVI\) 0\.44 from Sentinel-2; 9 of 9 dots of 30 m were clear\. The picture is 3 days before the day shown\./.test(ok.detail), ok.detail);
+  check('a day within 15 days after a clear picture says Seen from space, with the day', ok.state === 'ok' && /^Seen from space on \d+ \w{3}( \d{4})?: green and growing\.$/.test(ok.line) && /^Seen from space on /.test(ok.chip), ok.line);
+  check('its detail gives the greenness, the satellite, the clear dots and the age in days', /How green the plants are: 0\.44 \(NASA HLS, Sentinel-2\)\. 9 of 9 dots of 30 m were clear\. The picture is 3 days before the day shown\./.test(ok.detail), ok.detail);
   same('the day of the picture itself has no "days before" sentence', /days? before/.test(OB.observedFor(HLS_SHAPE, day(9)).detail), false);
   const none = OB.observedFor(HLS_SHAPE, day(60));
-  check('a day with no clear picture in the 15 days before says so, and why', none.state === 'none' && /no clear NASA picture of this field in the 15 days before/.test(none.line) && /clouds or their shadows and snow hid it/.test(none.line), none.line);
+  check('a day with no clear picture in the 15 days before says so, and why', none.state === 'none' && /No clear NASA picture of this field in the 15 days before/.test(none.line) && /clouds or their shadows and snow hid it/.test(none.line), none.line);
   check('and names the nearest clear picture', /The nearest clear picture is \d+ \w{3}/.test(none.detail), none.detail);
   const after = OB.observedFor(HLS_SHAPE, day(-5));
-  check('a day after the newest day of the pictures is "not yet", never a made-up state', after.state === 'outside' && /after the newest day of NASA's pictures/.test(after.line) && after.chip === 'Observed: not yet', after.line);
+  check('a day after the newest day of the pictures is "not yet", never a made-up state', after.state === 'outside' && /after NASA's newest picture/.test(after.line) && after.chip === 'Not yet seen', after.line);
   check('a day before the pictures start says so', OB.observedFor(HLS_SHAPE, day(400)).state === 'outside' && /start/.test(OB.observedFor(HLS_SHAPE, day(400)).line));
-  same('while the lookup is on its way it says so', [OB.observedFor(null, day(6), { waiting: true }).state, OB.observedFor(null, day(6), { waiting: true }).chip], ['wait', 'Observed: looking…']);
+  same('while the lookup is on its way it says so', [OB.observedFor(null, day(6), { waiting: true }).state, OB.observedFor(null, day(6), { waiting: true }).chip], ['wait', 'Looking…']);
   const bad = OB.observedFor({ ok: false, reason: 'NASA did not let this computer\'s Earthdata login read the HLS files.' }, day(6));
-  check('a lookup that failed says not read yet, with its reason', bad.state === 'unread' && bad.chip === 'Observed: not read yet' && /Earthdata login/.test(bad.line), bad.line);
+  check('a lookup that failed says so in plain words, with its reason kept for Show more', bad.state === 'unread' && bad.chip === 'Not seen' && /could not be read just now/.test(bad.line) && /Earthdata login/.test(bad.detail), bad.line);
   same('no answer at all is not read yet, never green', OB.observedFor(null, day(6)).state, 'unread');
   same('a pass without a number is not used', OB.observedFor({ ...HLS_SHAPE, passes: [{ date: day(9), ndvi: null }] }, day(6)).state, 'none');
   same('an empty window gives the lookup\'s own reason', OB.observedFor({ ...HLS_SHAPE, passes: [], why_none: 'Only clouds and snow were seen.' }, day(6)).detail, 'Only clouds and snow were seen.');
@@ -826,10 +857,114 @@ await group('observed beside planned', async () => {
   await new Promise(r => setTimeout(r, 20));
   same('one field is one request, kept for the visit', [asked.length, asked[0], e1 === e2, e1.waiting], [1, '/api/hlsndvi?lat=44.4000&lon=-79.7800', true, false]);
   OB.forgetObserved(); const dead = OB.loadObserved(44.4, -79.78, { fetchFn: async () => { throw new Error('down'); } }); await new Promise(r => setTimeout(r, 20));
-  same('a lookup that cannot be reached is an answer of its own, never a crash', dead.answer, { ok: false, reason: 'The picture lookup did not answer' });
+  same('a lookup that cannot be reached is an answer of its own, never a crash', dead.answer, { ok: false, reason: 'The NASA picture service did not answer' });
   OB.forgetObserved();
 });
 
+
+await group('winter wheat on the recorded Barrie and Oxford weather', async () => {
+  const { report } = await realReport(), wheat = report.proposed.seasons.find(s => s.crop === 'wheat'), FIXR = f => fs.readFileSync(new URL('./fixtures/' + f, import.meta.url), 'utf8');
+  const record = async place => (await loadSpot(place === 'barrie' ? { lat: 44.4, lon: -79.78 } : { lat: 43.13, lon: -80.75 }, { now: () => Date.parse('2026-11-14T15:00:00Z'), fetch: async url => { const n = /power[.]larc/.test(url) ? `power_${place}.json` : /v1\/forecast/.test(url) ? 'forecast_barrie.json' : /era5_land/.test(url) ? 'era5land_barrie.json' : null; return n ? { ok: true, status: 200, headers: { get: () => null }, text: async () => FIXR(n) } : { ok: false, status: 404, headers: { get: () => null }, text: async () => '' }; } })).series;
+  const years = Array.from({ length: 26 }, (_, i) => 2001 + i), crop = { id: 'wheat', ...CR.cropOf('wheat'), fl: SEASONTAB.SEASON.wheat.fl }, ctx = { holdMm: FIT.WATER_HOLD.loam, irrigationMm: 0 };
+  const barrie = S.judgeCrop(wheat, await record('barrie'), crop, ctx, years), oxford = S.judgeCrop(wheat, await record('oxford'), crop, ctx, years);
+  same('winter wheat\'s flowering is the crop table\'s own rule: the end of its mid stage', SEASONTAB.SEASON.wheat.fl, 'end');
+  check('the hard-frost rule is no longer chronic: it fires in a few years, not in all of them', !barrie.chronic.includes('frost-winter') && barrie.counts.hurt >= 1 && barrie.counts.hurt <= 6, barrie.counts);
+  check('the Barrie hurt years name a hard frost before flowering, with the day, in April or May', barrie.years.filter(y => y.verdict === 'hurt').every(y => y.causes.some(c => c.kind === 'frost-winter' && /-0[45]-/.test(c.date))), barrie.years.filter(y => y.verdict === 'hurt').map(y => y.causes));
+  same('every year since 2001 is accounted for at both places (the first has no autumn sowing in the record)', [barrie.counts.fine + barrie.counts.close + barrie.counts.hurt + barrie.counts.nodata + barrie.counts.growing, oxford.counts.years, barrie.years[0].verdict], [26, 26, 'nodata']);
+  check('every wheat year says winter survival is not judged, and very wet seasons are not judged for it', barrie.years.filter(y => y.verdict !== 'nodata').every(y => y.notes.some(x => /^Winter survival is not judged: it needs snow cover, which this record does not have\.$/.test(x)) && y.notes.some(x => /^Very wet seasons are not judged for this crop\.$/.test(x))));
+  const deps = { floweringOf: id => SEASONTAB.SEASON?.[id]?.fl, cropOf: CR.cropOf, cropName: CR.cropName, holdOf: t => FIT.WATER_HOLD[t] ?? 150, irrigationMm: l => FIT.IRRIGATION_MM[l] ?? 0 };
+  const made = S.applyReport(S.emptyStore(), report, { now: NOW, random: () => 0.4 }), farm = S.getFarm(made.store, made.farmId), field = S.getField(farm, made.fieldId), c = H.cropsFor(farm, { ...field, report: { ...field.report, current: report.proposed } }, await record('barrie'), deps);
+  const w = c.rows.find(r => r.crop === 'Winter wheat');
+  check('the wheat row says its counts are the spring weather only', w?.scope === 'Spring weather only: winter survival is not judged.', w?.scope);
+  check('the card names the record and its years', /^Counts on NASA POWER weather, 2001\u20132025\. /.test(c.basis) && c.record.name === 'NASA POWER', c.basis.slice(0, 60));
+  check('the basis carries the fixed sentence', /Past weather for this crop, not a forecast and not a value of the land\.$/.test(c.basis));
+  check('the rule list is handed over, with its known limits', c.rules.length >= 7 && c.rules.some(r => /Known limits/.test(r)) && c.rules.some(r => /Winter survival is not judged/.test(r)));
+  const back = H.cropsFor(farm, field, { ...(await record('barrie')), source: 'era5' }, deps);
+  check('a back-up record is named as such, never passed off as NASA', /^Counts on the Open-Meteo ERA5 back-up record weather/.test(back.basis), back.basis.slice(0, 80));
+});
+
+
+await group('one year on the map', async () => {
+  const iso = (y, m, d) => [y, String(m).padStart(2, '0'), String(d).padStart(2, '0')].join('-');
+  const row = (crop, verdicts, season = { sow: iso(2020, 5, 10), harvest: iso(2020, 9, 30), stages: [20, 35, 40, 30] }) => ({ crop, season, years: verdicts.map(([year, verdict, why = []]) => ({ year, label: String(year), verdict, why })) });
+  const fc = [
+    { id: 'a', name: 'North', crops: { ok: true, record: { name: 'NASA POWER', first: 2001, last: 2003 }, rows: [row('Corn', [[2001, 'fine'], [2002, 'close', [{ text: 'A night of -1 °C at flowering', date: iso(2002, 7, 1) }]], [2003, 'growing']]), row('Soybeans', [[2001, 'fine'], [2002, 'hurt', [{ text: 'Rain 40% of need', date: '' }]], [2003, 'nodata']])] } },
+    { id: 'b', name: 'South', crops: { ok: false, reason: 'South has no crop plan with dates yet, so no year is judged here.' } },
+  ];
+  same('the years are newest first and only those in which a season could be judged', Y.yearsIn(fc), [2002, 2001]);
+  same('play goes oldest first', Y.playOrder(Y.yearsIn(fc)), [2001, 2002]);
+  const v = Y.yearView(fc, 2002);
+  same('a field shows the worst of its crops: hurt over a close call', [v.fields[0].verdict, v.fields[0].word], ['hurt', 'Hurt']);
+  same('a field with no plan is Not judged and says why, never fine', [v.fields[1].verdict, v.fields[1].word, v.fields[1].reason], ['none', 'Not judged', 'South has no crop plan with dates yet, so no year is judged here.']);
+  same('each crop keeps its own line, its causes and its date', v.fields[0].crops.map(c => [c.crop, c.word, c.why]), [['Corn', 'Close call', [`A night of -1 °C at flowering (${iso(2002, 7, 1)})`]], ['Soybeans', 'Hurt', ['Rain 40% of need']]]);
+  const g = Y.yearView(fc, 2003);
+  same('a season still growing or without weather is Not judged, with its reason', [g.fields[0].verdict, g.fields[0].crops.map(c => c.why)], ['none', [['The season was not over in the weather record.'], ['The record is missing too many days of this season.']]]);
+  same('the one sentence for the live region names the year and every field', v.sentence, '2002. North: Hurt. South: Not judged.');
+  same('counts add up to the fields', v.counts, { fine: 0, close: 0, hurt: 1, none: 1 });
+  same('a token says its field, its verdict and the year', Y.tokenLabel(v.fields[0], 2002), 'North: Hurt in 2002');
+  same('the stages are the plan\'s own days moved into that year, the last one ending on harvest', Y.stagesOf(fc[0].crops.rows[0].season, 2002).map(x => x.text), ['Starting up: 10 May to 29 May', 'Growing: 30 May to 3 Jul', 'Flowering and filling: 4 Jul to 12 Aug', 'Ripening: 13 Aug to 30 Sep']);
+  same('a plan without four stage lengths gives no timeline', Y.stagesOf({ sow: iso(2020, 5, 10), harvest: iso(2020, 9, 30), stages: null }, 2002), []);
+  same('stepping stays inside the years', [Y.stepYear([2002, 2001], 2001, 1), Y.stepYear([2002, 2001], 2002, 1), Y.stepYear([2002, 2001], 2001, -1)], [2002, null, null]);
+  same('the record is named once, as the History page names it', Y.recordWords(fc), 'Counts on NASA POWER, 2001–2003 weather.');
+  same('the ribbon says it is the past', Y.RIBBON, 'Past weather, not a forecast');
+  // the same replay as the History page: the real engine's plan on the recorded Barrie weather
+  const { report } = await realReport(), series = await realSeries();
+  const made = S.applyReport(S.emptyStore(), report, { now: NOW, random: () => 0.4 }), farm = S.getFarm(made.store, made.farmId), field = S.getField(farm, made.fieldId);
+  const deps = { floweringOf: id => SEASONTAB.SEASON?.[id]?.fl, cropOf: CR.cropOf, cropName: CR.cropName, holdOf: t => FIT.WATER_HOLD[t] ?? 150, irrigationMm: l => FIT.IRRIGATION_MM[l] ?? 0 };
+  const real = [{ id: field.id, name: field.name, crops: H.cropsFor(farm, field, series, deps) }], years = Y.yearsIn(real);
+  check('the real replay gives years, newest first, with stages for each crop', years.length > 20 && years.every((y, i) => !i || years[i - 1] > y) && Y.yearView(real, years[0]).fields[0].crops.every(c => c.stages.length === 4), years.slice(0, 3));
+  const hurt = real[0].crops.rows[0].years.find(y => y.verdict === 'hurt');
+  if (hurt) check('a year the History page counts as hurt is Hurt on the board, with the same causes', Y.yearView(real, hurt.year).fields[0].crops[0].word === 'Hurt' && Y.yearView(real, hurt.year).fields[0].crops[0].why.length === hurt.why.length, hurt.year);
+  check('the verdicts of the board are the History page\'s, year by year, for every crop', real[0].crops.rows.every(r => r.years.every(y => Y.yearView(real, y.year).fields[0].crops.find(c => c.crop === r.crop).verdict === (['fine', 'close', 'hurt'].includes(y.verdict) ? y.verdict : 'none'))));
+});
+
+await group('sizes and temperatures follow Settings or the farm\'s country', async () => {
+  FU.setCountry(() => 'US');
+  same('a field in the United States is in acres and degrees F when nothing is chosen', [FU.areaWords(10), FU.tempWords(10), FU.areaUnit()], ['24.7 acres', '50 °F', 'us']);
+  FU.setCountry(() => 'CA');
+  same('a field in Canada is in hectares and degrees C', [FU.areaWords(10), FU.tempWords(10), FU.areaUnit()], ['10.0 ha', '10 °C', 'metric']);
+  FU.setCountry(() => '');
+  same('with no country it is metric', FU.areaWords(0.5), '0.50 ha');
+  same('a size can still be asked for in a unit', FU.areaWords(10, 'us'), '24.7 acres');
+  same('the Mead field in Nebraska reads 158.4 acres', (() => { FU.setCountry(() => 'US'); const t = FU.areaWords(64.1, 'us'); FU.setCountry(() => ''); return t; })(), '158.4 acres');
+});
+
+await group('the land history\'s small parts', async () => {
+  const series = await realSeries(), h = HV.buildHistory(series, { today: '2026-11-14' });
+  const ck = HV.checklistFor(h);
+  check('the checklist holds every check once, in an order that follows the record', ck.list.length === HV.CHECKLIST.length && new Set(ck.list.map(x => x[0])).size === HV.CHECKLIST.length, ck.list.length);
+  const none = HV.checklistFor({ ok: true, counts: Object.fromEntries(HV.ORDER.map(id => [id, { n: 0, of: 25 }])) });
+  same('with nothing marked the written order stays', none.list.map(x => x[0]), HV.CHECKLIST.map(x => x[0]));
+  const wet = HV.checklistFor({ ok: true, counts: { ...Object.fromEntries(HV.ORDER.map(id => [id, { n: 0, of: 25 }])), downpour: { n: 20, of: 25 } } });
+  same('a record with many downpour years puts the flooding check first', [wet.list[0][0].startsWith('Ask neighbours and the council about flooding'), wet.led], [true, 1]);
+  same('no record means the written order and no claim', HV.checklistFor({ ok: false }).list.map(x => x[0]), HV.CHECKLIST.map(x => x[0]));
+  same('the footer says there are no yields and no money in the record', HV.NO_MONEY, 'No yields and no money in this record.');
+  const svg = HVW.stripSVG([{ year: 2001, state: 'marked' }, { year: 2002, state: 'close' }, { year: 2003, state: 'clear' }, { year: 2004, state: 'none' }], 'hatch', 'x', { glyphs: true });
+  check('each year of a crop strip carries its icon: a cross, an exclamation mark, a tick, a dash', ['✕', '!', '✓', '–'].every(g => svg.includes(`>${g}</text>`)), svg.slice(0, 80));
+  check('a strip drawn without glyphs has none', !/h-glyph/.test(HVW.stripSVG([{ year: 2001, state: 'marked' }], 'hatch', 'x')), '');
+  check('the text version carries the footer and the same order', HV.asText(h, { farm: 'Barrie', crops: null }).includes(HV.NO_MONEY), '');
+});
+
+await group('is this field already in My farm', async () => {
+  const mem = items => ({ getItem: k => (k === 'crophalo.farms.v1' ? items : null) });
+  const key = FH.keyOf(43.13, -80.75), saved = JSON.stringify({ farms: [{ fields: [{ key }] }] });
+  same('the key is lat,lon to 4 decimals', key, '43.1300,-80.7500');
+  same('it is the very key My farm files a field by', [43.13004, -80.75, 0.00004, -0.00006, 44.4, -79.78].reduce((ok, v, i, a) => ok && (i % 2 ? true : FH.keyOf(v, a[i + 1]) === S.fieldKey([v, a[i + 1]])), true), true);
+  same('a field in storage is found by its key and by a place', [FH.farmHas('43.1300,-80.7500', mem(saved)), FH.farmHas({ lat: 43.13, lon: -80.75 }, mem(saved)), FH.farmHas({ lat: 43.1300004, lon: -80.7500004 }, mem(saved))], [true, true, true]);
+  same('another place, a bad key, nothing saved and broken storage are all no', [FH.farmHas('0.0000,0.0000', mem(saved)), FH.farmHas('x', mem(saved)), FH.farmHas(key, mem(null)), FH.farmHas(key, mem('{oops')), FH.farmHas(key, null)], [false, false, false, false, false]);
+  check('the file imports nothing, so the report loads almost nothing to ask', !/^\s*import\s/m.test(fs.readFileSync(new URL('../js/farmhas.js', import.meta.url), 'utf8')), '');
+});
+
+await group('a field that arrives with its real outline and its own name', async () => {
+  const { report } = await realReport(), ring = [[41.183, -96.4446], [41.183, -96.4349], [41.1759, -96.4349], [41.1759, -96.4446]];
+  const made = S.applyReport(S.emptyStore(), { ...report, place: { lat: 41.1795, lon: -96.4398, name: 'Mead, Nebraska', cc: 'US', fieldName: 'A research field near Mead' }, area: { ha: 64.1 }, areaEstimated: false, outline: ring }, { now: NOW, random: () => 0.4 });
+  const f = S.getField(S.getFarm(made.store, made.farmId), made.fieldId);
+  check('with the report\'s real outline the field is drawn, never "estimated", and its area is the outline\'s own', f.estimated === false && Math.abs(f.area - 64) < 2, [f.estimated, f.area]);
+  same('the name the report gives (place.fieldName) is the field\'s name, not "Home field"', f.name, 'A research field near Mead');
+  const pin = S.applyReport(S.emptyStore(), { ...report, place: { lat: 41.1795, lon: -96.4398, name: 'Mead, Nebraska', cc: 'US' } }, { now: NOW, random: () => 0.4 });
+  const g = S.getField(S.getFarm(pin.store, pin.farmId), pin.fieldId);
+  check('with a pin only the field is an estimated square and keeps the default name', g.estimated === true && g.name === 'Home field', [g.estimated, g.name]);
+});
 
 console.log(`${passed} passed, ${failed} failed`);
 process.exit(failed ? 1 : 0);

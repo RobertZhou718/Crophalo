@@ -5,6 +5,7 @@
 import { openRun } from './e2e_lib.mjs';
 import { realReport } from './fixtures/engine-plans.mjs';
 import * as EN from '../js/engine.js';
+import * as CROPS from '../js/crops.js';
 
 const run = await openRun('farm3d_link');
 const { js, page, until, tap, size, device, go, flat, shot, check, same, finish, sleep, send } = run;
@@ -68,7 +69,7 @@ await group('link: Map to 3D to Map, three dates, both plans', async () => {
   await open();
   await tap('#fwCompare'); await until(`!document.querySelector('#fwPanel').hidden && document.querySelectorAll('.fw-step').length === 3`);
   const steps = await js(`[...document.querySelectorAll('.fw-step')].map(b => ({ label: b.querySelector('span').textContent, date: null }))`);
-  same('the engine\'s three dates in the board', steps.map(s => s.label), KD.map(k => k.label));
+  same('the engine\'s three dates in the board, in plain words', steps.map(s => s.label), [KD[0].label, `${CROPS.cropName(REAL.proposed.seasons.at(-1).crop)} sown`, `${CROPS.cropName(REAL.proposed.seasons.at(-1).crop)} in spring`]);
   for (const kind of ['proposed', 'current']) {
     await js(`window.__farm._ui.planKind = ${JSON.stringify(kind)}; window.__farm.render()`);   // My farm has no button for the plan in 3D yet: the board's own state is set the way its function does
     for (let i = 0; i < 3; i++) {
@@ -109,15 +110,17 @@ await group('link: with no ground answer 3D says so, as the board does', async (
   await open(false);
   await seeThree('no answer');
   const b = await board(), t = await threeNow();
-  same('no answer: the board says "not read yet"', b.chip, 'not read yet');
+  same('no answer: the board shows no label, and says nothing it does not know', b.chip, '');
   check('no answer: 3D says "Not read yet" too, and draws no ground state', /^Not read yet/.test(t.labelText) && t.ground === 'none' && t.legend.length === 0 && /Not read yet/.test(t.cover), t);
 });
 
 await group('link: where the device cannot draw 3D the board says so and keeps working', async () => {
   await open();
   const before = await board();
-  await js(`Object.defineProperty(HTMLCanvasElement.prototype, 'getContext', { value() { return null; }, configurable: true }); 0`);
-  await tap('#fwThreeBtn'); await sleep(600);
+  // A device without WebGL has none in its workers either. The 3D picture is drawn in a worker now, so the stand-in device takes WebGL away there too (a worker
+  // started for the 3D look gets an OffscreenCanvas that gives no context); the board then hears it from the worker, a moment later than from the page.
+  await js(`Object.defineProperty(HTMLCanvasElement.prototype, 'getContext', { value() { return null; }, configurable: true }); { const W = window.Worker; window.Worker = class extends W { constructor(url, o) { super(/farm3d/.test(String(url)) ? URL.createObjectURL(new Blob(['import ' + JSON.stringify(new URL(String(url), location.href).href) + '; OffscreenCanvas.prototype.getContext = function () { return null; };'], { type: 'text/javascript' })) : url, o); } }; } 0`);
+  await tap('#fwThreeBtn'); await until(`!document.querySelector('#fwStatus').hidden && /3D/.test(document.querySelector('#fwStatus').textContent)`, 8000).catch(() => {}); await sleep(200);
   same('fallback: the plain sentence', await text('#fwStatus'), 'This device cannot draw 3D. The board shows the same things.');
   same('fallback: still on the Map, the Map button chosen', await js(`document.querySelector('#fwMapBtn').getAttribute('aria-pressed')`), 'true');
   check('fallback: the Map is shown with its field', await js(`!document.querySelector('#fwMap').hidden && document.querySelectorAll('#fwMap path.fw-field').length === 1 && document.querySelector('#fw3d').hidden`));

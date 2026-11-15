@@ -1,4 +1,4 @@
-// Crophalo's 3D scene suite: js/farm3d-data.js and js/moon.js, with no drawing. Positions, the slab, the height mesh, the soil, the stages, the rows,
+// Crophalo's 3D scene suite: js/farm3d-data.js, js/farm3d-orbit.js and js/moon.js, with no drawing. Positions, the slab, the height mesh, the soil, the stages, the rows,
 // the sky, the one sun and the moon, all from real or made-up data whose answer is known. No internet is needed.
 // RULE: never loosen a check here without a written farming reason beside it. The picture must never show a farmer a field, a crop or a sun that is not there.
 // Run: node scripts/test_farm3d.mjs
@@ -6,6 +6,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import * as d from '../js/farm3d-data.js';
+import * as o from '../js/farm3d-orbit.js';
 import * as sun from '../js/sun.js';
 import { moonAt, moonWords } from '../js/moon.js';
 import { decodeHeights, floatsOf, loadHeights, sourceWords } from '../js/heights3d.js';
@@ -284,6 +285,8 @@ same('field of view 30°, 36° when taller than wide, polar limits 10–80', [d.
   same('the label says Planned or Observed, the plan and the date', [corn.label.line, wheat2.label.line], ['Planned · Proposed plan · 5 October 2027', 'Observed · Proposed plan · 5 October 2027']);
   same('the four kinds are different things', [corn.cover.kind, res.cover.kind, wheat1.cover.kind, bare.cover.kind], ['standing', 'residue', 'young', 'bare']);
   check('standing corn is far taller than residue, and residue lies low and thin', corn.cover.height > 3 * res.cover.height && res.cover.length > res.cover.height, [corn.cover.height, res.cover.height]);
+  const last = mk({ state: 'crop', crop: 'soy', stage: 5, label: 'Planned' });
+  same('a crop still standing at the last stage is ready to harvest, never both standing and harvested', last.words.cover, 'Standing soybeans, ready to harvest.');
   check('wheat seedlings are shorter than standing wheat and both are drawn at least the farm unit for standing', wheat1.cover.height < mk({ state: 'crop', crop: 'wheat', stage: 3 }).cover.height, [wheat1.cover.height]);
   check('every plant and fleck is inside the field, none beyond 4,000', [corn, res, wheat1].every(s => s.cover.plants.length > 100 && s.cover.plants.length <= 4000 && s.cover.plants.every(p => d.insidePolygon(p.x, p.z, s.field.polygon))));
   same('bare soil has nothing standing and says so', [bare.cover.plants.length, bare.words.cover], [0, 'Bare soil: nothing grows and no residue is left.']);
@@ -323,8 +326,93 @@ same('field of view 30°, 36° when taller than wide, polar limits 10–80', [d.
   check('the source words name the map, its cell, and whether trees are in it', /^NRCan HRDEM lidar, one every 2\.0 m\. Bare ground/.test(sourceWords(g)) && /includes the tops of trees/.test(sourceWords({ ...g, kind: 'DSM', name: 'Copernicus DEM GLO-30', res_m: 30 })));
   const sceneRead = d.groundScene({ pin: { lat: 44.4, lon: -79.78 }, field: { id: 'x' }, date: '2027-10-05', ground: null, heights: g });
   check('a read grid is drawn at true height and its source is in the words', sceneRead.heights.status === 'read' && /NRCan HRDEM lidar, one every 2\.0 m/.test(sceneRead.words.heights) && /drawn at true height/.test(sceneRead.words.heights), sceneRead.words.heights);
+  // the height map's own credit travels with the picture whenever heights are drawn
+  const OGL = { credit: 'Contains information licensed under the Open Government Licence - Canada (Natural Resources Canada)', licence: 'Open Government Licence - Canada' };
+  same('Canada: the Open Government Licence line, said once (the credit already names the licence)', d.creditWords(OGL), 'Height map: Contains information licensed under the Open Government Licence - Canada (Natural Resources Canada).');
+  same('USA: the credit, then the licence', d.creditWords({ credit: 'U.S. Geological Survey, 3D Elevation Program (3DEP)', licence: 'Public domain' }), 'Height map: U.S. Geological Survey, 3D Elevation Program (3DEP). Licence: Public domain.');
+  same('England: the credit and the licence', d.creditWords({ credit: '(c) Environment Agency copyright and/or database right. All rights reserved.', licence: 'Open Government Licence v3.0' }), 'Height map: (c) Environment Agency copyright and/or database right. All rights reserved. Licence: Open Government Licence v3.0.');
+  same('only a licence, or only a credit, or neither', [d.creditWords({ licence: 'Public domain' }), d.creditWords({ credit: 'A map' }), d.creditWords({}), d.creditWords(null)], ['Height map: Public domain.', 'Height map: A map.', '', '']);
+  const withCredit = d.groundScene({ pin: { lat: 44.4, lon: -79.78 }, field: { id: 'x' }, date: '2027-10-05', ground: null, heights: { ...g, ...OGL } });
+  same('a read grid carries its credit in the scene words', withCredit.words.credit, 'Height map: Contains information licensed under the Open Government Licence - Canada (Natural Resources Canada).');
+  same('no credit is shown where no heights are drawn (flat, failed, missing)', [d.groundScene({ pin: { lat: 44.4, lon: -79.78 }, field: { id: 'x' }, date: '2027-10-05', ground: null, heights: null }).words.credit, d.groundScene({ pin: { lat: 44.4, lon: -79.78 }, field: { id: 'x' }, date: '2027-10-05', ground: null, heights: { failed: 'down' } }).words.credit], ['', '']);
   const sceneFail = d.groundScene({ pin: { lat: 44.4, lon: -79.78 }, field: { id: 'x' }, date: '2027-10-05', ground: null, heights: decodeHeights({ ok: false, reason: 'No height map answered for this place right now' }, req) });
-  same('a failed lookup draws the land flat and says why', [sceneFail.heights.status, sceneFail.words.heights], ['failed', 'Heights not read: No height map answered for this place right now. The land is drawn flat, as a plain schematic.']);
+  same('a failed lookup draws the land flat and says why', [sceneFail.heights.status, sceneFail.words.heights], ['failed', 'Heights not read: No height map answered for this place right now; the land is drawn flat, as a plain schematic.']);
+}
+
+// ---- opening 3D without freezing: the words without the plants, what one device is asked to draw, the painted shadows, and the camera as numbers
+{
+  const pin = { lat: 43.13, lon: -80.75 }, ground = { state: 'crop', crop: 'corn', stage: 3, label: 'Planned' };
+  const mk = extra => d.groundScene({ pin, field: { id: 'home', name: 'Home field', polygon: null, areaEstimated: true }, planKind: 'proposed', date: '2028-10-04', ground, ...extra });
+  const full = mk(), words = mk({ plants: false });
+  same('the page\'s words need no plants: the same words, the same field, no plants laid out', [words.cover.plants.length, words.words, words.label, words.field.box, words.aria], [0, full.words, full.label, full.field.box, full.aria]);
+  check('a weaker device gets fewer plants over the same field, never more than it may draw', mk({ plantLimit: 600 }).cover.plants.length <= 600 && mk({ plantLimit: 600 }).cover.plants.length > 300 && full.cover.plants.length > 1500, [mk({ plantLimit: 600 }).cover.plants.length, full.cover.plants.length]);
+  same('a computer with a graphics chip: 4,000 plants, a 1024 ground picture, pixels at most 1.5 times', (b => [b.tier, b.plants, b.ground, b.pixelRatio])(d.budgetFor({ dpr: 2, cores: 16, memoryGB: 8 })), ['high', 4000, 1024, 1.5]);
+  same('a phone: fewer plants', (b => [b.tier, b.plants])(d.budgetFor({ phone: true, dpr: 3, cores: 8 })), ['mid', 1500]);
+  same('software drawing, 2 cores or 2 GB: the smallest budget', [d.budgetFor({ software: true }).tier, d.budgetFor({ cores: 2 }).tier, d.budgetFor({ memoryGB: 2 }).tier, d.budgetFor({ software: true }).ground], ['low', 'low', 'low', 512]);
+  same('what the device does not say never lowers the budget', d.budgetFor({}).tier, 'high');
+  check('every tier keeps its plants under its triangles (about 110 a symbol)', Object.values(d.BUDGETS).every(b => b.plants * 110 <= b.triangles));
+  same('a ground picture never larger than the graphics chip takes', d.budgetFor({ maxTexture: 512 }).ground, 512);
+  const many = Array.from({ length: 1000 }, (_, i) => i);
+  same('thinning keeps every k-th plant over the whole field, never only the first rows', [d.thinPlants(many, 250).length, d.thinPlants(many, 250)[0], d.thinPlants(many, 250).at(-1) > 990, d.thinPlants(many, 5000).length, d.thinPlants(many, 0).length], [250, 0, true, 1000, 0]);
+  const up45 = d.shadowOffset({ x: 0, y: Math.SQRT1_2, z: -Math.SQRT1_2 }, 10);
+  check('with the sun 45° up in the north the shadow is as long as the plant and falls south', Math.abs(up45.len - 10) < 1e-9 && Math.abs(up45.dz - 10) < 1e-9 && Math.abs(up45.dx) < 1e-9, up45);
+  same('a low sun\'s shadow is cut at three times the height; a sun under 3° casts none', [d.shadowOffset({ x: 0.999, y: 0.06, z: 0 }, 10).len, d.shadowOffset({ x: 1, y: 0.04, z: 0 }, 10), d.shadowOffset(null, 10)], [30, null, null]);
+  same('the picture key: the same scene gives the same key, another date with another sun another', [d.pictureKey(full) === d.pictureKey(mk()), d.pictureKey(full) === d.pictureKey(mk({ date: '2028-06-04' }))], [true, false]);
+  // the camera: the first view is the one the view always had, and every way to move it keeps inside the limits and can be undone
+  const v = o.firstView(full, 16 / 9), p = o.poseOf(v), b = full.field.box, cx = (b.x0 + b.x1) / 2, cz = (b.z0 + b.z1) / 2, az = 200 * Math.PI / 180, tilt = 55 * Math.PI / 180;
+  check('the first view stands where the view always stood: from the south at 200°, tilted 55°', Math.abs(p.position[0] - (cx + v.radius * Math.cos(tilt) * Math.sin(az))) < 1e-6 && Math.abs(p.position[1] - v.radius * Math.sin(tilt)) < 1e-6 && Math.abs(p.position[2] - (cz - v.radius * Math.cos(tilt) * Math.cos(az))) < 1e-6, p.position);
+  same('a tall picture widens the view to 36°, a wide one keeps 30°', [o.firstView(full, 0.6).fov, v.fov], [36, 30]);
+  const cam = o.createOrbit(v, { damping: false });
+  cam.turn(-15); cam.turn(-15);
+  check('Turn left twice turns the camera 30° round the field, at the same height and distance', Math.abs(cam.view.theta - (v.theta + 30 * Math.PI / 180)) < 1e-9 && Math.abs(o.poseOf(cam.view).position[1] - p.position[1]) < 1e-9 && cam.moved);
+  same('Zoom past the nearest or furthest distance does nothing', [(() => { const c = o.createOrbit(v); for (let i = 0; i < 40; i++) c.zoom(0.8); return c.view.radius >= v.near; })(), (() => { const c = o.createOrbit(v); for (let i = 0; i < 40; i++) c.zoom(1.25); return c.view.radius <= v.far; })()], [true, true]);
+  cam.rotate(0, -5000, 500); check('a drag never tips the camera past 10° from straight above', cam.view.phi >= 10 * Math.PI / 180 - 1e-9, cam.view.phi);
+  cam.rotate(0, 5000, 500); check('nor below 80°, down to the ground', cam.view.phi <= 80 * Math.PI / 180 + 1e-9, cam.view.phi);
+  cam.slide(1e6, 1e6, 500); check('a slide never takes the middle of the view off the land', Math.hypot(cam.view.target[0], cam.view.target[2]) <= v.span + 1e-6, cam.view.target);
+  cam.reset(); same('Reset goes back to the very first view', o.poseOf(cam.view).position.map(x => Math.round(x * 1000)), p.position.map(x => Math.round(x * 1000)));
+  const soft = o.createOrbit(v, { damping: true }); soft.rotate(120, 0, 600);
+  let frames = 0; while (soft.step() && frames < 500) frames++;
+  check('with Motion: Full a swing eases out in a few frames and lands where a still one would', frames > 5 && frames < 200 && Math.abs(soft.view.theta - (v.theta - 2 * Math.PI * 120 / 600)) < 1e-3, [frames, soft.view.theta]);
+  const still = o.createOrbit(v, { damping: false }); still.rotate(120, 0, 600);
+  check('with Less or Still it lands at once', !still.step() && Math.abs(still.view.theta - (v.theta - 2 * Math.PI * 120 / 600)) < 1e-12);
+  const kept = o.createOrbit(v, { damping: false }); kept.turn(15); kept.refit(o.firstView(full, 1.2));
+  check('a new picture size keeps the farmer\'s own view once they have moved it', Math.abs(kept.view.theta - (v.theta - 15 * Math.PI / 180)) < 1e-9);
+}
+
+
+// ---- the year replay's legend, the hour shown, and the first-open rule words
+{
+  const input = { pin: { lat: 44.4, lon: -79.78 }, field: { id: 'x', name: 'Barrie field' }, date: '2027-10-05', ground: null };
+  same('no replay: no past-weather line', d.groundScene(input).words.past, '');
+  same('during the year replay the legend says so, with the year', d.groundScene({ ...input, pastYear: 2012 }).words.past, '2012: past weather, not today');
+  same('a year that is not a whole number is never written', d.groundScene({ ...input, pastYear: '2012' }).words.past, '');
+  const noon = d.groundScene(input).momentMs, later = noon + 3 * 3600e3;
+  same('the hour shown: by default a morning moment, else the hour the farmer picked', [d.groundScene({ ...input, hourMs: later }).momentMs, d.groundScene({ ...input, hourMs: later }).momentMs - noon], [later, 3 * 3600e3]);
+  check('the sun (and the words about it) follow the picked hour', d.groundScene({ ...input, hourMs: later }).words.sun !== d.groundScene(input).words.sun);
+}
+
+// ---- the first view's facts for the page's own motion (the board that leans back to it) and the sun at a time of day asked for
+{
+  const mk = (pin, extra = {}) => d.groundScene({ pin, field: { id: 'lift', name: 'Lift field', polygon: null, areaEstimated: true }, planKind: 'proposed', date: '2027-07-05', ground: { state: 'crop', crop: 'corn', stage: 3, label: 'Planned' }, plants: false, ...extra });
+  const north = mk({ lat: 41.18, lon: -96.44 }), south = mk({ lat: -33.9, lon: 151.2 });
+  const wide = o.firstViewFacts(north, 1.6, { width: 800, height: 500 }), tall = o.firstViewFacts(north, 0.5, { width: 400, height: 800 });
+  same('the first view says the tilt and the field of view the scene has, so the board can lean to 90 minus the tilt', [wide.tilt, wide.fov, 90 - wide.tilt], [north.camera.tilt, north.camera.fov, 90 - north.camera.tilt]);
+  same('a picture taller than wide uses the taller field of view of 36 degrees', tall.fov, 36);
+  check('north is up when the camera looks from the south, and not south of the equator', wide.northUp === true && o.firstViewFacts(south, 1.6).northUp === false, [wide.northUp, o.firstViewFacts(south, 1.6).northUp]);
+  check('the first view puts the middle of the field in the middle of the picture', Math.abs(wide.centre.x - 0.5) < 1e-3 && Math.abs(wide.centre.y - 0.5) < 1e-3, wide.centre);
+  check('the whole field is inside the picture, with room round it, at both shapes', [wide, tall].every(f => f.box.x0 > 0.02 && f.box.y0 > 0.02 && f.box.x1 < 0.98 && f.box.y1 < 0.98), [wide.box, tall.box]);
+  check('the outline has a corner for each corner of the field, in order, as fractions of the picture', wide.outline.length === north.field.polygon.length && wide.outline.every(p => p.x >= 0 && p.x <= 1 && p.y >= 0 && p.y <= 1), wide.outline);
+  check('the field is seen from the south: the far (north) side of the field is higher up the picture than the near side', (() => { const pts = north.field.polygon.map((p, i) => ({ z: p.z, y: wide.outline[i].y })); const far = pts.reduce((a, b) => (b.z < a.z ? b : a)); const near = pts.reduce((a, b) => (b.z > a.z ? b : a)); return far.y < near.y; })(), wide.outline);
+  same('the same scene and shape always give the same facts (it is the first view, never the farmer\'s turned camera)', o.firstViewFacts(north, 1.6, { width: 800, height: 500 }), wide);
+  same('the picture size is handed back as it is, or nothing', [wide.size, o.firstViewFacts(north, 1.6).size], [{ width: 800, height: 500 }, null]);
+  // the sun at a time of day: the date's own moment is left alone, an asked moment is honoured, the sun moves the way it really does, and night has no sun
+  const day = Date.UTC(2027, 6, 5), at = h => mk({ lat: 41.18, lon: -96.44 }, { hourMs: day + h * 36e5 });
+  const morning = at(13), noon = at(18), evening = at(23.5), night = at(7);   // UTC hours: 08:00, 13:00, 18:30 and 02:00 local (CDT)
+  same('a time of day asked for is the moment the scene is drawn for', [morning.momentMs, noon.momentMs], [day + 13 * 36e5, day + 18 * 36e5]);
+  check('the sun rises in the east and sets in the west: its heading grows through the day and is highest near noon', (morning.sun.azimuth < noon.sun.azimuth) && (noon.sun.azimuth < evening.sun.azimuth) && noon.sun.height > morning.sun.height && noon.sun.height > evening.sun.height, [morning.sun, noon.sun, evening.sun].map(x => [Math.round(x.azimuth), Math.round(x.height)]));
+  check('a sun that is down is said to be down, so no painted shadow is drawn from it', night.sun.up === false && night.light.state === 'night', [night.sun, night.light.state]);
+  check('a different time of day gives another picture key (so the ground is painted again) and the same time gives the same one', d.pictureKey(morning) !== d.pictureKey(noon) && d.pictureKey(mk({ lat: 41.18, lon: -96.44 }, { hourMs: day + 13 * 36e5 })) === d.pictureKey(morning), [d.pictureKey(morning).length]);
+  check('the words for each time say that time of day, so a film never states another time', /^Sun at 06:/.test(morning.words.sun) && /^Sun at 11:/.test(noon.words.sun) && morning.words.sun !== noon.words.sun, [morning.words.sun, noon.words.sun]);
 }
 
 console.log(`${passed} passed, ${failed} failed`);

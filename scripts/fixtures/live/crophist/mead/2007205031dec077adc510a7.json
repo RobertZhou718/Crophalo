@@ -1,0 +1,14 @@
+{
+ "method": "POST",
+ "url": "https://pdi.scinet.usda.gov/image/rest/services/CDL_WM/ImageServer/getSamples",
+ "recorded": "2026-11-15T07:54:28Z",
+ "hand_made": false,
+ "replies": [
+  {
+   "status": 200,
+   "headers": {
+    "content-type": "application/json; charset=UTF-8"
+   }
+  }
+ ]
+}

@@ -122,7 +122,9 @@ await group('odd places: the poles, the date line, the zero line, no place at al
   same('the two poles are places like any other', [lat(90, 0), lat(-90, 0)], ['90.0000', '-90.0000']);
   same('180 east and 180 west are one line: one address, so one weather square and one kept answer', [lon(0, 180), lon(0, -180), D.powerUrl(D.cleanPlace(0, 180), NOW) === D.powerUrl(D.cleanPlace(0, -180), NOW)], ['-180.0000', '-180.0000', true]);
   same('a map that has scrolled once around the world still names the same place', [lon(0, 190), lon(0, -190), lon(0, 540), lon(0, 359.99996)], ['-170.0000', '170.0000', '-180.0000', '0.0000']);
-  same('the zero line is written one way only, never "-0.0000"', [lon(0, 0), lon(0, -0), lon(0, -0.00001), lat(-0.00001, 0), lat(-0, 0)], ['0.0000', '0.0000', '0.0000', '0.0000', '0.0000']);
+  // 0, 0 itself is refused (below): it is what a missing position turns into. The zero lines are checked one at a time, away from it.
+  same('the zero line is written one way only, never "-0.0000"', [lon(5.6, 0), lon(5.6, -0), lon(5.6, -0.00001), lat(-0.00001, 10), lat(-0, 10)], ['0.0000', '0.0000', '0.0000', '0.0000', '0.0000']);
+  same('0, 0 is refused as a missing position, in words, and so are positions that round to it', [D.cleanPlace(0, 0).reason, D.cleanPlace(-0, 0.00004).reason, D.cleanPlace(0.0001, 0).lat], [D.ZERO_WORDS, D.ZERO_WORDS, 0.0001]);
   check('the Open-Meteo addresses never write "-0.000" either', !/=-0\.000(&|$)/.test(D.era5Url(D.cleanPlace(-0.0004, -0.0004), NOW) + D.forecastUrl(D.cleanPlace(-0.0004, -0.0004))), D.forecastUrl(D.cleanPlace(-0.0004, -0.0004)).slice(0, 80));
   const w = world(() => down());
   const off = [await D.fetchPower(91, 0, w.env), await D.fetchWeather(-90.01, 10, w.env), await D.fetchForecast(120, 0, w.env), await D.fetchEra5Cold(Infinity, 0, w.env)];
@@ -463,7 +465,7 @@ await group('the source notes', async () => {
   same('the fields of a note', SOURCE_FIELDS, ['org', 'name', 'nasa', 'who', 'what', 'talk', 'url']);
   none('every note has every field and no other: who runs it, a plain line, how to explain it, the link, NASA or not', all.filter(([, note]) => ser(Object.keys(note)) !== ser(SOURCE_FIELDS) || typeof note.nasa !== 'boolean').map(([key]) => key));
   none('every text is there, with real words in it (a body\'s short name such as FAO may have three letters)', texts.filter(([at, text]) => typeof text !== 'string' || text.trim().length < (at.endsWith('.org') ? 3 : 4) || text !== text.trim()).map(([at]) => at));
-  same('NASA\'s own sources are marked as NASA\'s, the others are not', all.filter(([, note]) => note.nasa).map(([key]) => key), ['power', 'gpm', 'merra2', 'smap', 'gibs', 'firms']);   // FIRMS fire hot spots are NASA's too (LANCE)
+  same('NASA\'s own sources are marked as NASA\'s, the others are not', all.filter(([, note]) => note.nasa).map(([key]) => key), ['power', 'gpm', 'merra2', 'smap', 'gibs', 'firms', 'grace']);   // FIRMS fire hot spots are NASA's too (LANCE); GRACE-FO water storage is NASA JPL's, its note came with the map's regional water storage layer
   none('the tag says NASA exactly when the source is NASA\'s, and names the other body when it is not', all.filter(([, note]) => (note.org === 'NASA') !== note.nasa || !note.org).map(([key]) => key));
   none('NASA is said once in a name, never twice', all.filter(([, note]) => (note.name.match(/NASA/g) || []).length > 1).map(([key]) => key));
   const notNasa = /\bnot\s+(from\s+)?nasa\b|\bnon-?nasa\b/i;
@@ -498,7 +500,10 @@ async function wholeWay(place, { nasaDown = false } = {}) {
   return { p, land, era, now, w, got, S, opts, fieldElev, C: K.computeClimate(S, S.lat, opts), F: K.computeFrost(S, S.lat, opts), Y: K.computeYTD(S, opts), G: K.computeGDD(S, S.lat, opts) };
 }
 // A second pass over the raw NASA answer, written the plainest way and using nothing of the app: one loop over the days.
-function byHand(answer, lastFull) {
+// margin: the autumn margin for this place (2.5 °C near the Ontario weather stations, else 0). Which places get it is the app's rule,
+// checked on its own in scripts/test_accuracy.mjs; the counting with it is done here by hand: from day 200 on, a night under the margin
+// counts for the first autumn frost, while spring and the frost nights of each month stay at 0 °C.
+function byHand(answer, lastFull, margin = 0) {
   const raw = answer.properties.parameter, fill = answer.header.fill_value, val = (m, key) => { const v = raw[m][key]; return typeof v === 'number' && v !== fill ? v : NaN; };
   const n = lastFull - 2000, at = y => y - 2001, zero = () => Array(n).fill(0), middle = list => { const s = list.filter(real).sort((a, b) => a - b), h = s.length >> 1; return !s.length ? NaN : s.length % 2 ? s[h] : (s[h - 1] + s[h]) / 2; };
   const H = { frostByMonth: Array(12).fill(0), rainByMonth: Array(12).fill(0), rain: zero(), hot: zero(), low: Array(n).fill(Infinity), last: Array(n).fill(NaN), first: Array(n).fill(NaN), warmth: 0 };
@@ -507,6 +512,7 @@ function byHand(answer, lastFull) {
     if (y === lastFull + 1 && key.slice(4) >= '0401' && key.slice(4) <= '0930') H.warmth += Math.max(0, (Math.min(hi, 30) + Math.max(Math.min(lo, 30), 10)) / 2 - 10);   // base 10 °C, cap 30 °C
     if (y > lastFull) continue;
     if (lo < 0) { H.frostByMonth[m]++; if (doy <= 182) H.last[at(y)] = doy; else if (!(H.first[at(y)] <= doy)) H.first[at(y)] = doy; }
+    else if (lo < margin && doy >= 200 && !(H.first[at(y)] <= doy)) H.first[at(y)] = doy;
     if (lo < H.low[at(y)]) H.low[at(y)] = lo;
     if (hi >= 32) H.hot[at(y)]++;
     if (real(rain)) { H.rain[at(y)] += rain; H.rainByMonth[m] += rain; }
@@ -520,8 +526,9 @@ for (const place of PLACES) await group(`the two halves as one: ${FIXTURE_PLACES
   const { p, land, now, got, S, opts, fieldElev, C, F, Y, G } = await wholeWay(place), lastFull = D.lastFullYear(now), years = Array.from({ length: lastFull - 2000 }, (_, i) => 2001 + i);
   same(`${place}: NASA POWER answers, the second cold record answers, and the climate is worked out for every whole year`, [got.ok, got.source, got.cold.ok, C.years], [true, 'power', true, years]);
   // what the weather half builds is exactly what the climate half reads
-  const bare = { days: S.days, lat: S.lat, source: S.source, ...Object.fromEntries(D.MEASURES.map(m => [m, S[m]])) };
-  same(`${place}: the climate half reads the days, the six measures, the latitude and the source, and nothing else of the record`, ser(K.computeClimate(bare, bare.lat, opts)), ser(C));
+  // the longitude too: near the Ontario weather stations the autumn frost date is read with their margin (js/climate.js autumnLine)
+  const bare = { days: S.days, lat: S.lat, lon: S.lon, source: S.source, ...Object.fromEntries(D.MEASURES.map(m => [m, S[m]])) };
+  same(`${place}: the climate half reads the days, the six measures, the latitude, the longitude and the source, and nothing else of the record`, ser(K.computeClimate(bare, bare.lat, opts)), ser(C));
   none(`${place}: every measure is one plain list of numbers, as long as the days, with NaN (never null, never the fill value) where nobody read it`, D.MEASURES.filter(m => !Array.isArray(S[m]) || S[m].length !== S.days.length || S[m].some(v => typeof v !== 'number' || v === -999)));
   same(`${place}: both halves name the same years, the same last complete year, the same rain record and the same newest days`,
     [C.years, C.y1, C.rainSource, C.imerg, C.source, C.through, C.rainThrough, Y.temp.through, Y.gpm.through, Y.model.through, Y.soil.through],
@@ -532,7 +539,7 @@ for (const place of PLACES) await group(`the two halves as one: ${FIXTURE_PLACES
     [C.coldSecond, C.coldSecond10, C.coldNight, C.coldNight10, C.coldLow, C.coldRecords, C.coldDiffer], [got.cold.night, got.cold.night10, (C.coldNasa + got.cold.night) / 2, (C.coldNasa10 + got.cold.night10) / 2, Math.min(C.coldNasa, got.cold.night), 2, Math.abs(C.coldNasa - got.cold.night) >= 2]);
 
   // every indicator is a real number, or unknown on purpose
-  const hand = byHand(p, lastFull);
+  const hand = byHand(p, lastFull, K.autumnLine('power', S.lat, S.lon));
   none(`${place}: every figure of the climate is a real number, or one of the unknowns listed above`, strays(C, NASA_UNKNOWNS));
   none(`${place}: the frost dates of the report are real days, or unknown only where fewer than half the years had that frost`, [['last', F.lastYears], ['first', F.firstYears]].filter(([side, n]) => real(F[side]) !== (n * 2 >= F.years)).map(([side, n]) => `${side}: ${F[side]} with ${n} of ${F.years} years`));
   none(`${place}: "this year so far" and the season's warmth are real numbers throughout`, [...strays(Y, []), ...strays(G, [])]);

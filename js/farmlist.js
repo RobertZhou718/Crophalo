@@ -2,7 +2,7 @@
 // Everything is drawn from the store through one env object; the changes themselves are pure operations in simulate.js.
 // Checked by scripts/test_sim.mjs (the operations) and scripts/e2e_farm.mjs (the list and the settings in a browser).
 import { esc } from './words.js';
-import { areaWords } from './geo.js';
+import { areaWords } from './farmunits.js';
 import * as S from './simulate.js';
 
 const WATER = [['none', 'Rainfed'], ['limited', 'Limited irrigation'], ['full', 'Irrigated as needed']], TILLAGE = [['conventional', 'Conventional'], ['reduced', 'Reduced'], ['notill', 'No-till']];
@@ -35,8 +35,8 @@ export function renderSettings(env) {
   <form id="fwFarmForm" class="fw-form"><label for="fwFarmNameIn">Farm name</label><input id="fwFarmNameIn" class="fw-input" maxlength="60" value="${esc(farm.name)}" autocomplete="off"><p class="fw-err" id="fwFarmErr" role="alert"></p><div class="fw-actions"><button type="submit" class="btn lg primary">Save name</button></div></form>
   <h3>Pin</h3><p>${esc(farm.pin.label || '')}${farm.pin.label ? ' · ' : ''}${farm.pin.lat}, ${farm.pin.lon}</p><p class="fw-muted">The NASA weather is asked for the pin.</p><button type="button" class="btn lg" data-act="pin">Move the pin</button>
   <fieldset class="fw-radios"><legend>How do your fields get water?</legend>${WATER.map(([k, w]) => `<label><input type="radio" name="irr" value="${k}" ${pr.irrigation === k ? 'checked' : ''}> ${w}</label>`).join('')}</fieldset>
-  <fieldset class="fw-radios"><legend>Tillage</legend>${TILLAGE.map(([k, w]) => `<label><input type="radio" name="till" value="${k}" ${pr.tillage === k ? 'checked' : ''}> ${w}</label>`).join('')}</fieldset>
-  <fieldset class="fw-radios"><legend>Cover crops</legend><label><input type="checkbox" id="fwCover" ${pr.coverOK ? 'checked' : ''}> Cover crops are possible on this farm</label></fieldset>
+  <details class="fw-fold fw-moresettings"><summary>Show more</summary>  <fieldset class="fw-radios"><legend>Tillage</legend>${TILLAGE.map(([k, w]) => `<label><input type="radio" name="till" value="${k}" ${pr.tillage === k ? 'checked' : ''}> ${w}</label>`).join('')}</fieldset>
+  <fieldset class="fw-radios"><legend>Cover crops</legend><label><input type="checkbox" id="fwCover" ${pr.coverOK ? 'checked' : ''}> Cover crops are possible on this farm</label></fieldset></details>
   <h3>Delete</h3><p class="fw-muted">The farm, its fields and plans go to Recently deleted for 30 days.</p><button type="button" class="btn lg danger armed" data-act="delete">Delete farm</button>
   <div class="fw-actions"><button type="button" class="btn lg" data-act="back">Back to My farms</button></div>`;
   p.querySelector('#fwClose').onclick = () => env.close();

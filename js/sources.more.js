@@ -1,21 +1,19 @@
 // More source notes for the report: the references the report's figures point to besides the weather sources of js/sources.js. Same shape as there.
-// Pure: a table. Each note says who runs the source and what it is, in one plain line; nothing here claims more than the source says.
+// Pure: a table. Each note says who runs the source and what it is, in one plain line; nothing here claims more than the source says. Crophalo's own notes link to its own pages by a relative address (./#limits, ./#data), so the site's name is never written in the code.
 // Checked by scripts/test_report.mjs (every note has every field; the NASA ones come first in a list).
 // The report's own extra notes, added to the shared table (js/sources.js) when this file loads: only keys it does not already hold.
 import { SOURCES } from './sources.js';
 export const MORE = {
   rules: { org: 'Crophalo', name: 'Crophalo’s own rules', nasa: false, who: 'Crophalo',
     what: 'The plain farming rules Crophalo applies to your weather: for example, which crops follow which, and when soil is left bare.',
-    talk: 'These are rules of thumb written down in one place and tested. They are a guide to think with, not advice: check with farmers near you or your adviser.', url: 'https://crophalo.earth/' },
+    talk: 'These are rules of thumb written down in one place and tested. They are a guide to think with, not advice: check with farmers near you or your adviser.', url: './#limits' },
   omafra: { org: 'OMAFRA', name: 'Ontario agronomy guide for field crops: winter wheat', nasa: false, who: 'Ontario Ministry of Agriculture, Food and Agribusiness',
     what: 'Ontario’s own guidance on growing winter wheat, including when to sow it in the fall.',
     talk: 'Crophalo points to this guide for sowing dates and seeding advice for winter wheat in Ontario.', url: 'https://www.ontario.ca/document/agronomy-guide-field-crops' },
   erosion: { org: 'Ontario', name: 'Soil erosion: causes and effects', nasa: false, who: 'Government of Ontario',
     what: 'Why rain on bare or thinly covered soil carries topsoil away, and what slows it down.',
     talk: 'Living plants and crop residue protect the soil surface from falling rain and slow the water running over it.', url: 'https://www.ontario.ca/page/soil-erosion-causes-and-effects' },
-  grace: { org: 'NASA', name: 'NASA GRACE-FO regional water storage', nasa: true, who: 'NASA Jet Propulsion Laboratory, with the German Research Centre for Geosciences (GFZ)',
-    what: 'How much water is stored in the ground, the rivers and the aquifers of a whole region, from the gravity measured by a pair of satellites.',
-    talk: 'GRACE-FO measures tiny changes in the pull of gravity between two satellites. A region’s total stored water goes up and down with it. The squares are hundreds of kilometres wide, so it says nothing about a single field.', url: 'https://gracefo.jpl.nasa.gov/' },
+  // grace: one card for the map and the report, in js/sources.js (with JPL's release and DOI)
   ecostress: { org: 'NASA', name: 'NASA ECOSTRESS ground temperature', nasa: true, who: 'NASA Jet Propulsion Laboratory',
     what: 'The temperature of the ground surface itself, seen by a heat camera on the International Space Station, on the days it passes over and the sky is clear.',
     talk: 'ECOSTRESS looks at the ground, not the air, so bare soil can read much hotter than the weather. It sees a place only a few times a month, and not through cloud.', url: 'https://ecostress.jpl.nasa.gov/' },
@@ -37,9 +35,35 @@ export const MORE = {
   glo30: { org: 'Copernicus', name: 'Copernicus GLO-30 height map', nasa: false, who: 'The European Space Agency, for the European Union’s Copernicus programme',
     what: 'A world height map with a reading about every 30 m, used where no finer national map is available. It includes the tops of trees and buildings.',
     talk: 'It is made from radar from space, so it reads the top of what stands on the ground. Slope from it is a rough guide on a field, and small features are not in it.', url: 'https://dataspace.copernicus.eu/' },
+  orbits: { org: 'US Space Force', name: 'Satellite orbits on the home Earth (US Space Force elements, via CelesTrak)', nasa: false,
+    who: 'The U.S. Space Force (Space-Track.org), shared by CelesTrak; the positions are worked out in your browser with satellite.js (MIT licence)',
+    what: 'Where each satellite is right now, so the home Earth shows the satellites whose data Crophalo reads in their true places.',
+    talk: 'The places are worked out in your browser from each satellite\u2019s newest published orbit, read at most every 12 hours, with SGP4, the model that orbit is made for. An orbit is most exact near its own date and grows less exact day by day, so each satellite\u2019s card says how old it is.', url: 'https://celestrak.org/NORAD/elements/' },
+  craft: { org: 'NASA', name: 'Spacecraft pictures on the home (NASA 3D Resources; NASA/JPL-Caltech)', nasa: true,
+    who: 'NASA (pictures of its 3D models of Terra, GPM, Landsat 8 and the Space Station) and NASA/JPL-Caltech (artist\u2019s concepts of SMAP and GRACE-FO)',
+    what: 'Pictures of the spacecraft whose data Crophalo reads, shown when you point at one on the home Earth.',
+    talk: 'The pictures are NASA\u2019s, used as its media guidelines allow and credited to NASA. NOAA-20, NOAA-21 and Sentinel-2 are shown with drawings made by Crophalo, because no free picture of them was found. Crophalo is not made, reviewed or endorsed by NASA, ESA or NOAA.', url: 'https://science.nasa.gov/3d-resources/' },
+  nasadem: { org: 'NASA', name: 'NASA NASADEM height map (made from SRTM)', nasa: true, who: 'NASA Jet Propulsion Laboratory, from the Shuttle Radar Topography Mission (SRTM)',
+    what: 'A world height map with a reading about every 30 m, made again by NASA from the radar flown on the Space Shuttle Endeavour in 2000. Crophalo uses it last, where no finer map answers.',
+    talk: 'It reads the top of what stands on the ground, trees and buildings too, as it was in 2000. Slope from it is a rough guide on a field, and small banks and ditches are not in it.', url: 'https://lpdaac.usgs.gov/products/nasadem_hgtv001/' },
   dem: { org: 'Height map', name: 'Height map for slope and height', nasa: false, who: 'The public height map named beside the figure',
     what: 'Ground height from a public height map, from which the slope of the field and the way water runs downhill are worked out.',
-    talk: 'The figure’s own line names which height map was used and how far apart its readings are. A height map cannot see every small ditch or bank, so look at your own ground.', url: 'https://crophalo.earth/' },
+    talk: 'The figure’s own line names which height map was used and how far apart its readings are. A height map cannot see every small ditch or bank, so look at your own ground.', url: './#data' },
+  ssurgo: { org: 'USDA NRCS', name: 'USDA soil survey (SSURGO and STATSGO2)', nasa: false, who: 'The US Department of Agriculture’s Natural Resources Conservation Service',
+    what: 'Maps of the soils of the United States, with a table of each soil’s top layer: texture, organic matter and pH.',
+    talk: 'When you have not typed a soil test, Crophalo reads the main soil under your field to set its texture and organic matter, and the report says so. A map unit is larger than a field, so your own soil test is better.', url: 'https://sdmdataaccess.sc.egov.usda.gov/' },
+  modis: { org: 'NASA', name: 'NASA MODIS greenness since 2001', nasa: true, who: 'NASA’s MODIS science team, served by the ORNL DAAC',
+    what: 'How green the land looked from space in each growing season since 2001, for the 250 m pixels round the field.',
+    talk: 'Crophalo shows each season at its greenest. Cloud and snow can hide the ground, and a pixel is bigger than most fields, so it is the greenness of the land round the field.', url: 'https://modis.ornl.gov/' },
+  usdm: { org: 'USDM', name: 'US Drought Monitor', nasa: false, who: 'The National Drought Mitigation Center at the University of Nebraska-Lincoln, with the US Department of Agriculture and NOAA',
+    what: 'A weekly map of drought across the United States.',
+    talk: 'The season weather record can add how many weeks your county was in drought. The county comes from your field’s position, sent to the Crophalo server, which asks the US FCC.', url: 'https://droughtmonitor.unl.edu/' },
+  ecb: { org: 'ECB', name: 'Exchange rates (European Central Bank, via Frankfurter)', nasa: false, who: 'The European Central Bank, served by Frankfurter',
+    what: 'Daily reference rates between world currencies.',
+    talk: 'Used only to show prices in your currency. Nothing about you or your field is sent.', url: 'https://frankfurter.dev/' },
+  openfreemap: { org: 'OpenFreeMap', name: 'OpenFreeMap street map', nasa: false, who: 'OpenFreeMap, with OpenMapTiles and OpenStreetMap contributors',
+    what: 'The street map and the place names under your field.',
+    talk: 'Only the part of the map in view is asked for.', url: 'https://openfreemap.org/' },
 };
 for (const [key, note] of Object.entries(MORE)) if (!Object.hasOwn(SOURCES, key)) SOURCES[key] = note;
 export const ALL_SOURCES = SOURCES;

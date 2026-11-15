@@ -2,7 +2,7 @@
 // The climate record (2001 to last year) comes from js/climate.js, the year so far and the season's warmth from the same file, the next 7 days from js/data.js.
 // Pure: no page, no storage, no network. A figure that cannot be worked out is NaN or null and the tab says "not read" for it; nothing is ever filled in.
 // Checked by scripts/test_weather_tab.mjs (a recorded Barrie answer from NASA POWER, a missing forecast, every word with its denominator, the calm-day rule).
-import { computeClimate, computeFrost, computeYTD, computeGDD, frostWords, hotWords, heavyWords, drySpellWords, dryYearsWords, trendWords, rainSoFarWords, soilWords, warmthWords, dateWord } from './climate.js';
+import { computeClimate, computeFrost, computeYTD, computeGDD, frostWords, hotWords, heavyWords, drySpellWords, dryYearsWords, trendWords, rainSoFarWords, soilWords, warmthWords, dateWord, SQUARE_WORDS } from './climate.js';
 import { buildForecast } from './data.js';
 
 const fin = v => typeof v === 'number' && Number.isFinite(v);
@@ -34,8 +34,8 @@ function facts(w) {
   const { C, F } = w, out = [];
   const add = (id, title, value, text, sources = ['power']) => out.push({ id, title, value, text, sources });
   add('rain', 'Typical yearly rain', fin(C.med?.P) ? `${num(C.med.P)} mm` : 'Not read', fin(C.med?.P) ? `The middle of ${w.years} years (${span(w)}); ${denominator(w)}. ${rainWhere(w)}` : 'Too few rain readings to say.', w.rainSource === 'imerg' ? ['power', 'gpm'] : w.rainSource === 'era5' ? ['era5'] : ['power', 'merra2']);
-  add('frost', 'Frost', F && F.years > 0 ? (fin(F.last) && fin(F.first) ? `${dateWord(F.last)} to ${dateWord(F.first)}` : F.frostYears === 0 ? 'None in the record' : 'Varies') : 'Not read', frostWords(F));
-  add('free', 'Frost-free season', fin(C.med?.frostFree) ? `${num(C.med.frostFree)} days` : 'Not read', fin(C.med?.frostFree) ? `The middle of ${w.years} years: the days between the last spring frost and the first autumn frost.` : 'Too few nights read to say.');
+  add('frost', 'Frost', F && F.years > 0 ? (fin(F.last) && fin(F.first) ? `${dateWord(F.last)} to ${dateWord(F.first)}` : F.frostYears === 0 ? 'None in the record' : 'Varies') : 'Not read', frostWords(F), F?.margin > 0 ? ['power', 'eccc'] : ['power']);
+  add('free', 'Frost-free season', fin(C.med?.frostFree) ? `${num(C.med.frostFree)} days` : 'Not read', fin(C.med?.frostFree) ? `The middle of ${w.years} years: the days between the last spring frost and the first autumn frost. ${SQUARE_WORDS}` : 'Too few nights read to say.', C.frostMargin > 0 ? ['power', 'eccc'] : ['power']);
   const hot = hotWords(C, w.Y);
   add('heat', 'Hot days (32 °C or more)', fin(C.med?.heat32) ? `${num(C.med.heat32)} a year` : 'Not read', hot.text);
   add('heavy', 'Heavy rain', fin(C.med?.heavy) ? `${num(C.med.heavy, 1)} days a year` : 'Not read', heavyWords(C));
@@ -48,13 +48,23 @@ function facts(w) {
 }
 const rainWhere = w => w.rainSource === 'imerg' ? 'Rain is NASA’s satellite estimate (GPM) for a square about 10 km wide.' : w.rainSource === 'era5' ? 'Rain is from the back-up weather record.' : 'Rain is from NASA’s weather model.';
 
+// The hot-days tile follows the comparison with the usual by now, not only the place's own average: 11 so far against a usual 6 is more hot days than usual, whatever the place's word.
+export function hotTile(hot, Y) {
+  const total = Y?.hot?.total, normal = Y?.hot?.normal;
+  if (!hot || hot.status === 'Unknown' || !fin(total) || !fin(normal)) return hot;
+  const room = Math.max(2, normal * 0.5), plain = hot.text.replace(/ So far in \d{4}: .*$/, '');
+  if (total - normal >= room) return { status: hot.status === 'Risk' ? 'Risk' : 'Watch', text: `More hot days than usual: ${num(total)} so far, ${num(normal)} is normal by now. Heat can hurt crops at flowering.` };
+  if (normal - total >= room) return { status: hot.status, text: `Fewer hot days than usual: ${num(total)} so far, ${num(normal)} is normal by now. ${plain.replace(/^Heat stress is rare here\.$/, '')}`.trim() };
+  return hot;
+}
+
 // ---- this year so far: each tile has a name, a figure, its status word and a plain line; tone is good, watch, risk or unclear
 const tone = t => ({ Good: 'good', Watch: 'watch', Risk: 'risk' }[t] ?? 'unclear');
 function tiles(w) {
   const { C, Y, G } = w, out = [], year = Y?.year;
   const rain = rainSoFarWords(Y), g = Y?.gpm?.total, m = Y?.model?.total, rainTotal = fin(g) ? g : m;
   out.push({ id: 'rain', title: `Rain in ${year ?? 'this year'} so far`, value: fin(rainTotal) ? `${num(rainTotal)} mm` : 'Not read', status: rain.status, tone: tone(rain.tone), text: rain.text, sources: fin(g) ? ['gpm', 'power'] : ['merra2', 'power'] });
-  const hot = hotWords(C, Y);
+  const hot = hotTile(hotWords(C, Y), Y);
   out.push({ id: 'hot', title: 'Hot days (32 °C or more)', value: fin(Y?.hot?.total) ? `${num(Y.hot.total)} so far` : 'Not read', status: hot.status === 'Unknown' ? 'Not read' : hot.status, tone: tone(hot.status), text: hot.text, sources: ['power'] });
   const soil = soilWords(Y);
   out.push({ id: 'soil', title: 'Soil wetness, last 30 days', value: fin(Y?.soil?.mean) ? `${num(Y.soil.mean * 100)}%` : 'Not read', status: soil.chip || (fin(Y?.soil?.mean) ? 'Normal' : 'Not read'), tone: soil.chip ? 'watch' : fin(Y?.soil?.mean) ? 'good' : 'unclear', text: soil.text, sources: ['power'] });

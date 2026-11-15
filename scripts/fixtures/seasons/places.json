@@ -1,0 +1,275 @@
+{
+ "_about": "Climates of 27 farm places for the sowing and harvest checks of scripts/test_seasons_world.mjs: for each place, the climate object that js/climate.js computeClimate makes from one NASA POWER daily answer (js/data.js buildSeries; for the two demo fields near Mead, Nebraska and Beltsville, Maryland also fitHeight to the field height), not the raw answer. Each answer was asked at the coordinates given, for 1 January 2001 to 14 November 2026, and kept on 14 November 2026 (Toronto time) by an accuracy check of 120 world places and 300 US places; the weather record runs through 13 November 2026 (data). No new request was made for these files. The last nine (Tifton to Malmesbury) come the same way from answers asked at the same addresses on 15 November 2026 (UTC) by a crop-calendar check of 24 farm places, with the record through 13 November 2026 (data); they are not height-fitted. NASA POWER data are public domain (NASA Langley Research Center POWER Project). Numbers that are not finite are written as the strings NaN, Infinity or -Infinity.",
+ "places": [
+  {
+   "key": "kansas",
+   "label": "Central Kansas (US)",
+   "lat": 38.7475,
+   "lon": -99.2713,
+   "elev": 646.38,
+   "asked": "https://power.larc.nasa.gov/api/temporal/daily/point?parameters=T2M_MAX,T2M_MIN,PRECTOTCORR,IMERG_PRECTOT,GWETROOT,EVLAND&community=AG&longitude=-99.2713&latitude=38.7475&start=20010101&end=20261114&format=JSON&time-standard=UTC",
+   "read": "2026-11-14",
+   "through": "2026-11-13"
+  },
+  {
+   "key": "oklahoma",
+   "label": "Western Oklahoma (US)",
+   "lat": 35.7105,
+   "lon": -99.0334,
+   "elev": 500.27,
+   "asked": "https://power.larc.nasa.gov/api/temporal/daily/point?parameters=T2M_MAX,T2M_MIN,PRECTOTCORR,IMERG_PRECTOT,GWETROOT,EVLAND&community=AG&longitude=-99.0334&latitude=35.7105&start=20010101&end=20261114&format=JSON&time-standard=UTC",
+   "read": "2026-11-14",
+   "through": "2026-11-13"
+  },
+  {
+   "key": "panhandle",
+   "label": "Texas panhandle (US)",
+   "lat": 34.4729,
+   "lon": -102.3935,
+   "elev": 1182.27,
+   "asked": "https://power.larc.nasa.gov/api/temporal/daily/point?parameters=T2M_MAX,T2M_MIN,PRECTOTCORR,IMERG_PRECTOT,GWETROOT,EVLAND&community=AG&longitude=-102.3935&latitude=34.4729&start=20010101&end=20261114&format=JSON&time-standard=UTC",
+   "read": "2026-11-14",
+   "through": "2026-11-13"
+  },
+  {
+   "key": "columbia",
+   "label": "Columbia Basin, Washington (US)",
+   "lat": 46.8098,
+   "lon": -118.7315,
+   "elev": 459.18,
+   "asked": "https://power.larc.nasa.gov/api/temporal/daily/point?parameters=T2M_MAX,T2M_MIN,PRECTOTCORR,IMERG_PRECTOT,GWETROOT,EVLAND&community=AG&longitude=-118.7315&latitude=46.8098&start=20010101&end=20261114&format=JSON&time-standard=UTC",
+   "read": "2026-11-14",
+   "through": "2026-11-13"
+  },
+  {
+   "key": "georgia",
+   "label": "Southern Georgia (US)",
+   "lat": 31.9489,
+   "lon": -83.5249,
+   "elev": 105.43,
+   "asked": "https://power.larc.nasa.gov/api/temporal/daily/point?parameters=T2M_MAX,T2M_MIN,PRECTOTCORR,IMERG_PRECTOT,GWETROOT,EVLAND&community=AG&longitude=-83.5249&latitude=31.9489&start=20010101&end=20261114&format=JSON&time-standard=UTC",
+   "read": "2026-11-14",
+   "through": "2026-11-13"
+  },
+  {
+   "key": "maryland",
+   "label": "Beltsville, Maryland (US)",
+   "lat": 39.031031,
+   "lon": -76.844119,
+   "elev": 39.6,
+   "asked": "https://power.larc.nasa.gov/api/temporal/daily/point?parameters=T2M_MAX,T2M_MIN,PRECTOTCORR,IMERG_PRECTOT,GWETROOT,EVLAND&community=AG&longitude=-76.8441&latitude=39.0310&start=20010101&end=20261114&format=JSON&time-standard=UTC",
+   "read": "2026-11-14",
+   "through": "2026-11-13"
+  },
+  {
+   "key": "konya",
+   "label": "Konya plain, Türkiye",
+   "lat": 37.57,
+   "lon": 32.77,
+   "elev": 1197.55,
+   "asked": "https://power.larc.nasa.gov/api/temporal/daily/point?parameters=T2M_MAX,T2M_MIN,PRECTOTCORR,IMERG_PRECTOT,GWETROOT,EVLAND&community=AG&longitude=32.7700&latitude=37.5700&start=20010101&end=20261114&format=JSON&time-standard=UTC",
+   "read": "2026-11-14",
+   "through": "2026-11-13"
+  },
+  {
+   "key": "beauce",
+   "label": "Beauce, France",
+   "lat": 48.2,
+   "lon": 1.8,
+   "elev": 122.28,
+   "asked": "https://power.larc.nasa.gov/api/temporal/daily/point?parameters=T2M_MAX,T2M_MIN,PRECTOTCORR,IMERG_PRECTOT,GWETROOT,EVLAND&community=AG&longitude=1.8000&latitude=48.2000&start=20010101&end=20261114&format=JSON&time-standard=UTC",
+   "read": "2026-11-14",
+   "through": "2026-11-13"
+  },
+  {
+   "key": "meath",
+   "label": "County Meath, Ireland",
+   "lat": 53.6,
+   "lon": -6.7,
+   "elev": 83.1,
+   "asked": "https://power.larc.nasa.gov/api/temporal/daily/point?parameters=T2M_MAX,T2M_MIN,PRECTOTCORR,IMERG_PRECTOT,GWETROOT,EVLAND&community=AG&longitude=-6.7000&latitude=53.6000&start=20010101&end=20261114&format=JSON&time-standard=UTC",
+   "read": "2026-11-14",
+   "through": "2026-11-13"
+  },
+  {
+   "key": "flevoland",
+   "label": "Flevoland, Netherlands",
+   "lat": 52.5,
+   "lon": 5.6,
+   "elev": 4.4,
+   "asked": "https://power.larc.nasa.gov/api/temporal/daily/point?parameters=T2M_MAX,T2M_MIN,PRECTOTCORR,IMERG_PRECTOT,GWETROOT,EVLAND&community=AG&longitude=5.6000&latitude=52.5000&start=20010101&end=20261114&format=JSON&time-standard=UTC",
+   "read": "2026-11-14",
+   "through": "2026-11-13"
+  },
+  {
+   "key": "punjab",
+   "label": "Punjab, India",
+   "lat": 30.9,
+   "lon": 75.8,
+   "elev": 240.26,
+   "asked": "https://power.larc.nasa.gov/api/temporal/daily/point?parameters=T2M_MAX,T2M_MIN,PRECTOTCORR,IMERG_PRECTOT,GWETROOT,EVLAND&community=AG&longitude=75.8000&latitude=30.9000&start=20010101&end=20261114&format=JSON&time-standard=UTC",
+   "read": "2026-11-14",
+   "through": "2026-11-13"
+  },
+  {
+   "key": "egypt",
+   "label": "Nile Delta, Egypt",
+   "lat": 30.8,
+   "lon": 31,
+   "elev": 4.96,
+   "asked": "https://power.larc.nasa.gov/api/temporal/daily/point?parameters=T2M_MAX,T2M_MIN,PRECTOTCORR,IMERG_PRECTOT,GWETROOT,EVLAND&community=AG&longitude=31.0000&latitude=30.8000&start=20010101&end=20261114&format=JSON&time-standard=UTC",
+   "read": "2026-11-14",
+   "through": "2026-11-13"
+  },
+  {
+   "key": "pergamino",
+   "label": "Pergamino, Argentina",
+   "lat": -33.9,
+   "lon": -60.6,
+   "elev": 69.07,
+   "asked": "https://power.larc.nasa.gov/api/temporal/daily/point?parameters=T2M_MAX,T2M_MIN,PRECTOTCORR,IMERG_PRECTOT,GWETROOT,EVLAND&community=AG&longitude=-60.6000&latitude=-33.9000&start=20010101&end=20261114&format=JSON&time-standard=UTC",
+   "read": "2026-11-14",
+   "through": "2026-11-13"
+  },
+  {
+   "key": "riogrande",
+   "label": "Rio Grande do Sul, Brazil",
+   "lat": -28.3,
+   "lon": -53,
+   "elev": 453.88,
+   "asked": "https://power.larc.nasa.gov/api/temporal/daily/point?parameters=T2M_MAX,T2M_MIN,PRECTOTCORR,IMERG_PRECTOT,GWETROOT,EVLAND&community=AG&longitude=-53.0000&latitude=-28.3000&start=20010101&end=20261114&format=JSON&time-standard=UTC",
+   "read": "2026-11-14",
+   "through": "2026-11-13"
+  },
+  {
+   "key": "chile",
+   "label": "Central Valley, Chile",
+   "lat": -34.6,
+   "lon": -71,
+   "elev": 382.81,
+   "asked": "https://power.larc.nasa.gov/api/temporal/daily/point?parameters=T2M_MAX,T2M_MIN,PRECTOTCORR,IMERG_PRECTOT,GWETROOT,EVLAND&community=AG&longitude=-71.0000&latitude=-34.6000&start=20010101&end=20261114&format=JSON&time-standard=UTC",
+   "read": "2026-11-14",
+   "through": "2026-11-13"
+  },
+  {
+   "key": "swartland",
+   "label": "Swartland, South Africa",
+   "lat": -33.3,
+   "lon": 18.7,
+   "elev": 196.94,
+   "asked": "https://power.larc.nasa.gov/api/temporal/daily/point?parameters=T2M_MAX,T2M_MIN,PRECTOTCORR,IMERG_PRECTOT,GWETROOT,EVLAND&community=AG&longitude=18.7000&latitude=-33.3000&start=20010101&end=20261114&format=JSON&time-standard=UTC",
+   "read": "2026-11-14",
+   "through": "2026-11-13"
+  },
+  {
+   "key": "wheatbelt",
+   "label": "Wheatbelt, Western Australia",
+   "lat": -31.6,
+   "lon": 117,
+   "elev": 252.5,
+   "asked": "https://power.larc.nasa.gov/api/temporal/daily/point?parameters=T2M_MAX,T2M_MIN,PRECTOTCORR,IMERG_PRECTOT,GWETROOT,EVLAND&community=AG&longitude=117.0000&latitude=-31.6000&start=20010101&end=20261114&format=JSON&time-standard=UTC",
+   "read": "2026-11-14",
+   "through": "2026-11-13"
+  },
+  {
+   "key": "mead",
+   "label": "Demo field near Mead, Nebraska (US)",
+   "lat": 41.1797,
+   "lon": -96.4397,
+   "elev": 357.5,
+   "asked": "https://power.larc.nasa.gov/api/temporal/daily/point?parameters=T2M_MAX,T2M_MIN,PRECTOTCORR,IMERG_PRECTOT,GWETROOT,EVLAND&community=AG&longitude=-96.4397&latitude=41.1797&start=20010101&end=20261114&format=JSON&time-standard=UTC",
+   "read": "2026-11-14",
+   "through": "2026-11-13"
+  },
+  {
+   "key": "tifton",
+   "label": "Tifton, Georgia (US)",
+   "lat": 31.45,
+   "lon": -83.51,
+   "elev": 95.89,
+   "asked": "https://power.larc.nasa.gov/api/temporal/daily/point?parameters=T2M_MAX,T2M_MIN,PRECTOTCORR,IMERG_PRECTOT,GWETROOT,EVLAND&community=AG&longitude=-83.5100&latitude=31.4500&start=20010101&end=20261114&format=JSON&time-standard=UTC",
+   "read": "2026-11-15",
+   "through": "2026-11-13"
+  },
+  {
+   "key": "raleigh",
+   "label": "Raleigh, North Carolina (US)",
+   "lat": 35.78,
+   "lon": -78.64,
+   "elev": 123.49,
+   "asked": "https://power.larc.nasa.gov/api/temporal/daily/point?parameters=T2M_MAX,T2M_MIN,PRECTOTCORR,IMERG_PRECTOT,GWETROOT,EVLAND&community=AG&longitude=-78.6400&latitude=35.7800&start=20010101&end=20261114&format=JSON&time-standard=UTC",
+   "read": "2026-11-15",
+   "through": "2026-11-13"
+  },
+  {
+   "key": "stuttgart",
+   "label": "Stuttgart, Arkansas (US)",
+   "lat": 34.5,
+   "lon": -91.55,
+   "elev": 57.03,
+   "asked": "https://power.larc.nasa.gov/api/temporal/daily/point?parameters=T2M_MAX,T2M_MIN,PRECTOTCORR,IMERG_PRECTOT,GWETROOT,EVLAND&community=AG&longitude=-91.5500&latitude=34.5000&start=20010101&end=20261114&format=JSON&time-standard=UTC",
+   "read": "2026-11-15",
+   "through": "2026-11-13"
+  },
+  {
+   "key": "enid",
+   "label": "Enid, Oklahoma (US)",
+   "lat": 36.4,
+   "lon": -97.88,
+   "elev": 388.77,
+   "asked": "https://power.larc.nasa.gov/api/temporal/daily/point?parameters=T2M_MAX,T2M_MIN,PRECTOTCORR,IMERG_PRECTOT,GWETROOT,EVLAND&community=AG&longitude=-97.8800&latitude=36.4000&start=20010101&end=20261114&format=JSON&time-standard=UTC",
+   "read": "2026-11-15",
+   "through": "2026-11-13"
+  },
+  {
+   "key": "lancaster",
+   "label": "Lancaster, Pennsylvania (US)",
+   "lat": 40.04,
+   "lon": -76.31,
+   "elev": 149.63,
+   "asked": "https://power.larc.nasa.gov/api/temporal/daily/point?parameters=T2M_MAX,T2M_MIN,PRECTOTCORR,IMERG_PRECTOT,GWETROOT,EVLAND&community=AG&longitude=-76.3100&latitude=40.0400&start=20010101&end=20261114&format=JSON&time-standard=UTC",
+   "read": "2026-11-15",
+   "through": "2026-11-13"
+  },
+  {
+   "key": "carlow",
+   "label": "Carlow, Ireland",
+   "lat": 52.84,
+   "lon": -6.93,
+   "elev": 174.55,
+   "asked": "https://power.larc.nasa.gov/api/temporal/daily/point?parameters=T2M_MAX,T2M_MIN,PRECTOTCORR,IMERG_PRECTOT,GWETROOT,EVLAND&community=AG&longitude=-6.9300&latitude=52.8400&start=20010101&end=20261114&format=JSON&time-standard=UTC",
+   "read": "2026-11-15",
+   "through": "2026-11-13"
+  },
+  {
+   "key": "passofundo",
+   "label": "Passo Fundo, Rio Grande do Sul (Brazil)",
+   "lat": -28.26,
+   "lon": -52.41,
+   "elev": 563.64,
+   "asked": "https://power.larc.nasa.gov/api/temporal/daily/point?parameters=T2M_MAX,T2M_MIN,PRECTOTCORR,IMERG_PRECTOT,GWETROOT,EVLAND&community=AG&longitude=-52.4100&latitude=-28.2600&start=20010101&end=20261114&format=JSON&time-standard=UTC",
+   "read": "2026-11-15",
+   "through": "2026-11-13"
+  },
+  {
+   "key": "cunderdin",
+   "label": "Cunderdin, Western Australian wheatbelt",
+   "lat": -31.65,
+   "lon": 117.24,
+   "elev": 289.12,
+   "asked": "https://power.larc.nasa.gov/api/temporal/daily/point?parameters=T2M_MAX,T2M_MIN,PRECTOTCORR,IMERG_PRECTOT,GWETROOT,EVLAND&community=AG&longitude=117.2400&latitude=-31.6500&start=20010101&end=20261114&format=JSON&time-standard=UTC",
+   "read": "2026-11-15",
+   "through": "2026-11-13"
+  },
+  {
+   "key": "malmesbury",
+   "label": "Malmesbury, Swartland (South Africa)",
+   "lat": -33.46,
+   "lon": 18.73,
+   "elev": 196.94,
+   "asked": "https://power.larc.nasa.gov/api/temporal/daily/point?parameters=T2M_MAX,T2M_MIN,PRECTOTCORR,IMERG_PRECTOT,GWETROOT,EVLAND&community=AG&longitude=18.7300&latitude=-33.4600&start=20010101&end=20261114&format=JSON&time-standard=UTC",
+   "read": "2026-11-15",
+   "through": "2026-11-13"
+  }
+ ]
+}

@@ -334,7 +334,7 @@ await group('settings', async () => {
   await setting({ text: 'xlarge', contrast: 'high', links: 'underline', motion: 'reduce' });
   same('settings: the four choices show on the page at once', await js(`(d => [d.text, d.contrast, d.links, d.motion])(document.documentElement.dataset)`), ['xlarge', 'high', 'underline', 'reduce']);
   same('settings: Largest text grows the whole page by 30%, High contrast makes the ink black', await js(`[getComputedStyle(document.body).zoom, getComputedStyle(document.body).color]`), ['1.3', 'rgb(0, 0, 0)']);
-  same('settings: they are kept under the one key, as known choices only', await js(`JSON.parse(localStorage.getItem('crophalo.settings.v1'))`), { motion: 'reduce', listen: 'normal', text: 'xlarge', contrast: 'high', links: 'underline', currency: 'USD' });
+  same('settings: they are kept under the one key, as known choices only', await js(`JSON.parse(localStorage.getItem('crophalo.settings.v1'))`), { motion: 'still', listen: 'normal', text: 'xlarge', contrast: 'high', links: 'underline', area: 'auto', currency: 'USD' });   // Motion is now Full, Less or Still: the older stored 'reduce' is kept as the Still it meant, and the page still shows data-motion=reduce; area: the unit of area a farmer reads first, Automatic by default
   await go('/');
   same('settings: they are still there after the page is loaded again', await js(`(d => [d.text, d.contrast, d.links, d.motion])(document.documentElement.dataset)`), ['xlarge', 'high', 'underline', 'reduce']);
 

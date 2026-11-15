@@ -6,7 +6,10 @@
 #          COUNTRY US: USDA NASS Cropland Data Layer on USDA's CroplandCROS image service (pdi.scinet.usda.gov, no login).
 # Returns: {"ok": true, "source", "data_date", "units", "year", "box", "pixel_ha", "cropland_ha", "box_ha", "not_read_share",
 #           "crops": [{"crop": <crops.js id>, "share", "ha"}], "wider": [{"code", "name", "crops", "share", "ha"}],
-#           "classes": [{"code", "name", "kind": own|wider|other, "crops", "share", "ha"}] (every farmland class in the box), "licence"}  or  {"ok": false, "reason", ("final")}.
+#           "classes": [{"code", "name", "kind": own|wider|other, "crops", "share", "ha"}] (every farmland class in the box),
+#           "pin": {"code", "name"} (the map's class at the field's own point, from a second request, identify; null when it could
+#           not be read; a USDA class of the map's "garden" part, a crop that stays for years, adds "kind": "garden" and "crops",
+#           the GARDENS ids of js/crops.js that hold it), "licence"}  or  {"ok": false, "reason", ("final")}.
 #          share = that crop's (or class's) part of the farmland in the box, 0 to 1, from the map's own pixel counts.
 #          crops lists the crops whose own class is on the map with at least one pixel; wider lists the classes that hold
 #          several crops without saying which (their "crops" are the ids they may hold, "*" = any crop not classed alone).
@@ -66,6 +69,26 @@ def histogram(base, box, who, mosaic=None):
     return {v: c for v, c in enumerate(counts) if c}
 
 
+def pin_class(base, lat, lon, mosaic=None):
+    """The map's class value at the field's own point, from the service's identify. None when it cannot be read: the box answer
+    stands without it, and js/nearby.js then judges by the box alone."""
+    q = {
+        "geometry": json.dumps({"x": lon, "y": lat, "spatialReference": {"wkid": 4326}}, separators=(",", ":")),
+        "geometryType": "esriGeometryPoint",
+        "returnGeometry": "false",
+        "returnCatalogItems": "false",
+        "f": "json",
+    }
+    if mosaic is not None:
+        q["mosaicRule"] = json.dumps(mosaic, separators=(",", ":"))
+    try:
+        got = common.http(base + "/identify?" + urllib.parse.urlencode(q), timeout=ONE_S).json()
+    except (SourceDown, ValueError):
+        return None
+    value = str(got.get("value", "")) if isinstance(got, dict) else ""
+    return int(value) if re.fullmatch(r"\d{1,3}", value) else None   # "NoData" or anything else is no class
+
+
 def newest_aci():
     """The newest year the inventory publishes, from its own list of services."""
     try:
@@ -103,11 +126,14 @@ def main(args):
     if country == "CA":
         year = newest_aci()
         counts = histogram("%s/%d/ImageServer" % (ACI, year), box, WHO["CA"])
+        pin = pin_class("%s/%d/ImageServer" % (ACI, year), lat, lon)
         source = "Agriculture and Agri-Food Canada (AAFC), Annual Crop Inventory %d, 30 m" % year
         licence = "Open Government Licence - Canada"
     else:
         year, raster, raster_name = newest_cdl()
-        counts = histogram(CDL, box, WHO["US"], {"mosaicMethod": "esriMosaicLockRaster", "lockRasterIds": [raster]})
+        lock = {"mosaicMethod": "esriMosaicLockRaster", "lockRasterIds": [raster]}
+        counts = histogram(CDL, box, WHO["US"], lock)
+        pin = pin_class(CDL, lat, lon, lock)
         source = "USDA NASS Cropland Data Layer %d (%s), through USDA's CroplandCROS image service" % (year, raster_name)
         licence = "public domain (USDA NASS)"
     cropland, noread = set(the_map["cropland"]), set(the_map["noread"])
@@ -132,6 +158,14 @@ def main(args):
              for code, (name, ids) in the_map["wider"].items() if counts.get(int(code))]
     kind_of = lambda v: "own" if str(v) in the_map["own"] else "wider" if str(v) in the_map["wider"] else "other"
     crops_of = lambda v: (the_map["own"].get(str(v)) or the_map["wider"].get(str(v)) or [None, []])[1]
+    garden = the_map.get("garden", {})   # a crop that stays for years (orchards, vineyards, cane): read only at the pin, never a share
+    def pin_of(v):
+        if v is None or str(v) not in names:
+            return None
+        out = {"code": v, "name": names[str(v)]}
+        if str(v) in garden:
+            out.update(kind="garden", crops=garden[str(v)][1])   # the standing-crop entries of js/crops.js GARDENS that hold it
+        return out
     out = {
         "source": source, "data_date": str(year),
         "data_date_note": "One map a year, made after each harvest from satellite images; %d is the newest year it has published" % year,
@@ -142,6 +176,7 @@ def main(args):
         "crops": sorted(({"crop": k, "share": share(c), "ha": ha(c)} for k, c in crops.items()), key=lambda x: (-x["share"], x["crop"])),
         "wider": sorted(wider, key=lambda x: -x["share"]),
         "classes": sorted(({"code": v, "name": names[str(v)], "kind": kind_of(v), "crops": crops_of(v), "share": share(c), "ha": ha(c)} for v, c in counts.items() if v in cropland), key=lambda x: (-x["share"], x["code"])),
+        "pin": pin_of(pin),
         "licence": licence,
     }
     return out

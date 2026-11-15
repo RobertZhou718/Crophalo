@@ -1,0 +1,56 @@
+# The website: on every push to main (or by hand from the Actions tab), GitHub makes the website ready for Azure Static Web Apps and puts it online.
+# deploy/stage-site.mjs copies only the files the app's own server hands out, writes js/site-config.js with the data server's address from the repository
+# variable CROPHALO_API, and writes staticwebapp.config.json (the security headers; the policy names exactly the outside services the pages use and that address).
+# The upload uses the deployment token of the static web app, kept as the repository secret AZURE_STATIC_WEB_APPS_API_TOKEN (AZURE-GOING-LIVE.md, step 2).
+# This file replaces the workflow the Azure portal would write: the static web app is created with the deployment source "Other", so the portal writes none.
+# Until the secret exists, a run only checks the website and says that nothing was put online.
+name: website
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: website
+  cancel-in-progress: true
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: actions/setup-node@v7
+        with:
+          node-version: "22"
+
+      - name: Only the website's files, its data server's address and its security headers
+        env:
+          CROPHALO_API: ${{ vars.CROPHALO_API }}
+        run: node deploy/stage-site.mjs . _site
+
+      - name: Is the static web app set up yet?
+        id: ready
+        env:
+          TOKEN: ${{ secrets.AZURE_STATIC_WEB_APPS_API_TOKEN }}
+        run: |
+          if [ -n "$TOKEN" ]; then echo "go=1" >> "$GITHUB_OUTPUT"
+          else echo "::notice::The secret AZURE_STATIC_WEB_APPS_API_TOKEN is not set yet, so the website was checked but not put online (AZURE-GOING-LIVE.md, step 2)."; fi
+
+      - name: Put it online (Azure Static Web Apps)
+        if: steps.ready.outputs.go == '1'
+        uses: Azure/static-web-apps-deploy@v1
+        with:
+          azure_static_web_apps_api_token: ${{ secrets.AZURE_STATIC_WEB_APPS_API_TOKEN }}
+          action: upload
+          app_location: _site
+          api_location: ""
+          output_location: ""
+          skip_app_build: true
+          skip_api_build: true
+          production_branch: main

@@ -11,6 +11,9 @@
  * frostNormal: 'text', checkFirst: ['...'], notes: [{ text, kind }], soilTestLines: ['pH 6.4 (near neutral)'], backupNote: '' }
  */
 
+// A score is a number from the report engine. A plan that does not suit here has none (null), and a missing score is never printed as 0.
+export const isScore = v => typeof v === 'number' && Number.isFinite(v);
+
 // ---- counting what a phone will charge for
 const GSM = '@£$¥èéùìòÇ\nØø\rÅåΔ_ΦΓΛΩΠΨΣΘΞÆæßÉ !"#¤%&\'()*+,-./0123456789:;<=>?¡ABCDEFGHIJKLMNOPQRSTUVWXYZÄÖÑÜ§¿abcdefghijklmnopqrstuvwxyzäöñüà';
 const GSM_EXTRA = '^{}\\[~]|€\f';   // each of these takes two places
@@ -101,9 +104,11 @@ export function longMessage(report, { notes = false, soilTest = false, link = ''
     L.push('', `Our suggestion: ${s.headline}`);
     if (s.warning) L.push(s.warning);
     if (s.why) L.push(`Why: ${s.why}`);
-    if (Number.isFinite(+s.score)) L.push(`It scores ${Math.round(s.score)} out of 100.${Number.isFinite(+r.nowScore) ? ` What you grow now scores ${Math.round(r.nowScore)}.` : ''}`);
+    if (isScore(s.score)) L.push(`It scores ${Math.round(s.score)} out of 100.${isScore(r.nowScore) ? ` What you grow now scores ${Math.round(r.nowScore)}.` : ''}`);
     if (Array.isArray(s.years) && s.years.length) L.push('', 'Year by year:', ...s.years.map((y, i) => `${i + 1}. ${y}`));
   }
+  const strat = Array.isArray(r.strategies) ? r.strategies.filter(x => x?.headline) : [];
+  if (!r.garden && strat.length > 1) L.push('', `${strat.length === 3 ? 'Three strategies' : `${strat.length} strategies`} compared:`, ...strat.map(x => `- ${x.roleWords ?? 'Option'}: ${x.headline}${isScore(x.score) ? ` (score ${Math.round(x.score)})` : x.flag === 'fails' ? ' (does not suit this place)' : ''}`));
   if (r.frostNormal) L.push('', `Frost in a normal year: ${r.frostNormal}`);
   if (Array.isArray(r.checkFirst) && r.checkFirst.length) L.push('', 'Check first:', ...r.checkFirst.map(x => `- ${x}`));
   const mine = notes ? (Array.isArray(r.notes) ? r.notes : []).filter(n => n && n.kind !== 'notice' && String(n.text ?? '').trim()).slice(0, MAX_NOTES).map(n => String(n.text).trim().slice(0, NOTE_CHARS)) : [];

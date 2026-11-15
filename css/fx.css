@@ -117,3 +117,4 @@ html[data-motion=reduce] .fx-toast { opacity: 1; transform: none; }
 /* ---- where the wired motions sit in the report */
 .fx-scan-host { margin: var(--space-12) 0; max-width: 360px; }
 .fx-halo-host { margin: var(--space-8) 0; }
+.rv-wrap { overflow-x: clip; }   /* the page turn slides the panel 24 px sideways: that must never make the page scroll sideways, at 320 px least of all */

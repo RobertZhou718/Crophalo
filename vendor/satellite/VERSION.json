@@ -1,0 +1,117 @@
+{
+ "library": "satellite",
+ "version": "7.1.0",
+ "packages": [
+  {
+   "name": "satellite.js",
+   "version": "7.1.0",
+   "licence": "MIT",
+   "source": "https://registry.npmjs.org/satellite.js/-/satellite.js-7.1.0.tgz",
+   "integrity": "sha512-U6nRml9Nb7dV9LJPiMNPyna7U7ry+1nXYkOeCEG7K/YbojQQLHHmcjPisp03VNY+HLcbQHqbt7t4t1vQMaKCLQ==",
+   "files": [
+    {
+     "path": "io.js",
+     "from": "dist/io.js",
+     "bytes": 9473,
+     "sha512": "sha512-7laKcYPg0TqVy2YuAJQBed7x/xbZfIe89KD+B7U/ErP5ep6624CFpddn0ldS4C3Rtc9/GpLrbaKoT8GaL7hetg=="
+    },
+    {
+     "path": "transforms.js",
+     "from": "dist/transforms.js",
+     "bytes": 4893,
+     "sha512": "sha512-LIXzREE0+PTuqPw8adWATIxB/vW/TTxQ9ZQ7TFLWPaRoZQNn11cpYvPf0dy2EjZMei29U2rP34EV9Z9MEWVTeQ=="
+    },
+    {
+     "path": "constants.js",
+     "from": "dist/constants.js",
+     "bytes": 645,
+     "sha512": "sha512-+qid5qGsRe35QUoNEroqZfbQ9NQMxpS6o+nlUmVy4QZ1ms6hsrxaT1trm7KLe3d4KPL4TCzCIEYgtkdSeNfYUg=="
+    },
+    {
+     "path": "ext.js",
+     "from": "dist/ext.js",
+     "bytes": 5780,
+     "sha512": "sha512-IYvdqLzXMqY0GpyNuTUeBFwyrjJmVT2qoHFuWCeClZSvp2E2/WORfzbtAlzzCg2ZOs9j1vdpvm1UT/8+iQrF2w=="
+    },
+    {
+     "path": "propagation/propagate.js",
+     "from": "dist/propagation/propagate.js",
+     "bytes": 1162,
+     "sha512": "sha512-3RA0v/7YkrQlIsUV7U+dpRCV4iAD1G3b1IksZ8/IfDFj6BFFiWzi7GnJ0nvh1eRjCI1s9WaCGarN8BsHV1IVMw=="
+    },
+    {
+     "path": "propagation/gstime.js",
+     "from": "dist/propagation/gstime.js",
+     "bytes": 1823,
+     "sha512": "sha512-oG02NBai6XFuaFTsoaKAkxNmFGxWG5H121P2ZURKOAlR7vq1++AKP/acB701mJXBnNANqIUynaqsTseD8CnH1A=="
+    },
+    {
+     "path": "propagation/sgp4.js",
+     "from": "dist/propagation/sgp4.js",
+     "bytes": 12835,
+     "sha512": "sha512-CsAr8HKL6heZ5Ow9Ivx2805EngXPau7U4o7klOxZNJUSvrQWuqLOxNc18j3IOHmdO+68ZtiETXUMMjaxDo67ZQ=="
+    },
+    {
+     "path": "propagation/sgp4init.js",
+     "from": "dist/propagation/sgp4init.js",
+     "bytes": 21291,
+     "sha512": "sha512-JYYqhhXlj0wIX3mYFoPQZxtTzxwADzSoVbISq4O2Htr1qrXUM//kTtWO2AznMIakExIdJaAfZUUGmWstvDUn9g=="
+    },
+    {
+     "path": "propagation/initl.js",
+     "from": "dist/propagation/initl.js",
+     "bytes": 4322,
+     "sha512": "sha512-cyaNhsCwok0o9sN6cC7OnCtMs9FdSN4ya8OGV+3/QsuQ07jZSw2MoSI8pcdljPkv5jfC8kenYn9mKrkTJFbH7g=="
+    },
+    {
+     "path": "propagation/dpper.js",
+     "from": "dist/propagation/dpper.js",
+     "bytes": 6542,
+     "sha512": "sha512-+SnLe6LJPKKfkbwkhBrpBcYn3lTDaJ21uSzdN6SSCwKJCdj/ePt8y0z9pLd67ph0fD6r4LSb7ul10c0jz7RCOA=="
+    },
+    {
+     "path": "propagation/dscom.js",
+     "from": "dist/propagation/dscom.js",
+     "bytes": 10456,
+     "sha512": "sha512-PgNmRPzZo/vHWbHVJun4naKhU0o5QeIfLM/mW1NXZOOg/oWQb92w8R7FIzHGEGp0djZI5kVk1/pDg94nZ1aXQw=="
+    },
+    {
+     "path": "propagation/dsinit.js",
+     "from": "dist/propagation/dsinit.js",
+     "bytes": 11651,
+     "sha512": "sha512-r5U4hKu9wt1PW9w2Ld8c9Amx5tiSZikpzjDEh/GI465BytZmhmqvX4effx2pBnP9G4eDxbzkt3V7hFdTD30vbA=="
+    },
+    {
+     "path": "propagation/dspace.js",
+     "from": "dist/propagation/dspace.js",
+     "bytes": 8063,
+     "sha512": "sha512-zSUp6yYc+HP4Ugc4kj5l3z3Uy/LbnrxppFy1qRSWJhlhvy9ZLAvYyYarHAvf4a0fhnvB/mzaQCzh9mgCMwZXmA=="
+    },
+    {
+     "path": "propagation/check-for-decay.js",
+     "from": "dist/propagation/check-for-decay.js",
+     "bytes": 1325,
+     "sha512": "sha512-BgxoKvdPKZv9xmDI1767rVc68/mftfvdnYeHbizoufMsuhxzHYqr8qTIHe6ujBP6RZEjDU7fQm7Nie4PI/XOiA=="
+    },
+    {
+     "path": "propagation/SatRec.js",
+     "from": "dist/propagation/SatRec.js",
+     "bytes": 1045,
+     "sha512": "sha512-wfAhSVXR7sAOXYRKM7XeJMkxQt7wP0e9tYq143q0TTwaYANxbsEj0c7mfM5umqpNctP1LF7BsqtHwaFMbv1LbA=="
+    },
+    {
+     "path": "LICENSE.md",
+     "from": "LICENSE.md",
+     "bytes": 1135,
+     "sha512": "sha512-EmzUTL735VuijstR+QwvZ9Ae3esd3KJG+fcCZao8ufc1YiPGIQTuRYDUfcEX+IAf97ZT53jglpeH1LeLvZeLpQ=="
+    },
+    {
+     "path": "ORIGINAL-PKG-INFO.txt",
+     "from": "ORIGINAL-PKG-INFO",
+     "bytes": 5776,
+     "sha512": "sha512-VBOow9xCcdFF3gZ8/fyJ05SKUWqcLynA3OYCBKUdirQkJ2J0E536slHANtba/MdRcPBET9sEZmh8/WL1CL5bvw=="
+    }
+   ]
+  }
+ ]
+}

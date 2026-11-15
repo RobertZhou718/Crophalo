@@ -2,7 +2,8 @@
 // The corner and file words are pure and tested; the page part takes one env object (the map, the edit bar, commit and toast) so it stores nothing itself.
 // Checked by scripts/test_sim.mjs (the pure parts) and scripts/e2e_farm.mjs (the edit modes in a browser).
 import { esc } from './words.js';
-import { areaHa, areaWords } from './geo.js';
+import { areaHa } from './geo.js';
+import { areaWords } from './farmunits.js';
 import * as S from './simulate.js';
 import * as IO from './farmio.js';
 

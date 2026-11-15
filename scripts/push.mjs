@@ -132,7 +132,8 @@ function postOnce(url, headers, body, timeoutMs) {   // no redirects, a short ti
 }
 export const triesFor = status => status === 0 || status === 429 || status >= 500 ? 8 : 3;   // a network error, a busy service or a failing one is tried longer
 
-export function createPush({ dir, env = process.env, now = () => Date.now(), post = postOnce, publicMode = false, siteHosts = [] } = {}) {
+// siteOrigins: the website's own addresses when its pages come from another name than this server (serve.mjs reads them from ALLOWED_ORIGINS): their pages may use these routes too.
+export function createPush({ dir, env = process.env, now = () => Date.now(), post = postOnce, publicMode = false, siteHosts = [], siteOrigins = [] } = {}) {
   const extra = String(env.FW_PUSH_HOSTS ?? '').split(',').map(s => s.trim()).filter(Boolean), file = path.join(dir, 'push-store.json');
   const keys = loadKeys(dir), store = loadStore(file), seen = new Map();
   let timer = null, busy = false;
@@ -213,14 +214,15 @@ export function createPush({ dir, env = process.env, now = () => Date.now(), pos
     if (!/^\/api\/push(\/|$)/.test(pathname)) return false;
     const host = String(req.headers.host ?? '').toLowerCase(), hostName = host.replace(/:\d+$/, '').replace(/^\[(.*)\]$/, '[$1]');
     const mine = isLoopback(hostName) || siteHosts.some(h => host === h.toLowerCase() || hostName === h.toLowerCase());
-    const origin = req.headers.origin;
-    if (!mine || (origin && (() => { try { return new URL(origin).host.toLowerCase() !== host; } catch { return true; } })())) { reply(res, 403, { ok: false, error: 'Not allowed from here' }); return true; }
+    const origin = req.headers.origin, theirs = typeof origin === 'string' && siteOrigins.includes(origin.trim().toLowerCase());   // a page of the website itself, served from its own name
+    if (!mine || (origin && !theirs && (() => { try { return new URL(origin).host.toLowerCase() !== host; } catch { return true; } })())) { reply(res, 403, { ok: false, error: 'Not allowed from here' }); return true; }
     const address = req.socket?.remoteAddress;
     if (pathname === '/api/push/key') { if (req.method !== 'GET') reply(res, 405, { ok: false, error: 'Use GET' }); else reply(res, 200, { ok: true, key: publicKey(keys) }); return true; }
     if (pathname !== '/api/push/subscribe' && pathname !== '/api/push/unsubscribe') { reply(res, 404, { ok: false, error: 'Unknown endpoint' }); return true; }
     if (req.method !== 'POST') { reply(res, 405, { ok: false, error: 'Use POST' }, { allow: 'POST' }); return true; }
     if (limited(address)) { reply(res, 429, { ok: false, error: 'Too many requests. Wait a moment and try again.' }, { 'retry-after': '30' }); return true; }
     if (!/^application\/json\b/i.test(String(req.headers['content-type'] ?? ''))) { reply(res, 415, { ok: false, error: 'Send JSON' }); return true; }
+    if (Number(req.headers['content-length']) > LIMITS.body) { reply(res, 413, { ok: false, error: 'That is too big' }); req.destroy?.(); return true; }   // the announced size is refused at once: the body is never waited for
     const chunks = []; let size = 0;
     for await (const chunk of req) { size += chunk.length; if (size > LIMITS.body) { reply(res, 413, { ok: false, error: 'That is too big' }); req.destroy?.(); return true; } chunks.push(chunk); }
     let body; try { body = JSON.parse(Buffer.concat(chunks).toString('utf8')); } catch { reply(res, 400, { ok: false, error: 'That is not valid JSON' }); return true; }

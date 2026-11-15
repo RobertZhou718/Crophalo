@@ -37,11 +37,12 @@ export function startFarm(env) {
   const head = (title, sub) => `<div class="fw-panel-head"><div><h2 id="fwPanelTitle" tabindex="-1">${title}</h2>${sub ? `<p class="fw-sub">${esc(sub)}</p>` : ''}</div><button type="button" class="btn lg" id="fwClose">Close</button></div>`;
   const close = () => { env.closePanel(); };
   const one = () => {
-    p.innerHTML = `${head('Start your farm board', `${STEP_WORDS.one}: where is the new farm?`)}
-    <p class="fw-muted">Your farm stays on this device. It is only used to ask NASA for the weather there.</p>
-    <div class="fw-addlist"><button type="button" class="btn lg" data-st="here">I am at my farm<small>Your device asks first, then uses where you are</small></button>
-    <button type="button" class="btn lg" data-st="tap">Tap the map<small>Move the map, then tap the farm</small></button>${saved.length ? `<button type="button" class="btn lg" data-st="saved">Start from my saved fields (${saved.length})<small>The places you saved from reports</small></button>` : ''}</div>
-    <form id="fwPlaceForm" class="fw-form" role="search"><label for="fwPlaceIn">Search a place, or paste coordinates</label><input id="fwPlaceIn" class="fw-input" type="search" placeholder="Town, or 42.03, -93.62" autocomplete="off" maxlength="200"><div class="fw-actions"><button type="submit" class="btn lg primary">Search</button></div></form>
+    p.innerHTML = `${head('Add a field', `${STEP_WORDS.one}: where is it?`)}
+    <div class="fw-place">
+    <div class="bigbtns"><button type="button" class="bigbtn primary" data-st="here"><svg class="ic" aria-hidden="true"><use href="#i-pin"/></svg><span><b>I am at my field</b><small>Use where I am now</small></span></button>
+    <button type="button" class="bigbtn" data-st="tap"><svg class="ic" aria-hidden="true"><use href="#i-map"/></svg><span><b>Find it on the map</b><small>Tap your field</small></span></button>${saved.length ? `<button type="button" class="bigbtn" data-st="saved"><svg class="ic" aria-hidden="true"><use href="#i-bookmark"/></svg><span><b>Use a saved field</b><small>${saved.length} saved from your reports</small></span></button>` : ''}</div>
+    <form id="fwPlaceForm" class="search" role="search" aria-label="Find your field"><svg class="ic search-ic" aria-hidden="true"><use href="#i-search"/></svg><input id="fwPlaceIn" type="text" aria-label="Find your field" placeholder="Town or place" autocomplete="off" autocapitalize="words" autocorrect="off" spellcheck="false" inputmode="search" enterkeyhint="search" maxlength="200"><button type="submit" class="btn primary">Search</button></form>
+    <p class="fw-muted">Everything stays on this device.</p></div>
     <p class="fw-err" id="fwPlaceMsg" role="alert">${esc(flow.msg)}</p><ul class="fw-list" id="fwPlaceRows">${flow.rows.map((r, i) => `<li><button type="button" class="btn lg fw-row" data-pick="${i}"><span><b>${esc(r.title)}</b><br><small>${esc(r.sub || '')}</small></span></button></li>`).join('')}</ul>`;
     p.querySelector('#fwClose').onclick = close;
     p.querySelector('[data-st=here]').onclick = here; p.querySelector('[data-st=tap]').onclick = tap; if (saved.length) p.querySelector('[data-st=saved]').onclick = savedList;

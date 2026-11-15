@@ -255,7 +255,7 @@
           <label class="field"><span>Text field</span><input type="text" placeholder="Field name"><small>A helper line under the field.</small></label>
           <label class="field"><span>Text field with a mistake</span><input type="text" value="not a place" aria-invalid="true"></label>
           <label class="field"><span>Longer text</span><textarea placeholder="What did you notice?"></textarea></label>
-          <form class="search" role="search" onsubmit="return false"><svg class="ic" aria-hidden="true" style="color:var(--ink2);width:18px;height:18px"><use href="#i-search"/></svg><input type="search" aria-label="Find a place" placeholder="Town or place"><button type="button" class="mic" aria-label="Say the name of a place"><svg class="ic" aria-hidden="true"><use href="#i-mic"/></svg></button><button type="submit" class="btn primary" style="min-height:var(--touch)">Search</button></form>
+          <form class="search" role="search"><svg class="ic" aria-hidden="true" style="color:var(--ink2);width:18px;height:18px"><use href="#i-search"/></svg><input type="search" aria-label="Find a place" placeholder="Town or place"><button type="button" class="mic" aria-label="Say the name of a place"><svg class="ic" aria-hidden="true"><use href="#i-mic"/></svg></button><button type="submit" class="btn primary" style="min-height:var(--touch)">Search</button></form>
         </div>
       </div>
 
@@ -361,6 +361,7 @@
 // Pure: over, lum, ratio. Checked by: the tokens check and the fit sweep.
 const $ = (s, r = document) => r.querySelector(s), $$ = (s, r = document) => [...r.querySelectorAll(s)];
 const el = (tag, cls, text) => { const n = document.createElement(tag); if (cls) n.className = cls; if (text != null) n.textContent = text; return n; };
+$$('form.search').forEach(form => form.addEventListener('submit', e => e.preventDefault()));   // the sample search sends nothing (here, not in the page's markup: the website's policy refuses inline handlers)
 const live = getComputedStyle(document.documentElement), val = name => live.getPropertyValue(name).trim().replace(/,(?! )/g, ", ");   // a space after each comma, so long values wrap between parts
 const rootRule = [...document.styleSheets[0].cssRules].find(r => r.selectorText === ':root');   // the first :root block is the token list
 const NAMES = [...rootRule.style].filter(n => n.startsWith('--'));

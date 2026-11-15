@@ -1,0 +1,11 @@
+/* Notes and to-do, the report's tab: calm sections, forms that never run sideways, 44 px controls */
+.nt-sec { margin-top: var(--space-24); display: grid; gap: var(--space-8); } .nt-sec h3 { margin: 0; font-size: var(--fs-headline); } .nt-sec p { margin: 0; }
+.nt-form { display: grid; gap: var(--space-8); align-items: end; } .nt-form .field input, .nt-form .field textarea { width: 100%; box-sizing: border-box; font: inherit; padding: var(--space-8) var(--space-12); border: 1px solid var(--ctl); border-radius: var(--r3); background: var(--card); color: var(--ink); min-height: var(--touch); }
+.nt-form .btn { justify-self: start; min-height: var(--touch); }
+@media (min-width: 640px) { #todoForm { grid-template-columns: minmax(0, 1fr) auto; } }
+.nt-list { list-style: none; margin: 0; padding: 0; display: grid; gap: var(--space-8); }
+.nt-item { display: flex; align-items: center; justify-content: space-between; gap: var(--space-12); padding: var(--space-8) var(--space-12); border-radius: var(--r3); background: var(--card2); box-shadow: inset 0 0 0 .5px var(--sep); min-width: 0; } .nt-item > div, .nt-check { min-width: 0; overflow-wrap: anywhere; } .nt-item p { margin: 2px 0 0; }
+.nt-item .btn { flex: none; min-height: var(--touch); }
+.nt-check { display: flex; align-items: center; gap: var(--space-8); min-height: var(--touch); flex: 1; } .nt-check input { width: 22px; height: 22px; flex: none; } .nt-item.is-done .nt-check span { text-decoration: line-through; color: var(--ink2); }
+.nt-due { padding: var(--space-8) var(--space-12); border-radius: var(--r3); background: var(--accent-soft); } .nt-record { margin-top: var(--space-12); padding: var(--space-8) var(--space-12); border-radius: var(--r3); background: var(--card2); }
+.nt-status:empty { display: none; }

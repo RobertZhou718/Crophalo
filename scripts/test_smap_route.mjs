@@ -23,7 +23,7 @@ check('the LIVE table is still on one line (the server suite puts test rows into
 const TMP = fs.realpathSync(fs.mkdtempSync(path.join(os.tmpdir(), 'crophalo-route-')));
 const SITE = path.join(TMP, 'site'); fs.mkdirSync(path.join(SITE, 'scripts', 'live'), { recursive: true }); fs.mkdirSync(path.join(TMP, 'cache'));
 fs.writeFileSync(path.join(SITE, 'scripts', 'serve.mjs'), src.replace('timeout: 150e3', 'timeout: 6000'));
-fs.copyFileSync(path.join(ROOT, 'scripts', 'earthdata.mjs'), path.join(SITE, 'scripts', 'earthdata.mjs'));
+for (const name of ['earthdata.mjs', 'hostmode.mjs', 'status.mjs']) fs.copyFileSync(path.join(ROOT, 'scripts', name), path.join(SITE, 'scripts', name));   // the server imports the host-mode rules
 fs.writeFileSync(path.join(SITE, 'index.html'), '<!doctype html><title>x</title>');
 const FAKE = path.join(TMP, 'fakepy.sh'), RUNS = path.join(TMP, 'runs.log'), PIDS = path.join(TMP, 'pid');
 fs.writeFileSync(FAKE, `#!/bin/sh

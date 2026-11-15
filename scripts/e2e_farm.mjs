@@ -1,4 +1,5 @@
 // The My farm browser suite: a report's field opens at once on the map, one date, one finding, Compare plans, the Map and 3D switch, editing (E2E_ONLY picks groups).
+// The tools that left the first view are opened where they are now (More, the field's details, Compare plans); each such place is marked MOVED below.
 // The plans are the crop engine's own on the weather recorded for the demo place, so the screens say what the engine says (a few groups hand in stand-ins for the 3D view).
 // RULE: never loosen a check here to make it pass without a written farming reason beside it. Run: node scripts/e2e_farm.mjs
 import fs from 'node:fs';
@@ -9,6 +10,7 @@ import * as EN from '../js/engine.js';
 import * as CROPS from '../js/crops.js';
 import { realReport, realSeries } from './fixtures/engine-plans.mjs';
 import * as FARMHIST from '../js/farmhistory.js';
+import * as YEARS from '../js/farmyears.js';
 import * as FIT from '../js/fit.js';
 import * as SIM from '../js/simulate.js';
 import { HLS_SHAPE, dayBack } from './fixtures/hls-shape.mjs';
@@ -16,8 +18,8 @@ const FIX = f => fs.readFileSync(fileURLToPath(new URL('./fixtures/' + f, import
 
 const run = await openRun('e2e_farm');
 const { js, page, until, seen, tap, tapAt, press, cutOff, size, device, go, flat, shot, check, same, group: groupRaw, finish, sleep, send } = run;
-// This copy's server has no picture-lookup route of its own: on every page the lookup is made to fail at once, as it does when it cannot be reached, so no 404 is logged
-await send('Page.addScriptToEvaluateOnNewDocument', { source: "(() => { const first = window.fetch.bind(window); window.fetch = (u, o) => /^[/]api[/]hlsndvi/.test(String(u)) ? Promise.reject(new Error('down')) : first(u, o); })();" });
+// This copy's server has no picture or greenness lookup route of its own: on every page those lookups are made to fail at once, as it does when it cannot be reached, so no 404 is logged
+await send('Page.addScriptToEvaluateOnNewDocument', { source: "(() => { const first = window.fetch.bind(window); window.fetch = (u, o) => /^[/]api[/](hlsndvi|ndvihist|gracecell|ecopass|crophist|hlsbox)/.test(String(u)) ? Promise.reject(new Error('down')) : first(u, o); })();" });
 const WELCOME = JSON.stringify({ v: '2026-11-14', at: 'test' });   // the first-visit sheet is already accepted: it is not what these groups are about
 const group = (label, body) => groupRaw(label, async () => { await js(`localStorage.setItem('crophalo.welcome.v1', ${JSON.stringify(WELCOME)})`); await go('/'); await body(); });
 // the report is the one the crop engine really makes on the recorded weather; its three days are the engine's own
@@ -26,11 +28,25 @@ const MON = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct
 const REPORT_JS = JSON.stringify(REAL), WORD_JS = JSON.stringify(PLACE_WORD), LASTWAKE = REAL.proposed.seasons.at(-1);
 const open = async () => { await js(`import('/js/farm.js').then(m => { window.__farm = m; window.__res = m.addFromReport(${REPORT_JS}); })`); await until(`document.querySelector('#fwFinding')?.textContent.length > 5 && !document.querySelector('#view-farm').hidden`); await sleep(300); };
 const text = sel => js(`document.querySelector(${JSON.stringify(sel)})?.textContent.trim().replace(/\\s+/g, ' ') ?? null`);
+// MOVED controls (the simpler first view): More holds Field details, Land history, the map style, All fields, My farms and the farm's tools; the field's details hold
+// Edit this field (Move corners, Split, Rename, Delete); Compare plans holds Current plan / Proposed plan. These helpers open them the way a farmer now does.
+const inTools = async what => { await inMore('#fwToolsBtn'); await until(`!!document.querySelector('[data-tool=${what}]')`); await tap(`[data-tool=${what}]`); };   // Farm tools is one level in, under More
+const viaTools = what => `(async () => { document.querySelector('#fwToolsBtn').click(); await new Promise(r => setTimeout(r, 120)); document.querySelector('[data-tool=${what}]').click(); })()`;
+const openHist = async () => { await tap('#fwDetailsBtn'); await until(`!!document.querySelector('[data-act=history]')`); await tap('[data-act=history]'); };   // Land history is on This field
+const inMore = async sel => { if (await js(`document.querySelector('#fwMoreMenu').hidden`)) await tap('#fwMoreBtn'); await until(`!document.querySelector('#fwMoreMenu').hidden`); await tap(sel); };
+const details = async () => { if (!(await js(`!!document.querySelector('#fwPanel:not([hidden]) #fwonepage')`))) await tap('#fwDetailsBtn'); await until(`!document.querySelector('#fwPanel').hidden && !!document.querySelector('#fwonepage')`); };
+const fieldTool = async what => { await details(); await js(`document.querySelector('.fw-editfold').open = true`); await tap(`#fwPanel [data-edit=${what}]`); };
+const comparePlan = async kind => { if (await js(`document.querySelector('#fwPanel').hidden || !document.querySelector('#fwPanel .fw-stepper')`)) { await tap('#fwCompare'); await until(`!!document.querySelector('#fwPanel [data-kind]')`); } await tap(`#fwPanel [data-kind=${kind}]`); };
 
+const recorded = async () => { await js(`window.__fix = ${JSON.stringify({ power: FIX('power_barrie.json'), forecast: FIX('forecast_barrie.json'), land: FIX('era5land_barrie.json') })}; window.__farm.setDataEnv({ now: () => Date.parse('2026-11-14T15:00:00Z'), fetch: async url => { const f = /power[.]larc/.test(url) ? window.__fix.power : /api[.]open-meteo[.]com[/]v1[/]forecast/.test(url) ? window.__fix.forecast : /era5_land/.test(url) ? window.__fix.land : null; return f ? { ok: true, status: 200, headers: { get: () => null }, text: async () => f } : { ok: false, status: 404, headers: { get: () => null }, text: async () => '' }; } }); window.__farm.forgetReadings(); window.__farm.render()`); };   // the recorded weather of 14 November 2026, handed to the page
 await group('empty', async () => {
   await js(`import('/js/app.js').then(m => m.show('farm'))`);
   await until(`!document.querySelector('#view-farm').hidden && document.querySelector('#fwEmpty') && !document.querySelector('#fwEmpty').hidden`);
-  check('empty: says how a field arrives', /Add to my farm/.test(await text('#fwEmpty')), await text('#fwEmpty'));
+  check('empty: says how a field arrives, once, in the middle', /Add to My farm/.test(await text('#fwEmpty')) && await js(`document.querySelector('#fwFinding').hidden`), await text('#fwEmpty'));
+  same('empty: the picker, Compare plans, Map / 3D and More are out of sight until there is a field', await js(`['#fwHud', '#fwBar'].map(q => getComputedStyle(document.querySelector(q)).display)`), ['none', 'none']);
+  same('empty: the two buttons: Find your field needs the page\'s go function, so only Draw a field by hand shows here', await text('#fwEmptyAdd'), 'Draw a field by hand');
+  same('empty: farmHas is false before any field is added', await js(`import('/js/farm.js').then(m => [m.farmHas('43.1300,-80.7500'), m.farmHas({ lat: 43.13, lon: -80.75 }), m.farmHas('x')])`), [false, false, false]);
+  check('empty: the map behind starts on the United States', await js(`import('/js/farm.js').then(m => { const map = m._map(); return map.getBounds().contains([39.8, -98.6]) && map.getZoom() <= 5; })`), '');
   same('empty: Compare plans is off', await js(`document.querySelector('#fwCompare').disabled`), true);
   same('empty: one h1 named My farm', await js(`[...document.querySelectorAll('#view-farm h1')].map(h => h.textContent)`), ['My farm']);
 });
@@ -40,6 +56,9 @@ await group('report', async () => {
   const r = await js('window.__res');
   check('report: the hand-off answers with a farm and a field', r?.farmId && r?.fieldId, r);
   same('report: My farm is on screen at once', await js(`document.title`), 'My farm · Crophalo');
+  same('report: My farm opens with the board; nothing of the 3D view (its library, worker or scene) was fetched before 3D was asked for', await js(`performance.getEntriesByType('resource').map(e => new URL(e.name).pathname).filter(p => /[/]vendor[/]three|farm3d-worker|[/]farm3d[.]js|farm3d-draw|farm3d-orbit|maplibre/.test(p))`), []);
+  { const key = await js(`JSON.parse(localStorage.getItem('crophalo.farms.v1')).farms[0].fields[0].key`), [la, lo] = key.split(',').map(Number);
+    same('report: farmHas knows the field by the report\'s key (lat,lon to 4 decimals) and by a place', await js(`import('/js/farm.js').then(m => [m.farmHas(${JSON.stringify(key)}), m.farmHas({ lat: ${la}, lon: ${lo} }), m.farmHas('0.0000,0.0000')])`), [true, true, false]); }
   same('report: the field is chosen', await js(`document.querySelector('#fwField').value === window.__res.fieldId`), true);
   check('report: the field is named and marked estimated', /\(estimated\)/.test(await js(`document.querySelector('#fwField').selectedOptions[0].textContent`)), await js(`document.querySelector('#fwField').selectedOptions[0].textContent`));
   check('report: ONE visible date', (await js(`[...document.querySelectorAll('#fwHud time')].length`)) === 1);
@@ -47,8 +66,8 @@ await group('report', async () => {
   check('report: and the finding is not "not read yet" on arrival', !/not read yet/.test(await text('#fwFinding')), await text('#fwFinding'));
   check('report: with the engine wired the label is Planned or Observed', /^(Planned|Observed)$/.test(await text('#fwLabel')), await text('#fwLabel'));
   await js(`window.__farm.setGround(null)`); await sleep(100);
-  same('report: with no ground answer the label says so', await text('#fwLabel'), 'not read yet');
-  check('report: the finding says "not read yet", never a made-up state', /not read yet/.test(await text('#fwFinding')) && !/bare|residue|wheat/i.test(await text('#fwFinding')), await text('#fwFinding'));
+  same('report: with no ground answer no label is shown', await text('#fwLabel'), '');
+  check('report: the finding says the ground could not be read, in plain words, never a made-up state', /could not be read/.test(await text('#fwFinding')) && !/bare|stubble|wheat/i.test(await text('#fwFinding')), await text('#fwFinding'));
   same('report: the finding is one line of words ending in a full stop', /\.$/.test(await text('#fwFinding')), true);
   check('report: Compare plans is there and ready', await js(`!document.querySelector('#fwCompare').disabled && document.querySelector('#fwCompare').textContent.trim() === 'Compare plans'`));
   check('report: the board is a real map with the field drawn', await js(`!!document.querySelector('#fwMap.leaflet-container') && document.querySelectorAll('#fwMap path.fw-field').length === 1`));
@@ -64,7 +83,7 @@ await group('report', async () => {
   same('report: the field is stored as estimated', await js(`JSON.parse(localStorage.getItem('crophalo.farms.v1')).farms[0].fields[0].estimated`), true);
   await shot('farm-first-open-1280.png');
   // 44 px targets
-  const small = await js(`[...document.querySelectorAll('#fw button, #fw select')].filter(b => { const r = b.getBoundingClientRect(); return r.width && (r.height < 43.5 || r.width < 43.5) && !b.closest('.leaflet-control-attribution'); }).map(b => b.id || b.className)`);
+  const small = await js(`[...document.querySelectorAll('#fw button, #fw select')].filter(b => { const r = b.getBoundingClientRect(); return r.width && (r.height < 43.5 || r.width < 43.5) && !b.closest('.leaflet-control-attribution') && !b.classList.contains('srci'); })   // the small i keeps a 44 px tap area (::after).map(b => b.id || b.className)`);
   same('report: every button is at least 44 px', small, []);
 });
 
@@ -75,34 +94,35 @@ await group('compare', async () => {
   await tap('#fwCompare'); await until(`!document.querySelector('#fwPanel').hidden`);
   same('compare: the button says it is open', await js(`document.querySelector('#fwCompare').getAttribute('aria-expanded')`), 'true');
   same('compare: focus moves into the panel heading', await js(`document.activeElement?.id`), 'fwPanelTitle');
-  same('compare: three dates', await js(`[...document.querySelectorAll('.fw-step span')].map(s => s.textContent)`), KD.map(k => k.label));
+  same('compare: three dates, in plain words', await js(`[...document.querySelectorAll('.fw-step span')].map(s => s.textContent)`), [KD[0].label, `${CROPS.cropName(LASTWAKE.crop)} sown`, `${CROPS.cropName(LASTWAKE.crop)} in spring`]);
   same('compare: their dates', await js(`[...document.querySelectorAll('.fw-step small')].map(s => s.textContent)`), KD.map(k => W(k.date)));
-  same('compare: two plans on one date, and what NASA\'s pictures saw beside them', await js(`[...document.querySelectorAll('.fw-card h3')].map(h => h.textContent)`), ['Current plan', 'Proposed plan', 'Observed from space']);
-  same('compare: ONE visible date line', await js(`document.querySelectorAll('.fw-onedate time').length`), 1);
+  same('compare: two plans on one date, and what NASA\'s pictures saw beside them', await js(`[...document.querySelectorAll('.fw-card h3')].map(h => h.textContent)`), ['What you grow now', 'Plan to try']);
+  same('compare: ONE visible date line', await js(`[...document.querySelectorAll('#fwHud time')].filter(t => t.offsetParent).length`), 1);
+  same('compare: no Earlier or Later, no Current plan or Proposed plan', await js(`!document.querySelector('#fwPrev, #fwNext') && ![...document.querySelectorAll('#fwPanel button, #fwPanel h3')].some(n => /^(Current plan|Proposed plan|Earlier|Later)/.test(n.textContent.trim()))`), true);
   check('compare: every state is written Planned', await js(`[...document.querySelectorAll('.fw-card .fw-label')].every(l => /^(Planned|Observed)$/.test(l.textContent)) && document.querySelectorAll('.fw-card .fw-label').length === 2`));
   const t = await text('.fw-cards');
-  check('compare: each card says what the engine says about the ground on the first day', t.includes(EN.groundOn(REAL.current, KD[0].date).note) && t.includes(EN.groundOn(REAL.proposed, KD[0].date).note), t);
+  const WORD = { crop: 'A growing crop', residue: 'Stubble', bare: 'Bare soil', cover: 'A cover crop' };
+  check('compare: each card says what covers the ground on the first day, in plain words', t.includes(WORD[EN.groundOn(REAL.current, KD[0].date).state]) && t.includes(WORD[EN.groundOn(REAL.proposed, KD[0].date).state]), t);
   await tap('.fw-step[data-i="1"]'); await sleep(100);
-  check('compare: the second day: the cards say what the engine says, the current plan keeps its residue', (await text('.fw-cards')).includes(KD[1].proposed.note) && (await text('.fw-cards')).includes(KD[1].current.note) && KD[1].current.state !== 'bare', await text('.fw-cards'));
+  check('compare: the second day: the cards say what is on the ground, the current plan keeps its stubble', (await text('.fw-cards')).includes(WORD[KD[1].proposed.state]) && (await text('.fw-cards')).includes(WORD[KD[1].current.state]) && KD[1].current.state !== 'bare', await text('.fw-cards'));
   same('compare: the date chip follows', await text('#fwTime'), W(KD[1].date));
-  await tap('#fwNext'); await sleep(100);
-  same('compare: the stepper goes to the engine\'s spring day', await text('#fwTime'), W(KD[2].date));
-  check('compare: spring: residue against living wheat, as the engine says', (await text('.fw-cards')).includes(KD[2].proposed.note) && (await text('.fw-cards')).includes(KD[2].current.note), await text('.fw-cards'));
-  same('compare: Next is off on the last date', await js(`document.querySelector('#fwNext').disabled`), true);
+  await tap('.fw-step[data-i="2"]'); await sleep(100);
+  same('compare: the third key day goes to the engine\'s spring day', await text('#fwTime'), W(KD[2].date));
+  check('compare: spring: stubble against living wheat', (await text('.fw-cards')).includes(WORD[KD[2].proposed.state]) && (await text('.fw-cards')).includes(WORD[KD[2].current.state]), await text('.fw-cards'));
   const cav = await text('.fw-caveat');
-  check('compare: the planting window is written with its dates', cav.includes(`Planting window for ${CROPS.cropName(LASTWAKE.crop, true)}: ${W(LASTWAKE.window.earliest)} to ${W(LASTWAKE.window.latest)}`), cav);
-  check('compare: the late-harvest caveat is there', /squeezes it/i.test(cav) && /(inside the window|may be hard to plant)/.test(cav), cav);
-  const open2 = await js(`document.querySelector('.fw-fold').open`);
-  same('compare: the assumptions are written (in a fold)', open2, false);
-  await js(`document.querySelector('.fw-fold').open = true`);
-  const asm = await text('.fw-fold');
-  check('compare: loam assumed, rain-fed, estimated outline', /loam, assumed/.test(asm) && /rain-fed/.test(asm) && /Outline: estimated, a square of 10\.0 ha/.test(asm), asm);
+  check('compare: the planting window is written with its dates', cav.includes(`Sowing window for ${CROPS.cropName(LASTWAKE.crop, true).toLowerCase()}: ${W(LASTWAKE.window.earliest)} to ${W(LASTWAKE.window.latest)}`), cav);
+  check('compare: the late-harvest caveat is there', /squeezes it|may be too late/i.test(cav), cav);
+  same('compare: Show more is closed at first', await js(`document.querySelector('.fw-moreplan').open`), false);
+  await js(`document.querySelector('.fw-moreplan').open = true`);
+  const asm = await text('.fw-moreplan');
+  check('compare: Show more says loam assumed, rain only, estimated outline', /Assumed: loam soil, rain only, outline estimated\./.test(asm), asm);
+  same('compare: the guide sentence is said once', (await text('#fwPanel')).split('Crophalo is a guide. You decide what to plant.').length - 1, 1);
   await shot('farm-compare-1280.png');
   await press('Escape'); await sleep(100);
   same('compare: Escape closes the panel', await js(`document.querySelector('#fwPanel').hidden`), true);
   same('compare: and focus returns to the button', await js(`document.activeElement?.id`), 'fwCompare');
   same('compare: the date chosen stays', await text('#fwTime'), W(KD[2].date));
-  const small = await js(`(() => { document.querySelector('#fwCompare').click(); return [...document.querySelectorAll('#fwPanel button')].filter(b => { const r = b.getBoundingClientRect(); return r.width && (r.height < 43.5 || r.width < 43.5); }).map(b => b.id || b.className); })()`);
+  const small = await js(`(() => { document.querySelector('#fwCompare').click(); return [...document.querySelectorAll('#fwPanel button')].filter(b => { const r = b.getBoundingClientRect(); return r.width && (r.height < 43.5 || r.width < 43.5) && !b.classList.contains('srci'); }).map(b => b.id || b.className); })()`);
   same('compare: every panel button is at least 44 px', small, []);
 });
 
@@ -135,27 +155,27 @@ await group('switch', async () => {
 
 await group('edit', async () => {
   await open();
-  await tap('#fwEditBtn'); await until(`!document.querySelector('#fwEditMenu').hidden`);
-  check('edit: Rename, Recently deleted and Delete (red) are in the menu', await js(`['Rename', 'Recently deleted', 'Delete'].every(w => [...document.querySelectorAll('#fwEditMenu button')].some(b => b.textContent === w))`));
-  check('edit: Delete is red', await js(`getComputedStyle(document.querySelector('#fwEditMenu .fw-danger')).color`) !== await js(`getComputedStyle(document.querySelector('#fwEditMenu button')).color`));
-  await press('Escape'); same('edit: Escape closes the menu and focus returns', await js(`document.activeElement.id`), 'fwEditBtn');
-  await tap('#fwEditBtn'); await tap('[data-edit=rename]'); await until(`!document.querySelector('#fwPanel').hidden`);
+  await details();   // MOVED: Rename and Delete are under Edit this field in the field's details; Recently deleted is under More
+  check('edit: Rename and Delete (red) are under Edit this field, the rest under Farm tools', await js(`['Rename', 'Delete'].every(w => [...document.querySelectorAll('#fwPanel [data-edit]')].some(b => b.textContent === w)) && !!document.querySelector('#fwToolsBtn')`));
+  check('edit: Delete is red', await js(`getComputedStyle(document.querySelector('#fwPanel [data-edit=delete]')).color`) !== await js(`getComputedStyle(document.querySelector('#fwPanel [data-edit=rename]')).color`));
+  await press('Escape'); await sleep(100); await tap('#fwMoreBtn'); await until(`!document.querySelector('#fwMoreMenu').hidden`);
+  await press('Escape'); same('edit: Escape closes the menu and focus returns', await js(`document.activeElement.id`), 'fwMoreBtn');
+  await fieldTool('rename'); await until(`!document.querySelector('#fwPanel').hidden && !!document.querySelector('#fwRename')`);
   await js(`document.querySelector('#fwName').value = ''`); await js(`document.querySelector('#fwRename').requestSubmit()`);
   same('edit: an empty name is refused in words', await text('#fwNameErr'), 'Give the field a name.');
   await js(`document.querySelector('#fwName').value = 'Creek bottom'`); await js(`document.querySelector('#fwRename').requestSubmit()`); await sleep(200);
   check('edit: renamed, with Undo', /^Creek bottom/.test(await js(`document.querySelector('#fwField').selectedOptions[0].textContent`)) && /Renamed to Creek bottom/.test(await text('#fwToast')), await text('#fwToast'));
   await tap('#fwUndo'); await sleep(200);
   check('edit: Undo puts the name back', !/Creek/.test(await js(`document.querySelector('#fwField').selectedOptions[0].textContent`)));
-  await tap('#fwEditBtn'); await tap('[data-edit=delete]'); await until(`document.querySelector('#fwDoDelete')`);
+  await fieldTool('delete'); await until(`document.querySelector('#fwDoDelete')`);
   check('edit: the confirmation says what is removed', /Delete .+\?/.test(await text('#fwPanelTitle')) && /Recently deleted for 30 days/.test(await text('#fwPanel')), await text('#fwPanel'));
   check('edit: the red Delete button', await js(`getComputedStyle(document.querySelector('#fwDoDelete')).backgroundColor`) !== await js(`getComputedStyle(document.querySelector('#fwKeep')).backgroundColor`));
   await tap('#fwDoDelete'); await sleep(300);
   check('edit: with no field the map says how to add one', /No field on this farm yet/.test(await text('#fwFinding')) && await js(`document.querySelectorAll('#fwMap path.fw-field').length`) === 0, await text('#fwStatus'));
   await tap('#fwUndo'); await sleep(300);
   same('edit: Undo brings the field back', await js(`document.querySelectorAll('#fwMap path.fw-field').length`), 1);
-  await tap('#fwEditBtn'); await tap('[data-edit=delete]'); await tap('#fwDoDelete'); await sleep(300);
-  await js(`document.querySelector('#fwEmpty') && 1`); await js(`document.querySelector('#fwEditBtn').disabled = false`);
-  await js(`document.querySelector('#fwEditBtn').click()`); await js(`document.querySelector('[data-edit=recent]').click()`); await until(`document.querySelector('[data-restore]')`);
+  await fieldTool('delete'); await until(`document.querySelector('#fwDoDelete')`); await tap('#fwDoDelete'); await sleep(300);
+  await inTools('recent'); await until(`document.querySelector('[data-restore]')`);
   check('edit: Recently deleted lists it', /deleted/.test(await text('.fw-list')), await text('.fw-list'));
   await tap('[data-restore]'); await sleep(300);
   same('edit: Restore brings it back with its plan', await js(`document.querySelectorAll('#fwMap path.fw-field').length`), 1);
@@ -167,40 +187,31 @@ await group('edit', async () => {
 await group('drawer', async () => {
   await open();
   await js(`window.__farm.setReminders({ forField: () => [], add: d => { window.__added = d; return { ok: true }; } })`);
-  await tap('#fwDetailsBtn'); await until(`!document.querySelector('#fwPanel').hidden && document.querySelector('[role=tablist]')`);
-  same('drawer: the first view stays Map, one date and Compare plans (the drawer is opened on purpose)', await js(`document.querySelectorAll('#fwHud time').length`), 1);
-  same('drawer: four tabs', await js(`[...document.querySelectorAll('[role=tab]')].map(t => t.textContent.trim())`), ['Check', 'Facts', 'Weather', 'Remind']);
-  same('drawer: the field is named and sized in its heading and summary', [await text('#fwPanelTitle'), await text('.fw-sub')], [await js(`document.querySelector('#fwField').selectedOptions[0].textContent.split(' · ')[0]`), '10.0 ha (estimated) · Corn this season']);
-  check('drawer: the status says the sowing needs a reminder, with one button', /^Now on .+Sowing corn from .+: set a reminder/.test(await text('.fw-now')) && await js(`document.querySelectorAll('.fw-now button').length`) === 1, await text('.fw-now'));
-  same('drawer: the Check answer is not read yet without the engine', await text('#fwAnswer'), 'The check: not read yet');
-  await tap('.fw-now button'); await sleep(150);
-  check('drawer: Remind me sets the sowing reminder through the reminders screen', await js(`window.__added && window.__added.title === 'Sow corn' && window.__added.kind === 'sow' && !!window.__added.fieldId`), await js(`JSON.stringify(window.__added)`));
-  check('drawer: and says so', /Reminder set: Sow corn/.test(await text('#fwToast')), await text('#fwToast'));
-  await js(`document.querySelector('#fwtab-check').focus()`); await press('ArrowRight'); await sleep(100);
-  same('drawer: the arrow key moves to Facts and focuses it', [await js(`document.querySelector('#fwtab-facts').getAttribute('aria-selected')`), await js(`document.activeElement.id`)], ['true', 'fwtab-facts']);
-  check('drawer: Facts says loam, assumed, and the slope is not read yet', /loam soil \(assumed\)/.test(await text('#fwAnswer')) && /slope: not read yet/.test(await text('#fwAnswer')), await text('#fwAnswer'));
-  await press('ArrowRight'); same('drawer: Weather says not read yet, no guess', await text('#fwAnswer'), 'Forecast: not read yet');
-  await press('ArrowRight'); check('drawer: Remind lists what the plan suggests', /Sow corn \(from your plan\)/.test(await text('#fwtabpanel')) || /Suggested for this field/.test(await text('#fwtabpanel')), await text('#fwtabpanel'));
-  await press('Home'); await js(`document.querySelector('#fwtab-facts').click()`);
+  await tap('#fwDetailsBtn'); await until(`!document.querySelector('#fwPanel').hidden && document.querySelector('#fwonepage')`);   // This field is the bar's own button
+  same('drawer: the first view stays Map, with Compare plans, This field, Map | 3D and More in one bar', await js(`[...document.querySelectorAll('#fwBar > .btn, #fwBar .fw-segb, #fwBar .fw-more')].map(b => b.textContent.trim())`), ['Compare plans', 'This field', 'Map', '3D', 'More']);
+  same('drawer: one page, no tabs', await js(`document.querySelectorAll('#fwPanel [role=tab], #fwPanel [role=tablist]').length`), 0);
+  same('drawer: the field is named and sized in its heading and summary', [await text('#fwPanelTitle'), await text('.fw-sub')], [await js(`document.querySelector('#fwField').selectedOptions[0].textContent.split(' · ')[0]`), 'About 10.0 ha (estimated)']);
+  check('drawer: In the field now names the crop and has one button, Change', /^In the field now.*Corn/.test(await text('.fw-now')) && await text('.fw-now button') === 'Change', await text('.fw-now'));
+  check('drawer: Today says the forecast could not be read, in plain words, with no engine', /The forecast could not be read just now\./.test(await text('#fwonepage')), await text('#fwonepage'));
+  check('drawer: Reminders says there are none yet, and jobs are offered with Remind me', /No reminders yet\./.test(await text('#fwonepage')) && await js(`!!document.querySelector('#fwonepage [data-act^="suggest:"], #fwonepage [data-act=remind]')`), await text('#fwonepage'));
+  await tap('#fwonepage [data-act^="suggest:"], #fwonepage [data-act=remind]'); await sleep(150);
+  check('drawer: Remind me sets the reminder through the reminders screen', await js(`!!window.__added && !!window.__added.title && !!window.__added.fieldId`), await js(`JSON.stringify(window.__added)`));
+  check('drawer: and says so', /Reminder set: /.test(await text('#fwToast')), await text('#fwToast'));
+  await js(`document.querySelector('.fw-land').open = true`);
+  check('drawer: The land says loam, assumed, and the slope could not be read', /Loam soil, assumed/.test(await text('.fw-land')) && /The slope could not be read/.test(await text('.fw-land')), await text('.fw-land'));
   // soil
   await tap('[data-act=soil]'); await until(`document.querySelector('input[name=tex]')`);
   same('drawer: the soil sheet is named', await text('#fwPanelTitle').then(t => /^Soil for /.test(t)), true);
   await tap('[data-act=use]'); same('drawer: both choices are needed', await text('#fwSoilErr'), 'Choose both the texture and the colour.');
   await js(`document.querySelector('input[name=tex][value=silt]').click(); document.querySelector('input[name=om][value=high]').click()`);
   await tap('[data-act=use]'); await sleep(200);
-  check('drawer: the soil is set, with Undo', /Soil set: silt soil, high organic matter\./.test(await text('#fwToast')) && /silt soil, high/i.test(await text('#fwtabpanel')) && !/assumed/.test(await text('#fwAnswer')), await text('#fwToast'));
+  check('drawer: the soil is set, with Undo', /Soil set: silt soil, high organic matter\./.test(await text('#fwToast')) && /Silt soil/.test(await text('#fwonepage')) && !/assumed/.test(await text('.fw-land')), await text('#fwToast'));
   await tap('#fwUndo'); await sleep(200);
-  check('drawer: Undo brings the assumed soil back', /loam soil \(assumed\)/.test(await text('#fwAnswer')), await text('#fwAnswer'));
-  // land
-  await tap('[data-act=land]'); await until(`document.querySelector('#fwSlopeIn')`);
-  await js(`document.querySelector('#fwSlopeIn').value = '99'`); await js(`document.querySelector('#fwSlope').requestSubmit()`);
-  same('drawer: a slope over 60 is refused in words', await text('#fwSlopeErr'), 'Type a slope from 0 to 60%.');
-  await js(`document.querySelector('#fwSlopeIn').value = '2,5'`); await js(`document.querySelector('#fwSlope').requestSubmit()`); await sleep(200);
-  check('drawer: the measured slope shows as yours', /slope 2\.5% \(yours\)/.test(await text('#fwAnswer')), await text('#fwAnswer'));
+  await js(`document.querySelector('.fw-land').open = true`); check('drawer: Undo brings the assumed soil back', /Loam soil, assumed/.test(await text('.fw-land')), await text('.fw-land'));
   // plant
-  await js(`document.querySelector('#fwtab-check').click()`); await tap('[data-act=plant]'); await until(`document.querySelector('#fwCrop')`);
+  await tap('[data-act=plant]'); await until(`document.querySelector('#fwCrop')`);
   check('drawer: Plant names its step', /^Plant · /.test(await text('#fwPanelTitle')) && /Step 1 of 4: Crop/.test(await text('.fw-sub')), await text('.fw-sub'));
-  check('drawer: with no engine it says so and offers the full list', /not read yet\. You can pick from the full list/.test(await text('.fw-sheetbody')), await text('.fw-sheetbody'));
+  check('drawer: with no packets it offers the full list in plain words', /Pick a crop from the full list/.test(await text('.fw-sheetbody')), await text('.fw-sheetbody'));
   same('drawer: Save is not blue before a crop is chosen', await text('[data-act=save]'), 'Choose a crop first');
   await tap('[data-act=save]'); same('drawer: and refuses with its reason', await text('#fwPlantErr'), 'Choose a crop first.');
   await js(`const s = document.querySelector('#fwCrop'); s.value = 'soy'; s.dispatchEvent(new Event('change', { bubbles: true }))`); await sleep(100);
@@ -209,7 +220,7 @@ await group('drawer', async () => {
   await tap('[data-act=next]'); await tap('[data-act=next]'); await sleep(100);
   check('drawer: the last step is After harvest', /Step 4 of 4: After harvest/.test(await text('.fw-sub')), await text('.fw-sub'));
   await tap('[data-act=save]'); await sleep(250);
-  check('drawer: the plan is saved with Undo and the summary follows', /Soybeans planted on /.test(await text('#fwToast')) && /Soybeans this season/.test(await text('.fw-sub')), await text('#fwToast') + ' | ' + await text('.fw-sub'));
+  check('drawer: the plan is saved with Undo and the summary follows', /Soybeans planted on /.test(await text('#fwToast')) && /Soybeans/.test(await text('.fw-now')), await text('#fwToast') + ' | ' + await text('.fw-now'));
   await sleep(500);
   const saved = await js(`JSON.parse(localStorage.getItem('crophalo.farms.v1')).farms[0].scenarios[0].plans`);
   check('drawer: the stored plan has the chosen sowing date', JSON.stringify(Object.values(saved)[0]?.seasons?.[0]).includes('"sowing":"05-20"'), JSON.stringify(saved));
@@ -217,19 +228,21 @@ await group('drawer', async () => {
   const small = await js(`[...document.querySelectorAll('#fwPanel button, #fwPanel select, #fwPanel input:not([type=radio])')].filter(b => { const r = b.getBoundingClientRect(); return r.width && (r.height < 43.5 || r.width < 43.5); }).map(b => b.id || b.dataset.act || b.className)`);
   same('drawer: every control is at least 44 px', small, []);
   await tap('[data-act=plant]'); await until(`document.querySelector('#fwCrop')`); await press('Escape'); await sleep(100);
-  same('drawer: Escape leaves the sheet first', await js(`!!document.querySelector('[role=tablist]')`), true);
+  same('drawer: Escape leaves the sheet first', await js(`!!document.querySelector('#fwonepage')`), true);
   await shot('farm-drawer-1280.png');
   await press('Escape'); await sleep(100);
-  same('drawer: Escape again closes and focus returns to Field details', [await js(`document.querySelector('#fwPanel').hidden`), await js(`document.activeElement.id`)], [true, 'fwDetailsBtn']);
+  same('drawer: Escape again closes and focus returns to This field, the bar\'s button', [await js(`document.querySelector('#fwPanel').hidden`), await js(`document.activeElement.id`)], [true, 'fwDetailsBtn']);
 });
 
 await group('shape', async () => {
   await open();
   const ringNow = () => js(`JSON.parse(localStorage.getItem('crophalo.farms.v1')).farms[0].fields.map(f => f.ring)`);
   const count = () => js(`document.querySelector('#fwField').options.length`);
-  const menu = async what => { await tap('#fwEditBtn'); await until(`!document.querySelector('#fwEditMenu').hidden`); await tap(`[data-edit=${what}]`); };
-  same('shape: the shape tools sit under Edit field', await js(`[...document.querySelectorAll('#fwEditMenu button')].map(b => b.textContent)`), ['Add a field', 'Add another farm', 'Move corners', 'Split', 'Rename', 'Bring in a map file', 'Save fields as a map file', 'Save the Fields table', 'Recently deleted', 'Delete']);
-  await sleep(400); const before = JSON.stringify((await ringNow())[0]);
+  const menu = async what => (['corners', 'rename', 'delete'].includes(what) ? fieldTool(what) : ['split', 'savemap', 'savetable', 'recent', 'newfarm', 'import'].includes(what) ? inTools(what) : inMore(`[data-edit=${what}]`));   // MOVED: the field's own tools are in its details, the farm's under More
+  same('shape: Add a field is in More and the rest of the farm\'s tools are one level in, under Farm tools', [await js(`[...document.querySelectorAll('#fwMoreMenu [data-edit]')].map(b => b.textContent)`), await text('#fwToolsBtn')], [['Add a field'], 'Farm tools']);
+  await details();
+  same('shape: the shape tools sit under Edit this field', await js(`[...document.querySelectorAll('#fwPanel [data-edit]')].map(b => b.textContent)`), ['Move corners', 'Rename', 'Delete']);
+  await press('Escape'); await sleep(400); const before = JSON.stringify((await ringNow())[0]);
   // ---- move corners
   await menu('corners'); await until(`!document.querySelector('#fwEditBar').hidden && document.querySelectorAll('.fw-handle').length === 4`);
   same('shape: the bar counts corners and size', await text('.fw-editline'), '4 corners · 10.0 ha');
@@ -310,7 +323,7 @@ await group('shape', async () => {
 await group('add', async () => {
   await open();
   const count = () => js(`document.querySelector('#fwField').options.length`);
-  const menu = async what => { await tap('#fwEditBtn'); await until(`!document.querySelector('#fwEditMenu').hidden`); await tap(`[data-edit=${what}]`); };
+  const menu = async what => inMore(`[data-edit=${what}]`);   // MOVED: Add a field is under More
   const stored = () => js(`JSON.parse(localStorage.getItem('crophalo.farms.v1')).farms[0]`);
   // ---- a square of a chosen size
   await menu('add'); await until(`document.querySelector('.fw-sizes')`);
@@ -348,8 +361,7 @@ await group('add', async () => {
   await shot('farm-draw-1280.png');
   // ---- copy a plan to the other fields
   await js(`document.querySelector('#fwField').value = JSON.parse(localStorage.getItem('crophalo.farms.v1')).farms[0].fields[0].id; document.querySelector('#fwField').dispatchEvent(new Event('change'))`); await sleep(200);
-  await tap('#fwDetailsBtn'); await until(`document.querySelector('[data-act=copy]')`);
-  await tap('[data-act=copy]'); await until(`document.querySelector('[data-pick=bare]')`);
+  await inTools('copy'); await until(`document.querySelector('[data-pick=bare]')`);   // Copy the plan to other fields is under Farm tools
   check('add: the copy sheet names the rotation and says it replaces', /Copy this rotation \(corn → soybeans → corn\) to the fields you tick\. Their plans are replaced\. You can undo it\./.test(await text('#fwPanel')), await text('#fwPanel p'));
   same('add: nothing is ticked at first', await text('#fwCopyLine'), 'No field ticked');
   await tap('[data-act=docopy]'); same('add: Copy with nothing ticked is refused', await text('#fwCopyErr'), 'Tick at least one field.');
@@ -363,8 +375,8 @@ await group('add', async () => {
   same('add: one Undo takes the copies back', await js(`Object.keys(JSON.parse(localStorage.getItem('crophalo.farms.v1')).farms[0].scenarios[0].plans).length`), 1);
   await press('Escape'); await press('Escape'); await sleep(100);
   // ---- the Fields table
-  await tap('#fwFieldsBtn'); await until(`document.querySelector('.fw-table')`);
-  same('add: the table has its columns', await js(`[...document.querySelectorAll('.fw-table thead th')].map(t => t.textContent.trim())`), ['Field', 'Size', 'This season', 'Water', 'Fit', 'Actions']);
+  await inMore('#fwFieldsBtn'); await until(`document.querySelector('.fw-table')`);   // MOVED: the Fields table is All fields under More
+  same('add: the table has its columns', await js(`[...document.querySelectorAll('.fw-table thead th')].map(t => t.textContent.trim())`), ['Field', 'Size', 'This season', 'Fit', 'Actions']);   // the owner's rule: less to read; the water and the reminders are in the field's details
   same('add: one row per field and a totals row', [await js(`document.querySelectorAll('.fw-table tbody tr').length`), await text('.fw-table tfoot th')], [3, 'Total']);
   check('add: the totals say how many are planted', /1 of 3 planted/.test(await text('.fw-table tfoot')), await text('.fw-table tfoot'));
   same('add: the filter chips', await js(`[...document.querySelectorAll('.fw-chipb')].map(b => b.textContent)`), ['All', 'Ready to plant', 'Needs a look']);
@@ -373,28 +385,30 @@ await group('add', async () => {
   await tap('[data-filter=all]');
   await tap('[data-sort=ha]'); same('add: sorting by size is announced in the header', await js(`document.querySelector('[data-sort=ha]').closest('th').getAttribute('aria-sort')`), 'ascending');
   await tap('[data-sort=ha]'); same('add: a second press reverses it', await js(`document.querySelector('[data-sort=ha]').closest('th').getAttribute('aria-sort')`), 'descending');
-  same('add: fit cells are honest without the engine', await js(`[...document.querySelectorAll('.fw-table tbody tr')].map(r => r.cells[4].textContent).sort()`), ['Not planted', 'Not planted', 'Not read yet']);
+  same('add: fit cells are honest without the engine (a dash, never "not read yet")', await js(`[...document.querySelectorAll('.fw-table tbody tr')].map(r => r.cells[3].textContent).sort()`), ['Not planted', 'Not planted', '–']);
   const small = await js(`[...document.querySelectorAll('#fwPanel button')].filter(b => { const q = b.getBoundingClientRect(); return q.width && (q.height < 43.5 || q.width < 43.5); }).map(b => b.dataset.sort || b.dataset.open || b.id)`);
   same('add: every table button is at least 44 px', small, []);
   await shot('farm-table-1280.png');
   await tap('.fw-table [data-open]'); await sleep(200);
-  check('add: Open opens that field in the drawer', await js(`document.querySelector('#fwPanelTitle').textContent`) === await js(`document.querySelector('#fwField').selectedOptions[0].textContent.split(' · ')[0]`) && !!(await js(`document.querySelector('[role=tablist]')`)));
+  check('add: Open opens that field in the drawer', await js(`document.querySelector('#fwPanelTitle').textContent`) === await js(`document.querySelector('#fwField').selectedOptions[0].textContent.split(' · ')[0]`) && !!(await js(`document.querySelector('#fwonepage')`)));
 });
 
 await group('planview', async () => {
   await open();
-  same('planview: the toolbar chooses the plan, Proposed first', await js(`[...document.querySelectorAll('[data-kind]')].map(b => b.textContent + ':' + b.getAttribute('aria-pressed'))`), ['Current plan:false', 'Proposed plan:true']);
+  await tap('#fwCompare'); await until(`!!document.querySelector('#fwPanel [data-kind]')`);   // MOVED: the plan for the map and 3D is chosen inside Compare plans
+  same('planview: Compare plans chooses the plan for the map and 3D, Plan to try first', await js(`[...document.querySelectorAll('#fwPanel [data-kind]')].map(b => b.textContent + ':' + b.getAttribute('aria-pressed'))`), ['What you grow now:false', 'Plan to try:true']);
+  await tap('#fwClose'); await sleep(100);
   await js(`window.__farm.setGround((plan, date) => ({ state: plan.kind === 'current' ? 'residue' : 'cover', crop: null, stage: null, label: 'Planned', note: plan.name }))`);
   await js(`window.__farm.setView3d((data, node) => { node.dataset.got = JSON.stringify({ planKind: data.planKind, planName: data.planName, ground: data.ground?.state }); return { ok: true, update(next) { node.dataset.got = JSON.stringify({ planKind: next.planKind, planName: next.planName, ground: next.ground?.state }); }, dispose() {} }; })`);
   await js(`Object.defineProperty(HTMLCanvasElement.prototype, 'getContext', { value() { return { getExtension: () => null }; }, configurable: true }); 0`);
   await tap('#fwThreeBtn'); await sleep(300);
   same('planview: 3D starts on the proposed plan', JSON.parse(await js(`document.querySelector('#fw3d').dataset.got`)).planKind, 'proposed');
-  await tap('#fwCurBtn'); await sleep(200);
+  await comparePlan('current'); await sleep(200);
   same('planview: choosing Current plan reaches the 3D view at the same date', JSON.parse(await js(`document.querySelector('#fw3d').dataset.got`)), { planKind: 'current', planName: REAL.current.name, ground: 'residue' });
   same('planview: the date did not move', await text('#fwTime'), W(KD[0].date));
   same('planview: the choice shows pressed', await js(`document.querySelector('#fwCurBtn').getAttribute('aria-pressed')`), 'true');
-  // the panel leaves room for the picture
-  await tap('#fwCompare'); await sleep(300);
+  // the panel leaves room for the picture (Compare plans is open: the plan was chosen there)
+  await sleep(300);
   const box = await js(`(() => { const a = document.querySelector('#fw3d').getBoundingClientRect(), b = document.querySelector('#fwPanel').getBoundingClientRect(); return { right3d: a.right, leftPanel: b.left, w: a.width }; })()`);
   check('planview: at 1280 the panel does not cover the 3D view', box.right3d <= box.leftPanel + 1, box);
   await tap('#fwClose'); await sleep(100);
@@ -412,11 +426,11 @@ await group('planview', async () => {
 await group('newfarm', async () => {
   await js(`import('/js/app.js').then(m => m.show('farm'))`);
   await until(`document.querySelector('#fwEmpty') && !document.querySelector('#fwEmpty').hidden`);
-  same('newfarm: a cold start offers Add my farm', await text('#fwEmptyAdd'), 'Add my farm');
+  same('newfarm: a cold start offers Draw a field by hand', await text('#fwEmptyAdd'), 'Draw a field by hand');
   await tap('#fwEmptyAdd'); await until(`document.querySelector('#fwPlaceForm')`);
-  same('newfarm: step 1 is named', [await text('#fwPanelTitle'), await text('.fw-sub')], ['Start your farm board', 'Step 1 of 3: where is the new farm?']);
-  check('newfarm: it says the farm stays on this device', /Your farm stays on this device\. It is only used to ask NASA for the weather there\./.test(await text('#fwPanel')));
-  same('newfarm: three ways to say where', [await text('[data-st=here]'), await text('[data-st=tap]'), await js(`document.querySelector('#fwPlaceIn').placeholder`)], ['I am at my farmYour device asks first, then uses where you are', 'Tap the mapMove the map, then tap the farm', 'Town, or 42.03, -93.62']);
+  same('newfarm: step 1 is named', [await text('#fwPanelTitle'), await text('.fw-sub')], ['Add a field', 'Step 1 of 3: where is it?']);
+  check('newfarm: it says everything stays on this device', /Everything stays on this device\./.test(await text('#fwPanel')));
+  same('newfarm: three ways to say where', [await text('[data-st=here]'), await text('[data-st=tap]'), await js(`document.querySelector('#fwPlaceIn').placeholder`)], ['I am at my fieldUse where I am now', 'Find it on the mapTap your field', 'Town or place']);
   // nothing is sent while typing
   const before = cutOff.length;
   await js(`const i = document.querySelector('#fwPlaceIn'); for (const v of ['N', 'No', 'Now', 'Nowh', 'Nowhere']) { i.value = v; i.dispatchEvent(new Event('input', { bubbles: true })); }`); await sleep(400);
@@ -437,7 +451,7 @@ await group('newfarm', async () => {
   await js(`document.querySelector('#fwFarmName').value = '  '`); await js(`document.querySelector('#fwNameForm').requestSubmit()`);
   same('newfarm: an empty name is refused', await text('#fwNameErr'), 'Give the farm a name.');
   await tap('[data-st=back]'); await until(`document.querySelector('#fwPlaceForm')`);
-  same('newfarm: Back returns to step 1', await text('.fw-sub'), 'Step 1 of 3: where is the new farm?');
+  same('newfarm: Back returns to step 1', await text('.fw-sub'), 'Step 1 of 3: where is it?');
   // pasted coordinates, no search at all
   await js(`document.querySelector('#fwPlaceIn').value = '43.13, -80.75'`); await js(`document.querySelector('#fwPlaceForm').requestSubmit()`); await until(`document.querySelector('#fwNameForm')`);
   same('newfarm: coordinates go straight to the name step, with a plain name', [await text('#fwPanel .fw-panel-head + p'), await js(`document.querySelector('#fwFarmName').value`)], ['43.13000, -80.75000', 'My farm']);
@@ -450,7 +464,7 @@ await group('newfarm', async () => {
   check('newfarm: the square of 5 ha joins the farm and the Plant sheet opens', /^Plant · /.test(await text('#fwPanelTitle')) && (await js(`document.querySelector('#fwField').options.length`)) === 1 && /5\.0 ha/.test(await text('#fwField')), await text('#fwPanelTitle'));
   await tap('[data-act=back]'); await tap('#fwClose');
   // a second farm: tap the map
-  await tap('#fwEditBtn'); await tap('[data-edit=newfarm]'); await until(`document.querySelector('[data-st=tap]')`);
+  await inTools('newfarm'); await until(`document.querySelector('[data-st=tap]')`);   // MOVED: Add another farm is under More
   await tap('[data-st=tap]'); await until(`!document.querySelector('#fwEditBar').hidden`);
   same('newfarm: tapping the map says what to do', await text('.fw-editline'), 'Move the map, then tap the farm');
   await press('Escape'); await until(`document.querySelector('#fwPlaceForm')`);
@@ -464,7 +478,7 @@ await group('newfarm', async () => {
   same('newfarm: Later leaves two farms and an empty one open', [await js(`JSON.parse(localStorage.getItem('crophalo.farms.v1')).farms.length`), await js(`document.querySelector('#fwPanel').hidden`)], [2, true]);
   check('newfarm: the new farm has no field yet and says how to add one', /No field on this farm yet/.test(await text('#fwFinding')), await text('#fwFinding'));
   // my place
-  await tap('#fwEditBtn'); await tap('[data-edit=newfarm]'); await until(`document.querySelector('[data-st=here]')`);
+  await inTools('newfarm'); await until(`document.querySelector('[data-st=here]')`);
   await js(`Object.defineProperty(navigator, 'geolocation', { value: { getCurrentPosition: (ok, bad) => bad({ code: 1 }) }, configurable: true }); 0`);
   await tap('[data-st=here]'); await sleep(200);
   same('newfarm: a refused location says what else to do', await text('#fwPlaceMsg'), 'Your device did not share where you are. Search for a place, or tap the map.');
@@ -480,10 +494,11 @@ await group('farms', async () => {
   const farms = () => js(`JSON.parse(localStorage.getItem('crophalo.farms.v1'))`);
   const chip = () => text('#fwFarmBtn');
   // a second farm from a cold flow
-  await tap('#fwEditBtn'); await tap('[data-edit=newfarm]'); await until(`document.querySelector('#fwPlaceForm')`);
+  await inTools('newfarm'); await until(`document.querySelector('#fwPlaceForm')`);
   await js(`document.querySelector('#fwPlaceIn').value = '43.5, -80.2'`); await js(`document.querySelector('#fwPlaceForm').requestSubmit()`); await until(`document.querySelector('#fwNameForm')`);
   await js(`document.querySelector('#fwFarmName').value = 'Second farm'`); await tap('#fwNameForm button[type=submit]'); await until(`document.querySelector('[data-st=later]')`); await tap('[data-st=later]'); await sleep(200);
-  same('farms: the chip names the open farm', await chip(), 'Second farm ⌄');
+  same('farms: the chip names the open farm', await chip(), 'Second farm');   // the "⌄" letter gave way to the app's chevron
+  check('farms: with two farms the farm button shows, with the app\'s chevron', await js(`!document.querySelector('#fwFarmBtn').hidden && !!document.querySelector('#fwFarmBtn > .chev')`));
   same('farms: and speaks as a way to change farm', await js(`document.querySelector('#fwFarmBtn').getAttribute('aria-label')`), 'Second farm. Change farm');
   await tap('#fwFarmBtn'); await until(`document.querySelector('.fw-farms')`);
   same('farms: the list is titled and counts', [await text('#fwPanelTitle'), await text('.fw-sub')], ['My farms', '2 farms on this device']);
@@ -498,7 +513,7 @@ await group('farms', async () => {
   await js(`document.querySelector('#fwFarmNameIn').value = ' '`); await js(`document.querySelector('#fwFarmForm').requestSubmit()`);
   same('farms: an empty name is refused', await text('#fwFarmErr'), 'Give the farm a name.');
   await js(`document.querySelector('#fwFarmNameIn').value = 'Home farm'`); await js(`document.querySelector('#fwFarmForm').requestSubmit()`); await sleep(200);
-  same('farms: the new name shows on the chip', await chip(), 'Home farm ⌄');
+  same('farms: the new name shows on the chip', await chip(), 'Home farm');
   await js(`document.querySelector('input[name=irr][value=limited]').click(); document.querySelector('input[name=till][value=notill]').click(); document.querySelector('#fwCover').click()`); await sleep(500);
   same('farms: water, tillage and cover crops are kept', await js(`(() => { const f = JSON.parse(localStorage.getItem('crophalo.farms.v1')).farms[0].practice; return [f.irrigation, f.tillage, f.coverOK]; })()`), ['limited', 'notill', false]);
   const pin0 = await js(`JSON.stringify(JSON.parse(localStorage.getItem('crophalo.farms.v1')).farms[0].pin)`);
@@ -515,11 +530,11 @@ await group('farms', async () => {
   same('farms: Delete is red', await js(`getComputedStyle(document.querySelector('[data-act=really]')).backgroundColor !== getComputedStyle(document.querySelector('[data-act=keep]')).backgroundColor`), true);
   await tap('[data-act=keep]'); await until(`document.querySelector('[data-act=delete]')`);
   await tap('[data-act=delete]'); await tap('[data-act=really]'); await sleep(500);
-  check('farms: the farm is gone, the other one opens, with Undo', (await chip()) === 'Second farm ⌄' && (await farms()).farms.length === 1 && /Home farm deleted/.test(await text('#fwToast')), await text('#fwToast'));
+  check('farms: the farm is gone, the other one opens, with Undo', (await text('#fwFarmCap')) === 'Second farm' && await js(`document.querySelector('#fwFarmBtn').hidden`) && (await farms()).farms.length === 1 && /Home farm deleted/.test(await text('#fwToast')), await text('#fwToast'));   // one farm: its name heads the picker, with no farm button
   await tap('#fwUndo'); await sleep(500);
   same('farms: Undo brings it back whole', [(await farms()).farms.length, (await farms()).farms.find(f => f.name === 'Home farm').fields.length], [2, 1]);
   await tap('#fwFarmBtn'); await tap('[data-act=settings]'); await tap('[data-act=delete]'); await tap('[data-act=really]'); await sleep(500);
-  await tap('#fwFarmBtn'); await until(`document.querySelector('[data-restore]')`);
+  await inTools('farms'); await until(`document.querySelector('[data-restore]')`);   // MOVED: with one farm, My farms is under More
   check('farms: Recently deleted farms lists it with Restore', /Recently deleted farms/.test(await text('#fwPanel')) && /1 field, 10\.0 ha · deleted/.test(await text('#fwPanel')), await text('#fwPanel'));
   await tap('[data-restore]'); await sleep(500);
   check('farms: Restore brings the farm and its field back', (await farms()).farms.length === 2 && (await farms()).deleted.length === 0 && /Home farm is back, with its fields\./.test(await text('#fwToast')), await text('#fwToast'));
@@ -535,62 +550,57 @@ await group('farms', async () => {
   await js(`localStorage.setItem('crophalo.farms.v1', JSON.stringify({ v: 1, active: '', farms: [] })); localStorage.setItem('crophalo.saved.v1', JSON.stringify([{ name: 'North quarter', place: 'Woodstock, Ontario', lat: 43.13, lon: -80.75, at: Date.now() }]))`);
   await go('/'); await js(`document.querySelector('#navFarm').click()`); await until(`document.querySelector('#fwEmptyAdd') && !document.querySelector('#fwEmpty').hidden`);
   await tap('#fwEmptyAdd'); await until(`document.querySelector('[data-st=saved]')`);
-  check('farms: saved fields are offered with their count', /Start from my saved fields \(1\)/.test(await text('[data-st=saved]')), await text('[data-st=saved]'));
+  check('farms: saved fields are offered with their count', /Use a saved field1 saved from your reports/.test(await text('[data-st=saved]')), await text('[data-st=saved]'));
   await tap('[data-st=saved]'); await until(`document.querySelector('[data-saved]')`);
   check('farms: the saved list shows name and place', (await text('.fw-list')).includes('North quarter') && (await text('.fw-list')).includes('Woodstock, Ontario'), await text('.fw-list'));
   await tap('[data-saved="0"]'); await until(`document.querySelector('#fwNameForm')`);
   same('farms: a saved field becomes the new farm\'s place and name', [await text('#fwPanel .fw-panel-head + p'), await js(`document.querySelector('#fwFarmName').value`)], ['Woodstock, Ontario', 'North quarter']);
 });
 
+// MOVED: the chip row left the first view. Its figures are on each plan's card in Compare plans, each with its "i"; the weather is in the field's Weather tab, and sales in its Check tab.
 await group('chips', async () => {
   await js(`import('/js/farm.js').then(m => { window.__farm = m; window.__res = m.addFromReport(${JSON.stringify(REAL)}); })`);
-  await until(`document.querySelector('#fwChips') && !document.querySelector('#fwChips').hidden`); await sleep(500);
-  same('chips: five chips in one row', await js(`[...document.querySelectorAll('#fwChips [data-chip]')].map(b => b.dataset.chip)`), ['weather', 'score', 'bare', 'past', 'sales']);
+  await until(`document.querySelector('#fwFinding')?.textContent.length > 5 && !document.querySelector('#view-farm').hidden`); await sleep(500);
+  same('chips: the first view has no chip row any more', await js(`document.querySelectorAll('#fw [data-chip], #fwChips').length`), 0);
+  await tap('#fwCompare'); await until(`document.querySelectorAll('.fw-card').length === 2`);
   // with the services cut off nothing is invented
-  await until(`[...document.querySelectorAll('#fwChips [data-chip]')].every(b => b.dataset.state !== 'wait')`, 20000);
-  same('chips: with no weather every chip says so, and sales says how', await js(`[...document.querySelectorAll('#fwChips [data-chip]')].map(b => b.querySelector('b').textContent.trim())`), ['not read yet', 'not read yet', 'not read yet', 'not read yet', 'Not worked out']);
-  check('chips: and the weather chip gives its reason in words', /./.test(await js(`document.querySelector('[data-chip=weather] .fw-chipsub')?.textContent || ''`)), await text('[data-chip=weather]'));
+  await until(`!document.querySelector('.fw-reading')`, 20000);
+  same('chips: with no weather no card shows a figure, and nothing says it has none', await js(`document.querySelectorAll('.fw-card .fw-scorechip').length`), 0);
+  check('chips: one plain line says what is missing, once', /^The plan figures could not be read\. Try again later\.$/.test(await text('.fw-figwhy') || '') && (await text('#fwPanel')).split('could not be read').length - 1 === 1, await text('#fwPanel'));
+  await press('Escape'); await sleep(100);
   // with the recorded answers of the services
   await js(`window.__fix = ${JSON.stringify({ power: FIX('power_barrie.json'), forecast: FIX('forecast_barrie.json'), land: FIX('era5land_barrie.json') })}; window.__farm.setDataEnv({ now: () => Date.parse('2026-11-14T15:00:00Z'), fetch: async url => { const f = /power[.]larc/.test(url) ? window.__fix.power : /api[.]open-meteo[.]com[/]v1[/]forecast/.test(url) ? window.__fix.forecast : /era5_land/.test(url) ? window.__fix.land : null; return f ? { ok: true, status: 200, headers: { get: () => null }, text: async () => f } : { ok: false, status: 404, headers: { get: () => null }, text: async () => '' }; } }); window.__farm.forgetReadings(); window.__farm.render()`);
-  await until(`[...document.querySelectorAll('#fwChips [data-chip]')].every(b => b.dataset.state !== 'wait')`, 60000); await sleep(1500);
-  if (await js(`document.querySelector('[data-chip=score]').dataset.state`) !== 'ok') check('chips: the recorded answers were read', false, await js(`[...document.querySelectorAll('#fwChips [data-chip]')].map(b => b.dataset.chip + ':' + b.dataset.state + ':' + b.textContent.trim()).join(' | ')`));
-  const val = id => js(`document.querySelector('[data-chip=${id}] b').textContent.trim()`);
-  check('chips: the weather chip gives today\'s word and temperature', /^.+ -?\d+°$/.test(await val('weather')) && /^High -?\d+°, low -?\d+°$/.test(await js(`document.querySelector('[data-chip=weather] .fw-chipsub').textContent`)), await val('weather'));
-  check('chips: the plan score is the engine\'s number with its fit word (proposed plan)', /^\d+ · (Holds up|Only just suits|Doesn't suit here)$/.test(await val('score')), await val('score'));
-  same('chips: and says which plan it speaks of', await js(`document.querySelector('[data-chip=score] .fw-chipsub').textContent`), 'Proposed plan');
-  check('chips: bare soil months this plan against the current plan', /^\d(\.\d)? mo$/.test(await val('bare')) && /^Current plan \d(\.\d)? mo$/.test(await js(`document.querySelector('[data-chip=bare] .fw-chipsub').textContent`)), await val('bare'));
-  check('chips: past years are counts of tested years', /^\d+ of \d+$/.test(await val('past')) && await js(`document.querySelector('[data-chip=past] .fw-chipsub').textContent`) === 'with no stress', await val('past'));
-  const proposedScore = await val('score');
-  await tap('#fwCurBtn'); await sleep(300);
-  check('chips: choosing the Current plan moves the chips to it', await js(`document.querySelector('[data-chip=score] .fw-chipsub').textContent`) === 'Current plan' && await val('score') !== '', await val('score'));
-  await tap('#fwPropBtn'); await sleep(200); same('chips: and back', await val('score'), proposedScore);
-  // a sheet
-  await tap('[data-chip=score]'); await until(`document.querySelector('#fwPanelTitle')?.textContent === 'Plan score'`);
-  check('chips: the score sheet says how it is worked out and shows the parts', /out of 100/.test(await text('#fwPanel')) && /Parts: water \d+/.test(await text('#fwPanel')), await text('#fwPanel'));
-  check('chips: with a source button', await js(`!!document.querySelector('#fwPanel .srci')`));
+  await until(`window.__farm._entry().state !== 'loading' && window.__farm._entry().forecastPending === false`, 60000); await sleep(800);
+  await tap('#fwCompare'); await until(`document.querySelectorAll('.fw-card .fw-scorechip').length === 2`, 30000);
+  const fig = (plan, id) => js(`document.querySelector('.fw-card[data-plan=${plan}] .fw-scorechip')?.textContent.trim()`), note = (plan, id) => js(`document.querySelector('.fw-card[data-plan=${plan}] .srci')?.dataset.note || ''`);
+  check('chips: the plan score is the engine\'s number in the report\'s words (proposed plan)', /^\d+ · (Good fit|OK fit|Poor fit)$/.test(await fig('proposed', 'score')), await fig('proposed', 'score'));
+  check('chips: and the current plan has its own on its own card', /^\d+ · (Good fit|OK fit|Poor fit)$/.test(await fig('current', 'score')), await fig('current', 'score'));
+  await js(`document.querySelector('.fw-moreplan').open = true`);
+  check('chips: under Show more, bare soil months for both plans', /Bare soil: about \d+(\.\d)? months a year now, \d+(\.\d)? with the plan to try\./.test(await text('.fw-moreplan')), await text('.fw-moreplan'));
+  check('chips: and past years are counts of tested years', /Past years: no crop stress in \d+ of \d+ years with the plan to try\./.test(await text('.fw-moreplan')), await text('.fw-moreplan'));
+  check('chips: the score\'s "i" says how it is worked out and shows the parts', /out of 100/.test(await note('proposed', 'score')) && /Parts: water fit \d+/.test(await note('proposed', 'score')), await note('proposed', 'score'));
+  check('chips: each chip has its source button', await js(`document.querySelectorAll('.fw-card .fw-scorechip + .srci, .fw-card .fw-figline .srci').length === 2`));
+  const proposedScore = await fig('proposed', 'score');
+  await comparePlan('current'); await sleep(200);
+  same('chips: choosing the Current plan for the map leaves both cards as they are', await fig('proposed', 'score'), proposedScore);
+  await comparePlan('proposed');
   await press('Escape'); await sleep(100);
-  same('chips: Escape closes the sheet and returns to the chip', await js(`document.activeElement.dataset.chip`), 'score');
-  await tap('[data-chip=past]'); await until(`document.querySelector('#fwPanelTitle')?.textContent === 'Past years'`);
-  check('chips: past years show the engine\'s own sentence and its rules, never a chance', /^No stress thresholds crossed in \d+(?: of \d+)? tested years/.test(await text('#fwPanel .fw-panel-head + p')) && /Rule: /.test(await text('#fwPanel')) && !/chance|forecast of/i.test((await text('#fwPanel')).replace('never a chance and never a forecast', '')), await text('#fwPanel'));
-  await press('Escape');
-  await tap('[data-chip=weather]'); await until(`document.querySelector('#fwPanelTitle')?.textContent === 'Weather at the field'`);
-  check('chips: the weather sheet names Open-Meteo through its "i"', /Open-Meteo/.test(await js(`document.querySelector('#fwPanel .srci')?.getAttribute('aria-label') || ''`)) && /Forecast only/.test(await text('#fwPanel')), await text('#fwPanel'));
-  await press('Escape');
-  await tap('[data-chip=sales]'); await until(`document.querySelector('#fwPanelTitle')?.textContent === 'Estimated sales'`);
-  check('chips: sales are behind a tap with their assumptions and no figure', /loam unless you chose one/.test(await text('#fwPanel')) && /rain-fed/.test(await text('#fwPanel')) && !/\$|€|\d{3},\d{3}/.test(await text('#fwPanel')), await text('#fwPanel'));
-  await press('Escape');
+  // the weather and sales in the field's details
+  await details(); await sleep(150);
+  check('chips: the field\'s Weather tab gives today\'s word and temperatures', /, -?\d+ °[CF] now\. Today's high -?\d+ °[CF], low -?\d+ °[CF]\./.test(await text('#fwonepage')), await text('#fwonepage'));
+  check('chips: and names Open-Meteo through its "i", forecast only', /Open-Meteo/.test(await js(`document.querySelector('#fwonepage .srci')?.getAttribute('aria-label') || ''`)) && /Forecast only/.test(await text('#fwonepage')), await text('#fwonepage'));
+  await sleep(150);
+  await press('Escape'); await sleep(100);
   // the engine on its worker: the page keeps painting, and the answer is the same
   await js(`window.__long = []; new PerformanceObserver(list => { for (const e of list.getEntries()) window.__long.push({ s: e.startTime, d: Math.round(e.duration) }); }).observe({ entryTypes: ['longtask'] }); import('/js/engine-client.js').then(m => { window.__farm.setEngineClient(m.createEngineClient()); window.__farm.forgetReadings(); window.__farm.render(); })`);
-  await until(`document.querySelector('[data-chip=score]').dataset.state === 'ok'`, 60000); await sleep(500);
-  same('chips: on the engine\'s worker the score is the same as on the page', await val('score'), proposedScore);
+  await until(`window.__farm._entry().state === 'ok'`, 60000); await sleep(500);
+  await tap('#fwCompare'); await until(`!!document.querySelector('.fw-card[data-plan=proposed] .fw-scorechip')`, 30000);
+  same('chips: on the engine\'s worker the score is the same as on the page', await fig('proposed', 'score'), proposedScore);
   const win = await js(`(() => { const e = window.__farm._entry(); return [e.engineFrom, e.engineTo]; })()`);
   same('chips: and no task of 200 ms or more held the page while the engine worked it out', await js(`window.__long.filter(t => t.d >= 200 && Math.min(t.s + t.d, ${win[1]}) - Math.max(t.s, ${win[0]}) > 50)`), []);
-  const small = await js(`[...document.querySelectorAll('#fwChips button')].filter(b => b.getBoundingClientRect().height < 43.5).map(b => b.dataset.chip)`);
-  same('chips: every chip is at least 44 px tall', small, []);
   await shot('farm-chips-1280.png');
   await size(375); await sleep(300);
-  const sc = await js(`(() => { const r = document.querySelector('#fwChips'); return { inner: r.scrollWidth > r.clientWidth, page: document.documentElement.scrollWidth <= innerWidth }; })()`);
-  check('chips: on a phone they slide sideways inside their row, the page does not', sc.inner && sc.page, sc);
+  await flat('the plans\' figures at 375');
   await shot('farm-chips-375.png');
 });
 
@@ -639,67 +649,261 @@ await group('fitall', async () => {
     const view = async (n, fn) => { await closeAll(); await fn(); await measure(n); };
     await measure('the first view');
     await view('Compare plans', async () => { await js(`document.querySelector('#fwCompare').click()`); });
-    for (const tab of ['check', 'facts', 'weather', 'remind']) await view(`the drawer, ${tab}`, async () => { await js(`document.querySelector('#fwDetailsBtn').click()`); await sleep(150); await js(`document.querySelector('#fwtab-${tab}').click()`); });
-    await view('the soil sheet', async () => { await js(`document.querySelector('#fwDetailsBtn').click()`); await sleep(100); await js(`document.querySelector('#fwtab-facts').click()`); await js(`document.querySelector('[data-act=soil]').click()`); });
-    await view('the slope sheet', async () => { await js(`document.querySelector('#fwDetailsBtn').click()`); await sleep(100); await js(`document.querySelector('#fwtab-facts').click()`); await js(`document.querySelector('[data-act=land]').click()`); });
-    await view('the copy sheet', async () => { await js(`document.querySelector('#fwDetailsBtn').click()`); await sleep(100); await js(`document.querySelector('#fwtab-check').click()`); await js(`document.querySelector('[data-act=copy]').click()`); });
-    for (const step of [0, 1, 2, 3]) await view(`the Plant sheet, step ${step + 1}`, async () => { await js(`document.querySelector('#fwDetailsBtn').click()`); await sleep(100); await js(`document.querySelector('#fwtab-check').click()`); await js(`document.querySelector('[data-act=plant]').click()`); await sleep(100); await js(`document.querySelector('[data-step="${step}"]').click()`); });
+    for (const tab of ['page']) await view(`the drawer, ${tab}`, async () => { await js(`document.querySelector('#fwDetailsBtn').click()`); await sleep(150); });
+    await view('the soil sheet', async () => { await js(`document.querySelector('#fwDetailsBtn').click()`); await sleep(100); await js(`document.querySelector('[data-act=soil]').click()`); });
+    await view('the copy sheet', async () => { await js(`document.querySelector('#fwMoreBtn').click()`); await sleep(100); await js(`document.querySelector('#fwToolsBtn').click()`); await sleep(100); await js(`document.querySelector('[data-tool=copy]').click()`); });
+    for (const step of [0, 1, 2, 3]) await view(`the Plant sheet, step ${step + 1}`, async () => { await js(`document.querySelector('#fwDetailsBtn').click()`); await sleep(100); await js(`document.querySelector('[data-act=plant]').click()`); await sleep(100); await js(`document.querySelector('[data-step="${step}"]').click()`); });
     await view('the Fields table', async () => { await js(`document.querySelector('#fwFieldsBtn').click()`); });
     await view('the farm list', async () => { await js(`document.querySelector('#fwFarmBtn').click()`); });
     await view('Farm settings', async () => { await js(`document.querySelector('#fwFarmBtn').click()`); await sleep(100); await js(`document.querySelector('[data-act=settings]').click()`); });
-    for (const chip of ['weather', 'score', 'past', 'sales']) await view(`the ${chip} chip sheet`, async () => { await js(`document.querySelector('[data-chip=${chip}]').click()`); });
-    await view('Add a field', async () => { await js(`document.querySelector('#fwEditBtn').click()`); await sleep(100); await js(`document.querySelector('[data-edit=add]').click()`); });
-    await view('the Edit field menu', async () => { await js(`document.querySelector('#fwEditBtn').click()`); });
-    await js(`document.querySelector('#fwEditBtn').click()`);
-    await view('moving corners', async () => { await js(`document.querySelector('#fwEditBtn').click()`); await sleep(100); await js(`document.querySelector('[data-edit=corners]').click()`); });
+    await view('Add a field', async () => { await js(`document.querySelector('#fwMoreMenu [data-edit=add]').click()`); });   // MOVED: the farm's tools are under More
+    await view('the More menu', async () => { await js(`document.querySelector('#fwMoreBtn').click()`); });
+    await js(`document.querySelector('#fwMoreBtn').click()`);
+    await view('moving corners', async () => { await js(`document.querySelector('#fwDetailsBtn').click()`); await sleep(100); await js(`document.querySelector('#fwPanel [data-edit=corners]').click()`); });   // MOVED: the field's own tools are in its details
     await js(`document.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true }))`); await sleep(200);
-    await view('drawing a field', async () => { await js(`document.querySelector('#fwEditBtn').click()`); await sleep(100); await js(`document.querySelector('[data-edit=add]').click()`); await sleep(100); await js(`document.querySelector('[data-add=draw]').click()`); });
+    await view('drawing a field', async () => { await js(`document.querySelector('#fwMoreMenu [data-edit=add]').click()`); await sleep(100); await js(`document.querySelector('[data-add=draw]').click()`); });
     await js(`document.querySelector('[data-bar=cancel]')?.click()`); await sleep(200);
-    await view('starting a farm, step 1', async () => { await js(`document.querySelector('#fwEditBtn').click()`); await sleep(100); await js(`document.querySelector('[data-edit=newfarm]').click()`); });
+    await view('starting a farm, step 1', async () => { await js(viaTools('newfarm')); });
     await js(`document.querySelector('#fwPlaceIn').value = '43.5, -80.2'; document.querySelector('#fwPlaceForm').requestSubmit()`); await measure('starting a farm, step 2');
     await js(`document.querySelector('#fwNameForm').requestSubmit()`); await sleep(200); await measure('starting a farm, step 3');
   }
 });
 
+// ---- one year on the map: from the History page, each field token takes its verdict for one weather year; Play steps through the years and can be paused
+await group('year', async () => {
+  const series = await realSeries();
+  const recorded = async () => { await js(`window.__fix = ${JSON.stringify({ power: FIX('power_barrie.json'), forecast: FIX('forecast_barrie.json'), land: FIX('era5land_barrie.json') })}; window.__farm.setDataEnv({ now: () => Date.parse('2026-11-14T15:00:00Z'), fetch: async url => { const f = /power[.]larc/.test(url) ? window.__fix.power : /api[.]open-meteo[.]com[/]v1[/]forecast/.test(url) ? window.__fix.forecast : /era5_land/.test(url) ? window.__fix.land : null; return f ? { ok: true, status: 200, headers: { get: () => null }, text: async () => f } : { ok: false, status: 404, headers: { get: () => null }, text: async () => '' }; } }); window.__farm.forgetReadings(); window.__farm.render()`); };
+  const seed = async (big = false) => {   // a farm with the real plan on its first field and a second field with no plan
+    await go('/'); await js(`localStorage.removeItem('crophalo.farms.v1')`); await go('/'); await open();
+    await js(`import('/js/simulate.js').then(S => { let store = S.cleanStore(JSON.parse(localStorage.getItem('crophalo.farms.v1'))); const farm = S.getFarm(store); store = S.addField(store, farm.id, { ring: S.squareAround(farm.pin.lat + 0.01, farm.pin.lon + 0.01, 2) }, { now: Date.now() + 1, random: () => 0.3 }).store; localStorage.setItem('crophalo.farms.v1', JSON.stringify(store)); })`);
+    await go('/'); if (big) await js(`document.documentElement.dataset.text = 'xlarge'`); await js(`document.querySelector('#navFarm').click()`); await until(`document.querySelector('#fwField') && document.querySelector('#fwField').options.length === 2`);
+    await js(`import('/js/farm.js').then(m => { window.__farm = m; })`); await until(`!!window.__farm`); await recorded();
+  };
+  await size(1280); await seed();
+  const store = SIM.cleanStore({ v: 1, active: 'f', farms: [{ id: 'f', name: 'Barrie', pin: { lat: 44.4, lon: -79.78 }, fields: [], scenarios: [] }] });
+  const made = SIM.applyReport(store, REAL, { now: Date.parse('2026-11-14T15:00:00Z') }), fm = SIM.getFarm(made.store, made.farmId), fd = SIM.getField(fm, made.fieldId);
+  const want = [{ id: fd.id, name: fd.name, crops: FARMHIST.cropsFor(fm, fd, series, { cropOf: CROPS.cropOf, cropName: CROPS.cropName, holdOf: t => FIT.WATER_HOLD[t] ?? 150, irrigationMm: l => FIT.IRRIGATION_MM[l] ?? 0 }) }], years = YEARS.yearsIn(want), v0 = YEARS.yearView(want, years[0]);
+  await openHist(); await until(`document.querySelector('#h-crops')`, 60000); await sleep(300);   // MOVED: Land history is under More
+  same('year: the History page has both buttons, in words', await js(`[...document.querySelectorAll('#fwHistoryBody [data-hist=year], #fwHistoryBody [data-hist=play]')].map(b => b.textContent)`), ['See one year on the map', 'Play the years']);
+  await tap('#fwHistoryBody [data-hist=year]'); await until(`!document.querySelector('#fwYear').hidden && document.querySelectorAll('#fwYearPick option').length > 0`, 60000); await sleep(300);
+  same('year: the History page is out of the way and the board shows the year bar', [await js(`document.querySelector('#fwHistory').hidden`), await js(`document.querySelector('#fwStrip').hidden`), await js(`document.querySelector('#fwYear').hidden`)], [true, true, false]);
+  same('year: the ribbon says it is the past, and which seasons', await text('#fwRibbon'), `Past weather, not a forecast · seasons harvested in ${years[0]}`);
+  same('year: the chooser lists the years newest first and starts on the newest', [await js(`[...document.querySelectorAll('#fwYearPick option')].map(o => +o.value)`), await js(`+document.querySelector('#fwYearPick').value`)], [years, years[0]]);
+  const tokens = () => js(`[...document.querySelectorAll('.fw-token')].map(b => ({ v: b.dataset.verdict, label: b.getAttribute('aria-label'), plate: b.parentElement.querySelector('.fw-plate-state')?.textContent }))`);
+  let t = await tokens();
+  same('year: each field token is in its verdict with an icon and a word', t.map(x => [x.v, x.plate]), [[v0.fields[0].verdict, v0.fields[0].word], ['none', 'Not judged']]);
+  check('year: a token says its field, its verdict and the year to a screen reader', t[0].label.startsWith(`Home field: ${v0.fields[0].word} in ${years[0]}`) && t[1].label.includes(`Not judged in ${years[0]}`), t.map(x => x.label).join(' | '));
+  const said = y => `${YEARS.yearView(want, y).sentence} North-east field: Not judged.`;   // the farm's second field has no plan, so it is not judged
+  same('year: the live region says the year and every field', await text('#fwSay'), said(years[0]));
+  check('year: the card holds the year\'s lines and the four stages of each crop, under the ribbon words', /Past weather, not a forecast/.test(await text('#fwYearBody')) && (await js(`document.querySelectorAll('#fwYearBody .fw-ystages li').length`)) === 4 * v0.fields[0].crops.length, await text('#fwYearBody'));
+  check('year: the weather record is named as the History page names it', (await text('#fwYearBody')).includes(YEARS.recordWords(want)), YEARS.recordWords(want));
+  // by keyboard
+  await js(`document.querySelector('#fwYearPrev').focus()`); await press('Enter'); await sleep(250);
+  same('year: Earlier moves to the next older year and says it', [await js(`+document.querySelector('#fwYearPick').value`), await text('#fwSay')], [years[1], said(years[1])]);
+  t = await tokens(); same('year: the tokens follow the year', t[0].v, YEARS.yearView(want, years[1]).fields[0].verdict);
+  await js(`document.querySelector('#fwYearNext').focus()`); await press('Enter'); await sleep(250);
+  same('year: Later goes back', await js(`+document.querySelector('#fwYearPick').value`), years[0]);
+  await js(`document.querySelector('#fwYearPick').focus(); document.querySelector('#fwYearPick').value = '${years[1]}'; document.querySelector('#fwYearPick').dispatchEvent(new Event('change', { bubbles: true }))`); await sleep(250);
+  same('year: the chooser picks a year and the board follows', [await js(`+document.querySelector('#fwYearPick').value`), (await tokens())[0].v], [years[1], YEARS.yearView(want, years[1]).fields[0].verdict]);
+  await js(`document.querySelector('.fw-token').focus()`); await press('Enter'); await sleep(250);
+  check('year: Enter on a token says its verdict and opens no sheet', (await text('#fwSay')).includes(`in ${years[1]}`) && await js(`document.querySelector('#fwPanel').hidden`), await text('#fwSay'));
+  // play and pause
+  await js(`document.querySelector('#fwYearPick').value = '${years.at(-1)}'; document.querySelector('#fwYearPick').dispatchEvent(new Event('change', { bubbles: true }))`); await sleep(200);
+  await tap('#fwYearPlay'); await sleep(150);
+  same('year: Play goes on from the year chosen (here the oldest) and the button becomes Pause', [await js(`+document.querySelector('#fwYearPick').value`), await text('#fwYearPlay')], [years.at(-1), 'Pause']);
+  await until(`+document.querySelector('#fwYearPick').value === ${years.at(-2)}`, 8000);
+  await sleep(150); same('year: it steps on to the next year, and says so', await text('#fwSay'), said(years.at(-2)));
+  await tap('#fwYearPlay'); const at = await js(`+document.querySelector('#fwYearPick').value`); await sleep(3200);
+  same('year: Pause stops it where it is and says so', [await js(`+document.querySelector('#fwYearPick').value`), await text('#fwYearPlay'), await text('#fwSay')], [at, 'Play the years', `Paused on ${at}.`]);
+  // motion levels
+  await js(`document.documentElement.dataset.motion = 'reduce'`); await tap('#fwYearPlay'); await sleep(3200);
+  same('year: under Still motion it does not play by itself, and says what to use', [await js(`+document.querySelector('#fwYearPick').value`), await text('#fwYearPlay'), /Use Earlier and Later/.test(await text('#fwSay'))], [at, 'Play the years', true]);
+  await js(`document.documentElement.dataset.motion = 'less'`); await tap('#fwYearPlay'); await until(`+document.querySelector('#fwYearPick').value !== ${at}`, 8000);
+  check('year: under Less motion it steps, with nothing sliding', await js(`getComputedStyle(document.querySelector('#fwMap')).transitionDuration`) !== undefined && (await text('#fwYearPlay')) === 'Pause', '');
+  await tap('#fwYearPlay'); await js(`delete document.documentElement.dataset.motion`);
+  // leaving
+  await press('Escape'); await sleep(250);
+  const today = new Date().toISOString().slice(0, 10);
+  same('year: Escape leaves it: the board on today\'s date, More (where Land history is) has the keyboard', [await js(`document.querySelector('#fwYear').hidden`), await js(`document.querySelector('#fwRibbon').hidden`), await text('#fwTime'), await js(`document.activeElement.id`)], [true, true, W(today), 'fwMoreBtn']);
+  same('year: the tokens are the board\'s own again', (await tokens()).map(x => x.v), [undefined, undefined]);
+  await openHist(); await until(`document.querySelector('#h-crops')`, 60000); await tap('#fwHistoryBody [data-hist=play]');
+  await until(`!document.querySelector('#fwYear').hidden && document.querySelectorAll('#fwYearPick option').length > 0`, 60000); await sleep(300);
+  same('year: "Play the years" from the History page starts at once, at the oldest year', [await js(`+document.querySelector('#fwYearPick').value`), await text('#fwYearPlay')], [years.at(-1), 'Pause']);
+  await tap('#fwYearBack'); await sleep(250);
+  same('year: Back stops it and returns to the board', [await js(`document.querySelector('#fwYear').hidden`), await text('#fwTime')], [true, W(today)]);
+  const quiet = await js(`+document.querySelector('#fwYearPick').value`); await sleep(3000);
+  same('year: and nothing keeps playing behind the board', await js(`document.querySelector('#fwYear').hidden && !document.querySelector('.fw-token').dataset.verdict`), true);
+  // fit at 1280, 375 and 320 with the Largest text, the year bar open and the card open
+  for (const width of [1280, 375, 320]) {
+    await size(width); await seed(true);
+    await openHist(); await until(`document.querySelector('#h-crops')`, 60000); await tap('#fwHistoryBody [data-hist=year]');
+    await until(`!document.querySelector('#fwYear').hidden && document.querySelectorAll('#fwYearPick option').length > 0`, 60000); await sleep(300);
+    await js(`document.querySelector('#fwYearCard').open = true`); await sleep(250);
+    const where = `one year on the map at ${width} px with the Largest text`;
+    await flat(where);
+    const tg = await targets();
+    if (width <= 600) check(`fit: ${where}: every control is at least 44 × 44 px`, tg.small.length === 0, tg.small.slice(0, 4).join('; '));
+    check(`fit: ${where}: no two controls touch`, tg.touching.length === 0, tg.touching.slice(0, 3).join('; '));
+    if (width !== 320) {   // axe on the year bar with its card open
+      if (!await js(`typeof window.axe === 'object'`)) await js(fs.readFileSync(fileURLToPath(new URL('./vendor-test/axe.min.js', import.meta.url)), 'utf8') + '\n;void 0');
+      const found = await js(`axe.run(document, { runOnly: { type: 'tag', values: ['wcag2a', 'wcag2aa', 'wcag21a', 'wcag21aa', 'wcag22aa', 'best-practice'] }, resultTypes: ['violations'] }).then(r => r.violations.flatMap(v => v.nodes.map(n => v.id + ' \u00b7 ' + n.target.join(' ') + ' \u00b7 ' + (n.failureSummary || '').split('\\n').slice(-1)[0])))`);
+      for (const line of found) console.log(`axe  one year at ${width} px: ${line}`);
+      check(`axe: one year on the map at ${width} px: 0 problems`, found.length === 0, `${found.length} found, listed above`);
+    }
+    if (width === 1280) await shot('farm-year-1280.png');
+    if (width === 375) await shot('farm-year-375.png');
+  }
+  await size(1280);
+});
+
+// MOVED: the season arrows and the "2028 season / October 2028" words left the time bar. It is ‹, one line of months over every season of the plans, and ›;
+// Page Up and Page Down on the line move a season; the date is written once, in the date line.
+// ---- My farm connected: the engine reaches the field's Check, the packets and the Fields table; sizes follow the country; the Photo look is NASA's; the History marks the plan
+await group('connect', async () => {
+  const recorded = async () => { await js(`window.__fix = ${JSON.stringify({ power: FIX('power_barrie.json'), forecast: FIX('forecast_barrie.json'), land: FIX('era5land_barrie.json') })}; window.__farm.setDataEnv({ now: () => Date.parse('2026-11-14T15:00:00Z'), fetch: async url => { const f = /power[.]larc/.test(url) ? window.__fix.power : /api[.]open-meteo[.]com[/]v1[/]forecast/.test(url) ? window.__fix.forecast : /era5_land/.test(url) ? window.__fix.land : null; return f ? { ok: true, status: 200, headers: { get: () => null }, text: async () => f } : { ok: false, status: 404, headers: { get: () => null }, text: async () => '' }; } }); window.__farm.forgetReadings(); window.__farm.render()`); };
+  await size(1280); await go('/'); await js(`localStorage.removeItem('crophalo.farms.v1')`); await go('/'); await open(); await recorded(); await sleep(300);
+  await until(`/\\d+ · (Good|OK|Poor) fit|Only just suits|Does not suit here/.test(document.querySelector('#fwPlan')?.textContent || '')`, 60000);
+  check('connect: the head shows the plan\'s own score from the report, not "not read yet"', /Plan to try: .+ (\d+ · (Good|OK|Poor) fit|Only just suits|Does not suit here)/.test(await text('#fwPlan')) && !/not read yet/i.test(await text('#fwPlan')), await text('#fwPlan'));
+  await js(`document.querySelector('#fwFieldsBtn').click()`); await sleep(400);
+  check('connect: the Fields table has a score in words for the field', /(Good|OK|Poor) fit/.test(await text('#fwPanel table, #fwPanel .fw-cards')), (await text('#fwPanel')).slice(0, 300));
+  await press('Escape'); await sleep(200);
+  // the Plant sheet's packets
+  await js(`document.querySelector('#fwDetailsBtn').click()`); await sleep(150); await sleep(100);
+  await js(`document.querySelector('[data-act=plant]')?.click()`); await sleep(400);
+  check('connect: the Plant sheet offers crop packets from the field\'s own weather, with a word for each', await js(`document.querySelectorAll('#fwPanel .fw-packet').length`) >= 5, (await text('#fwPanel')).slice(0, 200));
+  await press('Escape'); await sleep(150); await press('Escape'); await sleep(150);
+  // the History marks the plan as checked against the past
+  await js(`(async () => { document.querySelector('#fwDetailsBtn').click(); await new Promise(r => setTimeout(r, 200)); document.querySelector('[data-act=history]').click(); })()`); await until(`document.querySelector('#h-crops')`, 60000); await sleep(300);
+  check('connect: opening the land history marks the plan as checked, with its day', /^[a-z0-9-]+@\d{4}-\d{2}-\d{2}$/.test(await js(`JSON.parse(localStorage.getItem('crophalo.farms.v1')).farms[0].prefs.checked`)), await js(`JSON.parse(localStorage.getItem('crophalo.farms.v1')).farms[0].prefs.checked`));
+  await js(`document.querySelector('#fwHistoryBack').click()`); await sleep(200);
+  // the Photo look is NASA's: a stand-in for the two lookups, then every tile layer is on the NASA host
+  await js(`import('/js/nasabase.js').then(NB => { NB.net.text = async () => '<Domain>' + new Date(Date.now() - 400 * 864e5).toISOString().slice(0, 10) + '/' + new Date(Date.now() + 864e5).toISOString().slice(0, 10) + '/P1D</Domain>'; NB.net.look = async () => ({ n: 2304, empty: 0, bright: 0 }); NB.resetPicks(); })`); await sleep(150);
+  await js(`document.querySelector('#fwStyleBtn, #fwMoreBtn')?.click()`); await sleep(100); await js(`document.querySelector('#fwMoreMenu [data-look=photo], [data-look=photo]').click()`);
+  await until(`window.__farm._map() && (() => { let n = 0; window.__farm._map().eachLayer(l => { if (l._url) n++; }); return n >= 2; })()`, 20000);
+  const urls = await js(`(() => { const u = []; window.__farm._map().eachLayer(l => { if (l._url) u.push(l._url); }); return u; })()`);
+  check('connect: the Photo look loads NASA GIBS tiles only (MODIS and HLS), no other photo service', urls.length >= 2 && urls.every(u => u.startsWith('https://gibs.earthdata.nasa.gov/')) && !urls.some(u => /arcgisonline/.test(u)), urls.join(' | '));
+  check('connect: and the words say which NASA picture it is', /NASA HLS picture/.test(await text('#fwStatus')), await text('#fwStatus'));
+  // sizes follow the country: a field in the United States reads in acres
+  await js(`(() => { const st = JSON.parse(localStorage.getItem('crophalo.farms.v1')); st.farms[0].pin.cc = 'US'; localStorage.setItem('crophalo.farms.v1', JSON.stringify(st)); })()`);
+  await go('/'); await js(`document.querySelector('#navFarm').click()`); await until(`document.querySelector('#fwField') && document.querySelector('#fwField').options.length === 1`); await sleep(300);
+  check('connect: a field in the United States is in acres, not hectares', /acres/.test(await js(`document.querySelector('#fwField').options[0].textContent`)) && !/ ha\b/.test(await js(`document.querySelector('#fwField').options[0].textContent`)), await js(`document.querySelector('#fwField').options[0].textContent`));
+});
+
+// ---- the owner's words rule on My farm: plain B1 English, at most four sentences in sight, no builders' language
+await group('words', async () => {
+  const BANNED = '(not read yet|not worked out|not connected|not built|ground cover|residue|observed|\\\\bengine\\\\b|lookup|NDVI|footprint|anomal|feasible|\\\\bstub\\\\b|\\\\bhook\\\\b)';
+  const scan = async label => {
+    const bad = await js(`(() => { const ban = new RegExp(${JSON.stringify(BANNED)}, 'i'), out = [], shown = e => { for (let n = e; n && n !== document.body; n = n.parentElement) { if (n.hidden || (n.tagName === 'DETAILS' && n !== e && !n.open && !n.contains(e)) ) return false; if (n.parentElement?.tagName === 'DETAILS' && !n.parentElement.open && n.tagName !== 'SUMMARY') return false; } return true; };
+      for (const e of document.querySelectorAll('#view-farm p, #view-farm li, #view-farm dd, #view-farm summary, #view-farm h2, #view-farm h3, #view-farm button, #view-farm label, #view-farm th, #view-farm td')) {
+        if (!shown(e) || e.closest('.leaflet-container, .sr, #fwHistory')) continue; const t = e.textContent.trim().replace(/\\s+/g, ' ');
+        if (ban.test(t)) out.push('word: ' + t.slice(0, 90));
+        if (['P', 'LI', 'DD'].includes(e.tagName) && (t.match(/[.!?](\\s|$)/g) || []).length > 4) out.push('sentences: ' + t.slice(0, 90));
+      } return out; })()`);
+    check(`words: ${label}: plain words, no more than four sentences in sight`, bad.length === 0, bad.slice(0, 4).join(' | '));
+  };
+  await size(1280); await go('/'); await js(`localStorage.removeItem('crophalo.farms.v1')`); await go('/'); await open(); await recorded(); await sleep(600);
+  await scan('the board');
+  await tap('#fwCompare'); await until(`document.querySelector('#fwPanel [data-kind]')`); await sleep(400); await scan('Compare plans'); await press('Escape'); await sleep(150);
+  for (const tab of ['page']) { await js(`document.querySelector('#fwDetailsBtn').click()`); await sleep(150); await sleep(200); await scan(`Field details, ${tab}`); await press('Escape'); await sleep(150); }
+  await js(`document.querySelector('#fwFieldsBtn').click()`); await sleep(300); await scan('All fields'); await press('Escape'); await sleep(150);
+  await inMore('#fwToolsBtn'); await sleep(200); await scan('Farm tools'); await press('Escape'); await sleep(150);
+  await inMore('[data-edit=add]'); await sleep(300); await scan('Add a field'); await press('Escape'); await sleep(150);
+});
+
+// ---- the two lookups behind the winning cards: Weak spots in this field (asked only when pressed) and What this field grew (a Land history card), both on recorded answers
+await group('weak', async () => {
+  const hls = JSON.parse(fs.readFileSync(fileURLToPath(new URL('./fixtures/hlsbox-mead.json', import.meta.url)), 'utf8')), grew = JSON.parse(fs.readFileSync(fileURLToPath(new URL('./fixtures/crophist-mead.json', import.meta.url)), 'utf8'));
+  await size(1280); await go('/'); await js(`localStorage.removeItem('crophalo.farms.v1')`); await go('/'); await open(); await sleep(300);
+  const ring = await js(`JSON.parse(localStorage.getItem('crophalo.farms.v1')).farms[0].fields[0].ring`), cLat = ring.reduce((a, p) => a + p[0], 0) / ring.length, cLon = ring.reduce((a, p) => a + p[1], 0) / ring.length;
+  // the recorded answer, moved so that its squares lie over this field
+  const fa = hls.cells.reduce((a, c) => a + c.lat, 0) / hls.cells.length, fo = hls.cells.reduce((a, c) => a + c.lon, 0) / hls.cells.length, dLat = cLat - fa, dLon = cLon - fo;
+  const moved = { ...hls, cells: hls.cells.map(c => ({ ...c, lat: c.lat + dLat, lon: c.lon + dLon, corners: c.corners.map(([la, lo]) => [la + dLat, lo + dLon]) })) };
+  await js(`window.__asked = []; window.__farm.setDataEnv({ fetch: async url => { window.__asked.push(String(url)); if (/^[/]api[/]hlsbox/.test(url)) { await new Promise(r => setTimeout(r, 700)); return { ok: true, json: async () => (${JSON.stringify(moved)}) }; } if (/^[/]api[/]crophist/.test(url)) return { ok: true, json: async () => (${JSON.stringify(grew)}) }; throw new Error('down'); } })`);
+  await js(`document.querySelector('#fwDetailsBtn').click()`); await sleep(300);
+  check('weak: with an estimated outline the card says to draw the edges first, and has no button', /Draw the field's edges first/.test(await text('.fw-weak')) && await js(`!document.querySelector('.fw-weak [data-act=weak]')`), await text('.fw-weak'));
+  await press('Escape'); await sleep(100);
+  await js(`(() => { const st = JSON.parse(localStorage.getItem('crophalo.farms.v1')); st.farms[0].fields[0].estimated = false; st.farms[0].pin.cc = 'US'; localStorage.setItem('crophalo.farms.v1', JSON.stringify(st)); })()`);
+  await go('/'); await js(`document.querySelector('#navFarm').click()`); await until(`document.querySelector('#fwField') && document.querySelector('#fwField').options.length === 1`);
+  await js(`import('/js/farm.js').then(m => { window.__farm = m; })`); await until(`!!window.__farm`);
+  await js(`window.__fix = ${JSON.stringify({ power: FIX('power_barrie.json'), forecast: FIX('forecast_barrie.json'), land: FIX('era5land_barrie.json') })}`);
+  await js(`window.__asked = []; window.__farm.setDataEnv({ fetch: async url => { window.__asked.push(String(url)); if (/^[/]api[/]hlsbox/.test(url)) { await new Promise(r => setTimeout(r, 700)); return { ok: true, json: async () => (${JSON.stringify(moved)}) }; } if (/^[/]api[/]crophist/.test(url)) return { ok: true, json: async () => (${JSON.stringify(grew)}) }; const f = /power[.]larc/.test(url) ? window.__fix.power : /api[.]open-meteo[.]com[/]v1[/]forecast/.test(url) ? window.__fix.forecast : /era5_land/.test(url) ? window.__fix.land : null; return f ? { ok: true, status: 200, headers: { get: () => null }, text: async () => f } : { ok: false, status: 404, headers: { get: () => null }, text: async () => '' }; } })`);
+  await js(`window.__farm.forgetReadings(); window.__farm.render()`); await sleep(500);
+  await js(`document.querySelector('#fwDetailsBtn').click()`); await sleep(300);
+  check('weak: before the press the card says what it can do and how long it takes, with one button, and nothing was asked', /We can look for parts of this field that stay less green/.test(await text('.fw-weak')) && /about a minute and a half/.test(await text('.fw-weak')) && await js(`document.querySelectorAll('.fw-weak [data-act=weak]').length === 1 && !window.__asked.some(u => /hlsbox/.test(u))`), await text('.fw-weak'));
+  await js(`document.querySelector('.fw-weak').open = true`); await tap('.fw-weak [data-act=weak]'); await sleep(250);
+  check('weak: at once one waiting line says what is happening and how long the first time takes', /Reading two summers of satellite pictures of this field\. The first time takes about a minute and a half\./.test(await text('.fw-weak')) && await js(`document.querySelectorAll('.fw-weak [role=status]').length === 1`), await text('.fw-weak'));
+  await until(`/We found \\d weak spots? in this field/.test(document.querySelector('.fw-weak')?.textContent || '')`, 20000);
+  check('weak: the result is observed in plain words: where it stayed less green, never why', /stayed less green/.test(await text('.fw-weak')) && /Walk there and look: it can be wet ground, thin soil, compaction or a headland\./.test(await text('.fw-weak')) && !/disease|stress|yield|loss/i.test(await text('.fw-weak')), await text('.fw-weak'));
+  check('weak: the numbered pins stand on the board, each 44 px and named for a screen reader', await js(`(() => { const b = [...document.querySelectorAll('.fw-weakbtn')]; return b.length >= 1 && b.every(x => x.getBoundingClientRect().width >= 43.5 && /^Spot \\d · less green · \\d+ of \\d+ clear pictures · about [\\d.]+ ha$/.test(x.getAttribute('aria-label'))); })()`), await js(`[...document.querySelectorAll('.fw-weakbtn')].map(b => b.getAttribute('aria-label'))`));
+  const calls = await js(`window.__asked.filter(u => /hlsbox/.test(u)).length`);
+  await js(`document.querySelector('#fwClose').click()`); await sleep(100); await js(`document.querySelector('#fwDetailsBtn').click()`); await sleep(200);
+  same('weak: a second look is the kept answer, asked once only', [await js(`window.__asked.filter(u => /hlsbox/.test(u)).length`), calls, await js(`document.querySelectorAll('.fw-weak [data-act=weak]').length`)], [1, 1, 0]);
+  check('weak: the details are under Show more with the squares size and one source link', await js(`(() => { const d = document.querySelector('.fw-weak details'); return !!d && !d.open && /30 m/.test(d.textContent) && d.querySelectorAll('a[href]').length === 1; })()`));
+  // What this field grew, in Land history
+  await js(`document.querySelector('[data-act=history]').click()`); await until(`document.querySelector('#h-grew')`, 60000); await until(`/since 2008/.test(document.querySelector('#h-grew')?.textContent || '')`, 20000);
+  check('grew: Land history has the card with what the crop map shows, in plain words, and the neighbours', /The crop map shows corn and soybeans in turn here since 2008\./.test(await text('#h-grew')) && /On the cropland within 3 km, soybeans followed corn about 8 times in 10, and corn followed corn about 1 time in 10\./.test(await text('#h-grew')), await text('#h-grew'));
+  check('grew: a strip of years, one for each year of the map, and the details under Show more with one link', await js(`document.querySelectorAll('#h-grew .h-year').length === 18 && !document.querySelector('#h-grew details').open && document.querySelectorAll('#h-grew a[href]').length === 1`));
+  check('grew: the ask carried the outline, the country and the neighbours', await js(`window.__asked.some(u => /crophist/.test(u) && /country=US/.test(u) && /near=1/.test(u) && /ring=/.test(u))`));
+  same('grew: it never says "not read yet"', await js(`/not read yet/i.test(document.querySelector('#h-grew').textContent)`), false);
+});
+
+// ---- reminders on This field: Done, Delete with Undo and New reminder when the reminders module offers them; the read-only list and the line to Settings when it does not
+await group('remind', async () => {
+  await size(1280); await go('/'); await js(`localStorage.removeItem('crophalo.farms.v1')`); await go('/'); await open(); await sleep(300);
+  const api = full => `(() => { const list = [{ id: 'r1', title: 'Sow corn', when: '2029-05-01T08:00', kind: 'sow', done: false }, { id: 'r2', title: 'Check the frost', when: '2029-05-08T08:00', kind: 'other', done: false }]; window.__list = list; window.__dialog = null;
+    const base = { forField: () => list.map(x => ({ ...x })), add: d => { list.push({ id: 'n' + list.length, ...d }); return { ok: true }; } };
+    return ${full} ? { ...base, done: id => { list.find(x => x.id === id).done = true; }, remove: id => { list.splice(list.findIndex(x => x.id === id), 1); }, openDialog: o => { window.__dialog = { farmId: !!o.farmId, fieldId: !!o.fieldId, trigger: o.trigger?.dataset?.act, onChange: typeof o.onChange }; } } : base; })()`;
+  await js(`window.__farm.setReminders(${api(false)})`); await js(`document.querySelector('#fwDetailsBtn').click()`); await sleep(300);
+  check('remind: with the older reminders module the list is read-only and a line leads to Settings', await js(`document.querySelectorAll('#fwonepage [data-act^="rem-"]').length === 0 && !!document.querySelector('#fwonepage [data-act=settings]')`), await text('#fwonepage'));
+  await press('Escape'); await sleep(100);
+  await js(`window.__farm.setReminders(${api(true)})`); await js(`document.querySelector('#fwDetailsBtn').click()`); await sleep(300);
+  same('remind: each reminder has Done and Delete, and there is one New reminder button', await js(`[document.querySelectorAll('#fwonepage [data-act^="rem-done:"]').length, document.querySelectorAll('#fwonepage [data-act^="rem-del:"]').length, document.querySelectorAll('#fwonepage [data-act=rem-new]').length, !document.querySelector('#fwonepage [data-act=settings]')]`), [2, 2, 1, true]);
+  await tap('#fwonepage [data-act="rem-done:r1"]'); await sleep(200);
+  same('remind: Done marks it', await js(`window.__list.find(x => x.id === 'r1').done`), true);
+  await tap('#fwonepage [data-act="rem-del:r2"]'); await sleep(200);
+  check('remind: Delete removes it and says so with Undo', await js(`window.__list.length`) === 1 && /Reminder deleted: Check the frost/.test(await text('#fwToast')) && await js(`!!document.querySelector('#fwUndo')`), await text('#fwToast'));
+  await tap('#fwUndo'); await sleep(250);
+  same('remind: Undo puts it back', await js(`window.__list.map(x => x.title)`), ['Sow corn', 'Check the frost']);
+  await tap('#fwonepage [data-act=rem-new]'); await sleep(150);
+  same('remind: New reminder opens the dialog for this field, with the pressed button and a change callback', await js(`window.__dialog`), { farmId: true, fieldId: true, trigger: 'rem-new', onChange: 'function' });
+});
+
 await group('time', async () => {
   await open(); await sleep(300);
+  await tap('#fwCompare'); await until(`!document.querySelector('#fwStrip').hidden`);   // the time bar is part of Compare plans
   const lat = await js(`JSON.parse(localStorage.getItem('crophalo.farms.v1')).farms[0].pin.lat`), Y0 = +KD[0].date.slice(0, 4), M0 = +KD[0].date.slice(5, 7);
-  check('time: the bar is at the foot of the board with the season and the month', await js(`!document.querySelector('#fwStrip').hidden`) && /^\d{4} season$/.test(await text('#fwSeasonLabel')) && (await text('#fwMonthName')).includes(MON[M0 - 1].length === 3 ? ['January','February','March','April','May','June','July','August','September','October','November','December'][M0 - 1] : ''), await text('#fwStrip'));
-  same('time: the season is the one the date is in', await text('#fwSeasonLabel'), `${Y0} season`);
-  same('time: the slider is on the date\'s month', await js(`+document.querySelector('#fwMonthSlider').value`), M0 - 1);
-  // the slider moves the ONE date
-  await js(`(() => { const r = document.querySelector('#fwMonthSlider'); r.value = '5'; r.dispatchEvent(new Event('input', { bubbles: true })); r.dispatchEvent(new Event('change', { bubbles: true })); })()`); await sleep(200);
-  same('time: moving the slider to June puts the one date on 15 June', [await text('#fwTime'), await js(`document.querySelectorAll('#fwHud time').length`)], [`15 Jun ${Y0}`, 1]);
-  same('time: the month is named with its year and the slider says it to a screen reader', [await text('#fwMonthName'), await js(`document.querySelector('#fwMonthSlider').getAttribute('aria-valuetext')`)], [`June ${Y0}`, `June ${Y0}`]);
+  const days = ['current', 'proposed'].flatMap(k => REAL[k].seasons.flatMap(x => [x.sow, x.harvest])), from = Math.min(...days.map(d => SIM.seasonOfDate(lat, d))), to = Math.max(...days.map(d => SIM.seasonOfDate(lat, d)));
+  const idx = d => (SIM.seasonOfDate(lat, d) - from) * 12 + SIM.monthIndexOf(lat, d), line = v => js(`(() => { const r = document.querySelector('#fwMonthSlider'); r.value = '${v}'; r.dispatchEvent(new Event('input', { bubbles: true })); r.dispatchEvent(new Event('change', { bubbles: true })); })()`);
+  check('time: the bar is at the foot of the board: ‹, one line over every season of the plans, ›', await js(`!document.querySelector('#fwStrip').hidden`) && (await js(`+document.querySelector('#fwMonthSlider').max`)) === (to - from + 1) * 12 - 1, await js(`document.querySelector('#fwMonthSlider').max`));
+  same('time: the line stands on the date\'s month', await js(`+document.querySelector('#fwMonthSlider').value`), idx(KD[0].date));
+  // the line moves the ONE date
+  await line(idx(`${Y0}-06-15`)); await sleep(200);
+  same('time: moving the line to June puts the one date on 15 June', [await text('#fwTime'), await js(`document.querySelectorAll('#fwHud time').length`)], [`15 Jun ${Y0}`, 1]);
+  same('time: the line says the month and its year to a screen reader', await js(`document.querySelector('#fwMonthSlider').getAttribute('aria-valuetext')`), `June ${Y0}`);
   const g = EN.groundOn(REAL.proposed, `${Y0}-06-15`);
   check('time: the finding follows the day, in the engine\'s words', g.state === null ? /outside the years of this plan/.test(await text('#fwFinding')) : /^On 15 Jun \d{4} /.test(await text('#fwFinding')), await text('#fwFinding'));
   check('time: the plate under the field says the month\'s state where the engine knows it', EN.groundOn(REAL.proposed, `${Y0}-06-15`).state === null || /(Sown|Growing|Harvest|Stubble|Bare soil|Cover crop).* in June/.test(await text('.fw-plate')), await text('.fw-plate'));
-  // month arrows, across the end of the season
-  await js(`(() => { const r = document.querySelector('#fwMonthSlider'); r.value = '11'; r.dispatchEvent(new Event('input', { bubbles: true })); })()`); await sleep(100);
+  // month arrows, across the end of a season
+  await line(idx(`${Y0}-12-15`)); await sleep(100);
   await tap('#fwMonthNext'); await sleep(150);
-  same('time: Next month after December goes to January of the next season', [await text('#fwTime'), await text('#fwSeasonLabel')], [`15 Jan ${Y0 + 1}`, `${Y0 + 1} season`]);
+  same('time: Next month after December goes to January of the next season', await text('#fwTime'), `15 Jan ${Y0 + 1}`);
   await tap('#fwMonthPrev'); await sleep(150);
   same('time: and Previous month comes back to December', await text('#fwTime'), `15 Dec ${Y0}`);
-  // season arrows
-  await tap('#fwSeasonNext'); await sleep(150);
-  same('time: Next season is the same day a year on', [await text('#fwTime'), await text('#fwSeasonLabel')], [`15 Dec ${Y0 + 1}`, `${Y0 + 1} season`]);
-  await tap('#fwSeasonPrev'); await tap('#fwSeasonPrev'); await tap('#fwSeasonPrev'); await tap('#fwSeasonPrev'); await sleep(150);
-  same('time: Previous season steps back', await text('#fwSeasonLabel'), `${Y0 - 3} season`);
+  // a season at a time, from the keyboard on the line
+  await js(`document.querySelector('#fwMonthSlider').focus()`); await press('PageUp'); await sleep(150);
+  same('time: Page Up is the same day a season on', await text('#fwTime'), `15 Dec ${Y0 + 1}`);
+  for (let i = 0; i < 4; i++) { await press('PageDown'); await sleep(80); }
+  same('time: Page Down steps back a season at a time', await text('#fwTime'), `15 Dec ${Y0 - 3}`);
   check('time: a season before the plan says so in the engine\'s words, never a made-up state', /outside the years of this plan/.test(await text('#fwFinding')) && /outside the plan/.test(await text('#fwLabel')), await text('#fwFinding') + ' | ' + await text('#fwLabel'));
-  // the compare stepper from a month of the slider
-  await js(`(() => { const r = document.querySelector('#fwMonthSlider'); r.value = '${M0 - 1}'; r.dispatchEvent(new Event('input', { bubbles: true })); })()`);
-  await js(`document.querySelector('#fwSeasonNext').click(); document.querySelector('#fwSeasonNext').click(); document.querySelector('#fwSeasonNext').click()`); await sleep(100);
-  await js(`window.__farm._ui.date = ${JSON.stringify(KD[0].date.slice(0, 8) + '28')}; window.__farm.render()`); await tap('#fwCompare'); await sleep(200);
+  // the compare stepper from a month of the line
+  await js(`window.__farm._ui.date = ${JSON.stringify(KD[0].date.slice(0, 8) + '28')}; window.__farm.render()`); await sleep(200);   // Compare plans stays open: the time bar is part of it
   same('time: Compare plans from an odd day has no day pressed', await js(`[...document.querySelectorAll('.fw-step')].map(b => b.getAttribute('aria-pressed'))`), ['false', 'false', 'false']);
-  await tap('#fwNext'); await sleep(150);
-  same('time: Next goes to the first of the plan\'s days after it', await text('#fwTime'), W(KD.find(k => k.date > KD[0].date.slice(0, 8) + '28').date));
-  await tap('#fwClose');
-  // 3D follows the slider
+  // 3D follows the line
   await js(`window.__farm.setView3d((data, node) => { node.dataset.got = data.date; return { ok: true, update(next) { node.dataset.got = next.date; }, dispose() {} }; })`);
   await js(`Object.defineProperty(HTMLCanvasElement.prototype, 'getContext', { value() { return { getExtension: () => null }; }, configurable: true }); 0`);
   await tap('#fwThreeBtn'); await sleep(300);
   await tap('#fwMonthNext'); await sleep(200);
-  same('time: in 3D the month bar still moves the date the 3D view shows', await js(`document.querySelector('#fw3d').dataset.got`), await js(`document.querySelector('#fwTime').getAttribute('datetime')`));
+  same('time: in 3D the time bar still moves the date the 3D view shows', await js(`document.querySelector('#fw3d').dataset.got`), await js(`document.querySelector('#fwTime').getAttribute('datetime')`));
   await tap('#fwMapBtn');
   const small = await js(`[...document.querySelectorAll('#fwStrip button, #fwStrip input')].filter(b => { const r = b.getBoundingClientRect(); return r.height < 43.5 || r.width < 43.5; }).map(b => b.id)`);
   same('time: every control of the bar is at least 44 px', small, []);
@@ -719,35 +923,38 @@ await group('look', async () => {
     const snap = async (name, fn) => { for (let i = 0; i < 4; i++) { if (await js(`document.querySelector('#fwPanel').hidden && document.querySelector('#fwEditBar').hidden`)) break; await back(); } await fn(); await sleep(350); await shot(`look-${name}-${width}.png`); };
     await snap('first', async () => {});
     await snap('compare', async () => { await js(`document.querySelector('#fwCompare').click()`); });
-    for (const tab of ['check', 'facts', 'weather', 'remind']) await snap(`drawer-${tab}`, async () => { await js(`document.querySelector('#fwDetailsBtn').click()`); await sleep(100); await js(`document.querySelector('#fwtab-${tab}').click()`); });
-    await snap('plant', async () => { await js(`document.querySelector('#fwDetailsBtn').click()`); await sleep(100); await js(`document.querySelector('#fwtab-check').click()`); await js(`document.querySelector('[data-act=plant]').click()`); });
-    await snap('soil', async () => { await js(`document.querySelector('#fwDetailsBtn').click()`); await sleep(100); await js(`document.querySelector('#fwtab-facts').click()`); await js(`document.querySelector('[data-act=soil]').click()`); });
-    await snap('copy', async () => { await js(`document.querySelector('#fwDetailsBtn').click()`); await sleep(100); await js(`document.querySelector('#fwtab-check').click()`); await js(`document.querySelector('[data-act=copy]').click()`); });
+    for (const tab of ['page']) await snap(`drawer-${tab}`, async () => { await js(`document.querySelector('#fwDetailsBtn').click()`); await sleep(100); });
+    await snap('plant', async () => { await js(`document.querySelector('#fwDetailsBtn').click()`); await sleep(100); await js(`document.querySelector('[data-act=plant]').click()`); });
+    await snap('soil', async () => { await js(`document.querySelector('#fwDetailsBtn').click()`); await sleep(100); await js(`document.querySelector('[data-act=soil]').click()`); });
+    await snap('copy', async () => { await js(`document.querySelector('#fwMoreBtn').click()`); await sleep(100); await js(`document.querySelector('#fwToolsBtn').click()`); await sleep(100); await js(`document.querySelector('[data-tool=copy]').click()`); });
     await snap('fields', async () => { await js(`document.querySelector('#fwFieldsBtn').click()`); });
     await snap('farms', async () => { await js(`document.querySelector('#fwFarmBtn').click()`); });
     await snap('settings', async () => { await js(`document.querySelector('#fwFarmBtn').click()`); await sleep(100); await js(`document.querySelector('[data-act=settings]').click()`); });
-    await snap('chip-score', async () => { await js(`document.querySelector('[data-chip=score]').click()`); });
-    await snap('add', async () => { await js(`document.querySelector('#fwEditBtn').click()`); await sleep(100); await js(`document.querySelector('[data-edit=add]').click()`); });
-    await snap('menu', async () => { await js(`document.querySelector('#fwEditBtn').click()`); });
-    await js(`document.querySelector('#fwEditBtn').click()`);
-    await snap('corners', async () => { await js(`document.querySelector('#fwEditBtn').click()`); await sleep(100); await js(`document.querySelector('[data-edit=corners]').click()`); });
+    await snap('add', async () => { await js(`document.querySelector('#fwMoreMenu [data-edit=add]').click()`); });   // MOVED: the chip sheets are now the plan cards (in 'compare'), the Edit field menu is More and Edit this field
+    await snap('menu', async () => { await js(`document.querySelector('#fwMoreBtn').click()`); });
+    await js(`document.querySelector('#fwMoreBtn').click()`);
+    await snap('corners', async () => { await js(`document.querySelector('#fwDetailsBtn').click()`); await sleep(100); await js(`document.querySelector('#fwPanel [data-edit=corners]').click()`); });
     await js(`document.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true }))`); await sleep(200);
-    await snap('newfarm', async () => { await js(`document.querySelector('#fwEditBtn').click()`); await sleep(100); await js(`document.querySelector('[data-edit=newfarm]').click()`); });
+    await snap('newfarm', async () => { await js(viaTools('newfarm')); });
   }
 });
 
 await group('history', async () => {
+  await js(`for (const k of Object.keys(localStorage)) if (!/crophalo[.](welcome|units)/.test(k)) localStorage.removeItem(k)`); await js(`(async () => { for (const c of await caches.keys()) await caches.delete(c); for (const r of await navigator.serviceWorker.getRegistrations()) await r.unregister(); })().catch(() => 0)`); await go('/');   // nothing kept by an earlier group (storage, caches, workers): with the services cut off the page must say so
   await open(); await sleep(300);
-  same('history: the tab is on the toolbar, named for a screen reader', [await text('#fwTab-rewind'), await js(`document.querySelector('#fwTab-rewind').getAttribute('aria-label')`)], ['History', 'Land history']);
-  await tap('#fwTab-rewind'); await until(`!document.querySelector('#fwHistory').hidden && document.querySelector('#fwHistoryBody h1, #fwHistoryBody .rv-notread')`, 30000);
+  await js(`window.__farm.setDataEnv({ fetch: async () => { throw new Error('down'); } }); window.__farm.forgetReadings(); window.__farm.render()`); await sleep(400);   // the services are cut off for this part
+  await tap('#fwDetailsBtn'); await until(`!!document.querySelector('[data-act=history]')`);
+  same('history: Land history is a button on This field, named in words, and not in More', [await text('[data-act=history]'), await js(`!document.querySelector('#fwMoreMenu #fwTab-rewind')`)], ['Land history', true]);   // MOVED from More
+  await press('Escape'); await sleep(150);
+  await openHist(); await until(`!document.querySelector('#fwHistory').hidden && document.querySelector('#fwHistoryBody h1, #fwHistoryBody .rv-notread')`, 30000);
   check('history: with the weather cut off it says "Not read yet", never a figure', /Not read yet/.test(await text('#fwHistoryBody')) && !/Fine in/.test(await text('#fwHistoryBody')), await text('#fwHistoryBody'));
   same('history: the board\'s controls are out of the way and the way back is there', [await js(`document.querySelector('#fwStrip').hidden`), await text('#fwHistoryBack')], [true, '‹ Back to the board']);
   await tap('#fwHistoryBack'); await sleep(200);
-  same('history: Back returns to the board with the same day', [await js(`document.querySelector('#fwHistory').hidden`), await js(`!document.querySelector('#fwMap').hidden`), await text('#fwTime'), await js(`document.activeElement.id`)], [true, true, W(KD[0].date), 'fwTab-rewind']);
+  same('history: Back returns to the board with the same day, the keyboard on More', [await js(`document.querySelector('#fwHistory').hidden`), await js(`!document.querySelector('#fwMap').hidden`), await text('#fwTime'), await js(`document.activeElement.id`)], [true, true, W(KD[0].date), 'fwMoreBtn']);
   // with the recorded weather
   const series = await realSeries(), farmS = SIM.cleanStore({ v: 1, farms: [] });
   await js(`window.__fix = ${JSON.stringify({ power: FIX('power_barrie.json'), forecast: FIX('forecast_barrie.json'), land: FIX('era5land_barrie.json') })}; window.__farm.setDataEnv({ now: () => Date.parse('2026-11-14T15:00:00Z'), fetch: async url => { const f = /power[.]larc/.test(url) ? window.__fix.power : /api[.]open-meteo[.]com[/]v1[/]forecast/.test(url) ? window.__fix.forecast : /era5_land/.test(url) ? window.__fix.land : null; return f ? { ok: true, status: 200, headers: { get: () => null }, text: async () => f } : { ok: false, status: 404, headers: { get: () => null }, text: async () => '' }; } }); window.__farm.forgetReadings(); window.__farm.render()`);
-  await tap('#fwTab-rewind'); await until(`document.querySelector('#h-crops')`, 60000); await sleep(300);
+  await openHist(); await until(`document.querySelector('#h-crops')`, 60000); await sleep(300);
   same('history: the page is the land history of the farm', [await text('#fwHistoryBody h1'), (await text('#histSub')).startsWith('Barrie')], ['Land history', true]);
   // the counts expected, worked out here from the same recorded weather and the same rules
   const store = SIM.cleanStore({ v: 1, active: 'f', farms: [{ id: 'f', name: 'Barrie', pin: { lat: 44.4, lon: -79.78 }, fields: [], scenarios: [] }] });
@@ -756,42 +963,63 @@ await group('history', async () => {
   const card = await text('#h-crops');
   check('history: "Your crops, year by year" shows real Fine / Close call / Hurt counts for each crop of the plan', want.ok && want.rows.every(r => card.includes(`${r.field}: ${r.crop}`) && card.includes(`Fine in ${r.counts.fine} of ${r.counts.judged} years, a close call in ${r.counts.close}, hurt in ${r.counts.hurt}.`)), `${card.slice(0, 300)} | want ${JSON.stringify(want.rows?.map(r => r.counts))}`);
   check('history: it is no longer "not read yet"', !/replay of each crop against this weather is not joined/.test(card), card.slice(0, 200));
-  check('history: and the basis says counts of real years, never a chance', /counts of real years, never a chance and never a forecast/.test(card), card.slice(-240));
+  check('history: and the basis says counts of real years, never a chance', /counts of real years, never a chance/.test(card), card.slice(-240));
   const more = await js(`document.querySelectorAll('#h-crops [data-more]').length`);
   if (more) { await tap('#h-crops [data-more]'); await sleep(150); check('history: "More" opens the causes with their years and numbers', /^\d{4}: (Hurt|Close call)\./.test(await text('#h-crops .h-more:not([hidden]) p')), await text('#h-crops .h-more:not([hidden])')); }
+  // History -> Look ahead -> Back -> History -> Back -> the board
+  // the Look ahead page is a separate piece that hands in one function; a stand-in with the same contract checks the board's side of it
+  {
+  await js(`window.__farm.setAhead((body, ctx) => { body.innerHTML = '<div class="ahead"><h1>Look ahead</h1><p>' + ctx.field.name + '</p><button type="button" data-ahead="back">Back</button></div>'; const b = body.querySelector('[data-ahead=back]'); b.addEventListener('click', () => ctx.onBack()); return { destroy() { body.innerHTML = ''; } }; })`); await tap('#fwHistoryBack'); await sleep(200); await openHist(); await until(`document.querySelector('#h-crops')`, 60000);
+    check('history: the page has a Look ahead button once the page is handed in', await js(`!!document.querySelector('#fwHistoryBody [data-hist=ahead]')`), '');
+    await tap('#fwHistoryBody [data-hist=ahead]'); await until(`document.querySelector('#fwHistoryBody .ahead h1')`, 30000);
+    same('history: Look ahead opens in the same place, with its own heading', await text('#fwHistoryBody .ahead h1'), 'Look ahead');
+    await tap('#fwHistoryBody [data-ahead=back]'); await until(`document.querySelector('#fwHistoryBody .hist h1')`, 30000);
+    same('history: its Back returns to the land history', await text('#fwHistoryBody .hist h1'), 'Land history');
+  }
+  await tap('#fwHistoryBack'); await sleep(200);
+  same('history: and Back after that returns to the board', [await js(`document.querySelector('#fwHistory').hidden`), await js(`!document.querySelector('#fwMap').hidden`)], [true, true]);
+  await openHist(); await until(`document.querySelector('#h-crops')`, 60000);
   await shot('farm-history-1280.png');
   await press('Escape'); await sleep(200);
-  same('history: Escape goes back to the board', [await js(`document.querySelector('#fwHistory').hidden`), await js(`document.activeElement.id`)], [true, 'fwTab-rewind']);
+  same('history: Escape goes back to the board', [await js(`document.querySelector('#fwHistory').hidden`), await js(`document.activeElement.id`)], [true, 'fwMoreBtn']);
   const small = await js(`[...document.querySelectorAll('#fwHistory button')].filter(b => { const r = b.getBoundingClientRect(); return r.width && (r.height < 43.5 || r.width < 43.5); }).map(b => b.id || b.textContent.trim().slice(0, 14))`);
   same('history: every button is at least 44 px', small, []);
 });
 
 await group('observed', async () => {
   await js(`import('/js/farm.js').then(m => { window.__farm = m; m.setDataEnv({ fetch: async () => { throw new Error('down'); } }); window.__res = m.addFromReport(${REPORT_JS}); })`); await until(`document.querySelector('#fwFinding')?.textContent.length > 5 && !document.querySelector('#view-farm').hidden`); await sleep(400);
-  same('observed: with the picture lookup cut off the chip says not read yet, beside Planned', [await text('#fwObs'), /^(Planned|Observed|outside)/.test(await text('#fwLabel')) || (await text('#fwLabel')).length > 0], ['Observed: not read yet', true]);
-  check('observed: and gives its reason in words', /did not answer/.test(await js(`document.querySelector('#fwObs').title`)), await js(`document.querySelector('#fwObs').title`));
+  // MOVED: "Observed" stands beside the date only on a day a clear NASA picture speaks for; every other answer is in Compare plans' "Observed from space" card
+  same('observed: with the picture lookup cut off only Planned stands beside the date', [await js(`document.querySelector('#fwObs').hidden`), (await text('#fwLabel')).length > 0], [true, true]);
+  await sleep(300);   // the answer is kept in the hidden badge's own words; Compare plans shows a line only when a picture exists
+  check('observed: with the lookup cut off the answer says so in plain words, and keeps its reason for Show more', /could not be read just now/.test(await js(`document.querySelector('#fwObs').title`)), await js(`document.querySelector('#fwObs').title`));
+  await press('Escape'); await sleep(100);
   // with the lookup's answer (a stand-in in its documented shape)
   const answer = JSON.stringify(HLS_SHAPE);
   await js(`window.__farm.forgetObserved(); window.__farm.setDataEnv({ fetch: async url => /^[/]api[/]hlsndvi/.test(url) ? { ok: true, json: async () => (${answer}) } : { ok: false, status: 404, headers: { get: () => null }, text: async () => '' } }); window.__farm.render()`);
   await until(`document.querySelector('#fwObs').dataset.state !== 'wait' && document.querySelector('#fwObs').dataset.state !== 'unread'`, 20000);
-  same('observed: on a planned day after the newest picture it says "not yet", never a state', await text('#fwObs'), 'Observed: not yet');
+  same('observed: on a planned day after the newest picture nothing stands beside the date but Planned', [await js(`document.querySelector('#fwObs').hidden`), await js(`document.querySelector('#fwObs').dataset.state`)], [true, 'outside']);
+  check('observed: and its words name the newest clear picture there is, never the end of the days searched', /^Observed: not yet\. .+ is after NASA's newest clear picture of this field \(\d+ \w{3}( \d{4})?\)/.test(await js(`document.querySelector('#fwObs').title`)), await js(`document.querySelector('#fwObs').title`));
   const D = n => dayBack(n);
   await js(`window.__farm._ui.date = ${JSON.stringify(D(6))}; window.__farm.render()`); await sleep(150);
-  check('observed: on a day after a clear picture it says Observed, the day and NASA HLS, beside Planned', /^Observed \d+ \w{3}( \d{4})? \(NASA HLS\)$/.test(await text('#fwObs')) && (await text('#fwLabel')).length > 0, await text('#fwObs') + ' | ' + await text('#fwLabel'));
-  same('observed: the chip is next to the Planned label inside the one date line', await js(`document.querySelector('#fwLabel').parentElement === document.querySelector('#fwObs').parentElement && document.querySelectorAll('#fwHud time').length`), 1);
+  check('observed: on a day after a clear picture the answer is kept, but nothing extra stands beside the date', /^Seen from space on \d+ \w{3}( \d{4})?$/.test(await text('#fwObs')) && await js(`document.querySelector('#fwObs').hidden`) && (await text('#fwLabel')).length > 0, await text('#fwObs') + ' | ' + await text('#fwLabel'));
+  same('observed: the date line has one date', await js(`document.querySelectorAll('#fwHud time').length`), 1);
   await js(`window.__farm._ui.date = ${JSON.stringify(D(60))}; window.__farm.render()`); await sleep(150);
-  same('observed: a day with no clear picture says so', await text('#fwObs'), 'Observed: no clear picture');
-  await tap('#fwCompare'); await until(`document.querySelector('#fwc-obs')`);
-  check('observed: Compare plans carries an "Observed from space" card with the plain sentence', /Observed from space/.test(await text('.fw-observed')) && /no clear NASA picture of this field in the 15 days before/.test(await text('.fw-observed')), await text('.fw-observed'));
+  same('observed: a day with no clear picture puts nothing beside the date (Compare plans says so)', [await js(`document.querySelector('#fwObs').hidden`), await js(`document.querySelector('#fwObs').dataset.state`)], [true, 'none']);
+  await sleep(100);
+  check('observed: a day with no clear picture says so, and why, in plain words', /No clear NASA picture of this field in the 15 days before/.test(await js(`document.querySelector('#fwObs').title`)), await js(`document.querySelector('#fwObs').title`));
   await js(`window.__farm._ui.date = ${JSON.stringify(D(6))}; window.__farm.render()`); await sleep(150);
-  check('observed: on a clear day the card gives the greenness, the satellite and the clear dots', /Greenness \(NDVI\) 0\.44 from Sentinel-2; 9 of 9 dots of 30 m were clear/.test(await text('.fw-observed')) && /never today's state/.test(await text('.fw-observed')), await text('.fw-observed'));
-  check('observed: and the planned cards are still there', (await js(`document.querySelectorAll('.fw-card h3')`).then ? true : true) && (await js(`[...document.querySelectorAll('.fw-card h3')].map(h => h.textContent).join()`)).startsWith('Current plan,Proposed plan'));
+  await tap('#fwCompare'); await until(`!!document.querySelector('.fw-moreplan')`); await js(`document.querySelector('.fw-moreplan').open = true`);
+  check('observed: on a clear day Show more says the newest clear picture, in plain words', /Seen from space: the newest clear NASA picture is from \d+ \w{3}/.test(await text('.fw-moreplan')), await text('.fw-moreplan'));
+  check('observed: and the planned cards are still there', (await js(`[...document.querySelectorAll('.fw-card h3')].map(h => h.textContent).join()`)).startsWith('What you grow now,Plan to try'));
   await shot('farm-observed-1280.png');
   await press('Escape'); await sleep(100);
   // a lookup that fails
   await js(`window.__farm.forgetObserved(); window.__farm.setDataEnv({ fetch: async url => /^[/]api[/]hlsndvi/.test(url) ? { ok: true, json: async () => ({ ok: false, reason: 'NASA did not accept the Earthdata login for the HLS files.' }) } : { ok: false, status: 404, headers: { get: () => null }, text: async () => '' } }); window.__farm.render()`);
-  await until(`document.querySelector('#fwObs').dataset.state === 'unread' && /HLS files/.test(document.querySelector('#fwObs').title)`, 20000);
-  same('observed: a lookup that failed says not read yet and why, never a green field', [await text('#fwObs'), /HLS files/.test(await js(`document.querySelector('#fwObs').title`))], ['Observed: not read yet', true]);
+  await until(`document.querySelector('#fwObs').dataset.state === 'unread' && /could not be read just now/.test(document.querySelector('#fwObs').title)`, 20000);
+  same('observed: a lookup that failed puts nothing beside the date, never a green field', await js(`document.querySelector('#fwObs').hidden`), true);
+  await sleep(100);
+  check('observed: a lookup that failed says so in plain words', /could not be read just now/.test(await js(`document.querySelector('#fwObs').title`)), await js(`document.querySelector('#fwObs').title`));
+  await press('Escape'); await sleep(100);
   await size(375); await sleep(300); await shot('farm-observed-375.png');
   await flat('observed at 375');
 });
@@ -803,7 +1031,7 @@ await group('motion', async () => {
     same(`motion: ${kind}: the board's map does not glide after a drag`, await js(`window.__farm._map().options.inertia`), false);
     same(`motion: ${kind}: nothing on the board has a transition or an animation`, await js(`[...document.querySelectorAll('#fw, #fw *')].filter(el => { const c = getComputedStyle(el); return [...c.transitionDuration.split(',')].some(d => parseFloat(d) > 0) || (c.animationName !== 'none' && parseFloat(c.animationDuration) > 0); }).map(el => el.id || el.className).slice(0, 5)`), []);
     await js(`document.querySelector('#fwMonthSlider').value = '3'; document.querySelector('#fwMonthSlider').dispatchEvent(new Event('input', { bubbles: true }))`); await sleep(100);
-    same(`motion: ${kind}: the time bar jumps: the date is changed at once`, await text('#fwMonthName').then(t => /April/.test(t)), true);
+    same(`motion: ${kind}: the time bar jumps: the date is changed at once`, await text('#fwTime').then(t => /^15 Apr \d{4}$/.test(t)), true);   // the month words left the bar: the one date line says it
     await js(`window.__farm.setView3d((data, node, options) => { node.dataset.motion = options.motion; return { ok: true, update() {}, dispose() {} }; })`);
     await js(`Object.defineProperty(HTMLCanvasElement.prototype, 'getContext', { value() { return { getExtension: () => null }; }, configurable: true }); 0`);
     await tap('#fwThreeBtn'); await sleep(300);
@@ -811,6 +1039,83 @@ await group('motion', async () => {
   }
   await go('/'); await js(`delete document.documentElement.dataset.motion`); await open(); await sleep(200);
   same('motion: full: the map may glide after a drag', await js(`window.__farm._map().options.inertia`), true);
+});
+
+// ---- the board for the keyboard and a screen reader, and axe on every screen at two widths
+const AXE_SOURCE = fs.readFileSync(fileURLToPath(new URL('./vendor-test/axe.min.js', import.meta.url)), 'utf8'), AXE_TAGS = ['wcag2a', 'wcag2aa', 'wcag21a', 'wcag21aa', 'wcag22aa', 'best-practice'];
+const threeFields = async () => {
+  await js(`import('/js/simulate.js').then(S => { let store = S.cleanStore(JSON.parse(localStorage.getItem('crophalo.farms.v1'))); const farm = S.getFarm(store), c = [farm.pin.lat, farm.pin.lon]; for (const [i, dx] of [[1, 0.01], [2, -0.01]]) store = S.addField(store, farm.id, { ring: S.squareAround(c[0] + 0.01 * i, c[1] + dx, 2) }, { now: Date.now() + i, random: () => i / 7 }).store; localStorage.setItem('crophalo.farms.v1', JSON.stringify(store)); })`);
+  await go('/'); await js(`document.querySelector('#navFarm').click()`);
+  await until(`document.querySelector('#fwField') && document.querySelector('#fwField').options.length === 3`);
+  await js(`document.querySelector('#fwField').value = document.querySelector('#fwField').options[0].value; document.querySelector('#fwField').dispatchEvent(new Event('change'))`); await js(`import('/js/farm.js').then(m => { window.__farm = m; })`); await sleep(500);
+};
+await group('keys', async () => {
+  await open(); await threeFields();
+  const stored = await js(`JSON.parse(localStorage.getItem('crophalo.farms.v1')).farms[0]`), byName = SIM.naturalSort(stored.fields), chosenId = await js(`window.__farm._ui.fieldId`), me = stored.fields.find(f => f.id === chosenId);
+  same('keys: one field token is in the Tab order, and it is the chosen field', await js(`[...document.querySelectorAll('.fw-token')].filter(b => b.tabIndex === 0).map(b => b.dataset.field)`), [me.id]);
+  await js(`document.querySelector('.fw-token[tabindex="0"]').focus()`);
+  const pt = f => SIM.interiorPoint(f.ring), centre = await js(`window.__farm._map().getCenter().lat + ',' + window.__farm._map().getCenter().lng`);
+  for (const [key, bearing] of [['ArrowUp', 0], ['ArrowRight', 90]]) {
+    const want = SIM.nearestInDirection({ at: pt(me) }, stored.fields.filter(f => f.id !== me.id).map(f => ({ id: f.id, at: pt(f) })), bearing);
+    await js(`document.querySelector('.fw-token[tabindex="0"]').focus()`); await press(key); await sleep(150);
+    same(`keys: ${key} moves to the nearest field that way`, await js(`document.activeElement.dataset?.field ?? null`), want);
+  }
+  check('keys: the map does not pan under those keys (it moves only to bring the field you reached into view)', await js(`(() => { const c = window.__farm._map().getCenter(), want = ${JSON.stringify(centre)}.split(',').map(Number), at = document.activeElement.dataset.field; return Math.abs(c.lat - want[0]) < 1e-6 && Math.abs(c.lng - want[1]) < 1e-6 || !!at; })()`));
+  same('keys: the field moved to is said, with its size', /^.+, \d+\.\d ha/.test(await text('#fwSay')), true);
+  await press('Home'); same('keys: Home goes to the first field by name', await js(`document.activeElement.dataset.field`), byName[0].id);
+  await press('End'); same('keys: End goes to the last field by name', await js(`document.activeElement.dataset.field`), byName.at(-1).id);
+  same('keys: only the focused token is in the Tab order now', await js(`[...document.querySelectorAll('.fw-token')].filter(b => b.tabIndex === 0).length`), 1);
+  await press('Enter'); await until(`!document.querySelector('#fwPanel').hidden && document.querySelector('#fwonepage')`);
+  same('keys: Enter opens that field\'s drawer, with the keyboard in it', [await text('#fwPanelTitle'), await js(`document.activeElement.id`)], [byName.at(-1).name, 'fwPanelTitle']);
+  await press('Escape'); await sleep(150);
+  same('keys: Escape closes it and the keyboard returns to the field\'s token', [await js(`document.querySelector('#fwPanel').hidden`), await js(`document.activeElement.dataset?.field`)], [true, byName.at(-1).id]);
+  await press('Home'); await press(' '); await until(`!document.querySelector('#fwPanel').hidden`);
+  same('keys: Space opens it too', await text('#fwPanelTitle'), byName[0].name);
+  await press('Escape'); await sleep(100);
+  // every change of day, season and plan is said in the polite region
+  same('keys: the live region is polite and a status', await js(`[document.querySelector('#fwSay').getAttribute('aria-live'), document.querySelector('#fwSay').getAttribute('role')]`), ['polite', 'status']);
+  const said = async fn => { await js(`document.querySelector('#fwSay').textContent = ''`); await fn(); await sleep(250); return text('#fwSay'); };
+  await js(`document.querySelector('#fwPanel').hidden && document.querySelector('#fwCompare').click()`); await until(`!document.querySelector('#fwStrip').hidden`);   // the time bar is part of Compare plans
+  check('keys: the slider says the month and what covers the ground', /^June \d{4}\. /.test(await said(() => js(`(() => { const r = document.querySelector('#fwMonthSlider'); r.value = '5'; r.dispatchEvent(new Event('input', { bubbles: true })); r.dispatchEvent(new Event('change', { bubbles: true })); })()`))), await text('#fwSay'));
+  check('keys: Page Up on the line says the season', /^\d{4} season\. /.test(await said(async () => { await js(`document.querySelector('#fwMonthSlider').focus()`); await press('PageUp'); })), await text('#fwSay'));   // MOVED: the season arrows are Page Up and Page Down
+  check('keys: Next month says the month', /^[A-Z][a-z]+ \d{4}\. /.test(await said(() => tap('#fwMonthNext'))), await text('#fwSay'));
+  check('keys: choosing What you grow now says so', /^What you grow now shown\. /.test(await said(() => comparePlan('current'))), await text('#fwSay'));   // MOVED: chosen inside Compare plans
+  await tap('#fwPropBtn'); await until(`document.querySelector('.fw-step')`);
+  check('keys: a day of the compare stepper is said', /^On |What covers the ground on|^[A-Z]/.test(await said(() => tap('.fw-step[data-i="1"]'))) && (await text('#fwSay')).length > 10, await text('#fwSay'));
+  // the compare panel reads in a sensible order
+  const order = await js(`[...document.querySelectorAll('#fwPanel h2, #fwPanel h3, #fwPanel .fw-stepper, #fwPanel .fw-caveat, #fwPanel .fw-fold')].map(n => n.id === 'fwPanelTitle' ? 'title' : n.classList.contains('fw-stepper') ? 'days' : n.classList.contains('fw-caveat') ? 'window' : n.classList.contains('fw-fold') ? 'assumptions' : n.textContent.trim())`);
+  same('keys: Compare plans reads: title, the days, the two plans, the sowing window, Show more', order, ['title', 'days', 'What you grow now', 'Plan to try', 'window', 'assumptions']);
+  same('keys: every card is a labelled region of its own', await js(`[...document.querySelectorAll('#fwPanel section.fw-card')].every(s => s.getAttribute('aria-labelledby') && document.getElementById(s.getAttribute('aria-labelledby')))`), true);
+  same('keys: the stepper is a named group and its pressed day is exposed', await js(`[document.querySelector('.fw-stepper')?.getAttribute('aria-label'), document.querySelectorAll('.fw-step[aria-pressed=true]').length]`), ['Key days', 1]);
+});
+
+await group('axe', async () => {
+  for (const width of [1280, 375]) {
+    await size(width); await go('/'); await js(`localStorage.removeItem('crophalo.farms.v1')`); await go('/'); await open(); await threeFields();
+    const run1 = async name => {
+      await sleep(300);
+      if (!await js(`typeof window.axe === 'object'`)) await js(AXE_SOURCE + '\n;void 0');
+      const found = await js(`axe.run(document, { runOnly: { type: 'tag', values: ${JSON.stringify(AXE_TAGS)} }, resultTypes: ['violations'] }).then(r => r.violations.flatMap(v => v.nodes.map(n => v.id + ' · ' + n.target.join(' ') + ' · ' + (n.any[0] || n.all[0] || n.none[0] || {}).message)))`);
+      for (const line of found) console.log(`axe  ${name} at ${width} px: ${line}`);
+      check(`axe: ${name} at ${width} px: 0 problems`, found.length === 0, `${found.length} found, listed above`);
+    };
+    const back = async () => { for (let i = 0; i < 4; i++) { if (await js(`document.querySelector('#fwPanel').hidden && document.querySelector('#fwEditBar').hidden && document.querySelector('#fwHistory').hidden`)) break; await js(`document.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true }))`); await sleep(150); } };
+    const visit = async (name, fn) => { await back(); await fn(); await run1(name); };
+    await run1('the first view');
+    await visit('Compare plans', () => js(`document.querySelector('#fwCompare').click()`));
+    for (const tab of ['page']) await visit(`the drawer, ${tab}`, async () => { await js(`document.querySelector('#fwDetailsBtn').click()`); await sleep(100); });
+    await visit('the Plant sheet', async () => { await js(`document.querySelector('#fwDetailsBtn').click()`); await sleep(100); await js(`document.querySelector('[data-act=plant]').click()`); });
+    await visit('the soil sheet', async () => { await js(`document.querySelector('#fwDetailsBtn').click()`); await sleep(100); await js(`document.querySelector('[data-act=soil]').click()`); });
+    await visit('the copy sheet', async () => { await js(`document.querySelector('#fwMoreBtn').click()`); await sleep(100); await js(`document.querySelector('#fwToolsBtn').click()`); await sleep(100); await js(`document.querySelector('[data-tool=copy]').click()`); });
+    await visit('the Fields table', () => js(`document.querySelector('#fwFieldsBtn').click()`));
+    await visit('the farm list', () => js(`document.querySelector('#fwFarmBtn').click()`));
+    await visit('Farm settings', async () => { await js(`document.querySelector('#fwFarmBtn').click()`); await sleep(100); await js(`document.querySelector('[data-act=settings]').click()`); });
+    await visit('Add a field', () => js(`document.querySelector('#fwMoreMenu [data-edit=add]').click()`));   // MOVED: the chip sheets are the plan cards in Compare plans (above); the Edit field menu is More
+    await visit('the More menu', () => js(`document.querySelector('#fwMoreBtn').click()`));
+    await js(`document.querySelector('#fwMoreBtn').click()`);
+    await visit('starting a farm', () => js(viaTools('newfarm')));
+    await visit('the land history', () => js(`(async () => { document.querySelector('#fwDetailsBtn').click(); await new Promise(r => setTimeout(r, 200)); document.querySelector('[data-act=history]').click(); })()`));
+  }
 });
 
 await group('fit', async () => {

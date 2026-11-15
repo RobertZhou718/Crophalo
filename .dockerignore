@@ -1,0 +1,60 @@
+# What never goes into the data server's image. A pattern without **/ matches at the top of the folder only; **/ matches in every folder.
+# This computer's own runtimes and caches, secrets, the history, leftovers:
+.git
+.github
+.venv
+runtime
+.cache
+.secrets
+.userdata
+.env
+.env.*
+*.key
+*.pem
+*.p12
+*.pfx
+.netrc
+_netrc
+*.secret
+scripts/_cache
+node_modules
+_site
+**/__pycache__
+**/*.pyc
+**/*.part
+**/*.log
+**/.DS_Store
+*.command
+*.bat
+PRESENTATION.md
+MOVING.md
+
+# The website: Azure Static Web Apps serves it with its own security headers, so the data server's name never hands out a second copy of the pages.
+# A request for a page there finds nothing (404); every /api address answers as before.
+index.html
+design.html
+manifest.json
+robots.txt
+favicon.ico
+sw.js
+js
+css
+vendor
+icons
+design
+docs
+deploy
+
+# The reminder pushes need a server that never sleeps and a disk that lasts: this setup sleeps when nobody uses it and forgets its disk at every sleep (the push keys
+# and the browsers' subscriptions with it), so a reminder would never arrive. Without this file the server has no /api/push addresses (404) and the app says push
+# is not available; the calendar file and the in-app list still work. To offer push later: keep one copy always awake, give it lasting storage (Azure Files),
+# and remove this line.
+scripts/push.mjs
+
+# The checks and their recorded answers run on GitHub and on the owners' computers, not on the server.
+scripts/fixtures
+scripts/vendor-test
+scripts/test_*.mjs
+scripts/e2e*.mjs
+scripts/live_check_*.mjs
+scripts/record_*.mjs

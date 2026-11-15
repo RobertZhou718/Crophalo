@@ -1,0 +1,169 @@
+/* Crophalo's home: the Earth as NASA's Blue Marble, turning behind the first screen, with the real satellites whose data Crophalo reads
+   (js/home-orbit.js, js/home-sats.js). The words and the card that holds every way in sit over it; a satellite's card opens beside it.
+   Colours come from the tokens in css/app.css; the night behind the Earth is the only colour of its own, and it is not a blue.
+   Checked by: scripts/e2e_home.mjs (fit at six widths, the card, the keyboard ring, the three motion levels, axe) and scripts/e2e.mjs. */
+
+#view-home, .macro-sky {   /* .macro-sky: the Descent's cover (css/macro.css) lies outside the home, so it takes the same night from here */
+  --display: "DIN Condensed", "Bahnschrift Condensed", "Bahnschrift", "Avenir Next Condensed", "Roboto Condensed", "Arial Narrow", var(--font);
+  --night: #070d18; --night-glass: rgba(7,13,24,.78); --on-night: #fff; --on-night2: rgba(255,255,255,.8); --on-night3: rgba(255,255,255,.66);
+  --stage-h: calc(100vh / var(--tz) - var(--navh));
+  --edge: max(var(--gutter), calc((100% - var(--nav-w)) / 2 + var(--space-16)));   /* the left edge of the words lines up with the brand in the bar */
+}
+@supports (height: 100svh) { #view-home { --stage-h: calc(100svh / var(--tz) - var(--navh)); } }
+
+/* ---- the first screen: the Earth fills the background, the words and the card float over it ---- */
+.orbit { position: relative; isolation: isolate; background: var(--night); color: var(--on-night); }
+.orbit-flow { position: relative; z-index: 1; min-width: 0; pointer-events: none; }   /* the words float over the Earth; only their own parts take a pointer */
+.orbit-stage { position: absolute; inset: 0; z-index: 0; overflow: hidden; overflow: clip; contain: layout paint; }
+
+/* where the globe sits: the placeholder (a dark globe with a few lines of latitude and longitude) and the square the Earth and satellites are drawn in */
+.orbit { --gx: 70%; --gy: min(46%, var(--stage-h) * .46); --gd: min(var(--stage-h) * .68, 46vw / var(--tz)); }   /* the Earth sits high enough to leave the foot of the stage to the credits */
+@media (max-width: 1099px) { .orbit { --gx: 71%; --gd: min(var(--stage-h) * .66, 44vw / var(--tz)); } }
+@media (max-width: 860px) { .orbit { --gx: 50%; --gd: min(70vw / var(--tz), var(--stage-h) * .42); --gy: calc(var(--gd) / 2 + 30px); } }
+.orbit-ph { position: absolute; left: calc(var(--gx) - var(--gd) / 2); top: calc(var(--gy) - var(--gd) / 2); width: var(--gd); height: var(--gd); border-radius: 50%;
+  background: radial-gradient(ellipse 22% 16% at 38% 36%, rgba(86,104,74,.34), transparent 70%), radial-gradient(ellipse 18% 24% at 62% 58%, rgba(96,92,70,.3), transparent 70%), radial-gradient(ellipse 12% 9% at 30% 62%, rgba(86,104,74,.26), transparent 70%),
+    radial-gradient(circle at 34% 30%, #33454c 0%, #16252d 46%, #0b141c 78%, #060b12 100%);   /* until NASA's picture comes: a dark sea with a faint land tone under the lines, never a bare wire */
+  box-shadow: 0 0 0 1px rgba(255,255,255,.07), 0 0 80px 4px rgba(255,255,255,.05); transition: opacity var(--t-slow) var(--ease); }
+.orbit-ph svg { position: absolute; inset: 0; width: 100%; height: 100%; fill: none; stroke: #fff; stroke-opacity: .12; stroke-width: 1; }
+.orbit-ph svg * { vector-effect: non-scaling-stroke; }
+.orbit-stage.lit .orbit-ph { opacity: 0; }
+.orbit-box { position: absolute; left: calc(var(--gx) - var(--gd) * .625); top: calc(var(--gy) - var(--gd) * .625); width: calc(var(--gd) * 1.25); height: calc(var(--gd) * 1.25); }
+.orbit-box canvas { position: absolute; inset: 0; width: 100%; height: 100%; }
+.orbit-canvas { opacity: 0; transition: opacity var(--t-slow) var(--ease); }
+.orbit-canvas.shown { opacity: 1; }
+
+/* ---- the words and the card that holds every way in ---- */
+#view-home .hero { position: relative; max-width: none; min-height: var(--stage-h); margin: 0; padding: clamp(28px, 7vh, 72px) 0 clamp(72px, 11vh, 112px); display: flex; flex-direction: column; justify-content: center; text-align: left; }
+.hero-in { width: min(100% - 2 * var(--gutter), 540px); margin-left: var(--edge); pointer-events: auto; }
+.hero-h1 { font-family: var(--display); font-weight: var(--fw-bold); font-stretch: condensed; text-transform: uppercase; letter-spacing: .004em; line-height: .9;
+  font-size: clamp(44px, 6.1vw, 90px); color: var(--on-night); }
+#view-home .hero .hero-h1 { margin: 0; }
+.hero-h1 br { display: none; }
+.hero-h1 .ln { display: block; overflow: hidden; overflow: clip; padding: .06em 0 .02em; margin: -.06em 0 -.02em; }
+.hero-h1 .ln > span { display: inline-block; animation: line-rise .9s var(--ease) both; animation-delay: calc(var(--i, 0) * 110ms + 80ms); }
+@keyframes line-rise { from { translate: 0 62%; } to { translate: none; } }   /* the words are there from the first frame, clipped by their own line */
+html[data-motion=less] .hero-h1 .ln > span { animation: none; }
+html[data-motion=less] :is(.orbit-canvas, .orbit-ph) { transition: none; }   /* Less keeps only quick fades: the Earth simply appears */
+#view-home .hero .lede { max-width: 31em; margin: var(--space-16) 0 0; color: var(--on-night2); font-size: clamp(16px, 1.5vw, 19px); }
+.home-card { margin-top: var(--space-24); padding: 10px; border-radius: 26px; background: var(--card); color: var(--ink); box-shadow: 0 24px 64px rgba(0,0,0,.42), 0 2px 8px rgba(0,0,0,.24); }
+#view-home .bigbtns { grid-template-columns: minmax(0, 1fr); max-width: none; margin: 0; }
+#view-home .bigbtn { min-height: 64px; }
+#view-home .bigbtn:not(.primary) { background: var(--fill2); box-shadow: inset 0 0 0 1px var(--sep2); }
+#view-home .bigbtn.primary { box-shadow: 0 8px 22px rgba(10,99,216,.32); }
+#view-home .search-box { max-width: none; margin: var(--space-12) 0 0; }
+#view-home .search { max-width: none; box-shadow: inset 0 0 0 1px var(--ctl); border-radius: var(--r-big); }
+#view-home .search:focus-within { box-shadow: inset 0 0 0 2px var(--sel), 0 0 0 3px var(--focus-soft); }
+#view-home .search-msg { max-width: none; margin: var(--space-8) 6px 0; }
+#view-home .search .btn, #view-home .hero-listen .listen { min-height: var(--touch); }   /* every target on the home is 44 px, with a mouse too */
+#view-home .search .mic { width: var(--touch); height: var(--touch); }
+.home-card-foot { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 2px var(--space-12); margin: 6px 6px 2px; }
+#view-home .search-try { display: flex; flex-wrap: wrap; align-items: center; gap: 0 var(--space-8); margin: 0; padding: 0; }
+#view-home .search-try[data-wait] { visibility: hidden; }   /* until the field names are in, so the line never shows its placeholder */
+#view-home .search-try .try-dot { color: var(--ink2); }
+#view-home .search-try .link { display: inline-flex; align-items: center; min-height: var(--touch); padding: 0 2px; }   /* the words stay a text link; the control has a 44 px height */
+#view-home .hero-listen { margin: 0; }
+#view-home .hero-listen .listen { background: none; padding-left: 6px; }
+.hero-clock { max-width: 36em; margin: var(--space-4) 0 0; color: var(--on-night3); font-size: var(--fs-small); font-variant-numeric: tabular-nums; }
+.hero-clock .link { color: var(--on-night); text-decoration: underline; min-height: var(--touch); min-width: var(--touch); padding: 0 8px; display: inline-flex; align-items: center; justify-content: center; }
+.hero-hint { max-width: 31em; margin: var(--space-16) 0 0; color: var(--on-night3); font-size: var(--fs-small); }
+
+/* the credits and the Pause, under the Earth */
+.hero-credit { position: absolute; right: var(--gutter); bottom: var(--space-16); display: flex; flex-wrap: wrap; align-items: center; justify-content: flex-end; gap: var(--space-16);
+  width: min(100% - 2 * var(--gutter), 620px); margin: 0; pointer-events: auto; }
+.hero-credit p { flex: 1 1 280px; margin: 0; padding: 6px 10px; border-radius: var(--r2); background: var(--night-glass); color: var(--on-night2); font-size: var(--fs-caption); line-height: 1.45; text-align: right; }
+.hero-credit b { color: var(--on-night); font-weight: var(--fw-semi); }
+.credit-more { display: inline-flex; align-items: center; min-height: var(--touch); padding: 0 4px; color: var(--on-night); text-decoration: underline; }
+#orbitCreditAll { display: none; }   /* the sun's place, the span of the orbits and the spacecraft pictures' credit: behind Credits */
+#orbitCredit.open #orbitCreditAll { display: block; margin-top: var(--space-4); }
+#orbitCreditAll > span { display: block; }
+.orbit-btn { flex: none; display: inline-flex; align-items: center; justify-content: center; gap: 6px; min-width: var(--touch); min-height: var(--touch); padding: 0 14px 0 11px; border: 0; border-radius: 22px;
+  background: rgba(255,255,255,.12); color: var(--on-night); box-shadow: inset 0 0 0 1px rgba(255,255,255,.28); font-size: var(--fs-btn); font-weight: var(--fw-semi); cursor: pointer;
+  transition: background-color var(--t-fast) var(--ease), box-shadow var(--t-fast) var(--ease); }
+.orbit-btn svg { width: 16px; height: 16px; fill: currentColor; }
+.orbit-btn:focus-visible { outline: 3px solid #fff; outline-offset: 2px; }
+@media (hover: hover) and (pointer: fine) { .orbit-btn:hover { background: rgba(255,255,255,.2); } }
+
+/* ---- the satellites: one unseen button each for the keyboard, ringed on the satellite when it has the focus ---- */
+.sat-list { position: absolute; inset: 0; z-index: 2; margin: 0; padding: 0; list-style: none; pointer-events: none; overflow: hidden; overflow: clip; }   /* over the words, so a ring is never hidden under the credits */
+.sat-btn { position: absolute; left: 0; top: 0; width: var(--touch); height: var(--touch); padding: 0; border: 0; border-radius: 50%; background: none; opacity: 0; pointer-events: none; }
+.sat-btn:focus { opacity: 1; }
+.sat-btn:focus-visible { outline: 3px solid #fff; outline-offset: 0; box-shadow: 0 0 0 7px var(--sel); }   /* over the Earth: white next to the satellite, blue beyond it */
+
+/* a satellite's card: who runs it, what it does, what Crophalo reads it for, where it is now and from which elements.
+   Its own name, orbit-card: the report's Satellites tab already calls its cards .sat-card, and this file is loaded on every screen. */
+.orbit-card { position: absolute; left: 0; top: 0; z-index: 3; width: min(360px, calc(100% - 24px)); padding: 14px 16px 12px; border-radius: 18px; background: var(--card); color: var(--ink);
+  box-shadow: 0 18px 48px rgba(0,0,0,.42), 0 2px 6px rgba(0,0,0,.22); text-align: left; animation: sat-in var(--t-fast) var(--ease) both; }
+@keyframes sat-in { from { opacity: 0; } to { opacity: 1; } }
+.orbit-card[hidden] { display: none; }
+.sat-close { position: absolute; top: 4px; right: 4px; display: grid; place-items: center; width: var(--touch); height: var(--touch); padding: 0; border: 0; border-radius: 50%; background: none; color: var(--ink2); cursor: pointer;
+  transition: background-color var(--t-fast) var(--ease); }
+.sat-close .ic { width: 18px; height: 18px; fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; }
+@media (hover: hover) and (pointer: fine) { .sat-close:hover { background: var(--fill); } }
+.orbit-card .sat-name { margin: 2px 40px 0 0; font-size: 20px; line-height: 1.2; }
+.orbit-card p { font-size: var(--fs-row); line-height: 1.45; }
+/* the dark window: the satellite's own mark, large, then the real picture over it; the Earth's edge shows along its foot */
+.sat-pic { margin: 10px 0 0; }
+.sat-pic-win { position: relative; aspect-ratio: 16 / 9; max-height: 38vh; border-radius: 12px; color: #fff;
+  background: radial-gradient(ellipse 160% 120% at 50% 205%, #16252d 0 49.4%, rgba(255,255,255,.72) 49.7%, rgba(255,255,255,.16) 50.4%, transparent 51%), linear-gradient(#060b12, #0b141c); }
+.sat-pic-win img { position: absolute; inset: 0; width: 100%; height: 100%; border-radius: inherit; object-fit: contain; opacity: 0; transition: opacity 200ms var(--ease); }
+.sat-pic-win img.cover { object-fit: cover; }
+.sat-pic-win img.sides { -webkit-mask-image: linear-gradient(90deg, transparent, #000 14%, #000 86%, transparent); mask-image: linear-gradient(90deg, transparent, #000 14%, #000 86%, transparent); }
+.sat-pic-mark { position: absolute; left: 50%; top: 46%; height: 62%; aspect-ratio: 1; translate: -50% -50%; z-index: 2; opacity: .92; pointer-events: none; transition: opacity 200ms var(--ease); }
+.sat-pic-mark svg { display: block; width: 100%; height: 100%; }
+.sat-pic.has-pic img { opacity: 1; }
+.sat-pic.has-pic .sat-pic-mark { opacity: 0; }
+.sat-pic.glide .sat-pic-mark { animation: sat-glide 420ms var(--ease) 100ms both; }
+@keyframes sat-glide { from { transform: translate(var(--gx), var(--gy)) scale(var(--gs)); } }   /* from the satellite's own point and size to the window: it only ever grows */
+.sat-pic figcaption { margin-top: 4px; color: var(--ink2); font-size: var(--fs-caption); }
+.orbit-box.has-card .orbit-canvas.shown { opacity: .5; transition-duration: 240ms; }   /* the Earth steps back while a satellite is looked at */
+html[data-motion=less] :is(.sat-pic-win img, .sat-pic-mark) { transition-duration: var(--t-fast); }
+html[data-motion=less] .sat-pic.glide .sat-pic-mark { animation: none; }
+.orbit-card .sat-does { margin-top: 10px; color: var(--ink); }
+.orbit-card .sat-page { margin-top: 0; font-size: var(--fs-small); }
+.orbit-card .sat-page a { display: inline-flex; align-items: center; min-height: var(--touch); color: var(--link); }
+/* everything else about it, closed at first */
+.sat-more { border-top: 1px solid var(--sep); }
+.sat-more summary { display: flex; align-items: center; min-height: var(--touch); color: var(--link); font-size: var(--fs-small); font-weight: var(--fw-medium); cursor: pointer; }
+.sat-more summary:focus-visible { outline: 3px solid var(--sel); outline-offset: 2px; border-radius: var(--r2); }
+.sat-more p { margin-top: 6px; color: var(--ink2); font-size: var(--fs-small); }
+.sat-more p:first-of-type { margin-top: 0; }
+.sat-more .sat-uses .link { font-weight: var(--fw-medium); display: inline-flex; align-items: center; min-height: var(--touch); }
+.sat-more .sat-now { padding: 8px 10px; border-radius: var(--r2); background: var(--fill2); color: var(--ink); font-variant-numeric: tabular-nums; }
+.sat-more .sat-src { font-size: var(--fs-caption); padding-bottom: 4px; }
+
+/* ---- after the first screen: the demo field and the farmer's saved fields, on the light page ---- */
+.home-more { padding-top: var(--space-8); }
+.home-more .sec-head { margin-top: var(--space-48); }
+#homeRegions { grid-template-columns: minmax(0, 1fr); }
+#homeRegions .place-card { display: grid; grid-template-columns: minmax(0, 1fr); overflow: hidden; overflow: clip; }
+@media (min-width: 720px) {
+  #homeRegions .place-card { grid-template-columns: minmax(0, 1.25fr) minmax(0, 1fr); }
+  #homeRegions .card-top { aspect-ratio: auto; min-height: 240px; border-radius: var(--r1) 0 0 var(--r1); }   /* fills its half by stretching: a 16:9 ratio here would take its width from the row's height and spill out with large text */
+  #homeRegions .card-b { align-self: center; padding: var(--space-24) 28px; }
+  #homeRegions .card-b h3 { font-size: 24px; }
+}
+.card-top { position: relative; overflow: hidden; overflow: clip; border-radius: var(--r1) var(--r1) 0 0; background: var(--map-ph); }
+.card-ph { display: grid; place-items: start end; aspect-ratio: 16 / 9; padding: 10px 12px;
+  background: repeating-linear-gradient(105deg, rgba(255,255,255,.035) 0 14px, transparent 14px 28px), linear-gradient(160deg, #2a3a31, var(--map-ph)); }
+.card-ph span { position: relative; color: rgba(255,255,255,.82); font-size: var(--fs-caption); font-variant-numeric: tabular-nums; }
+.card-field { position: absolute; inset: 10% 12%; width: 76%; height: 80%; overflow: visible; }   /* the field drawn by its own outline, north up */
+.card-field path { fill: rgba(202,219,116,.16); stroke: var(--logo-lime); stroke-width: 2; stroke-linejoin: round; vector-effect: non-scaling-stroke; }
+.card-top .pic-chip { z-index: 1; }
+#view-home { background: none; }
+
+/* ---- phones: a smaller Earth on top with its satellites and a small Pause on it, the credits as one line that opens, then the words and the card with both ways in on the first screen ---- */
+@media (max-width: 860px) {
+  .orbit { --gd: min(60vw / var(--tz), var(--stage-h) * .36); --gy: calc(var(--gd) / 2 + 26px); }
+  #view-home .hero { justify-content: flex-start; padding-top: calc(var(--gd) * 1.08 + 30px); padding-bottom: var(--space-24); }
+  .hero-credit { position: static; order: -1; width: auto; margin: 0 var(--gutter) var(--space-8); align-items: flex-start; }
+  .hero-credit p { flex: 1 1 200px; text-align: left; padding: 0 9px; background: none; }
+  #orbitCredit.open { padding: 5px 9px; background: var(--night-glass); }
+  .orbit-btn { position: absolute; top: var(--space-8); right: var(--gutter); padding: 0; width: var(--touch); }
+  .orbit-btn .t { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
+  #view-home .hero .lede { margin-top: var(--space-12); }
+  .home-card { margin-top: var(--space-16); }
+}
+@media (max-width: 860px) and (max-height: 700px) { .orbit { --gd: min(50vw / var(--tz), var(--stage-h) * .3); } }
+
+@media (forced-colors: active) { .home-card, .orbit-card, .sat-pic-win { border: 1px solid CanvasText; } .orbit-btn { border: 1px solid ButtonText; } .sat-btn:focus-visible { outline-color: Highlight; } }
+@media print { .orbit-stage, .hero-credit, .orbit-card { display: none !important; } .orbit { background: none; color: inherit; } .hero-h1 { color: inherit; } }

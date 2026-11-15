@@ -1,0 +1,14 @@
+{
+ "method": "POST",
+ "url": "https://overpass-api.de/api/interpreter",
+ "recorded": "2026-11-15T05:47:49Z",
+ "hand_made": false,
+ "replies": [
+  {
+   "status": 200,
+   "headers": {
+    "content-type": "application/json"
+   }
+  }
+ ]
+}

@@ -21,7 +21,7 @@
 //   altWeather          'Open-Meteo (ERA5)' on the back-up record, else null
 //   dz, dT, fieldElev   set by fitHeight: metres and °C the temperatures were moved by (0 and 0 before), and the field's height
 // EVERY fetch* ANSWER is { ok: true, source, cached, fetched (ISO time the service was asked), … } or { ok: false, reason }.
-import { own } from './words.js';
+import { own, ZERO_WORDS } from './words.js';
 
 // ---- the years and the days
 export const Y0 = 2001;                                                                  // the first year read: satellite rain and plant greenness both reach back to it
@@ -41,9 +41,11 @@ export function dayText(day) {   // '2026-11-20' → 'Nov 20, 2026'
 }
 
 // ---- the place and the addresses
+export { ZERO_WORDS };
 export function cleanPlace(lat, lon) {   // { lat, lon } to ask for, or { reason }
   if (!real(lat) || !real(lon)) return { reason: 'This place has no position Crophalo can read.' };   // a blank or a text is not a number: a missing position is never 0, 0
   if (Math.abs(lat) > 90) return { reason: 'This place is off the map: north and south end at 90 degrees.' };
+  if (round(lat, 4) === 0 && round(lon, 4) === 0) return { reason: ZERO_WORDS };   // 0, 0 is where an empty position lands when something on the way turned it into numbers
   return { lat: round(lat, 4), lon: round(((round(lon, 4) + 180) % 360 + 360) % 360 - 180, 4) };   // 180 and −180 are one line on the Earth, so one address and one weather square
 }
 const POWER_PARAMS = 'T2M_MAX,T2M_MIN,PRECTOTCORR,IMERG_PRECTOT,GWETROOT,EVLAND';
@@ -97,7 +99,24 @@ export function buildSeries(answer, place = {}) {
     for (const day of Object.keys(rows[m])) if (/^\d{8}$/.test(day) && day >= `${Y0}0101`) { if (!first || day < first) first = day; if (day > last) last = day; }
   }
   const height = Array.isArray(spot) ? reading(spot[2], v => v > -500 && v < 9000) : NaN;
-  return first ? makeSeries(place, 'power', height, first, last, (m, day) => (own(rows[m], day) ? rows[m][day] : undefined), answer.header?.fill_value ?? -999) : null;
+  const S = first ? makeSeries(place, 'power', height, first, last, (m, day) => (own(rows[m], day) ? rows[m][day] : undefined), answer.header?.fill_value ?? -999) : null;
+  // Sea or ice: both land measures were sent, day by day, and not one day holds a reading. A measure left out of the answer says nothing.
+  const sentEmpty = m => Object.keys(rows[m]).length > 0 && S[m].every(v => !real(v));
+  if (S && LAND.every(sentEmpty)) S.noLand = true;
+  return S;
+}
+const LAND = ['GWETROOT', 'EVLAND'];   // root-zone soil wetness and water from the land: NASA has them only over land
+export const SEA_WORDS = 'NASA POWER’s weather square here is sea or ice: it holds no soil wetness and no water from the land on any day, so Crophalo cannot compare crops here. Put the pin on the field itself.';
+export const landProblem = S => (S?.noLand === true ? SEA_WORDS : '');   // '' on land, and on the back-up record, which has no land measures at all
+// The same sea-or-ice test on NASA POWER's raw answer, before any series is built: both land measures sent, and not one day of either holds a reading.
+export function answerNoLand(answer) {
+  const sent = answer?.properties?.parameter, fill = answer?.header?.fill_value ?? -999;
+  if (!sent || typeof sent !== 'object') return false;
+  return LAND.every(m => {
+    const row = Object.hasOwn(sent, m) && sent[m] && typeof sent[m] === 'object' ? sent[m] : null;
+    const days = row ? Object.keys(row).filter(d => /^\d{8}$/.test(d) && d >= `${Y0}0101`) : [];
+    return days.length > 0 && days.every(d => !(typeof row[d] === 'number' && Number.isFinite(row[d]) && row[d] !== fill));
+  });
 }
 // Is this really the answer to what was asked: the place, whole UTC days, the units? '' when it is.
 export function powerProblem(answer, place) {
@@ -314,7 +333,11 @@ export async function fetchPower(lat, lon, env = {}) {
   const place = cleanPlace(lat, lon);
   if (place.reason) return { ok: false, reason: place.reason, final: true };
   const url = powerUrl(place, clock(env)), check = json => powerProblem(json, place) || seriesProblem(buildSeries(json, place), 'NASA POWER');
-  try { const got = await cachedJSON(url, { keep: KEEP.power, limit: LIMIT.power, check }, env), S = buildSeries(got.json, place); return { ok: true, source: 'power', S, through: S.through, cached: got.cached, fetched: got.fetched, url }; }
+  try {
+    const got = await cachedJSON(url, { keep: KEEP.power, limit: LIMIT.power, check }, env), S = buildSeries(got.json, place);
+    if (landProblem(S)) return { ok: false, reason: landProblem(S), final: true, notFarmland: true };   // a true answer about sea or ice: the back-up record would only give figures for water
+    return { ok: true, source: 'power', S, through: S.through, cached: got.cached, fetched: got.fetched, url };
+  }
   catch (e) { return failed(e, 'NASA POWER'); }
 }
 export async function fetchOpenMeteoHistory(lat, lon, env = {}) {

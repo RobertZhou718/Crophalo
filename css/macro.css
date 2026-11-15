@@ -1,0 +1,60 @@
+/* Crophalo's big animations: the named curves and times of js/macro-core.js as custom properties, the record scale and the rings palette, the level switches,
+   the shared defaults of the view transitions started by js/macro-view.js, the play bar, the rolled number and the outline proxy. Light mode, no blue of its own.
+   Every Full rule sits under prefers-reduced-motion: no-preference and html:not([data-motion]); Less rules under html[data-motion=less]; the still switch of css/app.css covers the rest.
+   Fetched by js/macro.js only once a scene module has loaded. Held to scripts/macro_rules.mjs and checked by scripts/test_macro.mjs. */
+
+:root {
+  --m-ease-arrive: cubic-bezier(.16, 1, .3, 1);
+  --m-ease-glide: cubic-bezier(.65, 0, .35, 1);
+  --m-ease-leave: cubic-bezier(.4, 0, 1, 1);
+  --m-ease-fade: cubic-bezier(0, 0, .2, 1);
+  --m-ease-even: linear;
+  --m-t-quick: 160ms; --m-t-less-max: 200ms; --m-t-step: 320ms; --m-t-turn: 560ms; --m-t-hold: 120ms; --m-t-stagger: 60ms; --m-t-open-max: 2000ms;
+  --m-t-flight: 3200ms; --m-t-flight-phone: 2100ms; --m-t-auto-max: 4800ms; --m-t-press-max: 5000ms; --m-t-skip-under: 600ms; --m-t-fast-forward: 200ms;
+  --m-t-beat: 150ms; --m-t-year: 400ms; --m-t-month: 750ms; --m-t-month-film: 900ms; --m-t-day: 8000ms;
+  /* the record scale: daily highs from -10 °C (a cool slate) to 35 °C (a warm amber), never the action blue */
+  --m-rec-cold: #5f6b78; --m-rec-mild: #b8b1a0; --m-rec-hot: #d4911e;
+  /* the rings palette: cooler and warmer than the middle year, and the base of a missing year */
+  --m-ring-cool: #5e8a85; --m-ring-mid: #c9c3b6; --m-ring-warm: #c4693a; --m-ring-gap: #8e8e93;
+}
+
+/* ---- the shared defaults of a transition started by become(): named parts travel for T.TURN on ARRIVE; every picture (the root and each named part, a heading
+   included) cross-fades in T.QUICK, so words are never faded longer */
+@media (prefers-reduced-motion: no-preference) {
+  html:not([data-motion])[data-macro-vt=full]::view-transition-group(*) { animation-duration: var(--m-t-turn); animation-timing-function: var(--m-ease-arrive); }
+  html:not([data-motion])[data-macro-vt=full]::view-transition-group(root) { animation-duration: var(--m-t-quick); }
+  html:not([data-motion])[data-macro-vt=full]::view-transition-old(*),
+  html:not([data-motion])[data-macro-vt=full]::view-transition-new(*) { animation-duration: var(--m-t-quick); animation-timing-function: var(--m-ease-fade); }
+}
+/* A named heading's box travels, but its two pictures keep their natural size, so its words are never stretched (text is never scaled) */
+html[data-macro-vt]::view-transition-old(field-title),
+html[data-macro-vt]::view-transition-new(field-title) { block-size: 100%; inline-size: auto; object-fit: none; object-position: left center; }
+/* Less: no names are set, so only the root cross-fades, in T.QUICK */
+html[data-motion=less][data-macro-vt]::view-transition-group(*),
+html[data-motion=less][data-macro-vt]::view-transition-old(*),
+html[data-motion=less][data-macro-vt]::view-transition-new(*) { animation-duration: var(--m-t-quick); animation-timing-function: var(--m-ease-fade); }
+/* Still, by the setting or by the device: a transition that started anyway shows its end at once */
+html[data-motion=reduce][data-macro-vt]::view-transition-group(*),
+html[data-motion=reduce][data-macro-vt]::view-transition-old(*),
+html[data-motion=reduce][data-macro-vt]::view-transition-new(*) { animation: none !important; }
+@media (prefers-reduced-motion: reduce) {
+  html[data-macro-vt]::view-transition-group(*),
+  html[data-macro-vt]::view-transition-old(*),
+  html[data-macro-vt]::view-transition-new(*) { animation: none !important; }
+}
+
+/* ---- the play bar of a film: Pause or Play, and Skip; at Less and Still, Step through */
+.m-playbar { display: flex; flex-wrap: wrap; align-items: center; gap: var(--space-8); }
+.m-ctl { min-height: var(--touch); min-width: var(--touch); }
+
+/* ---- a rolled number: the painted copy keeps tabular figures in a reserved width, so nothing beside it moves */
+.m-roll { display: inline-block; font-variant-numeric: tabular-nums; text-align: inherit; }
+
+/* ---- the field's outline laid over a map path or a picture, for a shared move */
+.m-proxy { position: fixed; z-index: var(--z-pop); pointer-events: none; overflow: visible; }
+.m-proxy-line { fill: none; stroke: var(--ink); stroke-width: 2px; stroke-linejoin: round; vector-effect: non-scaling-stroke; }
+
+/* THE DESCENT: the globe's own layer over the whole window, above the screens and under the top bar; the night's own colour, never a picture */
+.macro-sky { position: fixed; inset: 0; z-index: calc(var(--z-nav, 50) - 1); overflow: hidden; background: var(--night); pointer-events: none; }
+.macro-witness { position: fixed; right: var(--space-8, 8px); bottom: var(--space-8, 8px); z-index: calc(var(--z-nav, 50) - 2); max-width: min(520px, calc(100vw - 16px)); margin: 0; padding: 6px 10px; border-radius: var(--r2, 10px); background: var(--card, #fff); color: var(--ink, #1d1d1f); font-size: var(--fs-caption, 12.5px); box-shadow: var(--shadow, 0 1px 4px rgba(0,0,0,.2)); pointer-events: none; }
+@media (prefers-reduced-motion: no-preference) { html:not([data-motion]) .macro-witness { transition: opacity var(--m-t-quick) var(--m-ease-even); } }   /* the line fades out at Full only; it comes only after a Full descent */

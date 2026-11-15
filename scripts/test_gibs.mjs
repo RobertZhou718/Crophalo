@@ -1,7 +1,10 @@
 // Crophalo's suite for the NASA GIBS layers (js/gibs.js): the real DescribeDomains answers NASA gave on the day they were recorded (scripts/fixtures/gibs), the dates an image exists for, snapping across NASA's own gaps,
 // never after yesterday, a step earlier or later, the tile addresses, the legend colours and every sentence. RULE: never loosen a check here without a written farming reason beside it. A map that draws a day NASA has no image for shows nothing and says nothing. Run: node scripts/test_gibs.mjs
 import { D, J, domains } from './gibs_fixtures.mjs';
-import { LAYERS, layerOf, DOMAINS, tileTemplate, tileUrl, parseDomains, newest, oldest, snap, stepBy, hasDay, addDays, dateWords, legendGradient, legendWords, buttonWords, WORDS } from '../js/gibs.js';
+import { GRACE } from '../js/grace.js';
+import { TERRAIN_LAYERS } from '../js/terrain-math.js';
+import { FIRES } from '../js/gibs.js';
+import { southWords, southOf, LAYERS, layerOf, DOMAINS, tileTemplate, tileUrl, parseDomains, newest, oldest, snap, stepBy, hasDay, addDays, dateWords, legendGradient, legendWords, buttonWords, WORDS, fireWords } from '../js/gibs.js';
 
 let passed = 0, failed = 0;
 const check = (name, ok, detail = '') => { if (ok) passed++; else { failed++; console.log(`FAIL  ${name}${detail ? `  (${typeof detail === 'string' ? detail : JSON.stringify(detail)})` : ''}`); } };
@@ -44,10 +47,22 @@ same('a leap day is added to correctly', [addDays(D('20280228'), 1), addDays(D('
 // ---- the words
 const BAN = /NaN|undefined|null|\[object|likely|probab|chance|forecast/i;
 check('the date words are the farmer\'s: day, month in full, year', dateWords(D('20261105')) === J('5', 'November', '2026') && dateWords('nope') === '');
-check('every sentence is plain', [WORDS.down, WORDS.retry, WORDS.empty, WORDS.waiting, WORDS.none, WORDS.snapped(D('20251101'), D('20251009')), ...LAYERS.map(l => l.sub), ...LAYERS.map(l => l.note)].every(t => typeof t === 'string' && !BAN.test(t)));
+check('every sentence is plain', [WORDS.down, WORDS.retry, WORDS.empty, WORDS.offline, WORDS.waiting, WORDS.none, WORDS.snapped(D('20251101'), D('20251009')), ...LAYERS.map(l => l.sub), ...LAYERS.map(l => l.note)].every(t => typeof t === 'string' && !BAN.test(t)));
 check('a snapped day says which day was asked and which is shown', WORDS.snapped(D('20251101'), D('20251009')) === `NASA has no image for ${J('1', 'November', '2025')}. Showing ${J('9', 'October', '2025')}, the nearest day it has.`);
 check('the "no image" sentence is the one the note gives', WORDS.empty === 'NASA has no image for this part of the map on this date. Try another date or move the map.' && WORDS.down === 'Not available right now: NASA\'s image server did not answer');
+check('offline is said as offline, never as "NASA has no image" (a farmer would think the data is missing)', /^You are offline/.test(WORDS.offline) && !/no image/.test(WORDS.offline));
+check('fires that did not come say it was Crophalo\'s server and NASA FIRMS, not NASA\'s image server', /Crophalo’s server did not answer for NASA FIRMS/.test(fireWords(null)) && !/image server/.test(fireWords({ ok: false })), fireWords(null));
 same('the legend ends are said in plain words, the temperature in degrees Celsius', [legendWords(layerOf('ndvi')), legendWords(layerOf('temp'))], ['0 · bare to 1.0 · dense crops', '−73 °C to +77 °C']);
 same('the Layers button says what is on', [buttonWords([]), buttonWords(['rain']), buttonWords(['rain', 'temp'])], ['Layers', 'Rain rate', '2 layers']);
+// SMAP's map ends at 55.7 degrees south
+same('only soil moisture has a southern limit, and it is 55.7 degrees south', LAYERS.filter(l => l.south != null).map(l => [l.id, l.south]), [['smap', -55.7]]);
+check('a view whose northern edge is south of the limit is "south" and one that reaches north of it is not', southOf(layerOf('smap'), -56) === true && southOf(layerOf('smap'), -55.7) === false && southOf(layerOf('smap'), 10) === false && southOf(layerOf('rain'), -80) === false);
+same('the words say what NASA has not, plainly', southWords(layerOf('smap')), 'NASA has no soil moisture picture south of 55.7\u00b0 S.');
+// the owner's rule for every layer's line: first what the farmer sees, one plain sentence, no science word without a farmer's word, the instrument and the dot size kept for "Show more"
+{ const ALL = [...LAYERS, FIRES, GRACE, ...TERRAIN_LAYERS];
+  same('eleven layers have a plain line', ALL.map(l => l.id), ['ndvi', 'smap', 'rain', 'temp', 'fires', 'grace', 'slope', 'erosion', 'frost', 'sunshade', 'relief']);
+  check('each plain line is one or two short sentences, 16 words or fewer each', ALL.every(l => typeof l.plain === 'string' && l.plain.split(/(?<=[.!?])\s+/).length <= 2 && l.plain.split(/(?<=[.!?])\s+/).every(x => x.trim().split(/\s+/).length <= 16)), ALL.map(l => l.plain));
+  check('and holds no instrument, product or science word (they sit under "Show more")', ALL.every(l => !/\b(NDVI|SMAP|MODIS|VIIRS|IMERG|GRACE|GRACE-FO|mascon|SRTM|radiometer|NOAA|NASA|km|metres?|\d+ ?m\b|index|relative|root.zone)\b/i.test(l.plain.replace('about one metre', ''))), ALL.filter(l => /NDVI|SMAP|MODIS|VIIRS|IMERG|GRACE|mascon|SRTM|NASA|index|root.zone/i.test(l.plain)).map(l => l.plain));
+  check('every layer\'s plain line starts with what the farmer gets: a how, where or what', ALL.every(l => /^(How|Where|Very hot|Low spots|Water|The shape)/.test(l.plain)), ALL.map(l => l.plain.slice(0, 20))); }
 console.log(`${passed} passed, ${failed} failed`);
 process.exitCode = failed ? 1 : 0;

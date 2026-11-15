@@ -4,6 +4,7 @@
 // report and the 3D farm give the same slope. Checked by scripts/test_field_tab.mjs (a height grid with a known tilt, the lookup's refusals, every word, the estimated outline, the soil test).
 import { describe } from './soiltest.js';
 import { FEEL, COLOUR } from './words.m3.js';
+import { SOIL_MAP_WORDS } from './steps.js';
 import { blocksOf, frameAt, heightModel, heightAtMesh, GRID_SIZE_PHONE } from './farm3d-data.js';
 import { loadHeights, sourceWords } from './heights3d.js';
 import { fieldSlope, bandOf } from './slope3d-data.js';
@@ -12,7 +13,7 @@ const fin = v => typeof v === 'number' && Number.isFinite(v);
 export const DEM_DOWN = 'The height lookup did not answer. Slope and height are not read yet.';
 
 // The source note to show for a height map, by the name the lookup gives it.
-export const demKey = name => /HRDEM|Natural Resources Canada|NRCan/i.test(name ?? '') ? 'hrdem' : /3DEP|USGS/i.test(name ?? '') ? 'usgs3dep' : /Copernicus|GLO-?30/i.test(name ?? '') ? 'glo30' : 'dem';
+export const demKey = name => /HRDEM|Natural Resources Canada|NRCan/i.test(name ?? '') ? 'hrdem' : /3DEP|USGS/i.test(name ?? '') ? 'usgs3dep' : /Copernicus|GLO-?30/i.test(name ?? '') ? 'glo30' : /NASADEM|SRTM/i.test(name ?? '') ? 'nasadem' : 'dem';
 
 // The grid the lookup gave (decoded by heights3d.js) and the field's outline in degrees -> the field's own figures: its plane slope, the downhill bearing, the height at the middle, the source in words.
 // polygon: [[lat, lon], ...]; pin: { lat, lon } (the block's middle is the frame's origin).
@@ -45,7 +46,9 @@ export const compass = deg => fin(deg) ? POINTS[Math.round((((deg % 360) + 360) 
 const num = (v, d = 0) => v.toFixed(d).replace(/\B(?=(\d{3})+(?!\d))/g, ',');
 const soilWords = s => {
   if (!s?.mode) return { value: 'Not chosen', text: 'No soil was chosen yet.' };
+  if (s.mode === 'map') { const f = FEEL.find(x => x.value === s.texture); return { value: f ? `${f.title} (${f.sub})` : 'From a soil map', text: 'From a soil map, not a test of this field. A soil test is better.' }; }   // a demo field's soil
   if (s.mode === 'assumed') return { value: 'Average soil (assumed)', text: 'Nothing was measured. An average loam is assumed until the soil lookup answers, so the report says it is less sure. Tap your own soil in the setup if you know it.' };
+  if (s.mode === 'map') return { value: `${SOIL_MAP_WORDS[s.texture] ?? 'Soil'} (from the soil map)`.replace(/^./, c => c.toUpperCase()), text: 'Read from a soil map, not measured on this field. A soil test is better.' };
   const feel = FEEL.find(f => f.value === s.texture), colour = COLOUR.find(c => c.value === s.om);
   return { value: [feel ? `${feel.title} (${feel.sub})` : '', colour ? `${colour.title.toLowerCase()} colour, ${colour.sub}` : ''].filter(Boolean).join(' · ') || 'As you described it', text: 'As you described it by feel and colour. A soil test is better.' };
 };

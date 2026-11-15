@@ -1,0 +1,27 @@
+/* THE CHAPTER TURN, STEP TURN and THE GENERIC TURN: only opacity and a short slide; every Full rule is where only Full reaches (js/macro-view.js sets html[data-macro-vt=full] for the life of one turn).
+   With no support for view-transition types (the browser's default) a turn is a 24 px rise, which still reads right. Less and Still are handled in css/macro.css and by become(). */
+@media (prefers-reduced-motion: no-preference) {
+  /* the report's panel */
+  html:not([data-motion])[data-macro-vt=full]::view-transition-old(panel) { animation: m-leave var(--m-t-less-max) var(--m-ease-leave) both; }
+  html:not([data-motion])[data-macro-vt=full]::view-transition-new(panel) { animation: m-rise var(--m-t-step) var(--m-ease-arrive) both; }
+  html:not([data-motion]):active-view-transition-type(forward)::view-transition-new(panel) { animation-name: m-from-right; }
+  html:not([data-motion]):active-view-transition-type(back)::view-transition-new(panel) { animation-name: m-from-left; }
+  html:not([data-motion]):active-view-transition-type(forward)::view-transition-old(panel) { animation-name: m-to-left; }
+  html:not([data-motion]):active-view-transition-type(back)::view-transition-old(panel) { animation-name: m-to-right; }
+  /* the setup's column: 16 px */
+  html:not([data-motion])[data-macro-vt=full]::view-transition-old(stepcol) { animation: m-to-left-16 var(--m-t-less-max) var(--m-ease-leave) both; }
+  html:not([data-motion])[data-macro-vt=full]::view-transition-new(stepcol) { animation: m-from-right-16 var(--m-t-step) var(--m-ease-arrive) both; }
+  html:not([data-motion]):active-view-transition-type(back)::view-transition-old(stepcol) { animation-name: m-to-right-16; }
+  html:not([data-motion]):active-view-transition-type(back)::view-transition-new(stepcol) { animation-name: m-from-left-16; }
+  /* the tab glass-less panel and the column are whole boxes: no other part of the screen is named */
+}
+@keyframes m-rise { from { opacity: 0; transform: translateY(24px); } }
+@keyframes m-leave { to { opacity: 0; } }
+@keyframes m-from-right { from { opacity: 0; transform: translateX(24px); } }
+@keyframes m-from-left { from { opacity: 0; transform: translateX(-24px); } }
+@keyframes m-to-left { to { opacity: 0; transform: translateX(-24px); } }
+@keyframes m-to-right { to { opacity: 0; transform: translateX(24px); } }
+@keyframes m-from-right-16 { from { opacity: 0; transform: translateX(16px); } }
+@keyframes m-from-left-16 { from { opacity: 0; transform: translateX(-16px); } }
+@keyframes m-to-left-16 { to { opacity: 0; transform: translateX(-16px); } }
+@keyframes m-to-right-16 { to { opacity: 0; transform: translateX(16px); } }

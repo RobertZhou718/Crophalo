@@ -4,6 +4,7 @@
 // Checked by scripts/test_sharetext.mjs (the cleaner, when the prompt is due, which note is the record).
 export const KEY = 'crophalo.notes.v1', MAX_NOTES = 200, TEXT_MAX = 500, KINDS = Object.freeze(['notice', 'free']);
 const MON = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
+export const newNoteId = (now = Date.now(), random = Math.random) => 'n' + now.toString(36) + Array.from({ length: 5 }, () => Math.floor(random() * 36).toString(36)).join('');
 export const PROMPT = Object.freeze({ title: 'What did you notice this season?', lead: 'What went well, and what did not? Next season it shows beside your plan as “Your record”. It stays on this device.', hint: 'e.g. The low corner stayed wet. Corn there came up late.', empty: 'Write something or add a photo first', saved: 'Saved on this device as your record' });
 const isDay = d => typeof d === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(d) && Number.isFinite(Date.parse(d + 'T00:00:00Z'));
 const addDays = (d, n) => new Date(Date.parse(d + 'T00:00:00Z') + n * 864e5).toISOString().slice(0, 10);

@@ -6,6 +6,7 @@ import { openRun } from './e2e_lib.mjs';
 const YR = 2026, G0 = 2016;   // the year of the hand-made ECOSTRESS and HLS answers' days, and the first year of the hand-made GRACE-FO record
 
 const run = await openRun('e2e_sat2');
+await run.send('Page.addScriptToEvaluateOnNewDocument', { source: `window.fetch = (f => async (url, ...r) => /\\/api\\//.test(String(url)) ? { ok: true, status: 200, json: async () => ({ ok: false, reason: 'stand-in' }), text: async () => '{"ok":false}' } : f(url, ...r))(window.fetch);` });   // the throwaway server has no crop-map or soil-moisture route: a demo field asks for them at once, so they are answered here, quietly
 const { ROOT, js, until, size, go, check, group, finish, sleep } = run;
 const months = []; for (let i = 0; i < 96; i++) { const key = `${G0 + Math.floor(i / 12)}-${String(i % 12 + 1).padStart(2, '0')}`, gap = key >= `${G0 + 1}-07` && key <= `${G0 + 2}-05`; months.push([key, gap ? null : Math.round((2 - i * 0.1 + (i % 3)) * 100) / 100, gap ? null : 1.4]); }
 const GRACE = { ok: true, months, trend_cm_per_year: -1.1, trend_from: `${G0 + 2}-06`, trend_to: `${G0 + 7}-12`, trend_years: 5.6, trend_note: 'A trend over 5.6 years.', area_km: 300, data_date: `${G0 + 7}-12-31` };

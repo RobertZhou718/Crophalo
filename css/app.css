@@ -226,6 +226,9 @@ tr:last-child > td { border-bottom: 0; }
 .toast.show { opacity: 1; visibility: visible; transition: opacity .16s var(--ease); }
 .toast .btn { min-height: var(--touch); flex: none; }
 .toast :focus-visible { outline-color: #fff; }   /* the toast is dark: a white ring stands out on it */
+.toast-secs { flex: none; min-width: 2.2em; color: rgba(255,255,255,.8); font-size: var(--fs-small); font-variant-numeric: tabular-nums; }   /* the seconds left to undo, beside the button */
+.toast-count { position: absolute; left: var(--space-12); right: var(--space-12); bottom: var(--space-4); height: 3px; border-radius: 2px; background: rgba(255,255,255,.25); overflow: hidden; }   /* the time running out, under Full only */
+.toast-count i { display: block; height: 100%; background: #fff; transform-origin: left center; }
 
 /* sheets: one white card over a dimmed page; its height is divided back by the text zoom so it never leaves the screen */
 dialog.sheet { width: min(var(--sheet-w), calc(100vw / var(--tz) - 24px)); max-width: none; max-height: calc(86vh / var(--tz)); padding: 0; border: 0;
@@ -516,6 +519,7 @@ html[data-motion=reduce], html[data-motion=reduce] *, html[data-motion=reduce] *
 html[data-motion=reduce] ::backdrop { animation: none !important; transition: none !important; }
 html[data-motion=reduce]::view-transition-group(*), html[data-motion=reduce]::view-transition-old(*), html[data-motion=reduce]::view-transition-new(*) { animation: none !important; }   /* its own rule: a browser that does not know these must not drop the line above */
 html[data-motion=reduce] .sk { animation: none !important; background: var(--fill); }   /* a still grey shape, not a frozen streak */
+html[data-motion=less] .sk { animation: none !important; background: var(--fill); }     /* Less keeps no loop either: the same still shape */
 html[data-motion=reduce] .dot.busy { animation: none !important; }
 @media (prefers-reduced-motion: reduce) {
   html, *, *::before, *::after {
@@ -637,7 +641,7 @@ dialog.welcome::backdrop { background: var(--backdrop-welcome); }
 .welcome-card > div { flex: 1 1 auto; min-width: 0; }
 .welcome-ic { display: grid; place-items: center; width: 40px; height: 40px; flex: none; border-radius: var(--r2); background: var(--accent-soft); color: var(--accent-text); }
 .welcome-ic .ic { width: 20px; height: 20px; }
-.welcome-card h3 { font-size: 16px; }
+.welcome-card h2 { font-size: 16px; }
 .welcome-card p { margin-top: var(--space-4); font-size: 14.5px; color: var(--ink2); }
 .welcome-card .link { display: inline-flex; align-items: center; gap: 6px; margin-top: 10px; font-size: var(--fs-row); }
 .link .chev { background: currentColor; }
@@ -657,7 +661,8 @@ dialog.welcome::backdrop { background: var(--backdrop-welcome); }
 /* the info pages: Data, Privacy, Limitations, Settings. One steady rhythm: the heading, a short line under it, then blocks with room between them. */
 #view-info .sec { margin-top: var(--space-32); }
 #view-info h1 { margin-bottom: var(--space-8); }
-#infoBody { display: grid; gap: var(--space-16); max-width: 720px; }
+#infoBody { display: grid; gap: var(--space-16); }   /* the whole width of the page: cards and lists fill it; only the running words keep a readable line (below) */
+#infoBody > .lead, #infoBody > .data-note, #infoBody > .data-filter, #infoBody > .data-fold, #infoBody > .ex, #infoBody > h2 { max-width: 720px; }
 #infoBody > h2 { margin-top: var(--space-16); }
 #infoBody > .lead { margin-top: calc(-1 * var(--space-8)); }
 .data-note { padding: var(--space-12) var(--space-16); border-radius: var(--r2); background: var(--accent-soft); color: var(--ink); font-size: var(--fs-small); }
@@ -665,3 +670,19 @@ dialog.welcome::backdrop { background: var(--backdrop-welcome); }
 .src-body { display: grid; gap: var(--space-4); min-width: 0; } .src-body .cap { margin: 0; }
 #view-info h1 { margin-bottom: var(--space-12); }
 .src-head { display: flex; flex-wrap: wrap; align-items: center; gap: 4px var(--space-8); }
+
+/* "Less" motion (the farmer's choice, html[data-motion=less]): only quick fades and colour changes of 200 ms at most, plus press, hover and focus states. Nothing sweeps, scans, drifts or loops; nothing draws itself. A script asks motionLess() (js/motion.js). */
+html[data-motion=less], html[data-motion=less] *, html[data-motion=less] *::before, html[data-motion=less] *::after {
+  scroll-behavior: auto !important; animation-iteration-count: 1 !important; animation-delay: 0s !important;
+  transition-property: opacity, color, background-color, border-color, outline-color, box-shadow, fill, stroke !important; transition-duration: .2s !important; transition-delay: 0s !important; }
+html[data-motion=less] *:not(.fade-in):not(.toast), html[data-motion=less] *:not(.fade-in):not(.toast)::before, html[data-motion=less] *:not(.fade-in):not(.toast)::after { animation-name: none !important; }
+html[data-motion=less] .fade-in { animation-duration: .16s !important; }
+html[data-motion=less] :is(button, a, [role=button], .btn, .card.act, .tab, .chip):is(:active, :hover, :focus-visible) { transition-property: opacity, color, background-color, border-color, outline-color, box-shadow, transform, filter !important; }
+html[data-motion=less] ::backdrop { animation: none !important; }
+html[data-motion=less]::view-transition-group(*), html[data-motion=less]::view-transition-old(*), html[data-motion=less]::view-transition-new(*) { animation: none !important; }
+html[data-motion=less] .sk { animation: none !important; background: var(--fill); }   /* a still grey shape, not a streak that sweeps */
+html[data-motion=less] .dot.busy { animation: none !important; }
+
+/* the token that flies to My farm when a field is added (js/added-fx.js): a small round mark, never larger than 28 px, ignoring the pointer */
+.added-token { position: fixed; z-index: var(--z-toast); width: 28px; height: 28px; display: grid; place-items: center; border-radius: 50%; background: var(--accent); color: #fff; box-shadow: var(--shadow-lg); pointer-events: none; }
+.added-token .ic { width: 16px; height: 16px; }

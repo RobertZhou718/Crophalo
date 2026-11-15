@@ -1,0 +1,15 @@
+{
+ "method": "GET",
+ "url": "https://celestrak.org/NORAD/elements/gp.php?CATNR=60989&FORMAT=JSON",
+ "recorded": "2026-11-15T03:04:00Z",
+ "hand_made": false,
+ "replies": [
+  {
+   "status": 200,
+   "headers": {
+    "content-type": "application/json; charset=UTF-8",
+    "content-length": "416"
+   }
+  }
+ ]
+}

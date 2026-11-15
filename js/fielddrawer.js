@@ -1,13 +1,16 @@
-// The field drawer: a field's name and size, the status line with its one next action, four tabs (Check, Facts, Weather, Remind), and the sheets for Plant and Soil.
-// The words and the order of things are pure and tested; the page part takes the farm's parts (store, toast, reminders, forecast) as one object, so nothing here fetches.
-// Checked by scripts/test_sim.mjs (the drawer's words) and scripts/e2e_farm.mjs (the drawer in a browser).
-import { esc } from './words.js';
-import { areaWords, slopeWords } from './geo.js';
+// The field drawer: a field's name and size, the status line with its one next action, four tabs (Check, Facts, Weather, Remind), the sheets for Plant and Soil,
+// and below them the field's own tools: its Land history and Edit this field (Move corners, Split, Rename, Delete).
+// The words and the order of things are pure and tested; the page part takes the farm's parts (store, toast, reminders, forecast, today's weather) as one object, so nothing here fetches.
+// Checked by scripts/test_sim.mjs (the drawer's words), scripts/e2e_farm.mjs and scripts/e2e_myfarm_simple.mjs (the drawer in a browser).
+import { esc, FARM_WORDS as FW } from './words.js';
+import { slopeWords } from './geo.js';
+import { areaWords } from './farmunits.js';
+import { srcButton } from './srci.js';
 import * as S from './simulate.js';
 
 export const TABS = Object.freeze([['check', 'Check'], ['facts', 'Facts'], ['weather', 'Weather'], ['remind', 'Remind']]);
 const SOIL_WORDS = { sand: 'Light (sandy, gritty)', loam: 'Loam (mellow, mixed)', silt: 'Silty (smooth, floury)', clay: 'Heavy (clay, sticky)' }, OM_WORDS = { low: 'Pale: low organic matter', med: 'Medium brown: medium', high: 'Dark: high organic matter' };
-export const ADDED_WORDS = 'Added to your farm. Open "My farm" in the top bar to see it.';
+export const ADDED_WORDS = 'Added to My farm.';
 const cap = s => s.charAt(0).toUpperCase() + s.slice(1);
 
 // ---- the words (pure): everything is read from the farm's record; a part whose data has not arrived says "not read yet"
@@ -24,7 +27,7 @@ export function fieldNow(model) {
   if (f.kind === 'rot' && !model.crop) return { text: 'Nothing planted yet: choose a crop', action: { id: 'plant', label: 'Plant…' } };
   if (f.kind === 'rot' && model.score.state === 'needs-soil') return { text: 'This field needs a soil before it can be checked', action: { id: 'soil', label: 'Choose the soil' } };
   if (model.sowing && model.reminders && !model.reminders.some(r => !r.done && r.when.slice(0, 10) === model.sowing.date)) return { text: `Sowing ${model.cropName(model.sowing.crop).toLowerCase()} from ${model.sowing.words}: set a reminder`, action: { id: 'remind', label: 'Remind me' } };
-  if (fc === 'none' || !fc) return { text: 'Forecast: not read yet', action: null };
+  if (fc === 'none' || !fc) return { text: 'The forecast could not be read just now.', action: null };
   return { text: 'No frost, heat or heavy rain forecast this week', action: { id: 'forecast', label: 'See the forecast' } };
 }
 // "To do": at most three items from the real data, most pressing first. { text, action? }
@@ -32,15 +35,15 @@ export function todoItems(tab, model) {
   const f = model.field, out = [], t = f.terrain;
   const add = (text, action) => out.push(action ? { text, action } : { text });
   if (tab === 'check') {
-    if (f.kind === 'garden') add(`Fits this farm's weather: ${model.cropName(f.tree)} is not read yet. Open the report to see it.`);
+    if (f.kind === 'garden') add(`Open the report to see if ${model.cropName(f.tree)} suits this farm's weather.`);
     else if (!model.crop) add(`Choose what to plant on ${f.name}.`, { id: 'plant', label: 'Plant…' });
     else if (!f.soil) add('Give this field a soil.', { id: 'soil', label: 'Choose the soil' });
-    if (f.kind === 'rot' && !t && !f.marks?.slope) add('Slope: not read yet. It is read by itself when you are online.');
+    if (f.kind === 'rot' && !t && !f.marks?.slope) add('The slope could not be read. It is read again when you are online.');
     if (model.sowing && model.reminders && !model.reminders.some(r => r.when.slice(0, 10) === model.sowing.date)) add(`No sowing reminder yet (about ${model.sowing.words}).`, { id: 'remind', label: 'Remind me' });
   } else if (tab === 'facts') {
     if (!f.soil) add('Soil: not known yet.', { id: 'soil', label: 'Choose this field\'s soil' });
     else if (f.soil.assumed) add('The soil is assumed until a real one answers.', { id: 'soil', label: 'Choose this field\'s soil' });
-    if (!t && !f.marks?.slope) add('Slope: not read yet. It is read by itself when you are online.', { id: 'land', label: 'Mark the land yourself' });
+    if (!t && !f.marks?.slope) add('The slope could not be read. It is read again when you are online.', { id: 'land', label: 'Mark the land yourself' });
     if (f.estimated) add('The outline is estimated: a square around the pin. Draw the real outline to make it exact.');
   } else if (tab === 'weather') {
     for (const a of (model.forecast !== 'none' && model.forecast?.alerts) || []) add(a.text, a.remind ? { id: 'remind-alert:' + a.id, label: 'Remind me the evening before' } : null);
@@ -55,16 +58,16 @@ export function answerLine(tab, model) {
     if (f.kind === 'garden') return 'Trees and bushes are not scored here';
     if (!model.crop) return 'Nothing planted yet';
     if (sc.state === 'scored') return `${sc.words}${sc.years ? ` · hurt in ${sc.years.hurt} of ${sc.years.total} past years` : ''}`;
-    return sc.state === 'needs-soil' ? 'Needs a soil before it can be checked' : 'The check: not read yet';
+    return sc.state === 'needs-soil' ? 'Needs a soil before it can be checked' : 'The check needs the weather. It could not be read just now.';
   }
   if (tab === 'facts') {
-    const slope = f.marks?.slope != null ? `slope ${f.marks.slope.toFixed(1)}% (yours)` : f.terrain ? `${slopeWords(f.terrain.slope)} (${f.terrain.slope.toFixed(1)}%)` : 'slope: not read yet';
+    const slope = f.marks?.slope != null ? `slope ${f.marks.slope.toFixed(1)}% (yours)` : f.terrain ? `${slopeWords(f.terrain.slope)} (${f.terrain.slope.toFixed(1)}%)` : 'slope not known';
     const soil = f.soil ? `${f.soil.texture} soil${f.soil.assumed ? ' (assumed)' : ''}` : 'soil not known yet';
     return `${areaWords(f.area)} · ${slope} · ${soil}`;
   }
-  if (tab === 'weather') return model.forecast === 'none' || !model.forecast ? 'Forecast: not read yet' : model.forecast.alerts?.length ? model.forecast.alerts.map(a => a.text).join(' · ') : 'No frost, heat or heavy rain this week';
+  if (tab === 'weather') return model.forecast === 'none' || !model.forecast ? 'The forecast could not be read just now.' : model.forecast.alerts?.length ? model.forecast.alerts.map(a => a.text).join(' · ') : 'No frost, heat or heavy rain this week';
   const n = (model.reminders || []).length;
-  return model.reminders == null ? 'Reminders: not read yet' : n ? `${n} reminder${n === 1 ? '' : 's'} for this field` : 'No reminders for this field yet';
+  return model.reminders == null ? 'Reminders are not available here yet.' : n ? `${n} reminder${n === 1 ? '' : 's'} for this field` : 'No reminders for this field yet';
 }
 // The sowing date to suggest a reminder for: the first season of the field's report plan that has not started, else null.
 export function nextSowing(field, today, cropName) {
@@ -108,6 +111,8 @@ function model(env) {
   const m = { field, farm, score: S.readScore(farm, field), cropName: env.cropName, forecast: env.forecast?.(field) ?? 'none', reminders, today, crop: crop || field.report?.current?.seasons?.[0]?.crop || null };
   m.sowing = ownSowing(plan, today, DAYWORDS) || (!plan || sameCrops(plan, field.report?.current) ? nextSowing(field, today, env.cropName) : null);   // your own plan wins; the report's dates only while the plan is still the report's
   m.suggestions = env.reminders ? suggestions(field, today, env.cropName, have) : [];
+  m.weather = env.weather?.() ?? null;   // today's weather at the field: { lines, src, note } once the forecast is read
+  m.sales = env.sales?.() ?? [];   // how a sales figure would be worked out, and what it assumes
   return m;
 }
 const btn = (id, label, cls = 'btn lg') => `<button type="button" class="${cls}" data-act="${esc(id)}">${esc(label)}</button>`;
@@ -116,29 +121,25 @@ function todoHTML(tab, m) {
   if (!items.length) return `<h3>To do</h3><p class="fw-muted">Nothing to do on this field right now.</p>`;
   return `<h3>To do</h3><ul class="fw-todo">${items.map(i => `<li><span>${esc(i.text)}</span>${i.action ? btn(i.action.id, i.action.label, 'btn lg') : ''}</li>`).join('')}</ul>`;
 }
-function tabBody(tab, m, env) {
-  const f = m.field, ans = `<p class="fw-answer" id="fwAnswer">${esc(answerLine(tab, m))}</p>`;
-  if (tab === 'check') {
-    const sc = m.score;
-    const parts = sc.parts ? `<ul class="fw-bars">${Object.entries({ water: 'Water fit', soil: 'Soil health', income: 'Income', safety: 'Weather safety' }).map(([k, l]) => `<li>${l}: ${Number.isFinite(sc.parts[k]) ? `${Math.round(sc.parts[k])} out of 100` : 'not read yet'}</li>`).join('')}</ul>` : '<p class="fw-muted">How the score is made: not read yet.</p>';
-    return ans + todoHTML(tab, m) + `<div class="fw-btnrow">${btn('plant', m.crop || f.kind === 'garden' ? 'Change crop…' : 'Plant…')}${S.planOf(m.farm, f.id) && m.farm.fields.some(o => o.id !== f.id && o.kind === 'rot') ? btn('copy', 'Copy this plan to other fields') : ''}</div><details class="fw-fold"><summary>How the score is made</summary>${parts}</details>
-      <details class="fw-fold"><summary>Bare soil</summary><p>${sc.bareMonths != null ? `Bare about ${sc.bareMonths} months a year (lower is better).` : 'Not read yet.'}</p></details>
-      <details class="fw-fold"><summary>Crop sales</summary><p>${sc.sales && Number.isFinite(sc.sales.perYear) ? `About ${Math.round(sc.sales.perYear).toLocaleString('en-CA')} a year before costs. An estimate from typical figures, not a promise.` : 'Not worked out: a yield or a price is missing.'}</p></details>`;
-  }
-  if (tab === 'facts') {
-    const soil = f.soil ? `${cap(f.soil.texture)} soil, ${f.soil.om} organic matter${f.soil.assumed ? '. Assumed until a real soil answers.' : f.soil.source ? `. Source: ${esc(f.soil.source)}.` : ''}` : 'Not known yet.';
-    const land = f.terrain ? `About ${f.terrain.slope.toFixed(1)}%, ${slopeWords(f.terrain.slope)}.${f.terrain.hMin != null ? ` Height ${Math.round(f.terrain.hMin)} to ${Math.round(f.terrain.hMax)} m.` : ''}` : f.marks?.slope != null ? `${f.marks.slope.toFixed(1)}%, from you.` : 'Not read yet. It is read by itself when you are online.';
-    return ans + todoHTML(tab, m) + `<h3>The land</h3><dl class="fw-dl"><dt>Size</dt><dd>${areaWords(f.area)}${f.estimated ? ' (estimated outline)' : ''}</dd><dt>Slope</dt><dd>${esc(land)}</dd></dl>
-      <h3>Soil</h3><p>${esc(soil)}</p><div class="fw-btnrow">${btn('soil', f.soil ? 'Change the soil' : 'Choose the soil')}${btn('land', 'Slope you measured')}</div>
-      <details class="fw-fold"><summary>Sun and shade</summary><p>Not read yet.</p></details>
-      <details class="fw-fold"><summary>Same for the whole farm</summary><p>Soil moisture, groundwater and the crops grown nearby: not read yet.</p></details>`;
-  }
-  if (tab === 'weather') {
-    const fc = m.forecast;
-    return ans + todoHTML(tab, m) + (fc === 'none' || !fc ? '<p class="fw-muted">The forecast has not arrived, so Crophalo shows no guess.</p>' : `<p class="fw-muted">Forecast checked ${esc(fc.checkedAt || '')}. Forecast only. For sprays, read the product label or ask a local adviser.</p>`);
-  }
-  const list = m.reminders || [];
-  return ans + `${list.length ? `<h3>Set</h3><ul class="fw-todo">${list.map(r => `<li><span>${esc(r.title)} · ${esc(r.when.slice(0, 10))}${r.done ? ' (done)' : ''}</span></li>`).join('')}</ul>` : ''}` + (env.reminders ? `<h3>Suggested for this field</h3>${todoHTML('remind', m).replace('<h3>To do</h3>', '').replace('Nothing to do on this field right now.', 'Nothing more to suggest from your plan.')}` : '<p class="fw-muted">Reminders are not connected yet.</p>');
+// "This field": one page, no tabs. In the field now, today's weather, reminders, the land (folded), then Land history and Edit this field (folded).
+function onePage(m, env) {
+  const f = m.field, now = fieldNow(m), w = m.weather, list = m.reminders || [];
+  const crop = m.crop ? `${cap(m.cropName(m.crop))}${m.sowing?.words && f.kind === 'rot' ? '' : ''}` : '';
+  const here = f.kind === 'garden' ? `${cap(m.cropName(f.tree))}, trees and bushes` : crop ? `${crop}.` : 'Nothing is recorded for this season.';
+  const alerts = todoItems('weather', m), jobs = todoItems('remind', m).slice(0, 3), moreJobs = todoItems('remind', m).slice(3);
+  const li = i => `<li><span>${esc(i.text)}</span>${i.action ? btn(i.action.id, i.action.label, 'btn lg') : ''}</li>`;
+  const weather = [w?.lines?.length ? w.lines.slice(0, 2).map(l => `<p>${esc(l)}</p>`).join('') : `<p class="fw-muted">${esc(now.action?.id === 'forecast' || m.forecast === 'none' || !m.forecast ? 'The forecast could not be read just now.' : 'No frost, heat or heavy rain this week.')}</p>`,
+    alerts.length ? `<ul class="fw-todo">${alerts.map(li).join('')}</ul>` : '', w?.src?.length ? `<p class="fw-srcline">Where this comes from ${srcButton(w.src, w.note || '')}</p>` : ''].join('');
+  const soil = f.soil ? `${cap(f.soil.texture)} soil${f.soil.assumed ? ', assumed. Nothing was measured here.' : f.soil.source ? `, ${esc(f.soil.source)}.` : '.'}` : 'Not known yet.';
+  const land = f.terrain ? `About ${f.terrain.slope.toFixed(1)}%, ${slopeWords(f.terrain.slope)}.` : f.marks?.slope != null ? `${f.marks.slope.toFixed(1)}%, from you.` : 'The slope could not be read. It is read again when you are online.';
+  return `<p class="fw-now"><b>In the field now</b><span>${esc(here)}</span>${f.kind === 'garden' ? '' : btn('plant', m.crop ? 'Change' : 'Add a crop', 'btn lg')}</p>
+  <h3>Today</h3>${weather}
+  <h3>Reminders</h3>${list.length ? `<ul class="fw-todo">${list.map(r => `<li><span>${esc(r.title)} · ${esc(r.when.slice(0, 10))}${r.done ? ' (done)' : ''}</span>${env.reminders?.done && !r.done ? btn(`rem-done:${r.id}`, 'Done') : ''}${env.reminders?.remove ? btn(`rem-del:${r.id}`, 'Delete') : ''}</li>`).join('')}</ul>${env.settings && !(env.reminders?.done && env.reminders?.remove) ? `<p><button type="button" class="btn lg" data-act="settings">Change or delete a reminder</button></p>` : ''}` : '<p class="fw-muted">No reminders yet.</p>'}${env.reminders?.openDialog ? `<p>${btn('rem-new', 'New reminder')}</p>` : ''}
+  ${env.reminders && jobs.length ? `<p class="fw-small"><b>Jobs for this field</b></p><ul class="fw-todo">${jobs.map(li).join('')}</ul>${moreJobs.length ? `<details class="fw-fold"><summary>Show more</summary><ul class="fw-todo">${moreJobs.map(li).join('')}</ul></details>` : ''}` : ''}
+  ${env.weakHTML ? `<details class="fw-fold fw-weak"${env.weakOpen?.(f) ? ' open' : ''}><summary>Weak spots in this field</summary>${env.weakHTML(f)}</details>` : ''}
+  <details class="fw-fold fw-land"><summary>The land</summary><p>Size: ${areaWords(f.area)}${f.estimated ? ' (estimated)' : ''}.</p><p>Soil: ${esc(soil)}</p><p>Slope: ${esc(land)}</p><div class="fw-btnrow">${btn('soil', f.soil ? 'Change the soil' : 'Choose the soil')}</div></details>
+  <div class="fw-btnrow">${env.history ? btn('history', FW.history) : ''}</div>
+  ${env.edit ? `<details class="fw-fold fw-editfold"><summary>${esc(FW.editField)}</summary><div class="fw-btnrow fw-edittools" role="group" aria-label="${esc(FW.editField)}">${[['corners', FW.corners], ['rename', FW.rename], ['delete', FW.remove]].map(([id, label]) => `<button type="button" class="btn lg${id === 'delete' ? ' danger' : ''}" data-edit="${id}">${esc(label)}</button>`).join('')}</div></details>` : ''}`;
 }
 export function renderDrawer(env) {
   const node = env.node, { farm, field } = env.get();
@@ -147,26 +148,16 @@ export function renderDrawer(env) {
   if (st.sheet === 'soil') return renderSoil(env);
   if (st.sheet === 'copy') return renderCopy(env);
   if (st.sheet === 'land') return renderLand(env);
-  const m = model(env), now = fieldNow(m);
-  node.innerHTML = `<div class="fw-panel-head"><div><h2 id="fwPanelTitle" tabindex="-1">${esc(field.name)}</h2><p class="fw-sub">${esc(summaryLine(m))}</p></div><button type="button" class="btn lg" id="fwClose" aria-label="Close field details">Close</button></div>
-  <p class="fw-now"><b>Now on ${esc(field.name)}</b><span>${esc(now.text)}</span>${now.action ? btn(now.action.id, now.action.label, 'btn lg primary') : ''}</p>
-  <div class="fw-tabs" role="tablist" aria-label="About this field">${TABS.map(([id, label]) => `<button type="button" role="tab" id="fwtab-${id}" aria-selected="${id === st.tab}" aria-controls="fwtabpanel" tabindex="${id === st.tab ? 0 : -1}" data-tab="${id}">${label}${id === 'remind' && m.reminders?.length ? `<span class="sr">, ${m.reminders.length} set</span> <small aria-hidden="true">${m.reminders.length}</small>` : ''}</button>`).join('')}</div>
-  <div role="tabpanel" id="fwtabpanel" aria-labelledby="fwtab-${st.tab}" tabindex="0">${tabBody(st.tab, m, env)}</div>
-  <p class="fw-note">A guide, not advice. You decide.</p>`;
+  const m = model(env);
+  node.innerHTML = `<div class="fw-panel-head"><div><h2 id="fwPanelTitle" tabindex="-1">${esc(field.name)}</h2><p class="fw-sub">${esc(`${field.estimated ? 'About ' : ''}${areaWords(field.area)}${field.estimated ? ' (estimated)' : ''}`)}</p></div><button type="button" class="btn lg" id="fwClose" aria-label="Close this field">Close</button></div>
+  <div id="fwonepage">${onePage(m, env)}</div>`;
   wireDrawer(env, m);
 }
 function wireDrawer(env, m) {
   const node = env.node;
-  const tabs = [...node.querySelectorAll('[role=tab]')];
-  tabs.forEach((t, i) => {
-    t.onclick = () => { st.tab = t.dataset.tab; renderDrawer(env); node.querySelector(`#fwtab-${st.tab}`)?.focus(); };
-    t.onkeydown = e => {
-      const to = e.key === 'ArrowRight' ? (i + 1) % tabs.length : e.key === 'ArrowLeft' ? (i + tabs.length - 1) % tabs.length : e.key === 'Home' ? 0 : e.key === 'End' ? tabs.length - 1 : -1;
-      if (to >= 0) { e.preventDefault(); st.tab = tabs[to].dataset.tab; renderDrawer(env); node.querySelector(`#fwtab-${st.tab}`)?.focus(); }
-    };
-  });
   node.querySelector('#fwClose').onclick = () => env.close();
   for (const b of node.querySelectorAll('[data-act]')) b.onclick = () => act(env, m, b.dataset.act);
+  for (const b of node.querySelectorAll('[data-edit]')) b.onclick = () => env.edit(b.dataset.edit);   // the field's own tools: the board runs them and brings the keyboard back here
 }
 function act(env, m, id) {
   const { farm, field } = env.get();
@@ -176,6 +167,16 @@ function act(env, m, id) {
   else if (id === 'copy') { st.sheet = 'copy'; st.copy = new Set(); renderDrawer(env); node(env).focus(); }
   else if (id === 'land') { st.sheet = 'land'; renderDrawer(env); node(env).focus(); }
   else if (id === 'forecast') { st.tab = 'weather'; renderDrawer(env); env.node.querySelector('#fwtab-weather')?.focus(); }
+  else if (id === 'history') env.history();
+  else if (id === 'settings') env.settings?.();
+  else if (id === 'weak') env.findWeak?.();
+  else if (id.startsWith('rem-done:')) { const { farm, field } = env.get(); env.reminders.done(id.slice(9)); renderDrawer(env); env.say('Done.'); }
+  else if (id.startsWith('rem-del:')) {   // deleted with the house's Undo: the reminder is put back by adding it again
+    const { farm, field } = env.get(), gone = (env.reminders.forField(farm.id, field.id) || []).find(r => r.id === id.slice(8)); if (!gone) return;
+    env.reminders.remove(gone.id); renderDrawer(env);
+    env.toast(`Reminder deleted: ${gone.title}`, () => { env.reminders.add({ title: gone.title, when: gone.when, kind: gone.kind || 'other', farmId: farm.id, fieldId: field.id }); renderDrawer(env); });
+  }
+  else if (id === 'rem-new') { const { farm, field } = env.get(); env.reminders.openDialog({ farmId: farm.id, fieldId: field.id, trigger: env.node.querySelector('[data-act=rem-new]'), onChange: () => renderDrawer(env) }); }
   else if (id === 'remind') { const s = nextSowing(field, m.today, env.cropName); if (s && env.reminders?.add) addReminder(env, { title: `Sow ${env.cropName(s.crop).toLowerCase()}`, when: s.date, kind: 'sow' }); else { st.tab = 'remind'; renderDrawer(env); } }
   else if (id.startsWith('suggest:')) { const s = m.suggestions.find(x => `suggest:${x.key}` === id); if (s) addReminder(env, { title: s.title, when: s.date, kind: s.kind }); }
   else if (id.startsWith('remind-alert:')) { const a = (m.forecast?.alerts || []).find(x => `remind-alert:${x.id}` === id); if (a?.remind) addReminder(env, a.remind); }
@@ -197,13 +198,13 @@ function renderPlant(env) {
   if (st.step === 0) {
     const names = choices.list.slice(0, 6);
     body = choices.ready
-      ? `<p>Best for this farm first.</p><div role="radiogroup" aria-label="Crop for year 1" class="fw-packets">${names.map(c => `<label class="fw-packet" data-tone="${c.tone}"><input type="radio" name="crop" value="${esc(c.id)}" ${d.crop === c.id ? 'checked' : ''}><b>${esc(env.cropName(c.id))}</b><span class="fw-chip">${esc(c.word || 'not read yet')}</span>${c.nearby ? '<small>Grown nearby</small>' : ''}${c.traits.map(t => `<small>${esc(t)}</small>`).join('')}</label>`).join('')}</div>`
-      : `<p class="fw-muted">The best crops for this farm: not read yet. You can pick from the full list.</p>`;
+      ? `<p>Best for this farm first.</p><div role="radiogroup" aria-label="Crop for year 1" class="fw-packets">${names.map(c => `<label class="fw-packet" data-tone="${c.tone}"><input type="radio" name="crop" value="${esc(c.id)}" ${d.crop === c.id ? 'checked' : ''}><b>${esc(env.cropName(c.id))}</b><span class="fw-chip">${esc(c.word || '')}</span>${c.nearby ? '<small>Grown nearby</small>' : ''}${c.traits.map(t => `<small>${esc(t)}</small>`).join('')}</label>`).join('')}</div>`
+      : `<p class="fw-muted">Pick a crop from the full list.</p>`;
     body += `<label for="fwCrop">${choices.ready ? 'More crops' : 'Crop for year 1'}</label><select id="fwCrop" class="fw-select"><option value="">Choose a crop</option>${C.pickerGroups().filter(g => g.group !== 'cover' && g.group !== 'fallow').map(g => `<optgroup label="${esc(cap(g.group))}">${g.ids.map(id => `<option value="${esc(id)}" ${d.crop === id ? 'selected' : ''}>${esc(env.cropName(id))}</option>`).join('')}</optgroup>`).join('')}</select>
       <details class="fw-fold"><summary>Stays for years: trees and bushes</summary><label for="fwTree">Tree or bush</label><select id="fwTree" class="fw-select"><option value="">Choose one</option>${C.gardenIds().map(id => `<option value="${esc(id)}">${esc(env.cropName(id))}</option>`).join('')}</select>${btn('tree', 'Make this a garden')}</details>`;
   } else if (st.step === 1) {
     const [mm, dd] = (d.sowing || '').split('-');
-    body = `<p>Sowing date${d.crop ? ` for ${esc(env.cropName(d.crop).toLowerCase())}` : ''}</p><div class="fw-date2"><label for="fwDay">Day</label><input id="fwDay" class="fw-input" inputmode="numeric" maxlength="2" value="${dd ? +dd : ''}"><label for="fwMonth">Month</label><select id="fwMonth" class="fw-select"><option value="">Month</option>${['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'].map((n, i) => `<option value="${i + 1}" ${+mm === i + 1 ? 'selected' : ''}>${n}</option>`).join('')}</select></div><p class="fw-muted">The usual sowing date here: not read yet. Pick a date only if it suits your farm. The same day every year.</p>`;
+    body = `<p>Sowing date${d.crop ? ` for ${esc(env.cropName(d.crop).toLowerCase())}` : ''}</p><div class="fw-date2"><label for="fwDay">Day</label><input id="fwDay" class="fw-input" inputmode="numeric" maxlength="2" value="${dd ? +dd : ''}"><label for="fwMonth">Month</label><select id="fwMonth" class="fw-select"><option value="">Month</option>${['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'].map((n, i) => `<option value="${i + 1}" ${+mm === i + 1 ? 'selected' : ''}>${n}</option>`).join('')}</select></div><p class="fw-muted">Pick a sowing date that suits your farm. It repeats every year.</p>`;
   } else if (st.step === 2) {
     body = `<div role="radiogroup" aria-label="Water" class="fw-radios">${Object.entries(S.WATER_WORDS).map(([k, w]) => `<label><input type="radio" name="water" value="${k}" ${d.water === k ? 'checked' : ''}> ${w}</label>`).join('')}</div><p class="fw-muted">Water is for the whole rotation of this field. It changes the water check.</p>`;
   } else {
@@ -292,5 +293,7 @@ function renderCopy(env) {
   line();
 }
 // A new field arrives with its Plant sheet open.
+// The Copy sheet, started from Farm tools: tick the fields that should get this field's plan.
+export function startCopy(env) { st.sheet = 'copy'; st.copy = new Set(); renderDrawer(env); env.node.focus?.(); }
 export function startPlant(env) { const { farm } = env.get(); st.sheet = 'plant'; st.step = 0; st.draft = { crop: '', sowing: '', water: farm.practice.irrigation, cover: '', tree: '' }; renderDrawer(env); node(env)?.focus(); }
 export const resetDrawer = () => { st.sheet = ''; st.draft = null; st.step = 0; };

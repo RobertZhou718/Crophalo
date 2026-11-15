@@ -35,7 +35,8 @@ same('a figure already in its currency is written with no cents', [S.fmt(2300, '
   same('a price in $/kg is turned into a tonne price', S.priceOf(fake({ unit: '$/kg', latest: { month: '2026-10', value: 2.5 } }), 'x').usdPerTonne, 2500);
   check('a unit this figure cannot use is refused, never guessed', !S.priceOf(fake({ unit: '$/bushel' }), 'x').ok && !S.priceOf(fake({ unit: undefined }), 'x').ok);
   check('a price of 0, a negative one or a missing one is refused', [0, -3, NaN, null, 'a'].every(v => !S.priceOf(fake({ latest: { month: '2026-10', value: v } }), 'x').ok));
-  check('a failed or missing lookup says so, in words', S.priceOf({ ok: false, reason: 'The World Bank took too long to answer; try again in a minute' }, 'corn').reason.startsWith('World prices could not be read: The World Bank took too long') && S.priceOf(undefined, 'corn').reason === 'World prices were not read yet.');
+  // Changed on purpose: the one-page report never says "not read yet" ("no 'not read yet' words on the page"), so a missing lookup now says it did not answer
+  check('a failed or missing lookup says so, in words', S.priceOf({ ok: false, reason: 'The World Bank took too long to answer; try again in a minute' }, 'corn').reason.startsWith('World prices could not be read: The World Bank took too long') && S.priceOf(undefined, 'corn').reason === 'World prices did not answer.');
   check('inherited names are not crops', ['__proto__', 'toString', 'constructor'].every(id => !S.priceOf(PRICES, id).ok));
 }
 // ---- the national yield

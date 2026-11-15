@@ -1,18 +1,25 @@
 // Crophalo's setup wizard: four short questions about one field, one screen each (your field, your crops, water and soil, what matters most),
 // with a numbered step bar, a Listen line and a sticky bar whose button is only on when the step has what it needs.
-// Nothing here is pure: it draws into #view-setup and keeps the farmer's answers in one state object (js/state.js).
-// Checked by scripts/test_wizard.mjs (the pure rules) and scripts/e2e_flow.mjs (the steps, the keys, 320 px, the largest text).
+// Nothing here is pure: it draws into #view-setup (the map beside it is made once and kept) and keeps the farmer's answers in one state object (js/state.js).
+// Checked by scripts/test_wizard.mjs (the pure rules), scripts/e2e_flow.mjs (the steps, the keys, 320 px, the largest text) and scripts/e2e_maptools.mjs (a moved pin keeps the step and the answers).
+import { hooks } from './hooks.js';
 import { esc } from './words.js';
-import { hasRotation, hasSoil, isGarden, stepsFor, needFor, canGo, rotationSlots, readyAnswers } from './steps.js';
-import { STEPS, WATER, FEEL, COLOUR, MATTERS, TILLAGE, HABITS, PARCEL_FOR, PARCEL_ELSE, WORDS } from './words.js';
-import { newState, checkSerialized, PRIORITY_SETS } from './state.js';
-import { parseCoords, coordText } from './places.js';
+import { SOIL_MAP_WORDS, countryCode, hasRotation, hasSoil, isGarden, stepsFor, needFor, canGo, rotationSlots, readyAnswers } from './steps.js';
+import { STEPS, WATER, FEEL, COLOUR, MATTERS, TILLAGE, HABITS, WORDS } from './words.js';
+import { newState, checkSerialized, cleanArea, PRIORITY_SETS } from './state.js';
+import { coordText } from './places.js';
 import { PRESETS, GARDENS, presetIds, gardenIds, pickerGroups, cropName, cropOf, gardenOf, isPreset } from './crops.js';
 import { cropRow, waterPic, soilPic, cropPic } from './pics.js';
-import { enhancePickers } from './croppicker.js';
+import { foldHTML as soilFoldHTML, bindSoilTest } from './soiltestui.js';
+import { withSoilTest } from './soiltest.js';
+import { enhancePickers, setOffer, pickList } from './croppicker.js';
+import { stepPlan, rotationLine, thenWords, repeatWords, previewWords, moreGroups, inOntario, WORDS as CROP_WORDS } from './cropstep.js';
 import { initListen, stopSpeaking } from './listen.js';
 import { toast } from './toast.js';
 import { motionOff } from './motion.js';
+import { SAY as MAPSAY } from './mapwords.js';
+import { loadName, SETTLE_MS, FINDING, PLACE_UNKNOWN } from './placename.js';
+import { fieldYearsModel, fieldYearsHTML, loadFieldYears, rotationFor, countryOk } from './fieldyears.js';
 
 const $ = (sel, root = document) => root.querySelector(sel), $$ = (sel, root = document) => [...root.querySelectorAll(sel)];
 
@@ -20,7 +27,7 @@ export { hasRotation, hasSoil, isGarden, stepsFor, needFor, canGo, rotationSlots
 export const SESSION_KEY = 'crophalo.session';
 export { readyAnswers };
 
-let state = newState(), at = 0, where = { report() {}, home() {} }, spot = null;
+let state = newState(), at = 0, where = { report() {}, home() {} }, spot = null, outline = null;   // outline: { ring, used } as the map last told it, for the line under Next
 const steps = () => stepsFor(state);
 
 // ---- saved for this tab only, so a reload mid-setup comes back to the same step
@@ -39,10 +46,30 @@ const radio = (name, value, checked, inner, cls = '') => `<label class="choice $
 const tile = (name, item, checked, pic = '') => radio(name, item.value, checked, `${pic}<b>${esc(item.title)}</b>${item.sub ? `<small>${esc(item.sub)}</small>` : ''}`, 'tile');
 const fold = (id, title, body) => `<details class="fold-card" id="${id}"><summary><span class="t">${title}</span></summary><div class="fold-b">${body}</div></details>`;
 
+// The top line is the place's name; the coordinates are the small line under it, never the same thing twice.
+let naming = false, nameTimer = null;
 function head() {
-  const place = state.loc ? [state.name, state.loc.label].filter(Boolean).join(' · ') || coordText(state.loc.lat, state.loc.lon) : WORDS.placeLoading;
-  return `<div class="panel-head"><h2 class="panel-name">${esc(state.name || (state.loc ? coordText(state.loc.lat, state.loc.lon) : WORDS.placeLoading))}</h2>
-    <p class="panel-place"><svg class="ic" aria-hidden="true"><use href="#i-pin"/></svg><span>${esc(place)}</span>${spot?.demo ? `<span class="chip">${WORDS.demoChip}</span>` : ''}</p></div>`;
+  const loc = state.loc, label = loc?.label ?? '';
+  const title = !loc ? WORDS.placeLoading : state.name || label || (naming ? FINDING : PLACE_UNKNOWN);
+  const small = loc ? [state.name && label ? label : '', coordText(loc.lat, loc.lon)].filter(Boolean).join(' · ') : WORDS.placeLoading;
+  return `<div class="panel-head"><h2 class="panel-name">${esc(title)}</h2>
+    <p class="panel-place"><svg class="ic" aria-hidden="true"><use href="#i-pin"/></svg><span>${esc(small)}</span>${spot?.demo ? `<span class="chip">${WORDS.demoChip}</span>` : ''}</p></div>`;
+}
+// Asks for the place's name once the position has rested (or at once with now = true: the farmer pressed Next). A place that already has a name is not asked about.
+function askName(now = false) {
+  clearTimeout(nameTimer); nameTimer = null;
+  if (!state.loc || state.name || state.loc.label || spot?.demo) { naming = false; return; }
+  naming = true;
+  const lat = state.loc.lat, lon = state.loc.lon;
+  const run = async () => {
+    nameTimer = null;
+    const got = await loadName(lat, lon);
+    if (!state.loc || state.loc.lat !== lat || state.loc.lon !== lon) return;   // the farmer chose another place meanwhile
+    naming = false;
+    if (got.ok && !state.loc.label) { state.loc = { ...state.loc, label: got.name }; keep(); }
+    const h = $('#setupRoot .panel-head'); if (h) h.outerHTML = head();
+  };
+  if (now) run(); else nameTimer = setTimeout(run, SETTLE_MS);
 }
 function bar() {
   const list = steps();
@@ -52,44 +79,105 @@ function bar() {
       <span class="wnum" aria-hidden="true">${i < at ? '<svg class="ic"><use href="#i-tick"/></svg>' : i + 1}</span><span class="wlab"><span class="sr">${esc(`Step ${i + 1} of 4: `)}</span>${esc(step.bar)}</span></button></li>`;
   }).join('')}</ol>`;
 }
-function parcel() {
-  const links = PARCEL_FOR[state.loc?.cc] ?? [PARCEL_ELSE];
-  return `<p>${esc(WORDS.parcelLead)}</p><ul class="plinks">${links.map(([name, url]) => `<li><a href="${esc(url)}" target="_blank" rel="noopener noreferrer">${esc(name)}</a></li>`).join('')}</ul>`;
+function stepField() {
+  const demo = spot?.demo ? `<div class="demo-ready"><p>${esc(WORDS.demoAnswers)}</p><button type="button" class="btn primary" id="demoSee">${esc(WORDS.last)}</button></div>` : '';
+  return `${demo}<div id="mapSlot"></div>`;
 }
-function stepField() {   // a demo region walks these same four steps with its answers already chosen: no shortcut, the chip by the place is its only mark
-  return `${fold('foldCoords', esc(WORDS.fold), `<form class="coords" id="coordForm"><label class="field"><span>${WORDS.coordLabel}</span><input type="text" id="coordInput" inputmode="decimal" autocomplete="off" autocapitalize="off" enterkeyhint="go" spellcheck="false" value="${state.loc ? esc(coordText(state.loc.lat, state.loc.lon)) : ''}"></label><button type="submit" class="btn">${WORDS.go}</button></form>${parcel()}`)}
-    <p class="cap" id="mapSlot">${WORDS.mapMissing}</p>`;
-}
-function rotationCards() {
-  const cards = presetIds().filter(id => id !== 'custom').map(id => radio('rot', id, state.rotation.preset === id, `<span class="rc-row">${cropRow(PRESETS[id].slots)}</span><b class="sr">${esc(PRESETS[id].label)}</b>`, 'rcard')).join('');
-  return `<div class="rcards" role="radiogroup" aria-label="Crops you grow now">${cards}${radio('rot', 'custom', state.rotation.preset === 'custom', `<b>${WORDS.buildOwn}</b><small>${WORDS.buildSub}</small>`, 'rcard own')}</div>`;
+// ---- step 2: what do you grow? (the rules and the words are in js/cropstep.js)
+let cropMap = { key: '', status: 'idle', answer: null }, moreOpen = false, fieldYears = { key: '', status: 'idle', answer: null, used: false };
+const mapKey = () => (state.loc ? `${state.loc.lat},${state.loc.lon}` : '');
+// a region whose list of crops comes from data (the United States: the USDA crop map's crops for the state); none is given yet, so only Ontario's list applies
+const listedOffer = () => (globalThis.__cropOffer?.[state.loc?.cc] ?? null);
+const demoPreset = () => (spot?.demo && isPreset(spot.rotation) ? spot.rotation : null);
+const plan = () => stepPlan({ crop: cropMap.key === mapKey() ? cropMap : { status: 'idle' }, demo: demoPreset(), ontario: !!state.loc && inOntario(state.loc.lat, state.loc.lon), listed: listedOffer() });
+const CHECK = '<svg class="rc-check" viewBox="0 0 20 20" aria-hidden="true" focusable="false"><path d="M4 10.5l4 4 8-9"/></svg>';
+const rotCard = (id, { big = false, tag = '', source = '', note = '' } = {}) => {
+  const p = PRESETS[id], line = rotationLine(p.slots), [first, ...more] = line.split(', ');
+  return radio('rot', id, state.rotation.preset === id, `${CHECK}${tag ? `<span class="rc-tag">${esc(tag)}</span>` : ''}<span class="rc-row">${cropRow(p.slots)}</span><b>${esc(thenWords(p.slots))}</b><small>${esc(repeatWords(p.slots.length))}</small>${source ? `<small class="rc-source">${esc(source)}</small>` : ''}${note ? `<small class="rc-source">${esc(note)}</small>` : ''}`, `rcard${big ? ' rbig' : ''}`);
+};
+function placeholderCard() {
+  return `<div class="rcard rbig rc-wait" aria-hidden="true"><span class="rc-tag">${esc(CROP_WORDS.suggestTitle)}</span><b>${esc(CROP_WORDS.loading)}</b>${CROP_WORDS.loadingSub ? `<small>${esc(CROP_WORDS.loadingSub)}</small>` : ''}<span class="rc-bar"></span></div>`;
 }
 function yearRows() {
   const own = state.rotation.custom, rows = own.length ? own : [''];
-  const select = (value, i) => `<select class="year-pick" data-picker data-year="${i}" aria-label="${esc(WORDS.yearN(i + 1))}"><option value="">${WORDS.chooseCrop}</option>${pickerGroups().map(g => `<optgroup label="${esc(g.group)}">${g.ids.map(id => `<option value="${id}"${id === value ? ' selected' : ''}>${esc(cropName(id))}</option>`).join('')}</optgroup>`).join('')}</select>`;
-  return `<div class="years">${rows.map((v, i) => `<div class="year"><span class="year-n">${WORDS.yearN(i + 1)}</span>${select(v, i)}<button type="button" class="iconbtn" data-rm="${i}" aria-label="${esc(WORDS.removeYear(i + 1))}" ${rows.length < 2 ? 'disabled' : ''}>−</button></div>`).join('')}
-    ${rows.length < 4 ? `<button type="button" class="btn" id="addYear">${WORDS.addYear}</button>` : ''}<p class="cap">${WORDS.yearsNote}</p></div>`;
+  const select = (value, i) => `<select class="year-pick" data-picker data-year="${i}" aria-label="${esc(WORDS.yearN(i + 1))}"><option value="">${WORDS.chooseCrop}</option>${pickerGroups().map(g => ({ group: g.group, ids: g.ids.filter(id => pickList('', 'all').includes(id)) })).filter(g => g.ids.length).map(g => `<optgroup label="${esc(g.group)}">${g.ids.map(id => `<option value="${id}"${id === value ? ' selected' : ''}>${esc(cropName(id))}</option>`).join('')}</optgroup>`).join('')}</select>`;
+  return `<div class="years"><ol class="yearlist">${rows.map((v, i) => `<li class="year"><span class="year-n">${WORDS.yearN(i + 1)}</span>${select(v, i)}<button type="button" class="iconbtn" data-rm="${i}" aria-label="${esc(WORDS.removeYear(i + 1))}" ${rows.length < 2 ? 'disabled' : ''}>−</button></li>`).join('')}</ol>
+    ${rows.length < 4 ? `<button type="button" class="btn" id="addYear">${CROP_WORDS.addYear}</button>` : ''}<p class="rc-preview" id="rotPreview" aria-live="polite">${esc(previewWords(own))}</p><p class="cap">${WORDS.yearsNote}</p></div>`;
+}
+// "What this field grew": the crop map by year at the field's own points, for a field in the United States or Canada, asked once the crop map has named the country (never for a demo field)
+function fieldYearsCard() {
+  if (!state.loc || fieldYears.key !== mapKey()) return '';
+  return fieldYearsHTML(fieldYearsModel({ state: fieldYears.status, answer: fieldYears.answer, country: state.loc.cc, used: fieldYears.used, filled: filledRotation() }));
+}
+const filledRotation = () => (hasRotation(state) && !state.rotation.garden ? { preset: state.rotation.preset, custom: state.rotation.custom } : null);
+async function readFieldYears() {
+  if (!state.loc || !countryOk(state.loc.cc)) return;
+  const key = mapKey(); if (fieldYears.key === key) return;
+  fieldYears = { key, status: 'reading', answer: null, used: false }; if (steps()[at]?.id === 'crops') render();
+  const demoRing = Array.isArray(spot?.outline) && spot.outline.length >= 3 ? spot.outline.map(([lo, la]) => [la, lo]) : null;   // a demo field's outline is lon,lat
+  const ring = Array.isArray(state.area?.pts) && state.area.pts.length >= 3 ? state.area.pts : demoRing;
+  const answer = await loadFieldYears({ lat: state.loc.lat, lon: state.loc.lon, country: state.loc.cc, ring });
+  if (key !== mapKey()) return;
+  fieldYears = { key, status: answer?.ok === true ? 'ok' : 'down', answer, used: false };
+  if (steps()[at]?.id === 'crops') render();
+}
+function useFieldYears() {
+  const model = fieldYearsModel({ state: fieldYears.status, answer: fieldYears.answer, country: state.loc?.cc }), r = model?.rotation;
+  if (!r) return;
+  state.rotation = { preset: r.preset, custom: r.custom, garden: null, second: {} }; state.touched.rotation = true; fieldYears.used = true; keep(); render({ focus: false });
+  say(fieldYearsModel({ state: 'ok', answer: fieldYears.answer, country: state.loc.cc, used: true })?.lines[0] ?? '');
+  $('#fieldYears')?.scrollIntoView?.({ block: 'nearest' });
 }
 function stepCrops() {
-  const slots = rotationSlots(state), g = gardenOf(state.rotation.garden);
-  const name = g ? g.name : slots.length ? slots.map(id => cropName(id, true)).join(' → ') : WORDS.rotName;
-  const note = g ? WORDS.garden : slots.length ? (slots.length === 1 ? WORDS.rotSame : WORDS.rotCycle(slots.length)) : '';
-  const trees = gardenIds().slice(0, 6).map(id => radio('garden', id, state.rotation.garden === id, `${cropPic(id)}<b>${esc(GARDENS[id].name)}</b>`, 'chipc')).join('');
-  return `<div class="wheel"><p class="wheel-name" id="rotName">${esc(name)}</p><p class="cap" id="rotNote">${esc(note)}</p></div>
-    <p class="cap">${WORDS.noSuggest}</p>${rotationCards()}${state.rotation.preset === 'custom' ? yearRows() : ''}
-    <h2 class="sub">${WORDS.trees}</h2><div class="chipsc" role="radiogroup" aria-label="${esc(WORDS.trees)}">${trees}</div><p class="cap">${WORDS.mine}</p>`;
+  const p = plan(), shown = [p.suggested?.id, ...p.cards].filter(Boolean), picked = state.rotation.preset, garden = state.rotation.garden;
+  setOffer(p.restrict ? p.restrict.crops : null);
+  const top = p.suggested ? rotCard(p.suggested.id, { big: true, tag: p.suggested.title, source: p.suggested.source, note: p.suggested.note })
+    : p.phase === 'loading' ? placeholderCard() : `<p class="rc-msg" role="note">${esc(p.message)}</p>${p.more ? `<details class="fold-card" id="foldGardenWhy"><summary><span class="t">Show more</span></summary><div class="fold-b"><p class="cap">${esc(p.more)}</p></div></details>` : ''}`;
+  const groups = moreGroups(shown, p.restrict), inMore = (picked && groups.some(g => g.presets?.includes(picked))) || !!garden, isOpen = moreOpen || inMore;
+  const more = groups.map(g => g.presets ? (g.presets.length ? `<h3 class="sub">${esc(g.title)}</h3><div class="rcards compact" role="radiogroup" aria-label="${esc(g.title)}">${g.presets.map(id => rotCard(id)).join('')}</div>` : '')
+    : g.gardens ? `<h3 class="sub">${esc(g.title)}</h3><div class="chipsc" role="radiogroup" aria-label="${esc(g.title)}">${g.gardens.map(id => radio('garden', id, garden === id, `${cropPic(id)}<b>${esc(GARDENS[id].name)}</b>`, 'chipc')).join('')}</div>` : `<h3 class="sub">${esc(g.title)}</h3><p class="cap">${esc(g.note)}</p>`).join('');
+  const own = picked === 'custom';
+  return `${CROP_WORDS.helper ? `<p class="lead rc-helper">${esc(CROP_WORDS.helper)}</p>` : ''}
+    ${fieldYearsCard()}<div class="rc-suggest">${top}</div>
+    <h2 class="sub">${esc(p.suggested || p.phase === 'loading' ? CROP_WORDS.chooseHead : CROP_WORDS.chooseHeadNone)}</h2>
+    <div class="rcards" role="radiogroup" aria-label="Ready rotations">${p.cards.map(id => rotCard(id, { big: true })).join('')}</div>
+    ${p.restrict ? `<p class="cap">${esc(p.restrict.note)}</p>` : ''}
+    <details class="fold-card" id="foldMoreRot"${isOpen ? ' open' : ''}><summary><span class="t">${esc(CROP_WORDS.more)}</span></summary><div class="fold-b">${more}</div></details>
+    <div class="rcards own">${radio('rot', 'custom', own, `${CHECK}<b>${esc(CROP_WORDS.buildOwn)}</b><small>${esc(CROP_WORDS.buildSub)}</small>`, 'rcard rbig own')}</div>${own ? yearRows() : ''}
+    <p class="cap">${WORDS.mine}</p>`;
+}
+// what the farmer chose, in words, for the polite line
+const chosenWords = () => { const g = gardenOf(state.rotation.garden); if (g) return CROP_WORDS.treePicked(g.name); const sl = rotationSlots(state); if (!sl.length) return ''; const line = rotationLine(sl); return state.rotation.preset === plan().suggested?.id && plan().phase === 'suggest' ? CROP_WORDS.suggestedPicked(line) : CROP_WORDS.rotationPicked(line); };
+let liveEl = null;
+function say(text) { if (!liveEl) return; liveEl.textContent = ''; setTimeout(() => { if (liveEl) liveEl.textContent = text; }, 40); }
+// ask the crop map once for this place; when it answers, the step is redrawn in place and the suggestion is chosen for a farmer who has not chosen yet
+async function readCropMap() {
+  if (state.loc && spot?.demo) { import('./report-load.js').then(m => m.getCropMap(state.loc)).catch(() => {}); readFieldYears(); return; }   // a demo field's crop map is asked now too (the same lookup the report shares), so the Overview does not wait for it
+  if (!state.loc) return;
+  const key = mapKey(); if (cropMap.key === key) return;   // once for each place: a failure is not asked again by redrawing
+  cropMap = { key, status: 'loading', answer: null }; if (steps()[at]?.id === 'crops') render();
+  let answer = null;
+  try { answer = await (await import('./report-load.js')).getCropMap(state.loc); } catch { answer = null; }
+  if (key !== mapKey()) return;   // the farmer moved on to another place meanwhile
+  cropMap = { key, status: answer?.ok === true ? 'read' : 'failed', answer };
+  if (answer?.ok === true && typeof answer.country === 'string' && answer.country && !state.loc.cc) { state.loc = { ...state.loc, cc: answer.country }; keep(); }
+  readFieldYears();   // the country the crop map found: the units default follows it (inches, °F and acres only for the United States), unless the farmer chose
+  const p = plan();
+  if (p.phase === 'garden' && !state.touched.rotation && !hasRotation(state)) { const id = (p.garden ?? []).find(g => gardenOf(g)); if (id) { state.rotation = { ...state.rotation, preset: null, garden: id }; keep(); } }   // the standing crop at the pin is chosen for a farmer who has not chosen yet
+  if (p.phase === 'suggest' && !state.touched.rotation && !hasRotation(state)) { state.rotation = { ...state.rotation, preset: p.suggested.id, garden: null }; keep(); }
+  if (steps()[at]?.id === 'crops') { const a = document.activeElement?.name; render(); say(p.phase === 'suggest' ? `${CROP_WORDS.suggestTitle}: ${p.suggested.line}. ${state.rotation.preset === p.suggested.id ? 'Chosen.' : ''}` : p.message); }
 }
 function soilStatus() {
   if (state.soil.mode === 'assumed') return `<p class="cap">${WORDS.soilAssumed}</p>`;
-  if (state.soil.mode === 'manual') return `<p class="cap">${WORDS.soilMine}</p>`;
-  return `<p class="cap">${WORDS.soilMapOff} <button type="button" class="link" id="assumeSoil">${WORDS.soilAssume}</button></p>`;
+  if (state.soil.mode === 'manual') return '';
+  if (state.soil.mode === 'map') return `<p class="cap" id="soilFromMap">Soil from the soil map: ${esc(SOIL_MAP_WORDS[state.soil.texture] ?? 'not named')}. It is not a test of this field. Tap your soil above if yours is different.</p>`;
+  return '';
 }
 function stepSoil() {
-  const soilMark = !state.soil.mode ? `<span class="chip warn">${WORDS.tapOne}</span>` : '';
-  return `<h2 class="sub">${WORDS.waterQ}</h2><div class="tiles3" role="radiogroup" aria-label="${esc(WORDS.waterQ)}">${WATER.map(w => tile('water', w, state.farm.irrigation === w.value, waterPic(w.value, { size: 40 }))).join('')}</div>
-    <div class="soilcard"><h2 class="sub">${WORDS.soilQ} ${soilMark}</h2><p class="q">${WORDS.feelQ}</p><div class="tiles4" role="radiogroup" aria-label="${esc(WORDS.feelQ)}">${FEEL.map(f => tile('feel', f, state.soil.mode === 'manual' && state.soil.texture === f.value)).join('')}</div>
+  return `<h2 class="sub">${WORDS.waterQ}</h2><div class="tiles3" role="radiogroup" aria-label="${esc(WORDS.waterQ)}">${WATER.map(w => tile('water', w, state.farm.irrigation === w.value, waterPic(w.value, { size: 40 }))).join('')}</div>${spot?.demo && !state.farm.irrigation ? '<p class="cap" id="waterUnknown">Not known: assumed rain-fed. Tap one above if you know.</p>' : ''}
+    <div class="soilcard"><h2 class="sub">${WORDS.soilQ}</h2><p class="q">${WORDS.feelQ}</p><div class="tiles4" role="radiogroup" aria-label="${esc(WORDS.feelQ)}">${FEEL.map(f => tile('feel', f, (state.soil.mode === 'manual' || state.soil.mode === 'map') && state.soil.texture === f.value)).join('')}</div><p><button type="button" class="btn" id="assumeSoil">${WORDS.soilAssume}</button></p>
     <p class="q">${WORDS.colourQ}</p><div class="tiles3" role="radiogroup" aria-label="${esc(WORDS.colourQ)}">${COLOUR.map(c => tile('colour', c, state.soil.mode === 'manual' && state.soil.om === c.value, soilPic(c.value, { size: 36 }))).join('')}</div>
-    <details class="disc"><summary>${WORDS.colourAbout}</summary><p class="cap">${WORDS.colourWhy}</p></details>${soilStatus()}</div>`;
+    <details class="disc"><summary>${WORDS.colourAbout}</summary><p class="cap">${WORDS.colourWhy}</p></details>${soilStatus()}</div>${soilFoldHTML(state.soilTest)}`;
 }
 function stepMatters() {
   const taken = [state.farm.tillage === 'notill' ? 'no-till' : state.farm.tillage === 'conventional' ? 'conventional tillage' : 'min-till', state.farm.coverOK ? 'you can sow cover crops' : 'no cover crops', state.farm.labor ? 'short on workers or machines' : 'enough workers and machines'].join(', ');
@@ -103,14 +191,22 @@ const BODY = { field: stepField, crops: stepCrops, soil: stepSoil, matters: step
 
 function cta() {
   const step = steps()[at], last = at === steps().length - 1, need = needFor(step.id, state), off = !!need;
-  const note = need || (last ? WORDS.ready : '');
+  const note = need;
   return `<div class="cta"><button type="button" class="btn lg" id="wBack"><svg class="ic" aria-hidden="true"><use href="#i-back"/></svg>${WORDS.back}</button>
-    <button type="button" class="btn primary lg" id="wNext"${off ? ' aria-disabled="true" disabled' : ''}>${last ? WORDS.last : WORDS.next}</button>${note ? `<p class="cap cta-note" id="ctaNote" role="status">${esc(note)}</p>` : '<p class="cap cta-note" id="ctaNote" role="status"></p>'}</div>`;
+    <button type="button" class="btn primary lg" id="wNext"${off ? ' aria-disabled="true" disabled' : ''}>${last ? WORDS.last : WORDS.next}</button><p class="cap cta-note${note ? ' sr' : ''}" id="ctaNote" role="status">${esc(note)}</p>${outlineLine()}</div>`;
 }
+// An outline on the map that the farmer has not used yet is said under Next: nothing is used without the farmer saying so.
+const outlineLine = () => `<p class="cap cta-note" id="ctaOutline"${outline?.ring && !outline.used ? '' : ' hidden'}>${esc(MAPSAY.next)}</p>`;
 export function render({ focus = false } = {}) {
   const step = steps()[at], root = $('#setupRoot');
-  root.innerHTML = `<aside class="panel" id="setupPanel" aria-label="Setup">${head()}${bar()}<p class="listen-row"><button type="button" class="listen" id="wListen" hidden><svg class="ic" aria-hidden="true"><use href="#i-speaker"/></svg><span class="t">Listen to this step</span></button></p>
-    <h1 class="${step.id === 'field' ? 'sr' : 'wh'}" id="wHeading">${esc(step.heading)}</h1><div class="wbody">${BODY[step.id]()}</div>${cta()}</aside><div class="mapcol" id="setupMap" role="group" aria-label="Map"></div>`;
+  const h1 = `<h1 class="${step.id === 'field' ? 'sr' : 'wh'}" id="wHeading">${esc(step.heading)}</h1>`;   // the one h1 of the setup: first in the panel on the field step (its place line is an h2 under it), after the steps bar on the others
+  const panel = `<aside class="panel" id="setupPanel" aria-label="Setup">${step.id === 'field' ? h1 : ''}${head()}${bar()}<p class="listen-row"><button type="button" class="listen" id="wListen" hidden><svg class="ic" aria-hidden="true"><use href="#i-speaker"/></svg><span class="t">Listen to this step</span></button></p>
+    ${step.id === 'field' ? '' : h1}<div class="wbody">${BODY[step.id]()}</div>${cta()}</aside>`;
+  // only the panel is drawn again: the map beside it is made once and kept, so a new answer or step never rebuilds it (its pin, outline and view stay)
+  const map = $('#setupMap', root), old = $('#setupPanel', root);
+  if (map && old) old.outerHTML = panel;
+  else if (map) map.insertAdjacentHTML('beforebegin', panel);
+  else root.innerHTML = `${panel}<div class="mapcol" id="setupMap" role="group" aria-label="Map"></div>`;
   root.dataset.step = step.id;   // the stylesheet shrinks the map on a phone once the field is chosen
   enhancePickers($('#setupRoot'));
   initListen($('#wListen'), step.listen);
@@ -126,11 +222,12 @@ function refresh(keepFocus) {   // redraw the step, then put the keyboard back o
 }
 
 // ---- moving between steps
-function go(i, focus = true) { stopSpeaking(); at = Math.max(0, Math.min(steps().length - 1, i)); render({ focus }); }
+function go(i, focus = true) { stopSpeaking(); const from = at; at = Math.max(0, Math.min(steps().length - 1, i)); if (from !== at) hooks.step(() => render({ focus }), { from, to: at }); else render({ focus }); }   // a move between steps goes through the hook (js/macro-setup.js); with none loaded it just draws
 function next() {
   const step = steps()[at];
   if (!canGo(step.id, state)) { toast(needFor(step.id, state)); return; }
-  if (at < steps().length - 1) go(at + 1); else where.report(structuredClone(state));
+  if (naming) askName(true);   // the field is confirmed: its name is asked for now
+  if (at < steps().length - 1) go(at + 1); else where.report(structuredClone(state), { demo: !!spot?.demo });
 }
 
 // ---- the farmer's answers
@@ -144,9 +241,19 @@ function choose(target) {
   else if (name === 'matters') { state.prioPreset = value; state.prio = [...PRIORITY_SETS[value]]; }
   if (name === 'feel' || name === 'colour') { state.soil.mode = 'manual'; }
   refresh(true);
+  if (name === 'rot' || name === 'garden') say(chosenWords());
+}
+// The farmer's own soil test (the fold in step 3): what is typed replaces the soil for those properties; removing it brings back what was chosen before. The bar is redrawn so Next follows, and the boxes are left alone while the farmer types.
+let soilBefore = null;
+function onSoilTest(test) {
+  if (test && !state.soilTest) soilBefore = { ...state.soil };
+  state.soilTest = test; state.soil = test ? withSoilTest(soilBefore ?? state.soil, test).soil : (soilBefore ?? state.soil); if (!test) soilBefore = null;
+  keep(); const bar = $('.cta'); if (bar) bar.outerHTML = cta();
 }
 function bind() {
   const root = $('#setupRoot');
+  bindSoilTest(root, onSoilTest);
+  root.addEventListener('toggle', event => { if (event.target.id === 'foldMoreRot') moreOpen = event.target.open; }, true);
   root.addEventListener('change', event => {
     const t = event.target;
     if (t.matches('input[type=radio]')) choose(t);
@@ -158,18 +265,24 @@ function bind() {
     if (!t) return;
     if (t.dataset.go) return go(+t.dataset.go);
     if (t.id === 'wNext') return next();
+    if (t.id === 'useFieldYears') return useFieldYears();
+    if (t.id === 'demoSee') return where.report(structuredClone(state), { demo: true });
     if (t.id === 'wBack') return at === 0 ? where.home() : go(at - 1);
     if (t.id === 'assumeSoil') { state.soil = { ...state.soil, mode: 'assumed' }; return refresh(false); }
     if (t.id === 'addYear') { state.rotation.custom = [...state.rotation.custom, ...(state.rotation.custom.length ? [] : ['']), 'wheat'].slice(0, 4); return refresh(false); }
     if (t.dataset.rm !== undefined) { state.rotation.custom = state.rotation.custom.filter((_, i) => i !== +t.dataset.rm); return refresh(false); }
     if (t.dataset.till) { state.farm.tillage = t.dataset.till; state.touched.farm = true; return refresh(true); }
   });
-  root.addEventListener('submit', event => {
-    if (event.target.id !== 'coordForm') return;
-    event.preventDefault();
-    const at4 = parseCoords($('#coordInput').value);
-    if (!at4 || at4.reason) return void toast(at4?.reason ?? WORDS.badCoords);
-    setPlace({ lat: at4.lat, lon: at4.lon, name: '', place: '' });
+  // the map tells the outline: kept in the state when it is used for the report, and said under Next while it is not
+  document.addEventListener('crophalo:area', event => {
+    const d = event.detail;
+    state.area = d && state.loc ? cleanArea({ pts: d.pts, ha: d.ha }, state.loc) : null;
+    keep();
+  });
+  document.addEventListener('crophalo:outline', event => {
+    outline = event.detail?.ring ? { ring: event.detail.ring, used: !!event.detail.used } : null;
+    const line = $('#ctaOutline');
+    if (line) line.hidden = !(outline?.ring && !outline.used);
   });
 }
 
@@ -180,18 +293,41 @@ export function setPlace(chosen) {
   const fresh = newState();
   if (chosen) {
     const lat = Math.round(chosen.lat * 1e4) / 1e4, lon = Math.round(chosen.lon * 1e4) / 1e4;
-    fresh.loc = { lat, lon, label: chosen.place || chosen.country || '', cc: '' };
+    fresh.loc = { lat, lon, label: chosen.place || chosen.country || '', cc: countryCode(chosen.country ?? chosen.place) };
     fresh.name = chosen.name || '';
     if (chosen.demo) Object.assign(fresh, readyAnswers(fresh, chosen));
   }
-  state = fresh; at = 0;
+  state = fresh; at = 0; outline = null; cropMap = { key: '', status: 'idle', answer: null }; fieldYears = { key: '', status: 'idle', answer: null, used: false }; moreOpen = false;
+  askName();
   render({ focus: false });
-  document.dispatchEvent(new CustomEvent('crophalo:place', { detail: chosen ? { lat: fresh.loc.lat, lon: fresh.loc.lon, name: fresh.name, country: chosen.country ?? chosen.place ?? '', demo: !!chosen.demo } : null }));
+  readCropMap();
+  document.dispatchEvent(new CustomEvent('crophalo:place', { detail: chosen ? { lat: fresh.loc.lat, lon: fresh.loc.lon, name: fresh.name, country: chosen.country ?? chosen.place ?? '', demo: !!chosen.demo, region: chosen.region ?? null, from: 'setup' } : null }));
+}
+// The field moved (a pin moved on the map, or coordinates typed in): only the place changes. Every answer and the step are kept, and only the panel's
+// head is drawn again. from: 'map' sends nothing back; 'outside' tells the map, which then flies there.
+export function movePlace(chosen, { from = 'map' } = {}) {
+  if (!chosen || !Number.isFinite(+chosen.lat) || !Number.isFinite(+chosen.lon)) return;
+  const lat = Math.round(chosen.lat * 1e4) / 1e4, lon = Math.round(chosen.lon * 1e4) / 1e4, first = !state.loc;
+  state.loc = { lat, lon, label: chosen.place ?? chosen.country ?? state.loc?.label ?? '', cc: state.loc?.cc ?? '' };
+  if (typeof chosen.name === 'string') state.name = chosen.name;
+  if (state.area && !cleanArea(state.area, state.loc)) state.area = null;   // the report's outline must hold the pin; the map sends the moved outline next
+  askName();   // a moved pin with no name of its own is named again once it rests
+  const headNow = $('#setupPanel .panel-head');
+  if (headNow) headNow.outerHTML = head();
+  if (first) {   // the field step can go on now: the Next button and the line under it follow without drawing the panel again (focus stays where it is)
+    const step = steps()[at], need = needFor(step.id, state), next = $('#wNext'), under = $('#ctaNote');
+    if (next) { next.disabled = !!need; if (need) next.setAttribute('aria-disabled', 'true'); else next.removeAttribute('aria-disabled'); }
+    if (under) under.textContent = need;
+  }
+  keep();
+  readCropMap();   // the crop map is asked for the new place (once for each place); the step is redrawn only while it is the crops step
+  if (from === 'outside') document.dispatchEvent(new CustomEvent('crophalo:place', { detail: { lat, lon, name: state.name, country: state.loc.label, from: 'outside' } }));
 }
 export const currentState = () => structuredClone(state);
 export function initWizard(seam) {
   where = { ...where, ...seam };
   if (!$('#setupRoot')) return;
   bind();
-  if (recall()) render(); else render();
+  liveEl = document.createElement('p'); liveEl.className = 'sr'; liveEl.setAttribute('role', 'status'); liveEl.setAttribute('aria-live', 'polite'); $('#view-setup')?.append(liveEl);   // outside the redrawn panel, so what it says is spoken
+  if (recall()) { askName(); render(); readCropMap(); } else render();
 }

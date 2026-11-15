@@ -117,6 +117,24 @@ await group('the folder', async () => {
     '2026-10-31': 'October 2026, the newest month of the World Bank\'s world crop prices and the month of FAO\'s price file (a month of the data, read as its last day)',
     '2026-11-03': 'the day the World Bank last updated its Pink Sheet of world crop prices: the World Bank\'s own date, said beside each price',
     '2025-08-31': 'August 2025, the last month the World Bank\'s Pink Sheet gave a barley price: the lookup marks that series stale and says the month',
+    '2011-12-31': 'the year inside the credit Land Information New Zealand asks for on its heights in Terrain Tiles ("Copyright 2011 Crown copyright"), quoted word for word in js/sources.js: the data\'s own date, not the project\'s',
+  };
+  // Test inputs that stand for past weather: a suite that checks how a season or a forecast is judged has to feed it days that have already happened (the weather of
+  // past years, the week before a recorded forecast, a field sown before the forecast was read). Each date below is a weather day or a sowing day of such an input, allowed
+  // only in the one suite that uses it; a month written alone counts as its last day, as above.
+  const TEST_DATA_DATES = {
+    'scripts/test_history.mjs': ['2007-05-12', '2007-05-31', '2012-07-08', '2012-07-31', '2012-09-28', '2012-09-31', '2012-12-31', '2013-03-01', '2026-05-12', '2026-05-31'],   // frost and heat days of past seasons in a made-up weather record
+    'scripts/test_future.mjs': ['2010-11-14', '2014-01-15', '2024-02-29', '2026-11-01', '2026-11-02', '2026-11-06', '2026-11-07', '2026-11-08', '2026-11-10', '2026-11-11'],   // the days before a recorded forecast, and past days a trend is read from
+    'scripts/test_greenness.mjs': ['2026-11-12'],   // the newest satellite day of a stand-in greenness answer
+    'scripts/test_ahead_run.mjs': ['2026-11-10'],   // a crop sown a few days before the forecast is read
+    'scripts/test_ahead_charts.mjs': ['2026-10-05'], 'scripts/test_ahead_job.mjs': ['2026-10-05'], 'scripts/test_ahead_view.mjs': ['2026-10-05'], 'scripts/e2e_ahead.mjs': ['2026-10-05'], 'scripts/e2e_reportux.mjs': ['2026-10-05', '2026-11-12'], 'scripts/e2e_a11y.mjs': ['2026-10-05', '2026-11-12'],   // winter wheat sown in October, in the ground when the forecast is read; 12 November is the day of a stand-in soil-moisture reading
+    'scripts/test_live_hlsbox.mjs': ['2024-05-01', '2024-05-10', '2024-06-05', '2024-06-20', '2024-06-21', '2024-06-22', '2024-07-08', '2024-07-14', '2024-07-20', '2024-07-25', '2024-08-01', '2024-08-02', '2024-08-12', '2024-09-16', '2024-09-29', '2024-09-30', '2025-05-01', '2025-06-03', '2025-06-14', '2025-07-01', '2025-07-02', '2025-07-05', '2025-07-14', '2025-07-19', '2025-07-20', '2025-08-03', '2025-08-04', '2025-08-05', '2025-08-20', '2025-09-20', '2025-09-30', '2024-09-31', '2025-05-15', '2025-05-31', '2025-09-31'],   // the weak-spots lookup reads May to September of the last two full summers: the edges of that window and the days of stand-in satellite passes inside it; a month alone counts as its last day, as above
+    'scripts/e2e_spacing.mjs': ['2026-06-01', '2026-08-12', '2026-09-20', '2026-11-08', '2026-11-10'], 'scripts/e2e_speed.mjs': ['2026-11-13'],   // the days of stand-in satellite passes and a stand-in soil-moisture reading
+    'scripts/e2e_data.mjs': ['2026-10-05', '2026-11-12'], 'scripts/e2e_notes.mjs': ['2026-10-05', '2026-11-12'], 'scripts/e2e_remind.mjs': ['2026-10-05', '2026-11-12'], 'scripts/e2e_share.mjs': ['2026-10-05', '2026-11-12'], 'scripts/e2e_soil.mjs': ['2026-10-05', '2026-11-12'],   // the same stand-in report as e2e_reportux: winter wheat sown in October, and the newest day of a stand-in record
+    'scripts/e2e_macro_report.mjs': ['2026-11-13'],   // the day of a stand-in soil-moisture reading
+    'scripts/e2e_macro_turn.mjs': ['2026-11-13'],   // the day of a stand-in soil-moisture reading, as in e2e_macro_report
+    'scripts/test_prices_cards.mjs': ['2025-10-31'],   // the year-ago month of a stand-in world price, said beside the change
+    'scripts/test_notes.mjs': ['2026-08-01', '2026-08-31', '2026-10-01', '2026-10-02', '2026-10-05', '2026-11-01'], 'scripts/test_sharemodel.mjs': ['2026-04-20', '2026-05-01', '2026-08-01', '2026-09-01', '2026-09-02', '2026-10-05'],   // notes written on past days of this season, and the sowing and harvest days of a plan's first season this year
   };
   const MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'], MONTH = '(Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec)[a-z]*\\.?';
   const iso = (y, m, d) => `${y}-${String(m).padStart(2, '0')}-${String(d).padStart(2, '0')}`, month = name => MONTHS.indexOf(name.slice(0, 3)) + 1;
@@ -129,7 +147,7 @@ await group('the folder', async () => {
   for (const [rel, text] of TEXT) {
     if (!OURS(rel) || RECORDED(rel)) continue;
     plain(text).split('\n').forEach((line, i) => {
-      const hit = (found, date) => { if (date < BEGAN && !Object.hasOwn(DATA_DATES, date)) early.push(`${rel}:${i + 1} "${found}"`); };
+      const hit = (found, date) => { if (date < BEGAN && !Object.hasOwn(DATA_DATES, date) && !(rel === 'scripts/test.mjs' ? Object.values(TEST_DATA_DATES).flat() : TEST_DATA_DATES[rel] ?? []).includes(date)) early.push(`${rel}:${i + 1} "${found}"`); };
       for (const m of line.matchAll(/(?<![\w.])(\d{4})[-/](\d{1,2})[-/](\d{1,2})\b/g)) if (+m[1] >= 1900 && +m[1] <= 2100 && +m[2] >= 1 && +m[2] <= 12 && +m[3] >= 1 && +m[3] <= 31) hit(m[0], iso(m[1], m[2], m[3]));
       for (const m of line.matchAll(new RegExp(`\\b(\\d{1,2})(?:st|nd|rd|th)?\\s+${MONTH},?\\s+(\\d{4})\\b`, 'g'))) hit(m[0], iso(m[3], month(m[2]), m[1]));
       for (const m of line.matchAll(new RegExp(`\\b${MONTH}\\s+(\\d{1,2})(?:st|nd|rd|th)?,?\\s+(\\d{4})\\b`, 'g'))) hit(m[0], iso(m[3], month(m[1]), m[2]));
@@ -155,6 +173,11 @@ await group('the folder', async () => {
   none('no file or folder is named after one', FILES.filter(badPath));
   none('no line signs a file as made by a tool', finds(new RegExp(`${W('gener', 'ated')} (by|with|using)\\b|${W('co-auth', 'ored')}|${W('auto', '-?generated')}|\\u{1F916}`, 'iu'), OURS));
   none('no merge left its marks in a file', finds(/^(<{7} |={7}$|>{7} )/, OURS));
+  // A key saved on this computer (.secrets/<name>.key, never shipped) must not be copied into any file of the project, where a push would publish it.
+  // Only the file it was found in is named; the key itself is never printed. No .secrets folder: nothing to look for.
+  const keyNames = (() => { try { return fs.readdirSync(path.join(ROOT, '.secrets'), { withFileTypes: true }).filter(e => e.isFile() && e.name.endsWith('.key')).map(e => e.name); } catch { return []; } })();
+  const savedKeys = keyNames.map(name => fs.readFileSync(path.join(ROOT, '.secrets', name), 'utf8').replace(/^[\r\n]+|[\r\n]+$/g, '')).filter(Boolean);
+  none('no file in the project holds a saved key (only where it was found is said, never the key)', [...TEXT].filter(([, text]) => savedKeys.some(key => text.includes(key))).map(([rel]) => rel));
   // The folder speaks for the product: no line points at working papers, plans or reviews that a farmer or a new reader cannot see.
   none('no line points at working papers, plans or reviews', finds(new RegExp(`\\(${W('no', 'te')} \\d|\\b${W('no', 'tes?')} \\d{2}\\b|\\bthe ${W('no', 'tes')}\\b|\\b${W('hand', '-?over')}\\b|\\b${W('mile', 'stones?')}\\b|\\b${W('au', 'dits?')}\\b|\\b${W('re', 'build')}\\b`, 'i'), OURS));
 
@@ -176,7 +199,7 @@ await group('the folder', async () => {
 
 // ---- nothing is loaded from an outside address (the data services are asked for data, never for code, fonts or styles)
 await group('outside addresses', async () => {
-  const DATA_HOSTS = ['power.larc.nasa.gov', 'api.open-meteo.com', 'server.arcgisonline.com'];   // NASA weather, the forecast, the satellite photo tiles
+  const DATA_HOSTS = ['power.larc.nasa.gov', 'api.open-meteo.com', 'gibs.earthdata.nasa.gov', 'tiles.openfreemap.org'];   // NASA weather, the forecast; NASA GIBS (the pictures of the setup map, its layers and My farm) and OpenFreeMap (its light map and names), which the page now greets early
   const outside = v => /^(https?:)?\/\//i.test(v.trim());
   const tags = [], hints = [];
   for (const rel of PAGES) for (const m of read(rel).matchAll(/<(script|link|img|iframe|source|video|audio|embed|object|use|image)\b[^>]*>/gi)) {
@@ -212,8 +235,10 @@ await group('index.html', async () => {
   same('one skip link, and it is the first link on the page', [(html.match(/class="skip"/g) || []).length, (/<a\b[^>]*>/.exec(body) || [''])[0]], [1, '<a class="skip" href="#main">']);
   check('the skip link leads to the one main part', (body.match(/<main\b/g) || []).length === 1 && /<main\b[^>]*\bid="main"/.test(body) && !/<main\b[^>]*\btabindex/.test(body), 'main must not be left focusable: it would catch every click on plain words');
   check('the offline bar and the toast are spoken when they change', /<div class="offline-bar" id="offlineBar" role="status" hidden>/.test(body) && /<div id="toast" class="toast" role="status">/.test(body));
-  const order = ['<script src="vendor/leaflet/leaflet.js">', "addEventListener('error'", '<script type="module" src="js/app.js">', '<noscript>'].map(s => body.indexOf(s));
-  check('scripts in their order: the map library, the honest load-error line, the app, the no-script line', order.every((at, i) => at > 0 && (i === 0 || at > order[i - 1])), `found at ${order}`);
+  // The map library left the page on purpose: a farmer on a slow line gets the Start page without waiting for a map they have not asked for (js/leaflet-load.js brings it with the first map).
+  const order = ["addEventListener('error'", '<script type="module" src="js/app.js">', '<noscript>'].map(s => body.indexOf(s));
+  check('scripts in their order: the honest load-error line, the app, the no-script line', order.every((at, i) => at > 0 && (i === 0 || at > order[i - 1])), `found at ${order}`);
+  check('no script on the page blocks it: the map library is not loaded with the page', !/<script src="vendor\//.test(body) && !/href="vendor\/leaflet\//.test(html));
   check('the load-error line is the plain one', body.includes('Crophalo could not load all of its files. Check the internet connection, then reload the page.'));
   none('the picture links of the page point at files that are there', ['manifest.json', 'icons/apple-touch-icon.png', 'icons/crophalo-512.png'].filter(f => !html.includes(`"${f}"`) || !has(f)));
   // Every button and link says what it is: its own words, or a name written on it for screen readers (the owner: "has all aria labels and alt texts").
@@ -228,18 +253,36 @@ await group('index.html', async () => {
     check(`${rel}: English, the phone viewport, the light look, a title of its own`, /<html\b[^>]*\blang="en"/.test(h) && h.includes('content="width=device-width, initial-scale=1, viewport-fit=cover"') && /<meta name="color-scheme" content="light">/.test(h) && /<title>[^<]+ · Crophalo<\/title>/.test(h)); }
 });
 
-// ---- the one demo region, the install file, the robots file
+// ---- the three demo fields, the install file, the robots file
 await group('data and install files', async () => {
-  const regions = JSON.parse(read('data/regions.json'));
-  check('one demo region only: Ontario (the owner chose to keep just this one)', Array.isArray(regions) && regions.length === 1 && /Ontario/.test(regions[0].name), regions.map(r => r.name).join());
-  const r = regions[0] || {};
-  same('its country is Canada and it has a name', [typeof r.name === 'string' && r.name.length > 3, r.country], [true, 'Canada']);
-  check('its place is a real pair of numbers inside Ontario', Number.isFinite(r.lat) && Number.isFinite(r.lon) && r.lat > 41.6 && r.lat < 56.9 && r.lon > -95.2 && r.lon < -74.3, `lat ${r.lat}, lon ${r.lon}`);
-  none('it carries only the fields the app knows', Object.keys(r).filter(k => !['id', 'name', 'country', 'lat', 'lon', 'rotation', 'defaults', 'aliases', 'blurb', 'try'].includes(k)));
-  // Its ready answers: rain only, and a soil that is said to be assumed, never one that looks measured (the report then says it is less sure).
-  same('its ready answers are rain-fed and an assumed soil', r.defaults, { irrigation: 'none', soil: 'assumed' });
-  check('its other names are short words a farmer may search for', Array.isArray(r.aliases) && r.aliases.every(a => typeof a === 'string' && a.length >= 2 && a.length <= 40), r.aliases);
-  check('its rotation is a short id, not a sentence', typeof r.rotation === 'string' && /^[a-z0-9-]+$/.test(r.rotation), r.rotation);
+  const regions = JSON.parse(read('data/regions.json')), { areaHa } = await import('../js/geo.js');
+  same('three demo fields, in this order: Mead (Nebraska), Beltsville (Maryland), Barrie (Ontario)', regions.map(r => r.id), ['mead-field', 'beltsville-field', 'barrie-field']);
+  check('their names say a place and a state or province, with no selling word', regions.every((r, i) => [/Mead, Nebraska/, /Beltsville, Maryland/, /Barrie, Ontario/][i].test(r.name) && !/\b(best|leading|powerful|revolution|unlock|guarantee|world-class)\b/i.test(JSON.stringify(r))), regions.map(r => r.name).join());
+  const US = r => r.lat > 24.4 && r.lat < 49.5 && r.lon > -125 && r.lon < -66.9, ON = r => r.lat > 41.6 && r.lat < 56.9 && r.lon > -95.2 && r.lon < -74.3;
+  same('their countries', regions.map(r => r.country), ['United States', 'United States', 'Canada']);
+  check('each place is a real pair of numbers inside its own country (the two US fields in the lower 48, Barrie in Ontario)', regions.every((r, i) => Number.isFinite(r.lat) && Number.isFinite(r.lon) && (i < 2 ? US(r) : ON(r))), regions.map(r => `${r.lat},${r.lon}`).join(' '));
+  none('they carry only the fields the app knows', regions.flatMap(r => Object.keys(r).filter(k => !['id', 'name', 'country', 'lat', 'lon', 'area_ha', 'area_ac', 'outline', 'rotation', 'defaults', 'aliases', 'blurb', 'try'].includes(k))));
+  for (const r of regions) {
+    const ring = r.outline, corners = ring.slice(0, -1).map(([lon, lat]) => [lat, lon]), inside = (x, y) => { let c = false; for (let i = 0, j = corners.length - 1; i < corners.length; j = i++) if ((corners[i][0] > y) !== (corners[j][0] > y) && x < ((corners[j][1] - corners[i][1]) * (y - corners[i][0])) / (corners[j][0] - corners[i][0]) + corners[i][1]) c = !c; return c; };
+    check(`${r.id}: a closed outline of real corners, longitude then latitude, six decimals at most`, Array.isArray(ring) && ring.length >= 5 && ring[0][0] === ring.at(-1)[0] && ring[0][1] === ring.at(-1)[1] && ring.every(p => p.length === 2 && p.every(v => Number.isFinite(v) && /^-?\d+(\.\d{1,6})?$/.test(String(v)))), ring?.length);
+    check(`${r.id}: the outline lies in its own country and holds the place`, corners.every(([la, lo]) => (r === regions[2] ? ON({ lat: la, lon: lo }) : US({ lat: la, lon: lo }))) && inside(r.lon, r.lat), `${r.lat},${r.lon}`);
+    check(`${r.id}: the size is the outline's own, to 2 %${r.area_ac ? ', and acres match hectares to 0.5 %' : ''}`, Math.abs(areaHa(corners) - r.area_ha) / r.area_ha < 0.02 && (!r.area_ac || Math.abs(r.area_ac / 2.47105 - r.area_ha) / r.area_ha < 0.005), `${areaHa(corners)} ${r.area_ha} ${r.area_ac}`);
+    check(`${r.id}: its other names are short words a farmer may search for`, Array.isArray(r.aliases) && r.aliases.every(a => typeof a === 'string' && a.length >= 2 && a.length <= 40), r.aliases);
+    check(`${r.id}: its rotation is a short id, not a sentence`, typeof r.rotation === 'string' && /^[a-z0-9-]+$/.test(r.rotation), r.rotation);
+    check(`${r.id}: its soil is a map's, said so, with the map named; never one that looks measured`, r.defaults.soil === 'map' && /\b(soil map|soil survey|SoilGrids)\b/i.test(r.defaults.soil_note ?? '') && /not a test of this field/.test(r.defaults.soil_note), r.defaults);
+    check(`${r.id}: it names a plan worth a look`, typeof r.try?.label === 'string' && typeof r.try?.rotation === 'string' && /^[a-z0-9-]+$/.test(r.try.rotation));
+    check(`${r.id}: no word says or hints that NASA staff know, use or back the field or the app`, !/NASA (staff|scientists|researchers|engineers|team|knows|uses|backs|endorses|supports|recommends)|with NASA|NASA's own|endorse/i.test(JSON.stringify([r.blurb, r.try])), r.blurb);
+  }
+  check('no try.note carries an engine score: no number of one to three digits, no "score", no figure in brackets (the engine\'s answer changes as its rules do; the words must stay true)', regions.every(r => !/\b\d{1,3}\b/.test(r.try.note.replace(/\b(19|20)\d{2}\b/g, '')) && !/\bscores?\b/i.test(r.try.note) && !/\(\d+\)/.test(r.try.note)), regions.map(r => r.try.note));
+  const demoWords = [read('README.md').split(/^## Try the demo$/m)[1]?.split(/^## /m)[0] ?? '', read('PRESENTATION.md').split('\n').find(l => /The demo:/.test(l)) ?? '', ...regions.flatMap(r => [r.blurb, r.try.label, r.try.note])].join('\n');
+  check('no sentence about the demo fields states a sowing or harvest date, a frost date, a frost-free length or a score', !/\b(sow|sown|sowing|plant|planted|planting|harvest|harvested|frost)\w*\b[^.\n]{0,40}\b(Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec)[a-z]*\.? \d{1,2}\b/i.test(demoWords) && !/frost-free[^.\n]{0,30}\d/i.test(demoWords) && !/\bscores?\b|holds up \(|\(\d{2,3}\)/i.test(demoWords), demoWords.slice(0, 200));
+  same('Mead is rain-fed and no-till', [regions[0].defaults.irrigation, regions[0].defaults.tillage], ['none', 'notill']);
+  check('Beltsville says its water and tillage are not known, and says only what the owner of the field page says', regions[1].defaults.irrigation === null && regions[1].defaults.tillage === null && /do not say whether it is watered or how it is tilled/.test(regions[1].blurb));
+  check('Beltsville is described as a research farm field a few miles from the NASA Goddard centre and nothing more', /about 2\.7 miles \(4\.3 km\) north of the NASA Goddard Visitor Center/.test(regions[1].blurb) && regions[1].area_ac === 15.6 && regions[1].area_ha === 6.3);
+  same('Mead is 64.1 ha = 158.4 acres', [regions[0].area_ha, regions[0].area_ac], [64.1, 158.4]);
+  const readme = read('README.md'), deck = read('PRESENTATION.md');
+  check('README.md and PRESENTATION.md no longer tell the Ontario county demo: no "Oxford" left, Mead first', !/Oxford/.test(readme) && !/Oxford/.test(deck) && /Try the demo[\s\S]{0,200}Mead, Nebraska/.test(readme) && /The demo: a research field near Mead, Nebraska/.test(deck));
+  check('the README keeps its Licence and SI-tools parts', /^## Licence$/m.test(readme) && /^## Use of Super Intelligence \(SI\) tools$/m.test(readme));
 
   const man = JSON.parse(read('manifest.json'));
   same('install file: the names', [man.name, man.short_name], ['Crophalo: crop rotation with NASA data', 'Crophalo']);
@@ -435,12 +478,16 @@ await group('words and settings', async () => {
   same('other countries keep their names', [countryName('Canada', 'CA'), countryName(' Kenya '), countryName(undefined)], ['Canada', 'Kenya', '']);
 
   const { cleanSettings, SETTING_CHOICES, SETTINGS_KEY } = await import(pathToFileURL(path.join(ROOT, 'js', 'settings.js')).href);
-  const DEFAULTS = { motion: 'device', listen: 'normal', text: 'default', contrast: 'standard', links: 'standard', currency: 'USD' };
+  const DEFAULTS = { motion: 'full', listen: 'normal', text: 'default', contrast: 'standard', links: 'standard', area: 'auto', currency: 'USD' };   // area: which unit of area a farmer reads first (Automatic follows the browser's region)
   same('settings are kept under the one key', SETTINGS_KEY, 'crophalo.settings.v1');
   same('nothing stored gives the defaults', [cleanSettings(null), cleanSettings('x'), cleanSettings([])], [DEFAULTS, DEFAULTS, DEFAULTS]);
-  same('a known choice is kept', cleanSettings({ motion: 'reduce', text: 'xlarge', contrast: 'high', links: 'underline', listen: 'slow', currency: 'TRY' }), { motion: 'reduce', listen: 'slow', text: 'xlarge', contrast: 'high', links: 'underline', currency: 'TRY' });
-  same('an unknown or hostile value falls back to the default', cleanSettings({ motion: 'toString', text: '<script>', contrast: { a: 1 }, links: 7, currency: 'usd!', extra: 'x' }), DEFAULTS);
-  same('the three text sizes and the two motion choices', [SETTING_CHOICES.text, SETTING_CHOICES.motion], [['default', 'large', 'xlarge'], ['device', 'reduce']]);
+  same('a known choice is kept', cleanSettings({ motion: 'still', text: 'xlarge', contrast: 'high', links: 'underline', listen: 'slow', area: 'hectares', currency: 'TRY' }), { motion: 'still', listen: 'slow', text: 'xlarge', contrast: 'high', links: 'underline', area: 'hectares', currency: 'TRY' });
+  same('the area unit: Automatic first, then Acres and Hectares (a US or Canadian farmer reads acres first, everyone else hectares; both are always shown)', SETTING_CHOICES.area, ['auto', 'acres', 'hectares']);
+  same('an unknown or hostile value falls back to the default', cleanSettings({ motion: 'toString', text: '<script>', contrast: { a: 1 }, links: 7, area: 'furlongs', currency: 'usd!', extra: 'x' }), DEFAULTS);
+  // Motion is now Full, Less and Still: a farmer who finds full motion tiring keeps the quick fades; the two older stored values still mean what they meant
+  same('the three text sizes and the three motion choices', [SETTING_CHOICES.text, SETTING_CHOICES.motion], [['default', 'large', 'xlarge'], ['full', 'less', 'still']]);
+  same('the two motion values of an earlier release are kept as they were meant: device is Full, reduce is Still', [cleanSettings({ motion: 'device' }).motion, cleanSettings({ motion: 'reduce' }).motion, cleanSettings({ motion: 'less' }).motion], ['full', 'still', 'less']);
+  same('an unknown motion value falls back to Full, and a hostile key is not an old value', [cleanSettings({ motion: 'toString' }).motion, cleanSettings({ motion: '__proto__' }).motion, cleanSettings({ motion: 'constructor' }).motion], ['full', 'full', 'full']);
 });
 
 // ---- the libraries kept in the folder
@@ -449,7 +496,7 @@ await group('the libraries', async () => {
   for (const lib of LIBS) { const here = inspect(lib, ROOT); check(`${lib.label || lib.id}: every file is the published one, byte for byte`, here.ok, here.why); }
   const version = dir => { try { return JSON.parse(read(`${dir}/VERSION.json`)).packages.map(p => `${p.name} ${p.version}`); } catch { return 'no VERSION.json'; } };
   same('the versions are the ones the app is built on: Leaflet 1.9.4, MapLibre GL 4.7.1 with its Leaflet plugin, three.js r160', [version('vendor/leaflet'), version('vendor/maplibre').slice(0, 1), version('vendor/three').map(v => v.replace(/\.\d+$/, ''))], [['leaflet 1.9.4'], ['maplibre-gl 4.7.1'], ['three 0.160']]);
-  none('each library keeps its licence beside it', ['vendor/leaflet', 'vendor/maplibre', 'vendor/three', 'scripts/vendor-test'].filter(dir => !FILES.some(rel => rel.startsWith(dir + '/') && /LICEN[CS]E/i.test(rel))));
+  none('each library keeps its licence beside it', ['vendor/leaflet', 'vendor/maplibre', 'vendor/three', 'vendor/satellite', 'scripts/vendor-test'].filter(dir => !FILES.some(rel => rel.startsWith(dir + '/') && /LICEN[CS]E/i.test(rel))));
   check('the accessibility checker is only for tests: no page and no module of the app names it', !PAGES.some(rel => /vendor-test|axe\.min/.test(read(rel))) && !JS_FILES.some(rel => /vendor-test|axe\.min/.test(read(rel))));
   const online = await fetch('https://registry.npmjs.org/', { method: 'HEAD', signal: AbortSignal.timeout(6000) }).then(r => r.status < 500, () => false);
   if (!online) console.log('SKIP  the registry was not asked for the published checksums (no internet); the files in place were still checked byte for byte');
@@ -477,8 +524,28 @@ await group('the first screen', async () => {
   none('the first screen does not load three.js or MapLibre', first.filter(rel => /^vendor\/(three|maplibre)\//.test(rel)));
   none('the page has no tag for three.js or MapLibre', [...html.matchAll(/<(?:script|link)\b[^>]*(?:three|maplibre)[^>]*>/gi)].map(m => m[0].slice(0, 80)));
   none('every file the page and its modules name is in the folder', [...new Set(missing)]);
-  check('the map library the first screen does load is the folder\'s own Leaflet', first.includes('vendor/leaflet/leaflet.js') && first.includes('vendor/leaflet/leaflet.css'));
+  // The first screen no longer loads the map library (a farmer reading the Start page does not wait for a map); the first map brings the folder's own Leaflet.
+  check('the first screen does not load the map library, and the map screens bring the folder\'s own Leaflet', !first.some(rel => rel.startsWith('vendor/leaflet/')) && whole.includes('vendor/leaflet/leaflet.js') && whole.includes('vendor/leaflet/leaflet.css'));
   check('the crawl finds the app (page → app.js → its modules)', ['js/app.js', 'js/settings.js', 'js/words.js', 'css/app.css'].every(rel => whole.includes(rel)), whole.join(', '));
+});
+
+// ---- the rules file: every rule has a line, and every line is proved by a check that exists
+group('the rules file', () => {
+  const rows = read('docs/RULES-CHECKS.md').split('\n').filter(l => /^\| R\d\d \|/.test(l)).map(l => l.slice(1, -1).split(' | ').map(c => c.trim()));
+  check('the rules file has at least the 26 rules it had, numbered R01 upward with no gap', rows.length >= 26 && rows.every((r, i) => r[0] === `R${String(i + 1).padStart(2, '0')}`), rows.map(r => r[0]).join(' '));
+  none('every rule says what it is and how it is proved', rows.filter(r => r.length !== 3 || !r[1] || !r[2]).map(r => r[0]));
+  const bad = [];
+  for (const [id, , proof] of rows) {
+    if (/^kept by review\b/.test(proof)) continue;
+    for (const entry of proof.split('; ')) {
+      const at = entry.indexOf(': '), suite = entry.slice(0, at), name = entry.slice(at + 2);
+      if (!/^[\w.]+\.mjs$/.test(suite) || !FILES.includes(`scripts/${suite}`)) { bad.push(`${id}: no suite ${suite}`); continue; }
+      const text = read(`scripts/${suite}`).replaceAll('\\', '').replaceAll('${BEGAN}', BEGAN);
+      if (!name || !text.includes(name.replaceAll('\\', ''))) bad.push(`${id}: ${suite} has no check "${name.slice(0, 60)}"`);
+    }
+  }
+  none('every check a rule names is in the suite it names', bad);
+  none('every rule that is not kept by review names at least one check', rows.filter(r => !/^kept by review\b/.test(r[2]) && !/\.mjs: /.test(r[2])).map(r => r[0]));
 });
 
 console.log(`${passed} passed, ${failed} failed`);

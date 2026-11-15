@@ -9,13 +9,17 @@ import { cropPic } from './pics.js';
 export const ALL = 'all', TREES = 'trees', REST = 'rest';   // REST is the cover crops and fallow together, as the crop table's own words call both "Rest"
 export const suitFor = () => null;   // join: 'near' | 'water' | 'climate' for a crop at this spot, once the engine can say; until then nothing is marked
 
+// The crops the chooser may list: null means all of them. Set when the setup offers only a national list (see js/cropstep.js); cover crops and fallow are always allowed.
+let offer = null;
+export const setOffer = ids => { offer = Array.isArray(ids) ? ids : null; };
+const allowed = id => !offer || offer.includes(id) || (id in CROPS && (CROPS[id].group === 'cover' || CROPS[id].group === 'fallow'));
 // The crops to list for what was typed and the tab chosen: ids, field crops first, in table order.
 export function pickList(text = '', group = ALL) {
   const typed = String(text).trim(), found = typed ? findCrops(typed) : [...Object.keys(CROPS), ...gardenIds()];
-  if (group === ALL) return found;
-  if (group === TREES) return found.filter(id => id in GARDENS);
+  if (group === ALL) return found.filter(allowed);
+  if (group === TREES) return offer ? [] : found.filter(id => id in GARDENS);
   if (group === REST) return found.filter(id => id in CROPS && (CROPS[id].group === 'cover' || CROPS[id].group === 'fallow'));
-  return found.filter(id => id in CROPS && CROPS[id].group === group);
+  return found.filter(id => id in CROPS && CROPS[id].group === group && allowed(id));
 }
 export const tabs = () => [ALL, ...GROUPS.filter(g => g !== 'cover' && g !== 'fallow' && cropsOfGroup(g).length), REST, TREES];
 export const tabName = g => g === ALL ? 'All' : g === TREES ? 'Trees and bushes' : g === REST ? 'Rest' : (GROUP_WORDS[g] ?? g);

@@ -1,6 +1,6 @@
 // Crophalo's check-up. `--doctor` (run at every start) prints ok / FIX / note lines in plain words and always exits 0;
 // the plain mode (before going live) runs the go-live checks and exits 1 when something needs fixing.
-// Pure: NEEDED, missingFiles(), packedTools(), savedCopy(), importList(), line(). The rest reads the folder and the network.
+// Pure: NEEDED, pageModules(), missingFiles(), packedTools(), savedCopy(), importList(), line(). The rest reads the folder and the network.
 // Checked by scripts/test_portable.mjs.
 import fs from 'node:fs';
 import path from 'node:path';
@@ -10,9 +10,9 @@ import { fileURLToPath } from 'node:url';
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 
 // The ONE list of files Crophalo cannot run without; both modes read only this. Add a line when a must-have file
-// arrives (the offline worker, the going-live files) and take it out when the file goes. The map and 3D libraries
-// are not listed here: scripts/vendor.mjs knows its own files and is asked.
-export const NEEDED = ['index.html', 'css/app.css', 'scripts/serve.mjs', 'scripts/earthdata.mjs', 'scripts/vendor.mjs',
+// arrives (the offline worker, the going-live files) and take it out when the file goes. The page's own modules are not listed:
+// pageModules() reads them from index.html and its imports. The map and 3D libraries are not listed here either: scripts/vendor.mjs knows its own files and is asked.
+export const NEEDED = ['index.html', 'css/app.css', 'scripts/serve.mjs', 'scripts/earthdata.mjs', 'scripts/hostmode.mjs', 'scripts/status.mjs', 'scripts/vendor.mjs',
   'scripts/run.sh', 'scripts/portable.sh', 'scripts/requirements.txt', 'Start Crophalo.command'];
 
 const LOGIN_SERVICE = 'NASA Earthdata login service';
@@ -35,7 +35,34 @@ except Exception:
     print("LOGIN", "unasked")`;
 
 // ---- pure parts
-export const missingFiles = (root, list = NEEDED) => list.filter(f => !fs.existsSync(path.join(root, f)));
+// The modules the page needs to start, read from the page itself: the module scripts of index.html and every static import they reach,
+// to any depth (a later import() is not needed to start). A missing module is named too; what it would import cannot be known.
+const STATIC_IMPORT = /(?:^|[;}\n])[ \t]*(?:import|export)[ \t]*(?:[\w$*{}\s,]*?[ \t\n]from[ \t]*)?['"]([^'"\n]+)['"]/g;
+const withoutComments = code => code.replace(/\/\*[\s\S]*?\*\//g, '').replace(/^[ \t]*\/\/.*$/gm, '');
+export function pageModules(root) {
+  let page = '';
+  try { page = fs.readFileSync(path.join(root, 'index.html'), 'utf8'); } catch { return []; }
+  const queue = [], seen = new Set();
+  const add = (spec, from) => {
+    if (!/^\.{0,2}\//.test(spec) && !/^[\w-]+\//.test(spec)) return;   // a library by its bare name or another site's address: not a file of this folder
+    if (/^[a-z]+:/i.test(spec)) return;
+    const rel = path.posix.normalize(path.posix.join(path.posix.dirname(from), spec.split(/[?#]/)[0])).replace(/^\.\//, '');
+    if (!rel.startsWith('..') && !seen.has(rel)) { seen.add(rel); queue.push(rel); }
+  };
+  for (const m of page.matchAll(/<script\b([^>]*)>([\s\S]*?)<\/script>/gi)) {
+    if (!/\btype\s*=\s*["']?module\b/i.test(m[1])) continue;
+    const src = m[1].match(/\bsrc\s*=\s*["']([^"']+)["']/i)?.[1];
+    if (src) add(src, 'index.html');
+    else for (const i of withoutComments(m[2]).matchAll(STATIC_IMPORT)) add(i[1], 'index.html');
+  }
+  for (let n = 0; n < queue.length; n++) {
+    let code;
+    try { code = fs.readFileSync(path.join(root, queue[n]), 'utf8'); } catch { continue; }   // missing: named by missingFiles
+    for (const i of withoutComments(code).matchAll(STATIC_IMPORT)) add(i[1], queue[n]);
+  }
+  return queue;
+}
+export const missingFiles = (root, list = [...NEEDED, ...pageModules(root)]) => list.filter(f => !fs.existsSync(path.join(root, f)));
 
 export function packedTools(root) {   // which kinds of Mac have every tool inside the folder
   const rt = path.join(root, 'runtime'), has = (...p) => fs.existsSync(path.join(rt, ...p));
@@ -132,13 +159,15 @@ export async function checkUp({ doctor = false, root = ROOT, env = process.env, 
   }
 
   const py = env.FW_PYTHON || path.join(root, ...VENV_PYTHON), libs = importList(root);
-  let pythonOk = false;
+  let pythonOk = false, certifi = '';
   if (!libs) say('fix', 'The list of NASA data tools could not be read (scripts/portable.sh)', 'copy the whole Crophalo folder again');
   else if (!fs.existsSync(py)) say('fix', 'Python and the NASA data tools are not set up in this folder yet', `double-click Start Crophalo.command, or run: ${startCmd} (it sets them up, about 160 MB of downloads once)`);
   else {
-    const r = await run(py, ['-c', `import ${libs}; import platform; print("PYTHON", platform.python_version())`]);
+    const r = await run(py, ['-c', `import ${libs}; import platform, certifi; print("PYTHON", platform.python_version()); print("CERTS", certifi.where())`]);
     const version = r.out.match(/PYTHON (\S+)/)?.[1];
     pythonOk = r.ok && !!version;
+    certifi = r.out.match(/^CERTS (.+?)\s*$/m)?.[1] ?? '';
+    if (certifi && !fs.existsSync(certifi)) certifi = '';
     if (pythonOk) say('ok', `Python ${version} and the NASA data tools load`);
     else say('fix', 'Python is here, but the NASA data tools do not load', `start Crophalo again: ${startCmd} (it rebuilds them; details in runtime/setup.log)`);
   }
@@ -151,7 +180,9 @@ export async function checkUp({ doctor = false, root = ROOT, env = process.env, 
   else if (!login.where) say('fix', 'No NASA Earthdata login yet: the five satellite parts (SMAP, GRACE-FO, ECOSTRESS, HLS, GEDI) stay empty', loginCmd);
   else if (!pythonOk) say('note', `A NASA Earthdata login is kept ${login.words}; it is tried once the NASA data tools are set up`);
   else {   // the login reaches this one Python process only, and nothing that process prints is shown
-    const r = await run(py, ['-c', LOGIN_CHECK, login.where === 'home' ? 'netrc' : 'environment'], { env: { ...env, ...login.env, PYTHONWARNINGS: 'ignore' } });
+    // HTTPS trust roots: the owner's SSL_CERT_FILE when set, else the certifi bundle installed with the libraries; the check itself is never switched off
+    const roots = env.SSL_CERT_FILE || certifi;
+    const r = await run(py, ['-c', LOGIN_CHECK, login.where === 'home' ? 'netrc' : 'environment'], { env: { ...env, ...login.env, ...(roots ? { SSL_CERT_FILE: roots } : {}), PYTHONWARNINGS: 'ignore' } });
     const serviceUp = !(await reached).find(s => s.name === LOGIN_SERVICE)?.why;   // "no" counts only when NASA's login service itself answered
     if (/LOGIN yes/.test(r.out)) say('ok', `NASA Earthdata login works (kept ${login.words})`);
     else if (/LOGIN no/.test(r.out) && serviceUp) say('fix', `NASA Earthdata did not accept the login kept ${login.words}`, doctor ? `type it again: ${startCmd} --login` : loginCmd);

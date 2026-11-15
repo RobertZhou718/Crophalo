@@ -1,9 +1,10 @@
 // Crophalo's suite for the map's base (js/lightstyle.js and the pure parts of js/mapbase.js): the style holds the names of countries, regions and places and no name of any water, no road, point or park;
-// Türkiye by its own name; the colours of the calm map; which backdrop a choice needs, near the poles and without WebGL; the credit lines word for word; every sentence plain.
+// Türkiye by its own name; the colours of the calm map; which backdrop a choice needs, also without WebGL (NASA's picture, never Esri's); the credit lines word for word; every sentence plain.
 // RULE: never loosen a check here without a written farming reason beside it. A farm map must not take sides over what a sea or a lake is called. Run: node scripts/test_mapbase.mjs
 import { lightStyle, labelsStyle, reading, NAME, COLOURS, PLACE_CLASSES, TILES, GLYPHS, CREDIT } from '../js/lightstyle.js';
 const OLD = ['Tur', 'key'].join('');
-import { backdropFor, creditFor, creditParts, CREDIT_LINKS, SAYS, POLE, PHOTO_CREDIT, GREY_CREDIT } from '../js/mapbase.js';
+import { J } from './gibs_fixtures.mjs';
+import { backdropFor, creditFor, creditParts, CREDIT_LINKS, SAYS, PHOTO_CREDIT } from '../js/mapbase.js';
 
 let passed = 0, failed = 0;
 const check = (name, ok, detail = '') => { if (ok) passed++; else { failed++; console.log(`FAIL  ${name}${detail ? `  (${typeof detail === 'string' ? detail : JSON.stringify(detail)})` : ''}`); } };
@@ -50,24 +51,22 @@ same('every other country is written in English first, then by its local name', 
 
 // ---- the backdrops
 same('Satellite with MapLibre: the photo and the names over it', backdropFor({ choice: 'sat', gl: true }), { ground: 'photo', names: 'photo', note: '' });
-same('Satellite without MapLibre: the photo alone, no names', backdropFor({ choice: 'sat', gl: false }).names, null);
+same('Satellite without MapLibre: NASA\'s picture alone, no names', backdropFor({ choice: 'sat', gl: false }).names, null);
 same('Light with MapLibre in Ontario: MapLibre\'s own ground and names', backdropFor({ choice: 'light', lat: 43.13, gl: true }), { ground: 'gl', names: 'light', note: '' });
-same('Light beyond 63 degrees: Esri\'s grey with dark names, and the poles sentence', backdropFor({ choice: 'light', lat: 64, gl: true }), { ground: 'grey', names: 'paper', note: 'pole' });
-same('exactly at the line is still the detailed map, in either hemisphere', [backdropFor({ choice: 'light', lat: POLE, gl: true }).ground, backdropFor({ choice: 'light', lat: -POLE, gl: true }).ground], ['gl', 'gl']);
-same('Light without MapLibre: Esri\'s grey and the "no WebGL" sentence key', backdropFor({ choice: 'light', lat: 43, gl: false }), { ground: 'grey', names: null, note: 'gl' });
-same('the south pole is the same as the north', backdropFor({ choice: 'light', lat: -80, gl: true }).ground, 'grey');
+same('Light without MapLibre: NASA\'s picture with no names and the "no WebGL" sentence key', backdropFor({ choice: 'light', gl: false }), { ground: 'photo', names: null, note: 'gl' });
 
 // ---- the credits, word for word
-same('the photo alone', creditFor({ ground: 'photo', names: null }), 'Imagery: Esri, Vantor, Earthstar Geographics, and the GIS User Community');
-same('the photo with its names', creditFor({ ground: 'photo', names: 'photo' }), 'Imagery: Esri, Vantor, Earthstar Geographics, and the GIS User Community · Place names: OpenFreeMap © OpenMapTiles Data from OpenStreetMap');
+same('the picture alone', creditFor({ ground: 'photo', names: null }), 'Imagery: NASA GIBS / Worldview');
+same('the picture with its names', creditFor({ ground: 'photo', names: 'photo' }), 'Imagery: NASA GIBS / Worldview · Place names: OpenFreeMap © OpenMapTiles Data from OpenStreetMap');
+same('the picture with its day', creditFor({ ground: 'photo', names: null, pic: `HLS Sentinel-2 30 m, ${J(5, 'November', 2026)}` }), `Imagery: NASA GIBS / Worldview · HLS Sentinel-2 30 m, ${J(5, 'November', 2026)}`);
 same('the Light map: OpenFreeMap\'s alone', creditFor({ ground: 'gl', names: 'light' }), 'OpenFreeMap © OpenMapTiles Data from OpenStreetMap');
-same('Esri\'s grey alone, and with names', [creditFor({ ground: 'grey', names: null }), creditFor({ ground: 'grey', names: 'paper' })], [GREY_CREDIT, `${GREY_CREDIT} · Place names: OpenFreeMap © OpenMapTiles Data from OpenStreetMap`]);
-check('the photo credit is the one the note names', PHOTO_CREDIT === 'Imagery: Esri, Vantor, Earthstar Geographics, and the GIS User Community');
+check('no Esri address and no Esri credit is left in the base', !/esri|arcgis/i.test(JSON.stringify([PHOTO_CREDIT, SAYS, creditFor({ ground: 'photo', names: 'photo' })])));
+check('the picture credit is the one NASA asks for', PHOTO_CREDIT === 'Imagery: NASA GIBS / Worldview');
 
 // ---- the sentences
 const BAN = /NaN|undefined|null|\[object|forecast|likely|probab|chance/i;
 check('every sentence is plain, ends with a full stop and holds no banned word', Object.values(SAYS).every(t => typeof t === 'string' && /\.$/.test(t) && !BAN.test(t) && t.length < 330), SAYS);
-check('the sentences say what the farmer sees, not how it works', /WebGL/.test(SAYS.noGL) && /offline/.test(SAYS.offline) && /ten minutes/.test(SAYS.stalled) && /poles/.test(SAYS.pole));
+check('the sentences say what the farmer sees, not how it works', /WebGL/.test(SAYS.noGL) && /offline/.test(SAYS.offline) && /ten minutes/.test(SAYS.stalled)  && /NASA/.test(SAYS.stalled));
 check('no sentence names a sea, lake or country', !Object.values(SAYS).some(t => new RegExp('\\b(Atlantic|Pacific|Ontario|Canada|' + OLD + '|Gulf of)\\b').test(t)));
 process.exitCode = failed ? 1 : 0;
 
@@ -75,5 +74,5 @@ process.exitCode = failed ? 1 : 0;
 const parts = creditParts(creditFor({ ground: 'gl', names: 'light' }));
 same('the Light map credit is three links, in order, to OpenFreeMap, OpenMapTiles and OpenStreetMap\'s copyright page', parts.filter(p => p.href).map(p => [p.text, p.href]), [['OpenFreeMap', 'https://openfreemap.org'], ['OpenMapTiles', 'https://openmaptiles.org'], ['OpenStreetMap', 'https://www.openstreetmap.org/copyright']]);
 same('and the words read as before', parts.map(p => p.text).join(''), 'OpenFreeMap \u00a9 OpenMapTiles Data from OpenStreetMap');
-check('the photo credit with names keeps Esri\'s words plain and links only the OpenFreeMap ones', creditParts(creditFor({ ground: 'photo', names: 'photo' })).filter(p => p.href).length === 3 && creditParts(PHOTO_CREDIT).every(p => !p.href));
+check('the picture credit with names links only the three OpenFreeMap words', creditParts(creditFor({ ground: 'photo', names: 'photo' })).filter(p => p.href).length === 3 && creditParts(PHOTO_CREDIT).every(p => !p.href));
 console.log(`${passed} passed, ${failed} failed`);

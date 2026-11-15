@@ -2,6 +2,7 @@
 // and plain "Not read yet" cards for the lookups that are not connected. Every card carries its "i" (NASA's solid). A day nobody read is a gap, never a dry day.
 // Pure: functions of plain data (js/satellites-data.js, js/region.js) that return text.
 // Checked by scripts/test_satellites.mjs (the rain card in each state, the chart's gaps and first estimates, the table, the other cards, plain-text escaping).
+import { priceCards } from './prices-cards.js';
 import { esc } from './words.js';
 import { infoButton } from './report-view.js';
 import { regionHtml } from './region.js';
@@ -42,13 +43,12 @@ export function moistureCardHTML(reading) {
     <p class="cap">The newest value is shown. A 12-month view is not available yet.</p></article>`;
 }
 const later = (id, title, keys, text) => card(id, title, keys, `<p class="rv-notread"><b>Not read yet.</b> ${esc(text)}</p>`);
-export function satellitesHTML({ rain = null, reading = null, grace = null, eco = null, hls = null } = {}) {
+export function satellitesHTML({ rain = null, reading = null, grace = null, eco = null, hls = null, prices = {} } = {}) {
   return `<section class="rv-sec" aria-labelledby="satTitle"><h2 id="satTitle">Satellites &amp; prices</h2>
     <p class="lead">What NASA’s satellites and public records say about the area round your field. A figure that could not be read says so; it is never filled in.</p>
     <div class="grid charts sat-grid">${rainCardHTML(rain)}${moistureCardHTML(reading)}
       ${graceCardHTML(grace)}
       ${hlsCardHTML(hls)}
       ${ecoCardHTML(eco)}
-      ${later('prices', 'Crop prices', ['worldbank'], 'World prices in US dollars will appear here. Ask your buyer for your own price.')}
-      ${later('pests', 'Pests reported nearby', ['gbif'], 'Pest sightings within about 50 km will appear here. Few people report pests, so ask your neighbours.')}</div></section>`;
+      ${priceCards(prices).map(c => card(c.id, c.title, c.keys, c.body)).join('')}</div></section>`;
 }

@@ -1,10 +1,9 @@
-// Crophalo's home screen: the two big buttons, the place search with its list, the demo region cards and the farmer's saved fields
-// (cards on the page and the Saved sheet). Nothing is sent anywhere until a place is searched for or chosen.
-// Nothing here is pure: it reads and changes the page. The pure parts live in places.js and saved.js.
-// Checked by scripts/e2e_flow.mjs (the list and its keys, the messages, the demo card, the Saved sheet with delete and undo, nothing moving on the home).
+// Crophalo's home screen: the two big buttons, the place search with its list, the demo field card, the farmer's saved fields
+// (cards on the page and the Saved sheet) and, after the first paint, the turning Earth with its real satellites (js/home-orbit.js).
+// Not pure: it reads and changes the page (pure parts: places.js, saved.js, fieldShape()). Nothing is sent anywhere until asked.
+// Checked by scripts/e2e.mjs, scripts/e2e_flow.mjs (the list and its keys, the messages, the demo card, the Saved sheet) and scripts/e2e_home.mjs.
 import { esc } from './words.js';
 import { parseCoords, coordText, matchRegions, loadRegions, geocode } from './places.js';
-import { presetOf } from './crops.js';
 import { readSaved, removeSaved, restoreSaved, savedDate } from './saved.js';
 import { initListen } from './listen.js';
 import { toast, hideToast, runToastAction } from './toast.js';
@@ -42,8 +41,8 @@ const setMsg = text => { $('#searchMsg').textContent = text; };
 
 const coordRow = at => ({ title: coordText(at.lat, at.lon), sub: WORDS.useCoords, pick: () => go.place({ lat: at.lat, lon: at.lon, name: coordText(at.lat, at.lon), from: 'coords' }) });
 const regionRow = region => ({ title: region.name, sub: WORDS.demoSub, pick: () => openRegion(region) });
-const placeRow = place => ({ title: place.title, sub: place.sub, pick: () => go.place({ lat: place.lat, lon: place.lon, name: place.title, place: place.sub, from: 'search' }) });
-const openRegion = region => go.place({ lat: region.lat, lon: region.lon, name: region.name, place: region.country, region: region.id, demo: true, rotation: region.rotation, defaults: region.defaults, from: 'region' });
+const placeRow = place => ({ title: place.title, sub: place.sub, pick: () => go.place({ lat: place.lat, lon: place.lon, name: place.title, place: place.sub, ...(place.country ? { country: place.country } : {}), from: 'search' }) });
+const openRegion = region => go.place({ lat: region.lat, lon: region.lon, outline: region.outline, name: region.name, place: region.country, country: region.country, region: region.id, demo: true, rotation: region.rotation, defaults: region.defaults, from: 'region' });
 
 function showList(open) {
   list().hidden = !open;
@@ -74,9 +73,8 @@ function typed() {   // while typing: only what this device already knows, never
   setMsg('');
   const text = input().value.trim(), groups = [];
   if (text.length >= 2) {
-    const at = parseCoords(text), found = matchRegions(regions, text);
+    const at = parseCoords(text);
     if (at && !at.reason) groups.push({ label: WORDS.coords, rows: [coordRow(at)] });
-    if (found.length) groups.push({ label: WORDS.demo, rows: found.map(regionRow) });
   }
   draw(groups);
 }
@@ -88,15 +86,15 @@ async function search() {
   const at = parseCoords(text);
   if (at?.reason) { draw([]); return setMsg(at.reason); }
   if (at) return take(coordRow(at));
-  const mine = ++asked, found = matchRegions(regions, text).map(regionRow), demo = found.length ? [{ label: WORDS.demo, rows: found }] : [];
-  draw([...demo, { label: WORDS.places, rows: [], busy: true }]);
+  const mine = ++asked;
+  draw([{ label: WORDS.places, rows: [], busy: true }]);
   setMsg(WORDS.looking);
   let places;
   try { places = await geocode(text); }
-  catch { if (mine === asked) { draw(demo); setMsg(found.length ? WORDS.downDemo : WORDS.down); } return; }
+  catch { if (mine === asked) { draw([]); setMsg(WORDS.down); } return; }
   if (mine !== asked) return;   // the farmer has typed on: this answer is for an older question
-  if (places.length === 1 && !found.length) return take(placeRow(places[0]));
-  draw([...demo, ...(places.length ? [{ label: WORDS.places, rows: places.map(placeRow) }] : [])]);
+  if (places.length === 1) return take(placeRow(places[0]));
+  draw(places.length ? [{ label: WORDS.places, rows: places.map(placeRow) }] : []);
   setMsg(places.length ? '' : WORDS.none);
 }
 function runSearch(text) { input().value = text; input().focus(); showList(false); search(); }
@@ -118,7 +116,7 @@ function initSearch() {
   list().addEventListener('mousedown', event => event.preventDefault());   // a press on a row keeps the typing place in the field
   list().addEventListener('click', event => { const row = event.target.closest('[role=option]'); if (row) take(rows[+row.dataset.i]); });
   document.addEventListener('click', event => { if (!box.contains(event.target)) showList(false); });
-  for (const link of $$('#searchTry .link')) link.addEventListener('click', () => runSearch(link.textContent));
+  $('#orbitCreditMore')?.addEventListener('click', event => { const open = $('#orbitCredit').classList.toggle('open'); event.currentTarget.setAttribute('aria-expanded', String(open)); });   // phones: the credits are one line that opens
   initVoice();
 }
 
@@ -152,33 +150,32 @@ function locate() {
     { timeout: LOCATE_MS, maximumAge: 60e3, enableHighAccuracy: true });
 }
 
-// ---- cards: a demo region and a saved field share one shape
-// A satellite photo around the point (Esri World Imagery), 640 by 360: about 14 km across.
-function photo(lat, lon) {
-  const up = 0.036, across = up * (16 / 9) / Math.max(0.2, Math.cos(lat * Math.PI / 180));
-  const box = [lon - across, lat - up, lon + across, lat + up].map(v => v.toFixed(4)).join(',');
-  return `https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/export?bbox=${box}&bboxSR=4326&imageSR=3857&size=640,360&format=jpg&f=image`;
+// ---- cards: a demo field and a saved field share one shape. No photo: a field drawn by its own outline, where it has one, on a quiet
+// ground with its place and size; every other card shows where it is.
+// The outline as an SVG path in a 160 by 90 box, north up, metres kept true (a degree of longitude shrinks with the cosine of the latitude).
+export function fieldShape(ring, lat) {
+  const pts = (Array.isArray(ring) ? ring : []).filter(p => Array.isArray(p) && Number.isFinite(p[0]) && Number.isFinite(p[1])).map(([lon, la]) => [lon * Math.cos(lat * Math.PI / 180), -la]);
+  if (pts.length < 3) return '';
+  const xs = pts.map(p => p[0]), ys = pts.map(p => p[1]), w = Math.max(...xs) - Math.min(...xs), h = Math.max(...ys) - Math.min(...ys), k = Math.min(120 / (w || 1), 62 / (h || 1));
+  const ox = 80 - (Math.max(...xs) + Math.min(...xs)) / 2 * k, oy = 45 - (Math.max(...ys) + Math.min(...ys)) / 2 * k;
+  return pts.map(([x, y], i) => `${i ? 'L' : 'M'}${(ox + x * k).toFixed(1)} ${(oy + y * k).toFixed(1)}`).join('') + 'Z';
 }
-const card = ({ id, lat, lon, onPhoto, title, text, chip, action }) => `
-  <article class="card act place-card">
-    <div class="card-top"><img class="card-pic" alt="" loading="lazy" decoding="async" width="640" height="360" src="${esc(photo(lat, lon))}">${onPhoto ? `<span class="pic-chip">${esc(onPhoto)}</span>` : ''}</div>
-    <div class="card-b">
-      <h3>${esc(title)}</h3>
-      ${text ? `<p>${esc(text)}</p>` : ''}
-      ${chip ? `<p><span class="chip">${esc(chip)}</span></p>` : ''}
-      <p><button type="button" class="link cover" data-id="${esc(id)}" aria-label="${esc(`${action}: ${title}`)}">${esc(action)} <span aria-hidden="true">›</span></button></p>
-    </div>
-  </article>`;
 
-async function initRegions() {
-  const grid = $('#homeRegions');
-  grid.innerHTML = '<div class="sk-card" aria-hidden="true"><i class="sk title"></i><i class="sk"></i><i class="sk"></i><i class="sk pill"></i></div>';
+async function initRegions() {   // the demo is one line on the card: "Try a demo field: near Mead, Nebraska · Beltsville, Maryland · Barrie, Ontario"; each name is a link that opens its field
   try { regions = await loadRegions(); } catch { regions = []; }
-  if (regions[0]?.name && $('#tryRegion')) $('#tryRegion').textContent = regions[0].name;   // the example link names the demo region from the data file
-  if (!regions.length) { grid.innerHTML = `<p class="cap">${esc(WORDS.noRegions)}</p>`; return; }
-  grid.innerHTML = regions.map(region => card({ id: region.id, lat: region.lat, lon: region.lon, onPhoto: region.country, title: region.name,
-    text: region.blurb ?? '', chip: presetOf(region.rotation)?.label ?? '', action: WORDS.openRegion })).join('');
-  grid.addEventListener('click', event => { const id = event.target.closest('.cover')?.dataset.id, region = regions.find(r => r.id === id); if (region) openRegion(region); });
+  const line = $('#searchTry'), first = $('#tryRegion'); if (!line || !first) return;
+  const list = regions.filter(r => r?.name);
+  if (!list.length) { line.hidden = true; return; }
+  const place = r => r.name.replace(/^an? (?:research )?field /i, '').replace(/^near /i, '');   // "A research field near Mead, Nebraska" -> "Mead, Nebraska"
+  first.textContent = `near ${place(list[0])}`; first.dataset.region = list[0].id;
+  let after = first;
+  for (const r of list.slice(1)) {
+    const dot = Object.assign(document.createElement('span'), { className: 'try-dot', textContent: '·' }); dot.setAttribute('aria-hidden', 'true');
+    const link = Object.assign(document.createElement('button'), { type: 'button', className: 'link', textContent: place(r) }); link.dataset.region = r.id;
+    after.after(dot, link); after = link;
+  }
+  line.addEventListener('click', event => { const link = event.target.closest?.('button[data-region]'); const region = link && list.find(r => r.id === link.dataset.region); if (region) openRegion(region); });
+  line.removeAttribute('data-wait');
 }
 
 // ---- saved fields: the cards on the home, the count in the bar, the sheet
@@ -186,9 +183,6 @@ function drawSaved() {
   const all = readSaved(), n = all.length;
   $('#savedCount').textContent = n ? String(n) : '';
   if (n) $('#navSaved').removeAttribute('aria-label'); else $('#navSaved').setAttribute('aria-label', WORDS.savedLabel);   // with a count its name is its words, "Saved 2", so the spoken name holds what is on the screen
-  $('#homeSaved').hidden = !n;
-  $('#homeSavedGrid').innerHTML = all.slice(0, HOME_SAVED).map(field => card({ id: field.key, lat: field.lat, lon: field.lon,
-    onPhoto: savedDate(field.at) && `${WORDS.saved} ${savedDate(field.at)}`, title: field.name, text: field.summary, action: WORDS.openReport })).join('');
   $('#savedList').innerHTML = !n ? `<p>${esc(WORDS.nothing)}</p>` : `<ul class="gl saved-list">${all.map(field => `
     <li class="row saved-row" data-key="${esc(field.key)}">
       <div class="saved-t"><b>${esc(field.name)}</b><small>${esc([field.place, savedDate(field.at)].filter(Boolean).join(' · '))}</small>${field.summary ? `<p>${esc(field.summary)}</p>` : ''}</div>
@@ -216,13 +210,21 @@ function initSaved() {
     const button = event.target.closest('[data-do]'), key = button?.closest('.saved-row')?.dataset.key;
     if (key) (button.dataset.do === 'open' ? openSaved : deleteSaved)(key);
   });
-  $('#homeSavedGrid').addEventListener('click', event => { const key = event.target.closest('.cover')?.dataset.id; if (key) openSaved(key); });
   document.addEventListener('keydown', event => {   // Ctrl or Cmd with Z brings a deleted field back while its line still shows
     if (event.key.toLowerCase() !== 'z' || !(event.ctrlKey || event.metaKey) || event.shiftKey || event.altKey) return;
     if (event.target.closest?.('input, textarea, select, [contenteditable]')) return;   // in a field the keys undo the typing
     if (runToastAction()) event.preventDefault();
   });
   addEventListener('storage', event => { if (event.key === null || event.key === 'crophalo.saved.v1') drawSaved(); });
+}
+
+// ---- the Earth and its satellites: loaded after the first paint, and only once the home is the screen in front, so no other screen
+// ever waits for it or pays for it; the home works without it. A satellite's card leads to the map or to the demo field.
+function startEarth() {
+  const home = $('#view-home');
+  if (home.hidden) { const shown = new MutationObserver(() => { if (!home.hidden) { shown.disconnect(); startEarth(); } }); shown.observe(home, { attributes: true, attributeFilter: ['hidden'] }); return; }
+  const go2 = { map: () => go.mapPick(), demo: () => (regions[0] ? openRegion(regions[0]) : go.mapPick()) };
+  import('./home-orbit.js').then(module => module.startOrbit({ go: go2 })).catch(() => { /* the Earth is a picture: the home works without it */ });
 }
 
 // ---- start. where: { place(spot), mapPick(), saved(field) } says what each choice opens.
@@ -234,4 +236,5 @@ export function initHome(where) {
   initSearch();
   initRegions();
   initSaved();
+  requestAnimationFrame(() => setTimeout(startEarth, 0));
 }

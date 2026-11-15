@@ -15,7 +15,7 @@ const STARTER_PORT = 5173;   // the server's own fallback port (scripts/serve.mj
 const FLAGS = ['--headless=new', '--remote-debugging-port=0', '--no-first-run', '--disable-background-networking', '--disable-sync', '--disable-extensions',
   '--disable-background-timer-throttling', '--disable-renderer-backgrounding', '--mute-audio', '--hide-scrollbars',
   '--use-mock-keychain', '--password-store=basic'];   // a test browser must never ask the computer's keychain for anything: no system dialog, nothing stored
-const KEYS = { Tab: 9, Enter: 13, Escape: 27, ' ': 32, End: 35, Home: 36, ArrowLeft: 37, ArrowUp: 38, ArrowRight: 39, ArrowDown: 40 };
+const KEYS = { Backspace: 8, Tab: 9, Enter: 13, Escape: 27, ' ': 32, End: 35, Home: 36, ArrowLeft: 37, ArrowUp: 38, ArrowRight: 39, ArrowDown: 40, Insert: 45, Delete: 46, '+': 187, '=': 187, '-': 189, '_': 189 };
 const sleep = ms => new Promise(done => setTimeout(done, ms));
 const isFile = file => { try { return fs.statSync(file).isFile(); } catch { return false; } };
 
@@ -56,7 +56,7 @@ export function whyNoBrowser(name, { webSocket = typeof WebSocket === 'function'
 export const wanted = (name, only = process.env.E2E_ONLY || '') => { const words = only.split(',').map(w => w.trim().toLowerCase()).filter(Boolean); return !words.length || words.some(w => name.toLowerCase().includes(w)); };
 // What the throwaway copy holds: the page, what it loads, and the server with the scripts it imports (found by reading it, so a new import never needs a change here).
 export function copyList(root = ROOT) {
-  const list = ['index.html', 'design.html', 'manifest.json', 'sw.js', 'robots.txt', 'js', 'css', 'vendor', 'icons', 'design', 'data/regions.json'], seen = new Set();
+  const list = ['index.html', 'design.html', 'manifest.json', 'sw.js', 'robots.txt', 'js', 'css', 'vendor', 'icons', 'img', 'design', 'data/regions.json'], seen = new Set();
   const follow = rel => {
     if (seen.has(rel) || !isFile(path.join(root, rel))) return;
     seen.add(rel);
@@ -265,12 +265,54 @@ export async function openRun(name) {
   }
   const tapAt = async (x, y) => { await point({ x, y }); await mouse('mousePressed', { x, y }, 1); await mouse('mouseReleased', { x, y }); };   // a real click on a bare spot of the screen
   const rest = () => point({ x: 1, y: 1 });   // the pointer out of the way, so nothing is lit by hover
-  async function press(key, { shift = false } = {}) {
-    const code = KEYS[key] ?? key.toUpperCase().charCodeAt(0), text = key === 'Enter' ? '\r' : key.length === 1 ? key : undefined;
-    const base = { key, code: key === ' ' ? 'Space' : key.length === 1 ? 'Key' + key.toUpperCase() : key, windowsVirtualKeyCode: code, nativeVirtualKeyCode: code, modifiers: shift ? 8 : 0 };
+  async function press(key, { shift = false, ctrl = false, meta = false } = {}) {   // ctrl and meta for the undo keys: then the key types nothing
+    const code = KEYS[key] ?? key.toUpperCase().charCodeAt(0), text = key === 'Enter' ? '\r' : key.length === 1 && !ctrl && !meta ? key : undefined;
+    const name = key === ' ' ? 'Space' : /^\d$/.test(key) ? 'Digit' + key : key === '+' || key === '=' ? 'Equal' : key === '-' || key === '_' ? 'Minus' : key.length === 1 ? 'Key' + key.toUpperCase() : key;
+    const base = { key, code: name, windowsVirtualKeyCode: code, nativeVirtualKeyCode: code, modifiers: (ctrl ? 2 : 0) | (meta ? 4 : 0) | (shift ? 8 : 0) };
     await send('Input.dispatchKeyEvent', { type: text ? 'keyDown' : 'rawKeyDown', ...base, ...(text ? { text, unmodifiedText: text } : {}) });
     await send('Input.dispatchKeyEvent', { type: 'keyUp', ...base });
   }
+  // ---- more of the mouse: a drag in small steps, a double click, the wheel (shift held where a check asks for it)
+  const lerp = (a, b, t) => ({ x: a.x + (b.x - a.x) * t, y: a.y + (b.y - a.y) * t });
+  async function dragMouse(a, b, { steps = 8, ms = 16, shift = false, hold = 0 } = {}) {
+    const mods = shift ? 8 : 0;
+    await point(a); await send('Input.dispatchMouseEvent', { type: 'mousePressed', x: a.x, y: a.y, button: 'left', buttons: 1, clickCount: 1, modifiers: mods });
+    if (hold) await sleep(hold);
+    for (let i = 1; i <= steps; i++) { const p = lerp(a, b, i / steps); await send('Input.dispatchMouseEvent', { type: 'mouseMoved', x: p.x, y: p.y, button: 'left', buttons: 1, modifiers: mods }); await sleep(ms); }
+    await send('Input.dispatchMouseEvent', { type: 'mouseReleased', x: b.x, y: b.y, button: 'left', buttons: 0, clickCount: 1, modifiers: mods });
+  }
+  async function dblclickAt(x, y) {
+    await point({ x, y });
+    for (const clickCount of [1, 2]) { await send('Input.dispatchMouseEvent', { type: 'mousePressed', x, y, button: 'left', buttons: 1, clickCount }); await send('Input.dispatchMouseEvent', { type: 'mouseReleased', x, y, button: 'left', buttons: 0, clickCount }); }
+  }
+  const wheel = (x, y, deltaY) => send('Input.dispatchMouseEvent', { type: 'mouseWheel', x, y, deltaX: 0, deltaY });
+  // ---- touch, written new on the lines of the hand-driven walk: one finger, a swipe, two fingers. touchOn() before a load makes the page a touch screen.
+  const touchOn = (on = true) => send('Emulation.setTouchEmulationEnabled', { enabled: on, maxTouchPoints: on ? 5 : 1 });
+  const finger = (type, points) => send('Input.dispatchTouchEvent', { type, touchPoints: points.map((p, i) => ({ x: p.x, y: p.y, id: p.id ?? i, radiusX: 12, radiusY: 12, force: 1 })) });
+  async function touchTap(x, y, { hold = 60, wiggle = 0 } = {}) {   // wiggle: a brush of that many px while the finger is down
+    await finger('touchStart', [{ x, y }]); await sleep(wiggle ? 30 : hold);
+    if (wiggle) { await finger('touchMove', [{ x: x + wiggle, y: y + wiggle / 2 }]); await sleep(Math.max(0, hold - 30)); }
+    await finger('touchEnd', []);
+  }
+  async function swipe(from, to, { steps = 12, ms = 16, hold = 30 } = {}) {   // hold: how long the finger rests before it moves
+    await finger('touchStart', [from]); await sleep(hold);
+    for (let i = 1; i <= steps; i++) { await finger('touchMove', [lerp(from, to, i / steps)]); await sleep(ms); }
+    await finger('touchEnd', []);
+  }
+  async function pinch(center, from, to, { steps = 12, ms = 20, angle = 0 } = {}) {   // two fingers from "from" px apart to "to" px apart
+    const pts = d => [{ x: center.x - Math.cos(angle) * d / 2, y: center.y - Math.sin(angle) * d / 2, id: 0 }, { x: center.x + Math.cos(angle) * d / 2, y: center.y + Math.sin(angle) * d / 2, id: 1 }];
+    await finger('touchStart', pts(from)); await sleep(30);
+    for (let i = 1; i <= steps; i++) { await finger('touchMove', pts(from + (to - from) * i / steps)); await sleep(ms); }
+    await finger('touchEnd', []);
+  }
+  // The farmer has chosen the board before any page loads, so a strong test device does not open 3D by itself (the first-open rule, js/farm3d-rule.js). A suite that tests that rule switches it off:
+  // E2E_FIRST_OPEN=1 for a whole run, or `await run.firstOpen(true)` for the pages loaded after it (and `false` to put it back).
+  let seedId = null;
+  const firstOpen = async on => {
+    if (seedId) { await send('Page.removeScriptToEvaluateOnNewDocument', { identifier: seedId }); seedId = null; }
+    if (!on) seedId = (await send('Page.addScriptToEvaluateOnNewDocument', { source: "try { if (localStorage.getItem('crophalo.farm3d.v1') === null) localStorage.setItem('crophalo.farm3d.v1', 'board'); } catch (e) { /* a page that keeps nothing */ }" })).identifier;
+  };
+  await firstOpen(env.E2E_FIRST_OPEN === '1');
   let wide = 1280;
   const size = (w, h = w < 600 ? 780 : 900) => send((wide = w, 'Emulation.setDeviceMetricsOverride'), { width: w, height: h, deviceScaleFactor: 1, mobile: w < 600 });   // a phone under 600 px
   const device = features => send('Emulation.setEmulatedMedia', { features: Object.entries(features || {}).map(([name, value]) => ({ name, value })) });   // device({ 'prefers-reduced-motion': 'reduce' }); device() puts it back
@@ -330,5 +372,6 @@ export async function openRun(name) {
     say(`${passed} passed, ${failed} failed`);
     process.exit(failed ? 1 : 0);
   }
-  return { ROOT, SITE, BASE, browser, shots, send, js, page, until, seen, click, tap, tapAt, rest, press, size, device, go, flat, calmPress, shot, check, same, group, finish, sleep, errors, cutOff, asked };
+  return { ROOT, SITE, BASE, browser, shots, send, js, page, until, seen, click, tap, tapAt, rest, press, size, device, go, flat, calmPress, firstOpen, shot, check, same, group, finish, sleep, errors, cutOff, asked,
+    mouse, point, dragMouse, dblclickAt, wheel, touchOn, finger, touchTap, swipe, pinch };
 }

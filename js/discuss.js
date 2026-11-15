@@ -10,7 +10,7 @@
 import { esc } from './words.js';
 import { orderedWarnings } from './sharetext.js';
 import { outlineSVG } from './fieldcard.js';
-import { position, longDay } from './sharetext.js';
+import { position, longDay, isScore } from './sharetext.js';
 
 export const BOXES = Object.freeze({ plan: { label: 'The plan', max: 2400 }, why: { label: 'Why, and the catch', max: 700 }, unknown: { label: 'Not known yet', max: 800 }, question: { label: 'My question', max: 400 } });
 export const QUESTION_HINT = 'e.g. Is this change worth trying on this field next year?', LONG_LINES = 70, TIGHT_LINES = 56;
@@ -39,7 +39,7 @@ export function discussModel(report, choice = DEFAULT_CHOICE) {
   const now = ['Now, year by year:', ...yearLines(r.nowYears)].join('\n');
   const change = pick ? [`The change to discuss (${c.change === 'suggestion' ? 'Crophalo’s suggestion' : 'my own pick'}), year by year:`, ...yearLines(pick.years)].join('\n') : 'No change: I keep what I grow.';
   const start = {
-    plan: [now, change, pick && Number.isFinite(+pick.score) ? `Crophalo’s score: ${Math.round(pick.score)} out of 100${Number.isFinite(+r.nowScore) ? ` (what I grow now: ${Math.round(r.nowScore)})` : ''}. A guide, not a chance of success.` : ''].filter(Boolean).join('\n\n'),
+    plan: [Array.isArray(r.strategies) && r.strategies.length > 1 ? `${r.strategies.length === 3 ? 'Three strategies compared' : 'Strategies compared'}: ${r.strategies.map(x => `${x.roleWords}: ${x.headline}${isScore(x.score) ? ` (${Math.round(x.score)})` : ''}`).join('; ')}.` : '', now, change, pick && isScore(pick.score) ? `Crophalo’s score: ${Math.round(pick.score)} out of 100${isScore(r.nowScore) ? ` (what I grow now: ${Math.round(r.nowScore)})` : ''}. A guide, not a chance of success.` : ''].filter(Boolean).join('\n\n'),
     why: pick ? [pick.why ? `Why: ${pick.why}` : '', pick.catch ? `The catch: ${pick.catch}` : ''].filter(Boolean).join('\n') : '',
     unknown: (Array.isArray(pick?.gaps) ? pick.gaps : []).slice(0, 2).map(g => `- ${g}`).join('\n'),
     question: '',
@@ -80,9 +80,11 @@ export function discussHTML(m) {
     <footer><p>Prepared ${esc(longDay(m.madeOn))} with Crophalo. A guide, not advice. You decide.</p>${m.sources.length ? `<ol class="ds-sources">${m.sources.map(s => `<li>${esc([s.name, s.who, s.url].filter(Boolean).join('. '))}</li>`).join('')}</ol>` : ''}</footer></article>`;
 }
 // Copy text to the clipboard; if the browser refuses, select it in the box so the farmer can copy it by hand. Returns 'copied', 'selected' or 'failed'.
-export async function copyText(text, env = globalThis, box = null) {
-  try { if (env.navigator?.clipboard?.writeText) { await env.navigator.clipboard.writeText(text); return 'copied'; } } catch { /* fall through to the selection */ }
-  try { if (box?.select) { box.focus?.(); box.select(); if (env.document?.execCommand?.('copy')) return 'copied'; return 'selected'; } } catch { /* nothing more to try */ }
+// button: the button that was pressed, so it can show the small "Copied" state (js/motion-wire.js listens for crophalo:did).
+export async function copyText(text, env = globalThis, box = null, button = null) {
+  const done = () => { try { if (button) env.document?.dispatchEvent(new CustomEvent('crophalo:did', { detail: { what: 'copied', button } })); } catch { /* the small state is a nicety */ } return 'copied'; };
+  try { if (env.navigator?.clipboard?.writeText) { await env.navigator.clipboard.writeText(text); return done(); } } catch { /* fall through to the selection */ }
+  try { if (box?.select) { box.focus?.(); box.select(); if (env.document?.execCommand?.('copy')) return done(); return 'selected'; } } catch { /* nothing more to try */ }
   return 'failed';
 }
 export const COPY_WORDS = Object.freeze({ copied: 'Copied. Paste it into your message or email.', selected: 'Select the text and copy it.', failed: 'Copying did not work here. Select the text and copy it.' });

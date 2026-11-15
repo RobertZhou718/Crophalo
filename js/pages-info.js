@@ -2,7 +2,7 @@
 // The markup is in js/pages-view.js; the rules are in privacy.js, backup.js, units.js, currency.js. Every storage access is in a try.
 // Checked by scripts/e2e_pages.mjs in a real browser.
 import { esc, own } from './words.js';
-import { privacyHTML, limitsHTML, settingsHTML, PAGE_LEADS, SETTINGS_TAB_IDS, PRIVACY_TAB_IDS } from './pages-view.js';
+import { privacyHTML, limitsHTML, settingsHTML, PAGE_LEADS, PRIVACY_TAB_IDS } from './pages-view.js';
 import { storageCounts, makeArmer, eraseGroup, eraseEverything, ARM_MS } from './privacy.js';
 import { readSettings, saveSettings, SETTINGS_KEY } from './settings.js';
 import { readUnits, saveUnits, unitsFor, METRIC, IMPERIAL, DIMS, KEY as UNITS_KEY } from './units.js';
@@ -10,37 +10,37 @@ import { loadRates, readRates, money } from './currency.js';
 import { makeBackup, checkBackup, describeBackup, describeWords, restoreBackup, backupName, MAX_BYTES } from './backup.js';
 import { readReminders, writeReminders, remindListHTML, settingsRemindersHTML, notifyState, pushSupport } from './remind.js';
 import { toast } from './toast.js';
-import { loadSources, adminHTML } from './admin-view.js';
+import { pageStyle } from './page-style.js';
 
 const armer = makeArmer();
-const ensureStyle = href => { if (!document.querySelector(`link[href="${href}"]`)) { const l = document.createElement('link'); l.rel = 'stylesheet'; l.href = href; document.head.append(l); } };
 let armTimer = 0, page = '', tab = '';
 const root = () => document.getElementById('infoBody');
 const tabFromAddress = ids => { const [, , t = ''] = /^#([a-z]+)(?:\/([a-z]+))?$/.exec(location.hash) ?? []; const m = /^#[a-z]+\/([a-z]+)$/.exec(location.hash); return ids.includes(m?.[1]) ? m[1] : ids[0]; };
 const nowLocal = () => { const d = new Date(), p = n => String(n).padStart(2, '0'); return `${d.getFullYear()}-${p(d.getMonth() + 1)}-${p(d.getDate())}T${p(d.getHours())}:${p(d.getMinutes())}`; };
 
 function ctx() {
-  const settings = readSettings(), units = unitsFor(readUnits()), rates = readRates();
-  return { settings, units, rates, moneySample: money(100, settings.currency, rates), reminders: readReminders(), nowLocal: nowLocal(), remindState: { notify: notifyState(), push: { ok: false, reason: 'Checking this browser…', on: false } } };
+  const deviceStill = (() => { try { return matchMedia('(prefers-reduced-motion: reduce)').matches; } catch { return false; } })(), settings = readSettings(), units = unitsFor(readUnits()), rates = readRates();
+  return { deviceStill, settings, units, rates, moneySample: money(100, settings.currency, rates), reminders: readReminders(), nowLocal: nowLocal(), remindState: { notify: notifyState(), push: { ok: false, reason: 'Checking this browser…', on: false } } };
 }
+export const renders = { count: 0 };   // how many times a page was drawn: a test counts them, so a draw that starts another draw forever is caught
 export function renderInfoPage(which, node = root()) {
   if (!node) return false;
-  page = which; ensureStyle('css/pages.css');
+  renders.count++;
+  page = which; pageStyle('css/pages.css', node);
   if (which === 'limits') { node.innerHTML = `<p class="lead">${esc(PAGE_LEADS.limits)}</p>${limitsHTML()}`; return true; }
   if (which === 'privacy') { tab = tabFromAddress(PRIVACY_TAB_IDS); node.innerHTML = `<p class="lead">${esc(PAGE_LEADS.privacy)}</p>${privacyHTML(tab, storageCounts())}`; return true; }
-  if (which === 'settings') { tab = tabFromAddress(SETTINGS_TAB_IDS); node.innerHTML = `<p class="lead">${esc(PAGE_LEADS.settings)}</p>${settingsHTML(tab, ctx())}`; afterSettings(node); return true; }
+  if (which === 'settings') { tab = ''; node.innerHTML = `<p class="lead">${esc(PAGE_LEADS.settings)}</p>${settingsHTML(ctx())}`; afterSettings(node); return true; }
   return false;
 }
-const redraw = () => { const n = root(), y = scrollY; renderInfoPage(page, n); scrollTo(0, y); };
+const redraw = () => { const n = root(), y = scrollY, open = [...n.querySelectorAll('details[open]')].map(d => d.id); renderInfoPage(page, n); for (const id of open) { const d = n.querySelector(`#${CSS.escape(id)}`); if (d) d.open = true; } scrollTo(0, y); };
 const goTab = (id, focus = true) => { history.replaceState(history.state, '', `#${page}/${id}`); redraw(); if (focus) document.getElementById('pgtab-' + id)?.focus(); };
 
 async function afterSettings(node) {
-  if (tab === 'units') {   // redraw ONCE when new rates arrive; rates already in hand change nothing, and redrawing for them would start this again forever
-    const drawn = JSON.stringify(readRates() ?? null), rates = await loadRates();
-    if (rates && page === 'settings' && tab === 'units' && JSON.stringify(readRates() ?? null) !== drawn && node.querySelector('#fxNote')) redraw();
-  }
-  if (tab === 'admin') { const rows = await loadSources(); if (page === 'settings' && tab === 'admin') { const p = node.querySelector('#pgpanel'); if (p) p.innerHTML = adminHTML(rows); } }
-  if (tab === 'remind') { const state = { notify: notifyState(), push: await pushSupport() }; const w = node.querySelector('#remindWays'); if (w && tab === 'remind') w.innerHTML = settingsRemindersHTML({ notify: state.notify, push: { ...state.push, on: false } }); }
+  import('./remind-wire.js').then(m => m.wireSettingsReminders(node, { afterChange: () => { const c = node.querySelector('#remindCount'); if (c) { const n = readReminders().length; c.textContent = n ? `${n} ${n === 1 ? 'reminder' : 'reminders'} set. They stay on this device.` : 'They stay on this device.'; } } }));
+  const state = { notify: notifyState(), push: await pushSupport() }, ways = node.querySelector('#remindWays');
+  if (ways && page === 'settings') ways.innerHTML = settingsRemindersHTML({ notify: state.notify, push: { ...state.push, on: false } });
+  const drawn = JSON.stringify(readRates() ?? null), rates = await loadRates();   // redraw ONCE when new rates arrive; rates already in hand change nothing, and redrawing for them would start this again forever
+  if (rates && page === 'settings' && JSON.stringify(readRates() ?? null) !== drawn && node.querySelector('#fxNote')) redraw();
 }
 
 // ---- two-tap delete

@@ -36,7 +36,10 @@ same('soybeans take the usual 140-day row', [soy.len, soy.harvest - soy.sow], ['
 same('Barrie has a cold winter, so winter wheat keeps its calendar', wheat.kind, 'winter');
 same('the wheat window opens on the crop table\'s sowing month, 1 October', SE.dayWord(wheat.window.earliest), 'Oct 1');
 ok('the wheat window closes 20 FAO days before the normal mean drops under 3 °C', wheat.window.latest === wheat.window.cold - 20 && Y.tmean(wheat.window.cold) < 3 && Y.tmean(wheat.window.cold - 1) >= 3);
-ok('the window ends before the usual first autumn frost: inside the frost-free season', wheat.window.latest < C.med.frostFirst, `${SE.dayWord(wheat.window.latest)} vs ${SE.dayWord(C.med.frostFirst)}`);
+// The cold closes the window, not the first autumn frost: winter wheat comes up through autumn frosts (OMAFRA: leaves that have not
+// hardened off still take −9 °C). Read as the Ontario weather stations record it, Barrie's first frost (about Oct 19) comes before the
+// last good sowing day (about Oct 30); with NASA's own, later date (Oct 31) it came after.
+ok('the window is set by warmth alone: its last day leaves the 20 FAO days before the cold, even when the first autumn frost comes earlier', wheat.window.latest + wheat.window.init === wheat.window.cold && C.med.frostFirst < wheat.window.latest, `${SE.dayWord(wheat.window.latest)} vs ${SE.dayWord(C.med.frostFirst)}`);
 same('winter wheat is ready in the middle of July of the next year', SE.dayWord(wheat.harvest), 'Jul 15');
 ok('winter wheat grows again in spring when the normal mean is back at 3 °C', wheat.wake > 365 && Y.tmean(wheat.wake) >= 3 && Y.tmean(wheat.wake - 1) < 3);
 ok('winter wheat flowers in early summer, not in the winter', wheat.flower > 365 + 120 && wheat.flower < 365 + 196);

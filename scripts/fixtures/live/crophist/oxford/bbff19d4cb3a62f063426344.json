@@ -1,0 +1,14 @@
+{
+ "method": "POST",
+ "url": "https://agriculture.canada.ca/imagery-images/rest/services/annual_crop_inventory/2023/ImageServer/getSamples",
+ "recorded": "2026-11-15T07:55:05Z",
+ "hand_made": false,
+ "replies": [
+  {
+   "status": 200,
+   "headers": {
+    "content-type": "application/json;charset=UTF-8"
+   }
+  }
+ ]
+}

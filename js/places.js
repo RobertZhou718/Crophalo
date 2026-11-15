@@ -1,7 +1,7 @@
 // Crophalo's places: reading coordinates a farmer types or pastes, the demo regions, and the place search.
 // Pure: parseCoords(), coordText(), matchRegions(), placeRows(). The rest asks the network or reads the device's storage.
 // Checked by scripts/test_places.mjs (every coordinate format, the minus-sign rule, the region match, the place rows).
-import { countryName } from './words.js';
+import { countryName, ZERO_WORDS } from './words.js';
 
 // ---- coordinates
 export const MINUS_MSG = 'The minus sign and the letter disagree (a minus means south or west). Take the minus sign off, or change the letter, and try again.';
@@ -58,7 +58,8 @@ export function parseCoords(text) {
   const signed = part => (part.minus || /[SW]/.test(part.letter) ? -1 : 1) * part.value;
   return inRange(signed(a), signed(b));
 }
-const inRange = (lat, lon) => Number.isFinite(lat) && Number.isFinite(lon) && Math.abs(lat) <= 90 && Math.abs(lon) <= 180 ? { lat, lon } : null;
+const inRange = (lat, lon) => !(Number.isFinite(lat) && Number.isFinite(lon) && Math.abs(lat) <= 90 && Math.abs(lon) <= 180) ? null
+  : Math.abs(lat) < 5e-5 && Math.abs(lon) < 5e-5 ? { reason: ZERO_WORDS } : { lat, lon };   // 0, 0 (to four decimals) is refused in words: it is what a missing position turns into
 
 // "42.03000, -93.62000": five decimals is about one metre, more than any field needs.
 export const coordText = (lat, lon) => `${(+lat).toFixed(5)}, ${(+lon).toFixed(5)}`;
@@ -73,6 +74,24 @@ export function matchRegions(regions, text) {
   const want = plain(text);
   if (want.length < 2) return [];
   return regions.filter(region => [region.name, region.country, ...(region.aliases ?? [])].some(word => plain(word).includes(want)));
+}
+// A demo region that is a field carries its outline as GeoJSON order [lon, lat] (a closed ring, at least four points). Returns the corners as [lat, lon] without the repeated last one, or null when the outline is not a real ring.
+// The region a place event stands for: by its id when the event carries one, else the one whose own coordinates lie within 0.00006 degrees both ways (the wizard keeps the pin to 4 decimals, the data holds 6: equality never matches). Pure.
+export const NEAR_DEG = 0.00006;
+export function regionAt(list, place) {
+  if (!Array.isArray(list) || !place) return null;
+  if (typeof place.region === 'string' && place.region) return list.find(r => r?.id === place.region) ?? null;
+  const lat = Number(place.lat), lon = Number(place.lon);
+  if (!Number.isFinite(lat) || !Number.isFinite(lon)) return null;
+  const near = list.filter(r => Number.isFinite(r?.lat) && Number.isFinite(r?.lon) && Math.abs(r.lat - lat) < NEAR_DEG && Math.abs(r.lon - lon) < NEAR_DEG);
+  return near.sort((a, b) => Math.hypot(a.lat - lat, a.lon - lon) - Math.hypot(b.lat - lat, b.lon - lon))[0] ?? null;
+}
+export function regionOutline(region) {
+  const ring = region?.outline;
+  if (!Array.isArray(ring) || ring.length < 4) return null;
+  const good = ring.every(p => Array.isArray(p) && p.length === 2 && p.every(Number.isFinite) && Math.abs(p[0]) <= 180 && Math.abs(p[1]) <= 90);
+  if (!good || ring[0][0] !== ring.at(-1)[0] || ring[0][1] !== ring.at(-1)[1]) return null;
+  return ring.slice(0, -1).map(([lon, lat]) => [lat, lon]);
 }
 let regionsAsked = null;
 export function loadRegions() {   // asked once; a failure is asked again next time

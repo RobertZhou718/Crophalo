@@ -1,0 +1,15 @@
+{
+ "method": "GET",
+ "url": "https://agriculture.canada.ca/imagery-images/rest/services/annual_crop_inventory/2025/ImageServer/identify?geometry=%7B%22x%22%3A-79.75%2C%22y%22%3A46.27%2C%22spatialReference%22%3A%7B%22wkid%22%3A4326%7D%7D&geometryType=esriGeometryPoint&returnGeometry=false&returnCatalogItems=false&f=json",
+ "recorded": "2026-11-15T00:45:46Z",
+ "hand_made": false,
+ "replies": [
+  {
+   "status": 200,
+   "headers": {
+    "content-type": "application/json;charset=UTF-8",
+    "content-length": "222"
+   }
+  }
+ ]
+}

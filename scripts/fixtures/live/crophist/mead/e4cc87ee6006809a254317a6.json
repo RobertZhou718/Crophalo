@@ -1,0 +1,15 @@
+{
+ "method": "GET",
+ "url": "https://pdi.scinet.usda.gov/image/rest/services/CDL_WM/ImageServer/identify?geometry=%7B%22x%22%3A-96.436533%2C%22y%22%3A41.17945%2C%22spatialReference%22%3A%7B%22wkid%22%3A4326%7D%7D&geometryType=esriGeometryPoint&returnCatalogItems=true&returnGeometry=false&f=json",
+ "recorded": "2026-11-15T07:54:27Z",
+ "hand_made": false,
+ "replies": [
+  {
+   "status": 200,
+   "headers": {
+    "content-type": "application/json; charset=UTF-8",
+    "content-length": "3879"
+   }
+  }
+ ]
+}

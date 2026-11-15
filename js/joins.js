@@ -21,6 +21,9 @@ export async function getOptions(state, climate, spot, load = null, opts = {}) {
   if (typeof engine?.optionsFor !== 'function') return { ok: false, reason: NOT_READ };
   try {
     const result = await engine.optionsFor(state, climate, spot, opts);   // a promise when the engine is the worker client (engine-client.js engineLoader), a plain answer when it is the module itself
+    const refusal = typeof result?.refusal === 'string' ? result.refusal : result?.refused === true && typeof result.reason === 'string' ? result.reason : '';   // the engine refuses a place (no water, a season too short): only its one plain sentence is shown
+    if (refusal) return { ok: false, refused: true, reason: refusal.trim() };
+    if (result?.notFarmland && typeof result.reason === 'string') return { ok: false, reason: result.reason, notFarmland: true, ...(result.askField ? { askField: result.askField } : {}) };   // water, sea or ice, or no growing season: said in its own words
     if (!(result && result.recommended && result.current)) return { ok: false, reason: NOT_READ };
     const evidence = Array.isArray(result.evidence) ? result.evidence.map(e => ({ ...e, sources: (e.sources || []).map(key => SOURCE_ALIAS[key] || key) })) : result.evidence;
     return { ...result, evidence, ok: true };
@@ -30,7 +33,7 @@ export async function getOptions(state, climate, spot, load = null, opts = {}) {
 export async function addToFarm(payload, load = null) {   // load: () => import('./farm.js'), handed in by the page start; with none My Farm is "not connected yet"
   let farm = null;
   try { farm = load ? await load() : null; } catch { /* My Farm is not built into this copy yet */ }
-  if (typeof farm?.addFromReport !== 'function') return { ok: false, reason: 'My Farm is not connected yet, so the field could not be added.' };
-  try { const r = await farm.addFromReport(payload); return r?.fieldId ? { ok: true, ...r } : { ok: false, reason: 'My Farm did not take the field. Try again.' }; }
-  catch { return { ok: false, reason: 'My Farm did not take the field. Try again.' }; }
+  if (typeof farm?.addFromReport !== 'function') return { ok: false, reason: 'My farm is not connected yet, so the field could not be added.' };
+  try { const r = await farm.addFromReport(payload); return r?.fieldId ? { ok: true, ...r } : { ok: false, reason: 'My farm did not take the field. Try again.' }; }
+  catch { return { ok: false, reason: 'My farm did not take the field. Try again.' }; }
 }

@@ -2,7 +2,8 @@
 // (scripts/fixtures/live/dem-barrie, made by scripts/record_live_heights.mjs). It needs no internet and writes nothing outside a temp folder.
 // RULE: never loosen a check here without a written farming reason beside it. A failure means a farmer would be shown land that is not there:
 // a made-up height, a seam between two maps, or "flat" when the truth is "not read".  Run: node scripts/test_live_dem.mjs
-import { check, same, group, finish, runLookup, contract } from './live_testlib.mjs';
+import fs from 'node:fs';
+import { check, same, group, finish, runLookup, contract, LIVE_DIR } from './live_testlib.mjs';
 
 const watchdog = setTimeout(() => { console.log('FAIL  the suite did not finish in 300 s'); finish(); process.exit(1); }, 300000);
 const floats = b64 => { const buf = Buffer.from(b64, 'base64'); return Array.from({ length: buf.length / 4 }, (_, i) => buf.readFloatLE(i * 4)); };
@@ -55,4 +56,9 @@ await group('dem: the box and the grid are refused in plain words', async () => 
 // Not covered here: every map being down at once. A replayed run refuses an address that was not recorded with a test-only sentence, so that case needs hand-made 503 answers for each of the ten maps.
 
 clearTimeout(watchdog);
+await group('dem: the credits the maps ask for', async () => {
+  const text = fs.readFileSync(LIVE_DIR + '/dem.py', 'utf8');
+  check('Copernicus GLO-30 is credited in the licence\'s own words for work made from it', text.includes('credit="Produced using Copernicus WorldDEM-30 (c) DLR e.V. 2010-2014 and (c) Airbus Defence and Space GmbH 2014-2018 provided under COPERNICUS by the European Union and ESA; all rights reserved"'));
+  check('Canada\'s height maps carry the Open Government Licence - Canada line', /OGL_CA = "Contains information licensed under the Open Government Licence - Canada \(Natural Resources Canada\)"/.test(text));
+});
 finish();

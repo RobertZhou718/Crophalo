@@ -1,0 +1,38 @@
+{
+  "_note": "STAND-IN, NOT REAL DATA. Hand-made in the shape of the /api/mnfield answer (mode now), for the checks only. Prices are made up.",
+  "ok": true,
+  "source": "USDA AMS Market News (MARS API v1.2)",
+  "mode": "now",
+  "today": "2026-11-15",
+  "window": { "from": "2026-11-01", "to": "2026-11-15" },
+  "place": { "state": "NE", "state_name": "Nebraska", "county_zone": "NEC155" },
+  "own": { "id": 3225, "title": "Nebraska Daily Elevator Grain Bids", "published": "2026-11-13", "live": true },
+  "reports": [
+    { "id": 3225, "title": "Nebraska Daily Elevator Grain Bids", "published": "2026-11-13", "live": true, "role": "own", "state": "NE", "co_publisher": "NE Dept. of Ag Market News", "rows_kept": 9 }
+  ],
+  "crops": [
+    { "crop": "corn", "name": "Corn", "class": "Yellow", "status": "own", "report": 3225, "report_date": "2026-11-13", "age_days": 2,
+      "unit": "$ per bushel", "buyer": "Country Elevators", "low": 1.11, "high": 2.22, "year_ago_low": 1.01, "year_ago_high": 2.02, "delivered_by_truck": true,
+      "regions": [ { "region": "Central", "low": 1.11, "high": 1.55, "year_ago_low": 1.01, "year_ago_high": 1.01, "rows": 1 },
+                   { "region": "East", "low": 1.22, "high": 2.22, "year_ago_low": 2.02, "year_ago_high": 2.02, "rows": 1 },
+                   { "region": "Northeast", "low": 1.33, "high": 1.33, "year_ago_low": null, "year_ago_high": null, "rows": 1 } ],
+      "places": [] },
+    { "crop": "soy", "name": "Soybeans", "class": "Yellow", "status": "own", "report": 3225, "report_date": "2026-11-13", "age_days": 2,
+      "unit": "$ per bushel", "buyer": "Country Elevators", "low": 3.33, "high": 4.44, "year_ago_low": 3.03, "year_ago_high": 4.04, "delivered_by_truck": true,
+      "regions": [ { "region": "Central", "low": 3.33, "high": 3.99, "year_ago_low": 3.03, "year_ago_high": 3.03, "rows": 1 },
+                   { "region": "East", "low": 3.44, "high": 4.44, "year_ago_low": 4.04, "year_ago_high": 4.04, "rows": 1 },
+                   { "region": "Northeast", "low": 3.55, "high": 3.66, "year_ago_low": null, "year_ago_high": null, "rows": 1 } ],
+      "places": [] },
+    { "crop": "wheat", "name": "Wheat", "class": "Hard Red Winter", "status": "own", "report": 3225, "report_date": "2026-11-13", "age_days": 2,
+      "unit": "$ per bushel", "buyer": "Country Elevators", "low": 5.55, "high": 6.66, "year_ago_low": null, "year_ago_high": null, "delivered_by_truck": true,
+      "regions": [ { "region": "Central", "low": 5.55, "high": 6.11, "year_ago_low": null, "year_ago_high": null, "rows": 1 },
+                   { "region": "East", "low": 6.66, "high": 6.66, "year_ago_low": null, "year_ago_high": null, "rows": 1 },
+                   { "region": "Northeast", "low": 5.77, "high": 6.22, "year_ago_low": null, "year_ago_high": null, "rows": 1 } ],
+      "places": [] }
+  ],
+  "forward": [],
+  "dropped": { "organic": 0, "forward": 0, "no_price": 2, "other_unit": 1, "old": 3, "other_buyer": 0 },
+  "incomplete": false,
+  "cached": false,
+  "fetched": "2026-11-15T12:00:00.000Z"
+}

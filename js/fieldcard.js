@@ -3,7 +3,7 @@
 // Pure: outlineSVG(), fieldCardHTML(). printFieldCard() puts the card in a hidden print host, prints it alone and takes it away again; it needs the page.
 // Checked by scripts/test_sharetext.mjs (the card's words, that notes and the soil test never appear, a garden's card, the outline's shape).
 import { esc } from './words.js';
-import { orderedWarnings, warningLine, position, longDay, GUIDE } from './sharetext.js';
+import { orderedWarnings, warningLine, position, longDay, GUIDE, isScore } from './sharetext.js';
 
 // The field's outline as a small figure, north up. Longitude is squeezed by the cosine of the latitude so a square field looks square.
 export function outlineSVG(area, size = 150) {
@@ -24,9 +24,10 @@ export function fieldCardHTML(report) {
   const fig = outlineSVG(r.area) || `<p class="fc-nofig">No outline drawn. The answer is for the pin at ${esc(position(r.place))}.</p>`;
   const answer = r.garden
     ? `<h2>${esc(r.name || 'My field')}</h2><p class="fc-head">A tree or bush crop</p><p>There is no rotation to compare. Its weather, frost, rain, slope and soil are in the full report.</p>`
-    : `<h2>Our suggestion</h2><p class="fc-head">${esc(s?.headline ?? 'Keep what you grow')}${ref(s?.refs)}</p>${s?.warning ? `<p class="fc-warn">${esc(s.warning)}</p>` : ''}${s?.why ? `<p>${esc(s.why)}</p>` : ''}${Number.isFinite(+s?.score) ? `<p class="fc-score">Score ${Math.round(s.score)} out of 100${Number.isFinite(+r.nowScore) ? ` (what you grow now: ${Math.round(r.nowScore)})` : ''}. A guide, not a chance of success.</p>` : ''}`;
+    : `<h2>Our suggestion</h2><p class="fc-head">${esc(s?.headline ?? 'Keep what you grow')}${ref(s?.refs)}</p>${s?.warning ? `<p class="fc-warn">${esc(s.warning)}</p>` : ''}${s?.why ? `<p>${esc(s.why)}</p>` : ''}${isScore(s?.score) ? `<p class="fc-score">Score ${Math.round(s.score)} out of 100${isScore(r.nowScore) ? ` (what you grow now: ${Math.round(r.nowScore)})` : ''}. A guide, not a chance of success.</p>` : ''}`;
   return `<article class="field-card"><header><p class="fc-brand">CROPHALO FIELD CARD</p><h1>${esc(r.name || 'My field')}</h1><p class="fc-where">${esc(where)}</p><p class="fc-made">Made ${esc(longDay(r.madeOn))}</p></header>
     <section class="fc-top"><div class="fc-figure">${fig}</div><div class="fc-answer">${answer}</div></section>
+    ${!r.garden && Array.isArray(r.strategies) && r.strategies.length > 1 ? `<section><h3>${r.strategies.length === 3 ? 'Three strategies compared' : 'Strategies compared'}</h3><ul class="fc-strat">${r.strategies.map(x => `<li><b>${esc(x.roleWords ?? 'Option')}:</b> ${esc(x.headline)}${isScore(x.score) ? ` (score ${Math.round(x.score)} out of 100)` : x.flag === 'fails' ? ' (does not suit this place)' : ''}</li>`).join('')}</ul></section>` : ''}
     ${w.length ? `<section class="fc-box"><h3>Weather warnings this week</h3><ul>${w.map(x => `<li>${esc(warningLine(x))}</li>`).join('')}</ul></section>` : ''}
     ${!r.garden && Array.isArray(s?.years) && s.years.length ? `<section><h3>Year by year</h3><ol>${s.years.map(y => `<li>${esc(y)}</li>`).join('')}</ol></section>` : ''}
     ${r.frostNormal ? `<section><h3>Frost in a normal year</h3><p>${esc(r.frostNormal)}</p></section>` : ''}

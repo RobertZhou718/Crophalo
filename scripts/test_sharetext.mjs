@@ -76,5 +76,15 @@ check('a link without the tick carries no soil test, with the tick it does', fro
 check('a hostile link opens as plain text and runs nothing', (() => { const bad = Buffer.from(JSON.stringify({ v: 1, loc: { lat: 1, lon: 2, label: '<script>1</script>' }, name: '<img onerror=1>' })).toString('base64url'); const r = fromLink('#s=' + bad); return r.ok && r.state.name === '<img onerror=1>'; })());
 same('the date words', [shortDay('2026-11-14'), longDay('2026-11-14'), shortDay('x'), position({ lat: 44.40004, lon: -79.78 })], ['14 Nov', '14 November 2026', '', '44.4,-79.78']);
 
+// A plan that does not suit here has no score (null): the strategies line of every text says so and never prints it as 0.
+{
+  const { fieldCardHTML } = await import('../js/fieldcard.js'), { discussModel } = await import('../js/discuss.js');
+  const strategies = [{ roleWords: 'What you grow now', headline: 'Keep wheat', score: null, flag: 'fails' }, { roleWords: 'Our suggestion', headline: 'Try oats', score: 64 }, { roleWords: 'Another option', headline: 'Try peas', score: 58 }];
+  const r = { name: 'F', place: { lat: 40, lon: -96 }, suggestion: { headline: 'Try oats', score: 64 }, strategies, nowScore: null };
+  const texts = [longMessage(r), fieldCardHTML(r), discussModel(r).boxes?.plan ?? JSON.stringify(discussModel(r))];
+  check('a strategy with no score is never shown as score 0 (the long message, the field card, the adviser page)', texts.every(t => !/\(score 0|\(0\)/.test(t)), texts.map(t => (t.match(/Keep wheat[^\n<;]*/) || [''])[0]).join(' | '));
+  check('…and the long message and the field card say it does not suit this place', texts.slice(0, 2).every(t => /Keep wheat \(does not suit this place\)/.test(t)));
+}
+
 console.log(`sharetext: ${passed} passed, ${failed} failed`);
 process.exit(failed ? 1 : 0);

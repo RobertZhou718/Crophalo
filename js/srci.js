@@ -22,7 +22,7 @@ export function cardHtml(keys, note = '') {
   const notes = sourceNotes(keysOf(keys)), tags = [...new Set(notes.map(n => (n.nasa ? 'NASA' : n.org)))];
   return `<div class="srcp-top"><span class="srcp-tags">${tags.map(t => `<span class="src${t === 'NASA' ? ' nasa' : ''}">${esc(t)}</span>`).join('')}</span><button type="button" class="srcp-x" aria-label="Close">${X}</button></div>
     ${note ? `<p class="srcp-fig"><b>For this figure</b><span>${esc(note)}</span></p>` : ''}
-    ${notes.map(n => `<section class="srcp-src"><h4>${esc(n.name)}</h4><p>${esc(n.what)}</p><p class="cap">Run by ${esc(n.who)}.</p>
+    ${notes.map(n => `<section class="srcp-src"><h3>${esc(n.name)}</h3><p>${esc(n.what)}</p><p class="cap">Run by ${esc(n.who)}.</p>
       <details class="disc"><summary>More about it</summary><p class="small"><b>How to explain it.</b> ${esc(n.talk)}</p></details>
       <a class="link small" href="${esc(n.url)}" target="_blank" rel="noopener noreferrer">Visit the source (opens in a new tab)</a></section>`).join('')}`;
 }

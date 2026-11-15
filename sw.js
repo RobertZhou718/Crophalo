@@ -1,15 +1,21 @@
 // Crophalo's service worker: after one online visit the app opens with no internet, from ONE complete copy of itself, and never shows a half-old, half-new app.
-// It finds the app's files by reading the page and the modules (so a new module never needs a list edited by hand), keeps them as one versioned copy that counts only
+// It finds the app's files by reading the page and the modules (so an imported module never needs a list edited by hand), keeps them as one versioned copy that counts only
 // when every file arrived, and never touches /api or another website. Nothing here asks for data: live answers are never kept by the worker.
 // Checked by scripts/test_offline.mjs (this file run in a Node sandbox with a pretend network and cache) and scripts/e2e_map.mjs (a real browser, network off).
 const PRE = 'crophalo-app-v1-';          // one cache per app copy, named with the time it was made
 const DONE = 'sw-complete';              // the last entry of a copy: its body is the cache's name. A copy without it is half-written and never used
 const FILES = 'crophalo-files-v1';       // pictures and map tiles seen online (not part of a copy)
 const FILES_MAX = 80;
+const CRAFT = 'crophalo-craft-v1';       // the six spacecraft pictures of the home's satellite cards
 const RACE_MS = 4000, STALL_MS = 10000, AT_ONCE = 4;
 const SEEDS = ['index.html', 'manifest.json', 'data/regions.json'];
+// Files a screen asks by a built name (css/${sheet}.css, macro-${name}.js), which reading the modules cannot find. A big animation that lands adds its module here too.
+// One of them that this folder does not have (404) is left out; any other failure still drops the whole copy.
+const BY_NAME = ['css/market.css', 'css/fx.css', 'css/fx-halo.css', 'css/history.css', 'css/ahead.css', 'css/explain.css', 'css/notes.css', 'css/share.css', 'css/macro-report.css',
+  'js/macro-turn.js', 'js/macro-setup.js', 'js/macro-descent.js', 'js/macro-light.js', 'js/macro-skeleton.js', 'js/macro-sun.js', 'css/macro-3d.css'];
 
 const here = new URL('./', self.location.href);
+if (typeof importScripts === 'function') importScripts('js/remind-sw.js');   // the reminders: a push shows its notice, and a press on it opens Crophalo
 const abs = path => new URL(path, here).href;
 const isApi = url => url.origin === here.origin && url.pathname.startsWith(here.pathname + 'api/');
 
@@ -51,9 +57,11 @@ const kindOf = url => (/\.html?$/.test(url) || url === here.href ? 'html' : /\.m
 async function gather(how) {
   const seen = new Set(), got = [], todo = [];
   const mark = url => { if (!seen.has(url)) { seen.add(url); todo.push(url); } };
-  for (const seed of SEEDS) mark(abs(seed));
+  const byName = new Set(BY_NAME.map(abs));
+  for (const seed of SEEDS.concat(BY_NAME)) mark(abs(seed));
   async function one(url) {
     const response = await fetch(new Request(url, { cache: how }));
+    if (response.status === 404 && byName.has(url)) return;
     if (!response.ok) throw new Error(`${url} answered ${response.status}`);
     const kind = kindOf(url);
     if (kind !== 'other') for (const next of namedIn(await response.clone().text(), url, kind)) mark(next);
@@ -134,8 +142,8 @@ async function part(event) {
 
 // Pictures and map tiles: network first, saved for later, the saved one after 4 s or when the network fails.
 async function picture(event) {
-  const request = event.request, cache = await caches.open(FILES);
-  const net = fetch(request).then(async r => { if (r.ok) { await cache.put(request, r.clone()); const keys = await cache.keys(); for (const k of keys.slice(0, Math.max(0, keys.length - FILES_MAX))) await cache.delete(k); } return r; }, () => null);
+  const request = event.request, craft = /\/img\/(craft|earth)\//.test(new URL(request.url).pathname), cache = await caches.open(craft ? CRAFT : FILES);   // the spacecraft pictures have a store of their own, never trimmed, so map tiles cannot push them out
+  const net = fetch(request).then(async r => { if (r.ok) { await cache.put(request, r.clone()); const keys = craft ? [] : await cache.keys(); for (const k of keys.slice(0, Math.max(0, keys.length - FILES_MAX))) await cache.delete(k); } return r; }, () => null);
   const saved = await cache.match(request);
   const got = saved ? await Promise.race([net, timeout(RACE_MS, null)]) : await net;
   return got || saved || Response.error();

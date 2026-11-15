@@ -24,3 +24,12 @@
 }
 .h-cell.close { stroke: var(--ink); stroke-dasharray: none; fill: var(--card); }
 .h-legend { margin-top: var(--space-4); }
+.gn-dot { fill: var(--c-g); stroke: var(--ink); stroke-width: .75; } .gn-dot.partial { fill: var(--card); } .gn-gap { stroke: var(--ink2); stroke-width: 1.2; fill: none; }
+.gn-item { display: grid; gap: var(--space-4); }
+
+.h-glyph { font-size: 9px; font-weight: 700; fill: var(--ink); pointer-events: none; }
+
+.hfold > summary { display: flex; align-items: center; min-height: var(--touch); cursor: pointer; list-style: none; } .hfold > summary::-webkit-details-marker { display: none; } .hfold > summary h2 { margin: 0; }
+
+.h-years { display: flex; flex-wrap: wrap; gap: 6px; margin: var(--space-8) 0; padding: 0; list-style: none; } .h-year { display: grid; gap: 0; min-width: 4.2em; padding: 6px 8px; border-radius: var(--r2); border: 1px solid var(--sep); border-left: 6px solid var(--crop, var(--ink3)); background: var(--card); font-size: var(--fs-small); }
+.h-year b { font-weight: var(--fw-semi); } .h-year span { color: var(--ink2); } .h-year.is-mixed { border-left-color: var(--ink3); background: var(--fill); }

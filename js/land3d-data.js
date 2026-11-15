@@ -17,6 +17,10 @@ export const SWITCHES = [
   { id: 'roads', name: 'Roads, tracks', needs: ['osm'], line: 'Roads and tracks from OpenStreetMap.' },
   { id: 'water', name: 'Water paths', needs: ['osm', 'heights'], line: 'Mapped streams, ditches and ponds, and where rain would run.' },
   { id: 'hedges', name: 'Hedges, woods', needs: ['osm', 'trees'], line: 'Hedges, tree rows and woods from OpenStreetMap and the tree map.' },
+  { id: 'shade', name: 'Shade', needs: ['heights'], line: 'Hatching where the shade of the land falls at the hour shown.' },
+  { id: 'fences', name: 'Fences, gates', needs: ['osmx'], line: 'Fences, walls and gates from OpenStreetMap.' },
+  { id: 'power', name: 'Power lines, poles', needs: ['osmx'], line: 'Power lines, poles and towers from OpenStreetMap.' },
+  { id: 'things', name: 'Silos, tanks, towers', needs: ['osmx'], line: 'Silos, tanks, water towers, windmills and wells from OpenStreetMap.' },
   { id: 'wet', name: 'Wet spots', needs: ['heights'], line: 'Low places where rain would collect.' },
 ];
 const BY_ID = new Map(SWITCHES.map(s => [s.id, s]));
@@ -39,7 +43,7 @@ export function sourcesNeeded(choice) {
 }
 
 // ---- limits (computer, phone)
-export const LIMITS = { buildings: [1500, 600], roads: [1500, 700], trees: [1200, 500], water: [400, 200], rain: [60, 30], hollows: [40, 20], labels: [40, 14] };
+export const LIMITS = { buildings: [1500, 600], roads: [1500, 700], trees: [1200, 500], water: [400, 200], rain: [60, 30], hollows: [40, 20], labels: [40, 14], fences: [1500, 600], gates: [150, 60], power: [400, 150], poles: [800, 300], things: [300, 120] };
 const limit = (name, phone) => LIMITS[name][phone ? 1 : 0];
 
 // ---- shared small helpers
@@ -275,7 +279,11 @@ export function flowPaths(model, minHa = RAIN_HA) {
 export function waterLayer(ctx) {
   const a = ctx.osm;
   if (a === undefined) return waiting('water', 'the map of water');
-  if (a?.failed) return cannot('water', 'Water paths', a.failed);
+  if (a?.failed && !(ctx.heights !== undefined && hasHeights(ctx.heights))) return cannot('water', 'Water paths', a.failed);
+  if (a?.failed) {   // the mapped water could not be read, but where rain would run comes from the heights alone: that part is still drawn, and the words say which is which
+    const rain = flowPaths(ctx.heights).cells.slice(0, limit('rain', ctx.phone) * 40);
+    return { id: 'water', state: 'ready', items: [], ponds: [], rain, words: [`Mapped water: ${String(a.failed).replace(/[.\s]+$/, '')}. Not drawn.`].concat(rain.length ? [] : ['No rain path shows in the height map here.'], ['Rain paths are worked out here from the height map, not seen.']) };
+  }
   const lines = [], ponds = [];
   for (const w of a?.water || []) {
     const pts = toLocal(ctx.frame, w.p);
@@ -366,6 +374,39 @@ export function wetLayer(ctx) {
   return { id: 'wet', state: 'ready', items: list, depth, total, words: [`${list.length} low place${list.length === 1 ? '' : 's'} where rain would collect, about ${num(Math.round(total / 10) * 10)} m² in all and up to ${Math.round(maxDepth * 100)} cm deep; ${onFields} on your fields. Worked out from the height map: a guess, not a sighting.`, guard] };
 }
 
+// ---- 11. fences, walls and gates; power lines, poles and towers; silos, tanks and towers (the second OpenStreetMap question, ctx.osmx): drawn only where a mapper drew them, at typical sizes unless a size is mapped
+export const FENCE_HEIGHT = 1.2, WALL_HEIGHT = 1.5, POLE_HEIGHT = 10, TOWER_HEIGHT = 30, GATE_WIDTH = 3.6;
+export const THING_SIZES = { silo: { r: 3, h: 20 }, tank: { r: 4, h: 6 }, 'water tower': { r: 4, h: 18 }, windmill: { r: 1.5, h: 10 }, well: { r: 0.9, h: 1.4 }, tower: { r: 1.5, h: 15 } };
+const plural = (n, one, many) => `${n} ${n === 1 ? one : many}`;
+const cutNote = a => (a?.note ? [String(a.note).replace(/[.\s]+$/, '') + '.'] : []);
+export function fencesLayer(ctx) {
+  const a = ctx.osmx;
+  if (a === undefined) return waiting('fences', 'the map of fences');
+  if (a?.failed) return cannot('fences', 'Fences, gates', a.failed);
+  const items = (a?.fences || []).slice(0, limit('fences', ctx.phone)).map(f => ({ points: toLocal(ctx.frame, f.p), kind: f.k, height: Number.isFinite(f.h) ? f.h : f.k === 'wall' ? WALL_HEIGHT : FENCE_HEIGHT, heightMapped: Number.isFinite(f.h) }));
+  const gates = (a?.gates || []).slice(0, limit('gates', ctx.phone)).map(g => ({ ...toLocal(ctx.frame, [g.p])[0], kind: g.k }));
+  if (!items.length && !gates.length) return { id: 'fences', state: 'ready', items: [], gates: [], words: ['No fences, walls or gates are mapped on this land.'] };
+  const words = [`${plural(items.length, 'fence or wall', 'fences and walls')} and ${plural(gates.length, 'gate', 'gates')} drawn. A fence is ${FENCE_HEIGHT} m and a wall ${WALL_HEIGHT} m high unless a height is mapped.`, ...cutNote(a), 'A fence that nobody has mapped is not here, and a gap in a fence is not drawn.'];
+  return { id: 'fences', state: 'ready', items, gates, words };
+}
+export function powerLayer(ctx) {
+  const a = ctx.osmx;
+  if (a === undefined) return waiting('power', 'the map of power lines');
+  if (a?.failed) return cannot('power', 'Power lines, poles', a.failed);
+  const items = (a?.power || []).slice(0, limit('power', ctx.phone)).map(l => ({ points: toLocal(ctx.frame, l.p), kind: l.k }));
+  const poles = (a?.poles || []).slice(0, limit('poles', ctx.phone)).map(p => ({ ...toLocal(ctx.frame, [p.p])[0], kind: p.k, height: p.k === 'tower' ? TOWER_HEIGHT : POLE_HEIGHT }));
+  if (!items.length && !poles.length) return { id: 'power', state: 'ready', items: [], poles: [], words: ['No power lines or poles are mapped on this land.'] };
+  return { id: 'power', state: 'ready', items, poles, words: [`${plural(items.length, 'power line', 'power lines')} and ${plural(poles.length, 'pole or tower', 'poles and towers')} drawn. A pole is ${POLE_HEIGHT} m and a tower ${TOWER_HEIGHT} m high, and the wires hang a little: typical, not measured.`, ...cutNote(a)] };
+}
+export function thingsLayer(ctx) {
+  const a = ctx.osmx;
+  if (a === undefined) return waiting('things', 'the map of silos and tanks');
+  if (a?.failed) return cannot('things', 'Silos, tanks, towers', a.failed);
+  const items = (a?.things || []).slice(0, limit('things', ctx.phone)).map(t => { const at = toLocal(ctx.frame, [t.p])[0], size = THING_SIZES[t.k] || THING_SIZES.tower; return { ...at, kind: t.k, r: Number.isFinite(t.r) && t.r >= 0.5 && t.r <= 60 ? t.r : size.r, height: size.h, rMapped: Number.isFinite(t.r) }; });
+  if (!items.length) return { id: 'things', state: 'ready', items: [], words: ['No silos, tanks, towers, windmills or wells are mapped on this land.'] };
+  return { id: 'things', state: 'ready', items, words: [`${plural(items.length, 'silo, tank, tower, windmill or well', 'silos, tanks, towers, windmills and wells')} drawn as round shapes, at a typical height (a silo ${THING_SIZES.silo.h} m) and, unless its outline is mapped, a typical width.`, ...cutNote(a)] };
+}
+
 // ---- the one door: a layer's state for a switch, from the sources as they stand
 // ctx: {span, units, phone, frame, fields:[{id, name, polygon}], chosen, heights (heightModel or undefined / {failed}), soil, cover, osm, treeAt}
 export function layerOf(id, ctx) {
@@ -381,6 +422,10 @@ export function layerOf(id, ctx) {
     case 'roads': return roadsLayer(c);
     case 'water': return waterLayer(c);
     case 'hedges': return hedgesLayer(c);
+    case 'shade': return { id: 'shade', state: 'ready', items: [], words: [] };   // drawn and worded by js/shade3d.js
+    case 'fences': return fencesLayer(c);
+    case 'power': return powerLayer(c);
+    case 'things': return thingsLayer(c);
     case 'wet': return wetLayer(c);
     default: return { id, state: 'cannot', words: ['Unknown switch.'], items: [] };
   }
@@ -388,3 +433,12 @@ export function layerOf(id, ctx) {
 // The legend for the cover colours: only what is in the answer
 export const coverLegend = shares => shares.map(s => ({ name: s.short, colour: s.colour, share: Math.round(s.share * 100) }));
 export { frameAt };
+
+// The credit OpenStreetMap asks for wherever its map features are drawn: "(c) OpenStreetMap contributors", linked to its copyright page. Shown only while at least one layer made from
+// OpenStreetMap (buildings, roads, water, hedges and woods) is on and has something drawn; never for layers worked out from the heights alone (rain paths, contours, hollows).
+export const OSM_CREDIT = Object.freeze({ text: '\u00A9 OpenStreetMap contributors', href: 'https://www.openstreetmap.org/copyright' });
+const OSM_LAYERS = new Set(['buildings', 'roads', 'water', 'hedges', 'fences', 'power', 'things']);
+export function osmCredit(layers) {
+  const drawn = (Array.isArray(layers) ? layers : []).some(l => l && l.state === 'ready' && OSM_LAYERS.has(l.id) && [l.items, l.woods, l.ponds, l.gates, l.poles].some(list => Array.isArray(list) && list.length));
+  return drawn ? OSM_CREDIT : null;
+}

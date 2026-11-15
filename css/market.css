@@ -1,0 +1,12 @@
+/* Crophalo's USDA Market News lines: the second line of a strategy card and of the "Income and market" cell, the fold "Each region" and the credit lines.
+   Only the tokens of css/app.css, which set both the light and the dark look, so nothing here needs its own dark rule. No new colour, no motion. */
+.mk-line { display: block; margin-top: var(--space-4); color: var(--ink2); }
+.ocard .mk-card { text-align: left; }
+.rv-cmp td .mk-cell { max-width: 32ch; }
+.mk-fold { margin: var(--space-8) 0; }
+.mk-fold > summary { min-height: var(--touch); }   /* the fold's control: at least 44 px tall */
+.mk-region + .mk-region { margin-top: var(--space-12); }
+.mk-region h5 { margin: 0 0 var(--space-4); font-size: var(--fs-small); font-weight: var(--fw-semi); color: var(--ink); }
+.mk-list { display: grid; gap: var(--space-4); margin: var(--space-4) 0; padding-left: 18px; }
+.mk-credits { display: grid; gap: var(--space-4); margin: var(--space-8) 0; }
+.mk-credit { margin: 0; color: var(--ink2); }

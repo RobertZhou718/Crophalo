@@ -1,0 +1,7 @@
+/* the Share or print sheet: one calm column of rows, text boxes that never run sideways, 44 px buttons */
+.share-sheet .share-body { display: grid; gap: var(--space-16); }
+.share-ticks { border: 0; padding: 0; margin: 0; display: grid; gap: var(--space-4); } .share-ticks legend { font-weight: var(--fw-semi); padding: 0; margin-bottom: var(--space-4); }
+.share-tick { display: flex; align-items: center; gap: var(--space-8); min-height: var(--touch); } .share-tick input { width: 22px; height: 22px; flex: none; }
+.share-row { display: grid; gap: var(--space-8); padding-top: var(--space-12); border-top: .5px solid var(--sep); } .share-row h3 { margin: 0; font-size: var(--fs-headline); } .share-row p { margin: 0; }
+.share-text { width: 100%; min-height: 96px; padding: var(--space-8) var(--space-12); font: inherit; font-size: var(--fs-row); color: var(--ink); background: var(--card2); border: 1px solid var(--ctl); border-radius: var(--r3); resize: vertical; box-sizing: border-box; }
+.share-sheet .btn { min-height: var(--touch); } .share-sheet .field select { min-height: var(--touch); }

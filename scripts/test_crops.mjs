@@ -12,7 +12,7 @@ import * as P from '../js/pics.js';
 import * as BASE from '../js/words.js';
 
 const { CROPS, GARDENS, PRESETS, BUD_COLD_F, WHAT_IT_DOES, TEST_PH, TEST_SAL } = T;
-const MORE = await import('../js/words.additions.js').catch(() => ({}));   // the crop-side words, until they are merged into js/words.js
+const MORE = await import('../js/words.additions.js').catch(() => ({}));   // the crop-side words, while they are kept apart from js/words.js
 const W = { ...BASE, ...MORE };
 const { own } = BASE;
 
@@ -36,7 +36,7 @@ const WORDS_JS = fs.existsSync(new URL('../js/words.additions.js', import.meta.u
 const block = (start, end = '\n};') => { const i = CROPS_JS.indexOf(start); if (i < 0) throw new Error(`"${start}" is not in crops.js`); const j = CROPS_JS.indexOf(end, i); return CROPS_JS.slice(i + start.length, j).split('\n').filter(line => line.trim()); };
 
 // ---- the ids, every value, the special limits and the rotations, written out a second time so that a slip in the table shows
-const FIELD_IDS = words('corn wheat barley sorghum swheat oats rye rice pmillet fmillet teff quinoa soy chickpea lentil pea bean faba cowpea groundnut pigeonpea mung sunflower canola scanola sesame safflower flax cotton potato sweetpotato cassava yam sugarbeet tomato onion cabbage watermelon pepper tobacco alfalfa ley ryecover vetchmix radish sunnhemp clover mustard carrot garlic lettuce cucumber eggplant okra pumpkin sweetcorn spinach greenbean melon cauliflower hemp jute buckwheat triticale durum lupin taro bambara mustardseed fallow');
+const FIELD_IDS = words('corn wheat barley sorghum swheat oats rye rice pmillet fmillet proso teff quinoa soy chickpea lentil pea bean faba cowpea groundnut pigeonpea mung sunflower canola scanola sesame safflower flax cotton potato sweetpotato cassava yam sugarbeet tomato onion cabbage watermelon pepper tobacco alfalfa ley ryecover vetchmix radish sunnhemp clover mustard carrot garlic lettuce cucumber eggplant okra pumpkin sweetcorn spinach greenbean melon cauliflower hemp jute buckwheat triticale durum lupin taro bambara mustardseed fallow');
 const GARDEN_IDS = words('tea hazelnut coffee robusta cocoa oilpalm rubber banana citrus olive grape apple stonefruit almond walnut pistachio cashew coconut mango datepalm avocado sugarcane pineapple strawberry blueberry raspberry kiwi fig pomegranate pecan macadamia chestnut blackpepper cardamom vanilla cinnamon hops sisal papaya guava lychee passionfruit asparagus trees');
 const FIELD_LIMITS = {
   minSeason: { corn: 13.3, barley: 3.3, sorghum: 19, rice: 18, soy: 15.3, chickpea: 10.3, lentil: 9.5, sunflower: 14, scanola: 12, cotton: 21 },
@@ -51,9 +51,12 @@ const FIELD_LIMITS = {
   heatMargin: { cotton: 7 },
   scl: 'soy chickpea lentil pea bean faba sunflower canola scanola safflower greenbean lupin mustardseed',
   legumeMix: 'ley',
-  ffd: { corn: 125, sorghum: 125, pmillet: 90, fmillet: 100, soy: 115, bean: 100, cowpea: 90, groundnut: 140, pigeonpea: 150, mung: 75, sunflower: 105, sesame: 120, cotton: 175, sweetpotato: 120, cassava: 300, yam: 270, tomato: 110, watermelon: 100, pepper: 110, tobacco: 100, sunnhemp: 75, cucumber: 90, eggplant: 110, okra: 100, pumpkin: 100, sweetcorn: 90, greenbean: 70, melon: 100, buckwheat: 80 },
+  ffd: { corn: 125, sorghum: 125, pmillet: 90, fmillet: 100, soy: 115, bean: 100, cowpea: 90, groundnut: 140, pigeonpea: 150, mung: 75, sunflower: 105, sesame: 120, cotton: 175, sweetpotato: 120, cassava: 300, yam: 270, tomato: 110, watermelon: 100, pepper: 110, tobacco: 100, sunnhemp: 75, cucumber: 90, eggplant: 110, okra: 100, pumpkin: 100, sweetcorn: 90, greenbean: 70, melon: 100, buckwheat: 80, proso: 90 },
   maxGs: { quinoa: 500, chickpea: 420, lentil: 420, sesame: 700, safflower: 400 },
-  minRain: { rice: 1000, cassava: 500, yam: 800, jute: 1000, taro: 1000 },
+  // What hardened winter wheat survives through its winter rest, and the snow that shelters it: OMAFRA Field Crop News, "Winter Survival".
+  // Only a crop with a published figure has one; the other winter crops say in the report that their winter cold is not checked.
+  winterKill: { wheat: -24 }, winterSnow: { wheat: 7.5 }, winterBy: { wheat: 'OMAFRA' },
+  minRain: { rice: 1000, proso: 200, cassava: 500, yam: 800, jute: 1000, taro: 1000 },
   major: 'corn wheat barley sorghum swheat oats rice pmillet soy chickpea lentil pea bean cowpea groundnut pigeonpea sunflower canola scanola sesame cotton potato cassava durum',
   tropicFalse: 'wheat oats rye chickpea lentil faba canola scanola safflower flax potato sugarbeet tomato onion cabbage watermelon pepper alfalfa ley ryecover vetchmix radish clover mustard carrot garlic lettuce spinach melon cauliflower buckwheat triticale durum lupin mustardseed',
 };
@@ -116,7 +119,7 @@ const ROTATIONS = [   // id, the name shown, one crop per year, the zone that on
   ['wheat-lentil', 'Wheat → Lentils', 'wheat lentil', 'dry'],
   ['custom', 'Build my own', '', ''],
 ];
-// Every value of the 70 field entries (null: fallow grows nothing, so it has no season length and no temperature range).
+// Every value of the 71 field entries (null: fallow grows nothing, so it has no season length and no temperature range).
 const FIELD_ROWS = {   // name, type, group, family, water mm, days, root m, nfix, om, cover, resid, drought, heat °C, frost, minT °C, tMin, tOpt, tMax, income, forage, sow, harv, colour
   corn: ['Corn (maize)', 'cash', 'grain', 'grass', 650, 150, 1.7, 0, 0.9, 0.55, 0.55, 0.3, 32, 0.1, 14, 10, [18, 33], 47, 0.7, 0.4, 4, 10, '#f5b83d'],
   wheat: ['Winter wheat', 'cash', 'grain', 'grass', 550, 270, 1.8, 0, 0.7, 0.7, 0.45, 0.55, 30, 0.85, 3, 5, [15, 23], 27, 0.5, 0.3, 10, 7, '#d9a441'],
@@ -128,6 +131,7 @@ const FIELD_ROWS = {   // name, type, group, family, water mm, days, root m, nfi
   rice: ['Rice (paddy)', 'cash', 'grain', 'grass', 1100, 135, 0.6, 0, 0.6, 0.6, 0.4, 0.1, 35, 0, 16, 10, [20, 30], 36, 0.6, 0.3, 5, 9, '#e0c870'],
   pmillet: ['Pearl millet', 'cash', 'grain', 'grass', 450, 95, 2, 0, 0.7, 0.5, 0.45, 0.95, 40, 0, 18, 12, [25, 35], 40, 0.35, 0.5, 6, 9, '#b8a46e'],
   fmillet: ['Finger millet', 'cash', 'grain', 'grass', 400, 120, 1, 0, 0.5, 0.55, 0.35, 0.7, 34, 0.05, 14, 8, [18, 30], 35, 0.4, 0.4, 5, 9, '#a5714a'],
+  proso: ['Proso millet', 'cash', 'grain', 'grass', 650, 140, 1, 0, 0.5, 0.55, 0.35, 0.85, 32, 0, 15, 15, [20, 32], 45, 0.35, 0.5, 4, 8, '#cdb27a'],
   teff: ['Teff', 'cash', 'grain', 'grass', 350, 110, 0.6, 0, 0.45, 0.6, 0.3, 0.6, 32, 0.05, 12, 2, [22, 28], 30, 0.6, 0.4, 6, 9, '#c9a57a'],
   quinoa: ['Quinoa', 'cash', 'grain', 'chenopod', 400, 150, 1.5, 0, 0.4, 0.45, 0.25, 0.8, 30, 0.55, 6, 2, [14, 18], 35, 0.7, 0.1, 4, 8, '#d9784a'],
   soy: ['Soybeans', 'cash', 'legume', 'legume', 575, 140, 1.3, 0.3, 0.4, 0.45, 0.2, 0.5, 33, 0.1, 14, 10, [20, 33], 38, 0.65, 0.2, 5, 10, '#8bc34a'],
@@ -159,7 +163,7 @@ const FIELD_ROWS = {   // name, type, group, family, water mm, days, root m, nfi
   pepper: ['Peppers', 'cash', 'veg', 'nightshade', 750, 125, 1, 0, 0.2, 0.4, 0.1, 0.3, 32, 0, 15, 8, [17, 30], 35, 0.88, 0, 5, 9, '#d9362a'],
   tobacco: ['Tobacco', 'cash', 'other', 'nightshade', 500, 130, 0.8, 0, 0.2, 0.4, 0.1, 0.45, 32, 0.05, 14, 7, [15, 30], 35, 0.8, 0, 5, 9, '#8aa84a'],
   alfalfa: ['Alfalfa hay', 'forage', 'forage', 'legume', 1000, 200, 2, 0.5, 0.85, 0.95, 0.9, 0.65, 35, 0.8, 6, 5, [21, 27], 45, 0.6, 1, 4, 10, '#2e9d57'],
-  ley: ['Grass-clover ley', 'forage', 'forage', 'grass', 750, 210, 1, 0.5, 0.9, 0.95, 0.9, 0.4, 28, 0.85, 5, 4, [14, 25], 35, 0.4, 0.95, 4, 10, '#6fbf5f'],
+  ley: ['Grass hay (grass-clover ley)', 'forage', 'forage', 'grass', 750, 210, 1, 0.5, 0.9, 0.95, 0.9, 0.4, 28, 0.85, 5, 4, [14, 25], 35, 0.4, 0.95, 4, 10, '#6fbf5f'],
   ryecover: ['Cereal rye cover', 'cover', 'cover', 'grass', 130, 200, 1.3, 0, 0.8, 0.9, 0.7, 0.7, 30, 1, 1, 3, [15, 20], 31, -0.05, 0.5, 10, 4, '#4f8a5b'],
   vetchmix: ['Vetch + rye cover', 'cover', 'cover', 'legume', 140, 210, 1, 0.3, 0.75, 0.9, 0.6, 0.55, 30, 0.7, 4, 2, [12, 22], 28, -0.07, 0.4, 9, 4, '#3f9e7a'],
   radish: ['Radish cover mix', 'cover', 'cover', 'brassica', 90, 75, 1.5, 0, 0.5, 0.75, 0.3, 0.5, 30, 0.4, 6, 10, [12, 26], 37, -0.05, 0.3, 8, 11, '#6bb38a'],
@@ -175,7 +179,7 @@ const FIELD_ROWS = {   // name, type, group, family, water mm, days, root m, nfi
   pumpkin: ['Pumpkins and squash', 'cash', 'veg', 'cucurbit', 480, 110, 1.5, 0, 0.25, 0.65, 0.15, 0.45, 32, 0.05, 10, 9, [20, 30], 38, 0.6, 0.15, 5, 9, '#e9782a'],
   sweetcorn: ['Sweet corn', 'cash', 'veg', 'grass', 550, 95, 1.2, 0, 0.7, 0.5, 0.45, 0.25, 32, 0.1, 10, 12, [16, 24], 38, 0.7, 0.4, 5, 8, '#f7d65a'],
   spinach: ['Spinach', 'cash', 'veg', 'chenopod', 320, 80, 0.5, 0, 0.1, 0.4, 0.05, 0.15, 26, 0.8, 4, 2, [13, 20], 27, 0.75, 0.05, 3, 5, '#3f8a3a'],
-  greenbean: ['Green beans', 'cash', 'veg', 'legume', 350, 85, 0.7, 0.13, 0.25, 0.4, 0.15, 0.25, 30, 0.05, 10, 7, [16, 25], 32, 0.75, 0.1, 5, 7, '#6aae4a'],
+  greenbean: ['Green beans (snap beans)', 'cash', 'veg', 'legume', 350, 85, 0.7, 0.13, 0.25, 0.4, 0.15, 0.25, 30, 0.05, 10, 7, [16, 25], 32, 0.75, 0.1, 5, 7, '#6aae4a'],
   melon: ['Melons (cantaloupe)', 'cash', 'veg', 'cucurbit', 500, 120, 1.5, 0, 0.2, 0.5, 0.1, 0.45, 35, 0, 16, 9, [18, 30], 35, 0.75, 0.05, 5, 8, '#e2b86a'],
   cauliflower: ['Cauliflower and broccoli', 'cash', 'veg', 'brassica', 400, 135, 0.6, 0, 0.35, 0.55, 0.25, 0.3, 28, 0.6, 6, 5, [10, 25], 30, 0.8, 0.15, 4, 8, '#ece4c8'],
   hemp: ['Hemp', 'cash', 'fibre', 'hemp', 475, 120, 1.5, 0, 0.4, 0.8, 0.25, 0.5, 32, 0.35, 8, 6, [15, 28], 32, 0.55, 0.05, 5, 9, '#5f8f4a'],
@@ -195,7 +199,7 @@ const SOIL_PH = {   // best low, best high, lowest it takes, highest it takes
   bean: [6, 7, 5, 8], faba: [6, 7.5, 5, 8.5], groundnut: [5.5, 7, 4.5, 8], sunflower: [6, 7.5, 5, 8.5], canola: [6, 7.5, 5, 8.5], cotton: [6, 7.5, 5, 8.5],
   potato: [5, 6.5, 4.5, 7.5], sugarbeet: [6, 7.5, 5.5, 8.5], tomato: [5.5, 7, 5, 8], onion: [6, 7, 5.5, 8], cabbage: [6, 7.5, 5, 8.5], pepper: [5.5, 7, 5, 8],
   alfalfa: [6.5, 7.5, 5.5, 8.5], carrot: [5.5, 7, 5, 8], lettuce: [6, 7, 5.5, 8], cucumber: [5.5, 7, 5, 8], sweetcorn: [5.5, 7.5, 5, 8.5], greenbean: [6, 7, 5, 8],
-  triticale: [5.5, 7.5, 4.5, 8.5], durum: [6, 8, 5, 8.5],
+  triticale: [5.5, 7.5, 4.5, 8.5], durum: [6, 8, 5, 8.5], proso: [6, 6.5, 5, 8],
 };
 const SOIL_SALT = {   // threshold ECe in dS/m, % of yield lost per dS/m above it
   corn: [1.7, 12], wheat: [6, 7.1], barley: [8, 5], sorghum: [6.8, 16], swheat: [6, 7.1], rye: [11.4, 10.8], rice: [3, 12], soy: [5, 20],
@@ -362,9 +366,9 @@ const GARDEN_COLORS = { tea: '#3f8f4a', hazelnut: '#a8743a', coffee: '#b23a2e', 
 // Where each value of a crop row is printed. A crop on a list must say so beside its row; a crop on no list must say plainly that
 // its value is a regional rule of thumb. The lists were checked against the printed tables: FAO Irrigation Water Management
 // Training Manual 3 prints water needs for 21 crops, FAO-56 Table 11 season lengths, FAO-56 Table 22 rooting depths.
-const WATER_PRINTED = words('corn wheat barley sorghum swheat oats pmillet soy pea bean groundnut sunflower cotton potato sugarbeet tomato onion cabbage watermelon pepper alfalfa sweetcorn greenbean melon durum');
-const DAYS_PRINTED = words('corn sorghum soy pea cowpea groundnut sunflower sesame cotton potato sugarbeet tomato onion pepper lettuce melon cauliflower');
-const ROOT_PRINTED = words('corn wheat barley sorghum swheat oats rice pmillet fmillet soy chickpea lentil pea bean faba cowpea groundnut mung sunflower canola scanola sesame safflower flax cotton potato sweetpotato cassava sugarbeet tomato onion cabbage watermelon pepper alfalfa carrot garlic lettuce cucumber eggplant pumpkin sweetcorn spinach greenbean melon cauliflower durum');
+const WATER_PRINTED = words('corn wheat barley sorghum swheat oats pmillet proso soy pea bean groundnut sunflower cotton potato sugarbeet tomato onion cabbage watermelon pepper alfalfa sweetcorn greenbean melon durum');
+const DAYS_PRINTED = words('corn sorghum proso soy pea cowpea groundnut sunflower sesame cotton potato sugarbeet tomato onion pepper lettuce melon cauliflower');
+const ROOT_PRINTED = words('corn wheat barley sorghum swheat oats rice pmillet fmillet proso soy chickpea lentil pea bean faba cowpea groundnut mung sunflower canola scanola sesame safflower flax cotton potato sweetpotato cassava sugarbeet tomato onion cabbage watermelon pepper alfalfa carrot garlic lettuce cucumber eggplant pumpkin sweetcorn spinach greenbean melon cauliflower durum');
 const SALT_UNPRINTED = words('rye canola safflower eggplant triticale');   // in neither FAO paper 29 Table 4 nor FAO-56 Table 23: their rows must say so
 // The place that proves each limit line, by the line's first field and first crop: every name must stand on that very line.
 // (FAO, ECOCROP, WSU, NSW DPI and ICAR-IISR are the authority a line rests on where it is a book and not a place.)
@@ -395,14 +399,14 @@ const NOT_TEXT = [0, 1, null, undefined, {}, [], ['corn'], true, NaN];
 
 group('the counts', () => {
   const ids = Object.keys(CROPS), types = type => ids.filter(id => CROPS[id].type === type).length;
-  same('63 field crops: 61 cash crops and 2 forage crops', [types('cash'), types('forage'), types('cash') + types('forage')], [61, 2, 63]);
+  same('64 field crops: 62 cash crops and 2 forage crops', [types('cash'), types('forage'), types('cash') + types('forage')], [62, 2, 64]);
   same('6 cover crops', types('cover'), 6);
   same('1 fallow entry, and its id is fallow', [types('fallow'), CROPS.fallow?.type], [1, 'fallow']);
-  same('70 field entries in all', ids.length, 70);
+  same('71 field entries in all', ids.length, 71);
   same('43 tree, bush, vine and palm crops plus the one "Other trees or bushes" entry', [Object.keys(GARDENS).length, Object.keys(GARDENS).filter(id => id !== 'trees').length, GARDENS.trees?.name], [44, 43, 'Other trees or bushes']);
   same('24 ready rotations: 23 with crops and "Build my own" last', [Object.keys(PRESETS).length, Object.keys(PRESETS).filter(id => PRESETS[id].slots.length).length, Object.keys(PRESETS).at(-1)], [24, 23, 'custom']);
-  same('the chooser can show all 114 crops', new Set([...ids, ...Object.keys(GARDENS)]).size, 114);
-  same('the 70 field entries are the expected ones, in the agreed order', ids, FIELD_IDS);
+  same('the chooser can show all 115 crops', new Set([...ids, ...Object.keys(GARDENS)]).size, 115);
+  same('the 71 field entries are the expected ones, in the agreed order', ids, FIELD_IDS);
   same('the 44 garden entries are the expected ones, in the agreed order (the owner\'s own region first: tea, hazelnuts)', Object.keys(GARDENS), GARDEN_IDS);
   same('the six cover crops', ids.filter(id => CROPS[id].type === 'cover'), words('ryecover vetchmix radish sunnhemp clover mustard'));
   same('the two forage crops', ids.filter(id => CROPS[id].type === 'forage'), words('alfalfa ley'));
@@ -412,7 +416,7 @@ group('the counts', () => {
 group('every value of the crop table, against the copy written out above', () => {
   // The table must equal the published values, so each one is written twice: a slip of one digit in either place fails here.
   const FIELDS = words('name type group fam water days root nfix om cover resid drought heat frost minT tMin tOpt tMax income forage sow harv color');
-  same('the second copy lists the 70 field entries in the table\'s order', Object.keys(FIELD_ROWS), Object.keys(CROPS));
+  same('the second copy lists the 71 field entries in the table\'s order', Object.keys(FIELD_ROWS), Object.keys(CROPS));
   for (const [id, row] of Object.entries(FIELD_ROWS)) {
     const c = CROPS[id] ?? {};
     same(`${id}: name, type, group, family, water, season length, rooting depth, the 0-1 scales, heat, frost, temperatures, income, feed value, months and colour`, Object.fromEntries(FIELDS.map(k => [k, c[k] ?? null])), Object.fromEntries(FIELDS.map((k, i) => [k, row[i]])));
@@ -457,7 +461,7 @@ group('ids are unique, lower-case and safe', () => {
 group('every field crop has every field, inside a sane range', () => {
   const NEEDED = words('name type group fam water root nfix om cover resid drought heat frost minT income forage sow harv color');
   const GROWS = words('days tMin tOpt tMax');   // fallow grows nothing, so it has no season length and no temperature range
-  const KNOWN = new Set([...NEEDED, ...GROWS, ...words('major tropic ffd maxGs minRain minSeason maxCool maxCoolHumid minCool minHot mildAutumn minRatio maxAlt needDry heatMargin scl legumeMix soilTest')]);
+  const KNOWN = new Set([...NEEDED, ...GROWS, ...words('major tropic ffd maxGs minRain minSeason maxCool maxCoolHumid minCool minHot mildAutumn minRatio maxAlt needDry heatMargin scl legumeMix soilTest winterKill winterSnow winterBy')]);
   for (const [id, c] of Object.entries(CROPS)) {
     const crop = c.type !== 'fallow';
     same(`${id}: has every field and no unknown one`, [[...NEEDED, ...(crop ? GROWS : [])].filter(k => c[k] === undefined), Object.keys(c).filter(k => !KNOWN.has(k))], [[], []]);
@@ -481,7 +485,7 @@ group('every field crop has every field, inside a sane range', () => {
   same('every family is used by a crop, and every crop has a family from the list', T.FAMILIES.filter(f => !Object.values(CROPS).some(c => c.fam === f)), []);
   same('every group has a crop', T.GROUPS.filter(g => !T.cropsOfGroup(g).length), []);
   same('the pest break: crops of one family share it (the nightshades)', Object.keys(CROPS).filter(id => CROPS[id].fam === 'nightshade'), words('potato tomato pepper tobacco eggplant'));
-  same('the cereals, sweet corn, ley and rye cover are all grasses', Object.keys(CROPS).filter(id => CROPS[id].fam === 'grass'), words('corn wheat barley sorghum swheat oats rye rice pmillet fmillet teff ley ryecover sweetcorn triticale durum'));
+  same('the cereals, sweet corn, ley and rye cover are all grasses', Object.keys(CROPS).filter(id => CROPS[id].fam === 'grass'), words('corn wheat barley sorghum swheat oats rye rice pmillet fmillet proso teff ley ryecover sweetcorn triticale durum'));
 });
 
 group('nitrogen: every legume fixes it, and nothing else claims to', () => {
@@ -501,8 +505,12 @@ group('special limits sit only where one was set', () => {
     minSeason: [3, 22], maxCool: [19, 23], maxCoolHumid: [19, 19], minCool: [10, 20], minHot: [9, 20],   // °C of a season or a month
     minRatio: [0.45, 0.6],   // between the watered floor (0.45) and the rain-fed floor (0.6) of the water check
     maxAlt: [1000, 3000], needDry: [1, 4], heatMargin: [3, 8],   // metres; months; °C on top of the heat limit
-    ffd: [60, 330], maxGs: [300, 800], minRain: [400, 1200],   // days without frost; mm of rain
+    ffd: [60, 330], maxGs: [300, 800], minRain: [200, 1200],   // days without frost; mm of rain (200: proso millet, the lowest yearly rain FAO ECOCROP prints for it; the floor was 400 before that crop was added)
+    winterKill: [-35, -10], winterSnow: [2, 30],   // °C a hardened winter cereal survives (the hardiest go to about −24 °C); cm of snow
   };
+  // Every crop with a winter-kill figure names who says so, on its own row, with both figures.
+  const rowOf = id => { const lines = CROPS_JS.split('\n'), i = lines.findIndex(l => l.startsWith(`  ${id}: {`)); return `${lines[i]}\n${lines[i + 1]}`; };
+  same('a winter-kill figure is cited on its row: OMAFRA Field Crop News, "Winter Survival", with the −24 °C and the 7.5 cm', Object.keys(picked(CROPS, 'winterKill')).filter(id => !/OMAFRA Field Crop News, "Winter Survival": hardened-off plants survive down to −24 °C, and 7\.5 cm of snow/.test(rowOf(id))), []);
   for (const [field, want] of Object.entries(FIELD_LIMITS)) {
     // Sown by the calendar even in the tropics: the cool-season crops, and five warm-season ones the table marks the same way
     // (tomatoes, watermelons, peppers, melons, buckwheat). Whether those five are meant is the owner's to say; the table is kept.
@@ -519,7 +527,7 @@ group('special limits sit only where one was set', () => {
 });
 
 group('soil-test limits', () => {
-  same('pH limits for 32 crops and salt limits for 33', [Object.keys(TEST_PH).length, Object.keys(TEST_SAL).length], [32, 33]);
+  same('pH limits for 33 crops and salt limits for 33', [Object.keys(TEST_PH).length, Object.keys(TEST_SAL).length], [33, 33]);
   same('every soil-test limit belongs to a field crop', [...Object.keys(TEST_PH), ...Object.keys(TEST_SAL)].filter(id => !T.isCrop(id)), []);
   // pH [best low, best high, lowest it takes, highest it takes]: soils run from about pH 3.5 to 9.5; the best range lies inside the outer one
   check('every pH limit is four figures in order', Object.values(TEST_PH).every(p => p.length === 4 && within(p[2], 3.5, 6) && p[2] <= p[0] && p[0] < p[1] && p[1] <= p[3] && within(p[3], 7, 9.5)), show(TEST_PH));
@@ -634,10 +642,19 @@ group('the facts that keep a wrong crop out of a wrong place', () => {
   same('chickpeas and lentils stop at 420 mm of rain in their own season, safflower at 400', [CROPS.chickpea.maxGs, CROPS.lentil.maxGs, CROPS.safflower.maxGs], [420, 420, 400]);
   // A country total must never put finger millet in Alaska: only the main traded crops may count on a country figure alone.
   check('finger millet, teff, quinoa, buckwheat, tomatoes and onions are not "major" crops; potatoes are', words('fmillet teff quinoa buckwheat tomato onion').every(id => !CROPS[id].major) && CROPS.potato.major === true);
+  // Proso millet is the millet of the United States, a different plant from pearl and finger millet. Its figures are the printed ones: FAO-56 Tables 11 and 22,
+  // FAO Irrigation Water Management Training Manual 3 Table 14 (the top of 450 to 650 mm, for the long 140-day season) and the FAO ECOCROP data sheet of Panicum miliaceum.
+  same('proso millet: a grass that fixes no nitrogen, 650 mm, 140 days, roots 1 m, 15 to 45 °C with 20 to 32 °C best, at least 200 mm of rain a year, pH 6 to 6.5 (5 to 8)',
+    [CROPS.proso.fam, CROPS.proso.group, CROPS.proso.nfix, CROPS.proso.water, CROPS.proso.days, CROPS.proso.root, CROPS.proso.tMin, CROPS.proso.tOpt, CROPS.proso.tMax, CROPS.proso.minRain, TEST_PH.proso, own(TEST_SAL, 'proso'), CROPS.proso.major],
+    ['grass', 'grain', 0, 650, 140, 1, 15, [20, 32], 45, 200, [6, 6.5, 5, 8], false, undefined]);
+  same('proso millet is counted under FAO\'s one millet item, and the crop step finds it by "millet" and "proso"', [T.FAO_ALIAS.proso, T.findCrops('millet'), T.findCrops('proso')], ['millet', words('pmillet fmillet proso'), ['proso']]);
+  // The names US farmers use (NASS: "Hay, all other", "Snap beans"); the old name stays in the bracket, which is dropped where space is short.
+  same('grass hay and snap beans carry the US names, and their short names drop the bracket', [CROPS.ley.name, CROPS.greenbean.name, T.cropName('ley', true), T.cropName('greenbean', true), T.findCrops('hay'), T.findCrops('snap')],
+    ['Grass hay (grass-clover ley)', 'Green beans (snap beans)', 'Grass hay', 'Green beans', words('alfalfa ley'), ['greenbean']]);
   // Vegetables, roots, sugar and tobacco can be grown and scored but are never proposed (markets and labour the data cannot see):
   // the engine tells them apart by group, so the groups must be right.
   same('tobacco is "other", tomatoes are vegetables, potatoes are roots, sugar beets are sugar', [CROPS.tobacco.group, CROPS.tomato.group, CROPS.potato.group, CROPS.sugarbeet.group], ['other', 'veg', 'root', 'sugar']);
-  same('the groups a new rotation may be drawn from hold 37 crops (15 grains, 12 beans and peas, 7 oil crops, 3 fibre crops)', words('grain legume oil fibre').map(g => T.cropsOfGroup(g).length), [15, 12, 7, 3]);
+  same('the groups a new rotation may be drawn from hold 38 crops (16 grains, 12 beans and peas, 7 oil crops, 3 fibre crops)', words('grain legume oil fibre').map(g => T.cropsOfGroup(g).length), [16, 12, 7, 3]);
   // Sclerotinia stem rot: its hosts are no clean break from each other, though they are of three different families.
   same('the 13 hosts of sclerotinia span three families', [Object.keys(picked(CROPS, 'scl')).length, [...new Set(Object.keys(picked(CROPS, 'scl')).map(id => CROPS[id].fam))].sort()], [13, ['brassica', 'composite', 'legume']]);
   // Coconuts, cocoa and oil palm stop growing below about 20 °C: none in Crete or the Nile Delta though no frost falls there.
@@ -678,7 +695,7 @@ group('spring frost on buds', () => {
 
 group('what the records call each crop', () => {
   const known = id => T.isCrop(id) || T.isGarden(id);
-  same('six crops are counted under another crop in the country records', T.FAO_ALIAS, { pmillet: 'millet', fmillet: 'millet', swheat: 'wheat', durum: 'wheat', scanola: 'canola', robusta: 'coffee' });
+  same('seven crops are counted under another crop in the country records', T.FAO_ALIAS, { pmillet: 'millet', fmillet: 'millet', proso: 'millet', swheat: 'wheat', durum: 'wheat', scanola: 'canola', robusta: 'coffee' });
   same('seven crops sit only inside a wider item', T.FAO_KIND, { pecan: 'nuts_nec', macadamia: 'nuts_nec', lychee: 'tropfruit_nec', passionfruit: 'tropfruit_nec', pomegranate: 'fruit_nec', guava: 'mango', mung: 'bean' });
   same('teff is counted only in Ethiopia and Eritrea', T.FAO_ONLY, { teff: ['ET', 'ER'] });
   same('every key of these tables is a real crop', [...Object.keys(T.FAO_ALIAS), ...Object.keys(T.FAO_KIND), ...Object.keys(T.FAO_ONLY), ...Object.keys(T.SPAM_OF), ...Object.keys(T.SPAM_KIND)].filter(id => !known(id)), []);
@@ -689,7 +706,7 @@ group('what the records call each crop', () => {
   check('every crop-map name is four lower-case letters', [...Object.values(T.SPAM_OF), ...Object.values(T.SPAM_KIND)].flat().every(code => /^[a-z]{4}$/.test(code)));
   same('the crop-map names that are known for sure', [T.SPAM_OF.corn, T.SPAM_OF.banana, T.SPAM_KIND.oats, T.SPAM_KIND.olive, T.SPAM_KIND.grape, T.SPAM_KIND.mango], [['maiz'], ['bana', 'plnt'], ['ocer'], ['ooil'], ['temf'], ['trof']]);
   // Spring canola is read from the map's rapeseed layer like canola: Canada's canola is spring-sown, and the map does not tell the two apart.
-  same('the crop map tells 39 crops apart on their own and knows 35 more only by their group', [Object.keys(T.SPAM_OF).length, Object.keys(T.SPAM_KIND).length, T.SPAM_OF.scanola, T.SPAM_OF.canola], [39, 35, ['rape'], ['rape']]);
+  same('the crop map tells 40 crops apart on their own and knows 35 more only by their group', [Object.keys(T.SPAM_OF).length, Object.keys(T.SPAM_KIND).length, T.SPAM_OF.scanola, T.SPAM_OF.canola], [40, 35, ['rape'], ['rape']]);
   // Around Trabzon the map shows no "rest of crops" at all, yet hazelnuts are the main crop there:
   // nuts, spices, hops and vegetables other than tomatoes and onions are never judged by the map.
   const unjudged = id => !own(T.SPAM_OF, id) && !own(T.SPAM_KIND, id);
@@ -704,7 +721,7 @@ group('what the records call each crop', () => {
 
 group('every value row names its source, or says plainly that none is on record', () => {
   const cropRows = block('export const CROPS = {');
-  same('the crop table is two lines a crop, in the table\'s order', [cropRows.length, FIELD_IDS.filter((id, i) => !cropRows[2 * i]?.startsWith(`  ${id}: {`))], [140, []]);
+  same('the crop table is two lines a crop, in the table\'s order', [cropRows.length, FIELD_IDS.filter((id, i) => !cropRows[2 * i]?.startsWith(`  ${id}: {`))], [142, []]);
   const said = line => (line ?? '').split('   // ')[1] ?? '';
   const where = (text, field, printed) => printed.test(text) ? 'printed' : new RegExp(`\\b${field}\\b[^;]*cover-crop guides`).test(text) ? 'guides' : new RegExp(`\\b${field}\\b[^;]*rules? of thumb`).test(text) ? 'rule of thumb' : 'not said';
   FIELD_IDS.forEach((id, i) => {
@@ -752,8 +769,8 @@ group('every value row names its source, or says plainly that none is on record'
 
 group('names a farmer reads', () => {
   const all = { ...CROPS, ...GARDENS };
-  check('every crop has a plain name, and no two crops share one', new Set(Object.values(all).map(e => e.name)).size === 114 && Object.values(all).every(e => e.name.trim() === e.name && e.name.length >= 3));
-  same('the everyday name comes first; the bracket holds the other common name, never Latin', Object.keys(all).filter(id => all[id].name.includes('(')).map(id => all[id].name), ['Corn (maize)', 'Sorghum (milo)', 'Rye (grain)', 'Rice (paddy)', 'Peanuts (groundnuts)', 'Canola (rapeseed)', 'Flax (linseed)', 'Eggplants (brinjal)', 'Melons (cantaloupe)', 'Taro (cocoyam)', 'Mustard (for seed)']);
+  check('every crop has a plain name, and no two crops share one', new Set(Object.values(all).map(e => e.name)).size === 115 && Object.values(all).every(e => e.name.trim() === e.name && e.name.length >= 3));
+  same('the everyday name comes first; the bracket holds the other common name, never Latin', Object.keys(all).filter(id => all[id].name.includes('(')).map(id => all[id].name), ['Corn (maize)', 'Sorghum (milo)', 'Rye (grain)', 'Rice (paddy)', 'Peanuts (groundnuts)', 'Canola (rapeseed)', 'Flax (linseed)', 'Grass hay (grass-clover ley)', 'Eggplants (brinjal)', 'Green beans (snap beans)', 'Melons (cantaloupe)', 'Taro (cocoyam)', 'Mustard (for seed)']);
   same('where space is short the bracket is dropped', [T.cropName('corn', true), T.cropName('groundnut', true), T.cropName('mustardseed', true), T.cropName('wheat', true), T.cropName('corn'), T.cropName('tea', true)], ['Corn', 'Peanuts', 'Mustard', 'Winter wheat', 'Corn (maize)', 'Tea']);
   check('no short name keeps a bracket', Object.keys(all).every(id => !/[()]/.test(T.cropName(id, true))));
   check('every rotation has a plain name built from short crop names', Object.values(PRESETS).every(p => typeof p.label === 'string' && p.label.length >= 5 && !/[()]/.test(p.label)));
@@ -761,7 +778,7 @@ group('names a farmer reads', () => {
   check('every crop has one colour, written as six hex digits, and the table\'s reader gives the same one', Object.keys(all).every(id => /^#[0-9a-f]{6}$/.test(all[id].color) && T.cropColor(id) === all[id].color));
   // One colour per crop everywhere, field crops and gardens alike: two crops of one colour cannot be told apart in the halo.
   // Spring canola is drawn as canola and shares its colour (whether it should have its own is the owner's to say).
-  same('spring canola is drawn as canola, so they share a colour; no other two of the 114 crops do', Object.keys(all).filter((id, i, ids) => ids.some((other, j) => j < i && all[other].color === all[id].color)), ['scanola']);
+  same('spring canola is drawn as canola, so they share a colour; no other two of the 115 crops do', Object.keys(all).filter((id, i, ids) => ids.some((other, j) => j < i && all[other].color === all[id].color)), ['scanola']);
   same('the five "what is this?" explanations', Object.keys(WHAT_IT_DOES), words('nfix cover deep drought fallow'));
   check('each explanation is one short paragraph of plain sentences', Object.values(WHAT_IT_DOES).every(s => /^[A-Z].*\.$/.test(s) && within(s.length, 100, 320) && !/[<>{}]|\n/.test(s)));
   check('fallow is explained honestly: it saves little in a wet climate and the bare soil can blow or wash away', WHAT_IT_DOES.fallow.includes('In a wet climate it saves little') && WHAT_IT_DOES.fallow.includes('blow or wash away'));
@@ -772,7 +789,7 @@ group('reading the table for the chooser', () => {
   const groups = T.pickerGroups();
   same('the chooser lists the eleven groups in the agreed order', groups.map(g => g.group), words('grain legume oil fibre root sugar veg other forage cover fallow'));
   same('the chooser holds every field entry exactly once', groups.flatMap(g => g.ids).sort(), Object.keys(CROPS).sort());
-  same('how many crops each group holds', groups.map(g => g.ids.length), [15, 12, 7, 3, 5, 1, 17, 1, 2, 6, 1]);
+  same('how many crops each group holds', groups.map(g => g.ids.length), [16, 12, 7, 3, 5, 1, 17, 1, 2, 6, 1]);
   // A whole word comes before a part of a word, so a grower who types "bean" reads the four beans before soybeans, and one who
   // types "wheat" reads the three wheats before buckwheat (which is no wheat at all).
   same('typing "bean" finds five kinds of beans across the groups, the whole word first', T.findCrops('bean'), words('bean faba mung greenbean soy'));
@@ -781,15 +798,15 @@ group('reading the table for the chooser', () => {
   same('"pear" finds apples and pears before pearl millet; lemons, mandarins and satsumas find the citrus entry', [T.findCrops('pear'), T.findCrops('lemon'), T.findCrops('mandarin'), T.findCrops('Satsumas')], [words('apple pmillet'), ['citrus'], ['citrus'], ['citrus']]);
   // There is no plum entry among the gardens: a plum grower must not be handed the needs of peaches and cherries as if they were plums'.
   same('"plum" finds nothing', T.findCrops('plum'), []);
-  same('an empty search lists everything, a search with no match nothing, and a strange value does no harm', [T.findCrops('').length, T.findCrops('zzz'), T.findCrops(null).length, T.findCrops(undefined).length, T.findCrops('__proto__')], [114, [], 114, 114, []]);
+  same('an empty search lists everything, a search with no match nothing, and a strange value does no harm', [T.findCrops('').length, T.findCrops('zzz'), T.findCrops(null).length, T.findCrops(undefined).length, T.findCrops('__proto__')], [115, [], 115, 115, []]);
   same('crops by type and by group', [T.cropsOfType('forage'), T.cropsOfGroup('fibre'), T.cropsOfGroup('sugar'), T.cropsOfType('nothing'), T.cropsOfGroup('toString')], [words('alfalfa ley'), words('cotton hemp jute'), ['sugarbeet'], [], []]);
   same('garden ids come in the table\'s order', [T.gardenIds().slice(0, 4), T.gardenIds().at(-1)], [words('tea hazelnut coffee robusta'), 'trees']);
-  same('a filter of one\'s own', T.cropIds(c => c.minRain !== undefined), words('rice cassava yam jute taro'));
+  same('a filter of one\'s own', T.cropIds(c => c.minRain !== undefined), words('rice proso cassava yam jute taro'));
 });
 
 group('the pictures', () => {
   const ids = [...Object.keys(CROPS), ...Object.keys(GARDENS)], pics = Object.fromEntries(ids.map(id => [id, P.cropPic(id)]));
-  same('every one of the 114 crops has a picture', ids.filter(id => !P.hasPic(id) || !pics[id]), []);
+  same('every one of the 115 crops has a picture', ids.filter(id => !P.hasPic(id) || !pics[id]), []);
   check('every picture is a 32 × 32 drawing', ids.every(id => pics[id].startsWith('<svg class="pic" viewBox="0 0 32 32" width="32" height="32" ') && pics[id].endsWith('</svg>')));
   // A crop picture is decoration: the word beside it is what a screen reader reads, so it is hidden from one and cannot take focus.
   check('every picture is hidden from screen readers and cannot take focus', ids.every(id => pics[id].includes(' aria-hidden="true"') && pics[id].includes(' focusable="false"') && !pics[id].includes('role=')));

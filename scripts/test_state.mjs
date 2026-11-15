@@ -28,9 +28,14 @@ same('label and name are cut', [ok({ loc: { ...here, label: 'x'.repeat(500) } })
 // ---- the outline
 const square = [[44.39, -79.79], [44.39, -79.77], [44.41, -79.77], [44.41, -79.79]];
 same('an outline round the pin is kept', ok({ loc: here, area: { pts: square, ha: 12.4, slope: 3.1 } }).area, { pts: square, ha: 12.4, slope: 3.1 });
+same('its corners keep 5 decimals (about 1 m: a corner dragged at a close zoom stays where it was dropped), the pin keeps 4', [ok({ loc: { lat: 44.400049, lon: -79.78 }, area: { pts: [[44.391234567, -79.791234567], ...square.slice(1)] } }).area.pts[0], ok({ loc: { lat: 44.400049, lon: -79.78 } }).loc.lat], [[44.39123, -79.79123], 44.4]);
 same('an outline with two corners is dropped', ok({ loc: here, area: { pts: square.slice(0, 2) } }).area, null);
 same('a flat outline is dropped', ok({ loc: here, area: { pts: [[44.4, -79.8], [44.4, -79.7], [44.4, -79.6]] } }).area, null);
 same('an outline that leaves the pin outside is dropped', ok({ loc: { lat: 45, lon: -79.78 }, area: { pts: square } }).area, null);
+// the pin is kept to 4 decimals, a square about 11 m across: a 10 m garden with no 4-decimal point inside it keeps the pin whose square meets it
+const garden = [[43.10147, -80.78128], [43.1015, -80.78141], [43.10141, -80.78144], [43.10138, -80.78131]];
+check('a 10 m garden keeps its pin when the pin\'s 11 m square meets it', !!ok({ loc: { lat: 43.1014, lon: -80.7814 }, area: { pts: garden } }).area);
+same('a pin one step further off is still dropped', ok({ loc: { lat: 43.1016, lon: -80.7814 }, area: { pts: garden } }).area, null);
 same('an outline with a broken corner is dropped', ok({ loc: here, area: { pts: [...square, ['a', 1]] } }).area, null);
 same('a steep slope is cleaned to nothing, the outline stays', ok({ loc: here, area: { pts: square, slope: 900 } }).area.slope, null);
 

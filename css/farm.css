@@ -1,11 +1,13 @@
-/* My farm: the board on the real map, the slim top row, one toolbar, the Compare plans drawer. Every colour and size comes from the tokens in app.css.
-   Checked by scripts/e2e_farm.mjs (44 px targets, no sideways scroll at 320 px with the largest text, Reduce motion). */
+/* My farm: the board on the real map, the slim top rows (the field picker and Compare plans, one date line, one finding), Map | 3D and More, the time bar,
+   and the drawers. Every colour and size comes from the tokens in app.css. On a phone each row of the first view fills the width.
+   Checked by scripts/e2e_myfarm_simple.mjs and scripts/e2e_farm.mjs (44 px targets, no sideways scroll at 320 px with the largest text, Full, Less and Still motion). */
 #view-farm { padding: 0; }
 .fw { position: relative; display: flex; flex-direction: column; height: calc(100dvh - var(--navh)); min-height: 520px; background: var(--bg); }
 .fw-hud { flex: none; padding: var(--space-8) var(--gutter) var(--space-4); background: var(--bar-glass); border-bottom: .5px solid var(--sep); }
 .fw-row { display: flex; align-items: center; gap: var(--space-12); flex-wrap: wrap; }
 .fw-pick { flex: 1 1 200px; min-width: 0; }
-.fw-select, .fw-input { width: 100%; min-height: var(--touch); padding: 6px 12px; border: 0; border-radius: var(--r2); background: var(--card); box-shadow: var(--shadow-ctl); font: inherit; font-size: var(--fs-field); color: var(--ink); }
+.fw-select, .fw-input { width: 100%; min-height: var(--touch); padding: 6px 12px; border: 0; border-radius: var(--r2); background-color: var(--card); box-shadow: var(--shadow-ctl); font: inherit; font-size: var(--fs-field); color: var(--ink); }
+.fw-select { padding-right: 34px; background-position: right 12px center; }   /* the app's dropdown arrow, with room for it */
 .fw-date { margin: 0; display: flex; align-items: baseline; gap: 8px; font-size: var(--fs-body); color: var(--ink); }
 .fw-date time { font-weight: var(--fw-semi); }
 .fw-label { display: inline-block; padding: 1px 8px; border-radius: var(--r-tag); background: var(--accent-soft); color: var(--accent-text); font-size: var(--fs-chip); font-weight: var(--fw-semi); }
@@ -25,6 +27,7 @@
 .fw-menu .fw-danger { color: var(--delete); }
 .fw-stage { isolation: isolate; position: relative; flex: 1 1 auto; min-height: 280px; overflow: hidden; background: #b9d99d; }
 .fw-map, .fw-3d { position: absolute; inset: 0; }
+.fw-3d { contain: strict; }   /* the 3D view is laid out on its own: putting its skeleton or its words on screen never makes the browser lay out the rest of the board again */
 .fw-map { background: #b9d99d repeating-linear-gradient(135deg, rgba(255,255,255,.14) 0 6px, transparent 6px 18px); }
 .fw-photo .fw-map { background: var(--map-ph); }
 .fw-map[hidden], .fw-3d[hidden] { display: none; }
@@ -52,7 +55,6 @@
 .fw-step { min-height: var(--touch); padding: 4px 6px; border: 0; border-radius: var(--r2); background: var(--fill); font: inherit; color: var(--ink); text-align: center; cursor: pointer; display: grid; align-content: center; line-height: 1.2; }
 .fw-step span { font-size: var(--fs-small); font-weight: var(--fw-medium); overflow-wrap: anywhere; } .fw-step small { font-size: var(--fs-micro); color: var(--ink2); }
 .fw-step[aria-pressed=true] { background: var(--accent); color: var(--accent-ink); } .fw-step[aria-pressed=true] small { color: inherit; }
-.fw-onedate { margin: 4px 0 var(--space-12); font-size: var(--fs-small); color: var(--ink2); }
 .fw-cards { display: grid; gap: var(--space-8); grid-template-columns: 1fr 1fr; }
 .fw-card { padding: var(--space-12); border-radius: var(--r1); background: var(--card2); box-shadow: var(--shadow); min-width: 0; }
 .fw-card p { margin: 6px 0 0; font-size: var(--fs-small); line-height: 1.4; overflow-wrap: anywhere; }
@@ -77,20 +79,15 @@
   .fw-bar { flex-wrap: nowrap; overflow-x: auto; scrollbar-width: none; padding-block: var(--space-4); }
   .fw-bar > * { flex: none; }
   .fw-stepper { display: grid; grid-template-columns: 1fr 1fr; grid-template-areas: "prev next" "steps steps"; }
-  .fw-stepper #fwPrev { grid-area: prev; } .fw-stepper #fwNext { grid-area: next; } .fw-stepper .fw-steps { grid-area: steps; grid-template-columns: 1fr; }
   .fw-step { grid-template-columns: 1fr auto; align-items: center; text-align: left; padding: 6px 12px; column-gap: 8px; }
   .fw-date { flex: 1 1 100%; }
 }
 @media (prefers-reduced-motion: reduce), (hover: none) and (max-width: 0px) { .fw * { transition: none !important; animation: none !important; } }
-html[data-motion=reduce] .fw, html[data-motion=reduce] .fw * { transition: none !important; animation: none !important; }
+html[data-motion=reduce] .fw, html[data-motion=reduce] .fw *, html[data-motion=reduce] .fw *::before, html[data-motion=reduce] .fw *::after { transition: none !important; animation: none !important; }
 /* the field drawer */
 .fw-sub { margin: 2px 0 0; font-size: var(--fs-small); color: var(--ink2); }
 .fw-now { display: grid; gap: 6px; margin: var(--space-8) 0; padding: var(--space-12); border-radius: var(--r1); background: var(--accent-soft); font-size: var(--fs-small); }
 .fw-now b { font-size: var(--fs-row); } .fw-now .btn { justify-self: start; }
-.fw-tabs { display: flex; gap: 4px; margin: var(--space-8) 0; padding: 4px; border-radius: var(--r-seg); background: var(--fill); overflow-x: auto; scrollbar-width: none; }
-.fw-tabs [role=tab] { flex: 1 0 auto; min-width: 44px; min-height: var(--touch); padding: 0 12px; border: 0; border-radius: calc(var(--r-seg) - 2px); background: none; font: inherit; font-size: var(--fs-btn); color: var(--ink2); cursor: pointer; }
-.fw-tabs [role=tab][aria-selected=true] { background: var(--accent); color: var(--accent-ink); }
-.fw-tabs small { margin-left: 4px; }
 .fw-answer { margin: var(--space-8) 0; font-size: var(--fs-body); font-weight: var(--fw-medium); }
 .fw-todo { list-style: none; margin: 0 0 var(--space-8); padding: 0; display: grid; gap: 8px; }
 .fw-todo li { display: grid; gap: 6px; padding: 8px 12px; border-radius: var(--r2); background: var(--card2); font-size: var(--fs-small); } .fw-todo .btn { justify-self: start; }
@@ -111,7 +108,9 @@ html[data-motion=reduce] .fw, html[data-motion=reduce] .fw * { transition: none 
 .fw-date2 { display: grid; grid-template-columns: 80px 1fr; gap: 8px; align-items: center; }
 .fw-actions .btn.primary { color: var(--accent-ink); }
 .fw-fold summary { list-style: none; } .fw-fold summary::-webkit-details-marker { display: none; }
-.fw-fold summary::after { content: "›"; margin-left: auto; padding-left: 12px; font-size: 1.2em; color: var(--ink3); } .fw-fold[open] summary::after { content: "⌄"; }
+.fw-fold summary { gap: 12px; }
+.fw-fold summary::after { content: ""; width: 16px; height: 16px; flex: none; margin-left: auto; background: var(--ink2); clip-path: polygon(29% 31.6%, 50% 52.7%, 71% 31.6%, 79% 39.6%, 50% 68.6%, 21% 39.6%); transition: transform .2s var(--ease); }
+.fw-fold[open] summary::after { transform: rotate(180deg); }
 .fw-fold summary { display: flex; align-items: center; }
 /* editing the outline: the bar over the foot of the board, the corner handles */
 .fw-editbar { position: absolute; z-index: 1250; left: var(--space-12); right: var(--space-12); bottom: var(--space-12); display: grid; gap: 8px; padding: 10px 12px; border-radius: var(--r1); background: var(--card); box-shadow: var(--shadow-lg); }
@@ -143,13 +142,6 @@ html[data-motion=reduce] .fw, html[data-motion=reduce] .fw * { transition: none 
 .fw-row[aria-current=true] { box-shadow: 0 0 0 2px var(--accent); }
 .fw-tickmark { color: var(--accent-text); font-size: 1.3em; }
 .fw-farms li { display: block; padding: 0; background: none; }
-/* the chips: one slim row; on a phone it slides sideways inside itself and the page never does */
-.fw-chiprow { display: flex; gap: 8px; margin-top: var(--space-8); padding-bottom: 2px; overflow-x: auto; scrollbar-width: none; overscroll-behavior-x: contain; }
-.fw-chiprow[hidden] { display: none; }
-.fw-valchip { flex: none; display: grid; align-content: center; min-width: 44px; min-height: var(--touch); padding: 4px 12px; border: 0; border-radius: var(--r-chip); background: var(--card); box-shadow: var(--shadow-ctl); font: inherit; color: var(--ink); text-align: left; cursor: pointer; line-height: 1.15; }
-.fw-valchip small { font-size: var(--fs-micro); color: var(--ink2); } .fw-valchip b { font-size: var(--fs-small); font-weight: var(--fw-semi); }
-.fw-valchip[data-state=unread] b { font-weight: var(--fw-medium); color: var(--ink2); }
-.fw-valchip[aria-expanded=true], .fw-valchip:focus-visible { box-shadow: 0 0 0 2px var(--accent); }
 .fw-srcline { display: flex; align-items: center; gap: 8px; color: var(--ink2); font-size: var(--fs-small); }
 /* fit at the narrow widths and the largest text: room between neighbours, menus that stay on the screen */
 .fw-btnrow { display: flex; flex-wrap: wrap; gap: 8px; margin: var(--space-8) 0; }
@@ -159,22 +151,17 @@ html[data-motion=reduce] .fw, html[data-motion=reduce] .fw * { transition: none 
 /* the time bar at the board's foot: the season arrows, the month slider */
 .fw-strip { position: absolute; z-index: 1000; left: var(--space-12); right: var(--space-12); bottom: var(--space-12); display: grid; gap: 6px; padding: 8px 12px; border-radius: var(--r1); background: var(--bar-glass); box-shadow: var(--shadow-lg); }
 .fw-strip[hidden] { display: none; }
-.fw-season { display: flex; align-items: center; justify-content: space-between; gap: 8px; } .fw-season b { font-size: var(--fs-small); text-align: center; flex: 1 1 auto; }
-.fw-month { display: flex; align-items: center; gap: 8px; min-width: 0; } .fw-month input[type=range] { flex: 1 1 80px; min-width: 0; height: var(--touch); accent-color: var(--accent); }
-.fw-month output { flex: none; min-width: 7.5em; font-size: var(--fs-small); font-weight: var(--fw-semi); text-align: right; }
-.fw-stage.has-strip .leaflet-bottom { bottom: 112px; }
-.fw.has-strip .fw-toast { bottom: 124px; }
+.fw-stage.has-strip { --strip-room: 112px; }   /* what the time bar covers at the foot of the board: the map's corner controls and the 3D words keep clear of it */
+.fw-stage.has-strip .leaflet-bottom { bottom: calc(var(--striph, 68px) + var(--space-12)); }
+.fw.has-strip .fw-toast { bottom: calc(var(--striph, 68px) + 2 * var(--space-12) + 4px); }
 .fw-plate-state { color: var(--accent-text); font-weight: var(--fw-medium); }
 @media (min-width: 701px) { .fw-stage.has-panel .fw-strip { right: calc(min(420px, 100%) + var(--space-12)); } .fw-stage.panel-wide.has-panel .fw-strip { right: calc(min(640px, 100%) + var(--space-12)); } .fw-strip { grid-template-columns: auto 1fr; align-items: center; } }
 .fw-plate small { display: block; }
-@media (max-width: 700px) { .fw-month { flex-wrap: wrap; } .fw-month output { order: 3; flex: 1 0 100%; text-align: center; min-width: 0; } .fw-season b { min-width: 0; overflow-wrap: anywhere; } .fw-season .btn { padding-inline: 10px; } }
-.fw-strip > *, .fw-season > *, .fw-month > * { min-width: 0; }
+.fw-strip > * { min-width: 0; }
 
 /* ---- the look pass: one rhythm of space, one toolbar height, a sheet that really sits on top, a bar that does not eat the map ---- */
 .fw-hud { padding: var(--space-12) var(--gutter) var(--space-12); }
 .fw-finding { margin: var(--space-8) 0 0; }
-.fw-chiprow { margin-top: var(--space-12); align-items: stretch; padding-bottom: 0; }
-.fw-valchip { align-content: start; }
 .fw-bar { padding: var(--space-8) var(--gutter); gap: var(--space-8); }
 .fw-seg { padding: 2px; } .fw-segb { border-radius: calc(var(--r-seg) - 2px); }
 .fw-tool { min-height: 48px; }
@@ -193,21 +180,16 @@ html[data-motion=reduce] .fw, html[data-motion=reduce] .fw * { transition: none 
 .fw-actions { margin-top: var(--space-16); }
 .fw-answer { margin: var(--space-12) 0 var(--space-8); }
 .fw-now { margin: var(--space-12) 0; }
-.fw-tabs { margin: var(--space-12) 0; }
 .fw-stepbar { margin-bottom: var(--space-12); }
 /* the compare days stand in a list, each with its name and its date, so a long name never breaks inside a word */
 .fw-stepper { display: grid; grid-template-columns: 1fr 1fr; grid-template-areas: "prev next" "steps steps"; gap: 6px; }
-.fw-stepper #fwPrev { grid-area: prev; } .fw-stepper #fwNext { grid-area: next; } .fw-stepper .fw-steps { grid-area: steps; grid-template-columns: 1fr; }
 .fw-step { grid-template-columns: 1fr auto; align-items: center; text-align: left; padding: 6px 12px; column-gap: 12px; }
 .fw-step span { overflow-wrap: normal; }
-/* the time bar: the season and the month in the middle, the arrows at the sides, one row on a wide screen */
+/* the time bar: ‹, one line of months over every season of the plans, ›; the date itself is written once, in the date line */
 .fw-strip { gap: var(--space-8); padding: var(--space-8) var(--space-12); }
-.fw-season { display: grid; grid-template-columns: 96px 1fr 96px; align-items: center; gap: 8px; }
-.fw-when { display: grid; justify-items: center; line-height: 1.2; min-width: 0; } .fw-when b { font-size: var(--fs-small); } .fw-when output { min-width: 0; text-align: center; font-size: var(--fs-small); color: var(--ink2); font-weight: var(--fw-regular); }
-.fw-month { display: grid; grid-template-columns: auto 1fr auto; align-items: center; gap: 8px; }
-.fw-month output { display: none; }
-.fw-season .btn { padding-inline: 8px; }
-@media (min-width: 701px) { .fw-strip { grid-template-columns: 340px 1fr; gap: var(--space-16); } }
+#fwStrip { grid-template-columns: auto minmax(0, 1fr) auto; align-items: center; }
+#fwStrip input[type=range] { width: 100%; min-width: 0; height: var(--touch); margin: 0; accent-color: var(--accent); }
+.fw-stepm { min-width: var(--touch); padding-inline: 0; font-size: 1.25em; }
 .fw-handle:focus-visible { border-radius: 50%; }
 @media (max-width: 700px) {
   .fw-hud { padding: var(--space-8) var(--space-12); }
@@ -215,13 +197,11 @@ html[data-motion=reduce] .fw, html[data-motion=reduce] .fw * { transition: none 
   .fw-farmchip { flex: 0 1 38%; } .fw-pick { flex: 1 1 0; min-width: 120px; }
   .fw-date { flex: 0 0 auto; } .fw-compare { flex: 1 1 140px; }
   .fw-finding { font-size: var(--fs-small); margin-top: var(--space-4); }
-  .fw-chiprow { margin-top: var(--space-8); -webkit-mask-image: linear-gradient(90deg, #000 calc(100% - 24px), transparent); mask-image: linear-gradient(90deg, #000 calc(100% - 24px), transparent); padding-right: 24px; }
   .fw-bar { padding: var(--space-4) var(--space-12); }
   .fw-stage.has-panel { z-index: 20; }
   .fw-strip { left: var(--space-8); right: var(--space-8); bottom: var(--space-8); padding: var(--space-4) var(--space-8); gap: 2px; }
-  .fw-season { grid-template-columns: 84px 1fr 84px; } .fw-season .btn, .fw-month .btn { min-height: 40px; height: 44px; }
-  .fw-stage.has-strip .leaflet-bottom { bottom: 104px; }
-  .fw .fw-toast { bottom: 112px; }
+  .fw-stage.has-strip { --strip-room: 104px; }
+  .fw .fw-toast { bottom: calc(var(--striph, 60px) + 2 * var(--space-8) + 4px); }
   .fw-table, .fw-table tbody, .fw-table tfoot, .fw-table tr { display: block; }
   .fw-table thead { display: none; }
   .fw-table tr { display: grid; grid-template-columns: 1fr 1fr; gap: 2px 12px; margin: 0 0 var(--space-8); padding: var(--space-8) var(--space-12); border-radius: var(--r1); background: var(--card2); box-shadow: var(--shadow); }
@@ -231,7 +211,7 @@ html[data-motion=reduce] .fw, html[data-motion=reduce] .fw * { transition: none 
   .fw-table tfoot td { grid-column: 1 / -1; }
   .fw-tablewrap { overflow: visible; }
 }
-.fw-compare { white-space: nowrap; padding-inline: 14px; }
+.fw-compare { padding-inline: 14px; }
 .fw-actions .btn { flex: 0 1 auto; }
 @media (max-width: 700px) { .fw-actions .btn { flex: 1 1 auto; } }
 
@@ -246,10 +226,123 @@ html[data-motion=reduce] .fw, html[data-motion=reduce] .fw * { transition: none 
 /* Observed beside Planned */
 .fw-date { flex-wrap: wrap; row-gap: 4px; }
 .fw-obs { background: var(--fill); color: var(--ink2); } .fw-obs[data-state=ok] { background: var(--good-soft); color: var(--good); }
-.fw-observed { margin-top: var(--space-8); }
-@media (max-width: 700px) { .fw-date { flex: 1 1 0; min-width: 0; } .fw-compare { flex: 0 0 auto; } .fw-label { max-width: 100%; overflow-wrap: anywhere; } }
-@media (max-width: 700px) { .fw-compare { white-space: normal; padding: 6px 10px; line-height: 1.15; } .fw-date time { min-width: 0; overflow-wrap: anywhere; } .fw-date { gap: 4px 8px; } }
-@media (max-width: 700px) { .fw .fw-compare.btn { white-space: normal; overflow-wrap: anywhere; text-align: center; max-width: 100%; } }
+@media (max-width: 700px) { .fw .fw-compare.btn { white-space: normal; text-align: center; max-width: 100%; } }
 /* Settings > Motion: Less and Still take the sliding away from the board and its map; nothing here animates by itself in any case */
 html[data-motion=less] .fw, html[data-motion=less] .fw *, html[data-motion=less] .fw *::before, html[data-motion=less] .fw *::after { transition-duration: 0s !important; transition-delay: 0s !important; animation: none !important; scroll-behavior: auto !important; }
 html[data-motion=reduce] .fw .leaflet-container *, html[data-motion=less] .fw .leaflet-container * { transition: none !important; }
+/* the map's own credit line keeps a target of 24 px at least */
+.fw .leaflet-control-attribution { padding: 0 6px; line-height: 24px; }
+.fw .leaflet-control-attribution a { display: inline-block; min-height: 24px; min-width: 24px; padding: 0 2px; line-height: 24px; }
+
+/* ---- one year on the map: the ribbon, the bar and the verdicts on the tokens (a shape and a word with every colour) */
+.fw-ribbon { position: absolute; z-index: 1000; top: var(--space-8); left: 56px; margin: 0; padding: 6px 12px; border-radius: var(--r1); background: var(--bar-glass); box-shadow: var(--shadow-ctl); font-size: var(--fs-small); font-weight: var(--fw-semi); color: var(--ink); width: fit-content; max-width: calc(100% - 56px - var(--space-8)); }
+.fw-ribbon[hidden] { display: none; }
+.fw-yearbar { display: grid; grid-template-columns: minmax(0, 1fr); max-height: 58%; overflow: auto; }
+.fw-yrow { display: flex; flex-wrap: wrap; align-items: center; gap: var(--space-8); }
+.fw-yearpick { font-size: var(--fs-small); font-weight: var(--fw-semi); }
+.fw-yearpick + select { min-height: var(--touch); min-width: 6em; font: inherit; }
+.fw-ycard > summary { min-height: var(--touch); display: flex; align-items: center; cursor: pointer; font-size: var(--fs-small); font-weight: var(--fw-semi); }
+.fw-yh { margin: var(--space-8) 0 2px; font-size: var(--fs-small); } .fw-ycrop p, .fw-ycrop ul, .fw-ycrop ol { margin: 2px 0; font-size: var(--fs-small); } .fw-ycrop ul, .fw-ycrop ol { padding-left: 1.2em; }
+.fw-ystages { color: var(--ink2); }
+.fw-stage.has-year .leaflet-bottom { bottom: calc(var(--yearh, 120px) + 12px); }
+.fw.in-year .fw-date { display: none; }
+.fw-token[data-verdict=fine] { color: #1b6e2b; border-color: #1b6e2b; } .fw-token[data-verdict=close] { color: #8a5a00; border-color: #8a5a00; } .fw-token[data-verdict=hurt] { color: #b3261e; border-color: #b3261e; } .fw-token[data-verdict=none] { color: #5b6470; border-color: #5b6470; border-style: dashed; }
+.fw-yword[data-verdict=fine] { color: #1b6e2b; } .fw-yword[data-verdict=close] { color: #8a5a00; } .fw-yword[data-verdict=hurt] { color: #b3261e; } .fw-yword[data-verdict=none] { color: #5b6470; }
+@media (max-width: 700px) { .fw-yrow .btn { padding-inline: 10px; } .fw-yrow #fwYearBack { flex: 1 0 100%; } .fw-yearbar { max-height: 62%; } }
+@media (min-width: 701px) { .fw-stage.has-panel .fw-yearbar { right: calc(min(420px, 100%) + var(--space-12)); } }
+
+/* ---- the simpler first view: the farm's name over the field picker, Compare plans, one date line, one finding, Map | 3D and More, the map with its key ---- */
+.fw-top { display: flex; align-items: flex-end; gap: var(--space-8) var(--space-12); flex-wrap: wrap; }
+.fw-pick { flex: 1 1 260px; min-width: 0; display: grid; gap: 4px; }
+.fw-farmname { margin: 0; font-size: var(--fs-small); font-weight: var(--fw-semi); color: var(--ink2); overflow-wrap: anywhere; }
+.fw-farmname[hidden] { display: none; }
+.fw .fw-farmchip { justify-self: start; display: inline-flex; align-items: center; gap: 6px; min-height: var(--touch); max-width: 100%; padding: 0 12px; font-size: var(--fs-small); font-weight: var(--fw-semi); }
+.fw-farmchip-name { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.fw .fw-compare { flex: 0 0 auto; }
+.fw-date { margin: var(--space-8) 0 0; display: flex; flex-wrap: wrap; align-items: baseline; gap: 4px 8px; font-size: var(--fs-body); }
+.fw-date[hidden] { display: none; }
+.fw-planname { font-weight: var(--fw-semi); } .fw-planname:empty, .fw-planname:empty + .fw-dot { display: none; }
+.fw-dot { color: var(--ink3); }
+.fw-label { overflow-wrap: normal; white-space: nowrap; }
+.fw-bar { justify-content: space-between; }
+.fw-more { gap: 6px; padding-inline: 16px 12px; }
+.fw-morewrap .fw-menu { left: auto; right: 0; width: max-content; min-width: 220px; max-width: min(320px, calc(100vw / var(--tz, 1) - 2 * var(--space-12))); max-height: min(72dvh, 600px); overflow: auto; overscroll-behavior: contain; }
+.fw-menuh { margin: 6px 12px 2px; font-size: var(--fs-micro); font-weight: var(--fw-semi); color: var(--ink2); }
+.fw-menu [role=group] { display: grid; gap: 2px; } .fw-menu [role=group] + [role=group] { margin-top: 4px; padding-top: 4px; border-top: .5px solid var(--sep); }   /* 2 px between rows, as in every menu */
+@media (min-width: 701px) {   /* on a wider screen More is two columns: the field's and the map's tools, then the farm's, so it is short enough to show whole on a laptop */
+  .fw-morewrap .fw-menu { grid-template-columns: repeat(2, minmax(200px, 1fr)); grid-template-rows: auto 1fr; column-gap: 8px; align-items: start; max-width: min(520px, calc(100vw / var(--tz, 1) - 2 * var(--space-12))); }
+  .fw-morewrap .fw-menu [role=group]:nth-child(-n+2) { grid-column: 1; }
+  .fw-morewrap .fw-menu [role=group]:nth-child(3) { grid-column: 2; grid-row: 1 / span 2; margin-top: 0; padding: 0 0 0 8px; border-top: 0; border-left: .5px solid var(--sep); }
+}
+.fw-menu button:disabled { opacity: .45; cursor: default; }
+/* the ground-cover key of the board: what the colours of the field mean */
+.fw-key { position: absolute; z-index: 900; top: var(--space-12); right: var(--space-12); max-width: calc(100% - 84px); margin: 0; padding: 6px 10px; border-radius: var(--r2); background: var(--card); box-shadow: var(--shadow-ctl); font-size: var(--fs-micro); color: var(--ink); }
+.fw-key[hidden] { display: none; }
+.fw-keyh { margin: 0 0 2px; font-weight: var(--fw-semi); }
+.fw-key ul { display: flex; flex-wrap: wrap; gap: 2px 10px; margin: 0; padding: 0; list-style: none; }
+.fw-key li { display: inline-flex; align-items: center; gap: 6px; color: var(--ink2); }
+.fw-key li.is-on { color: var(--ink); font-weight: var(--fw-semi); }
+.fw-key i { width: 12px; height: 12px; flex: none; border-radius: 3px; border: 1px solid var(--shade); background: #7ed957; }
+.fw-key [data-k=residue] i { background: #cdb88a; } .fw-key [data-k=bare] i { background: #a47148; }
+@media (min-width: 701px) { .fw-stage.has-panel .fw-key { right: calc(min(420px, 100%) + var(--space-12)); } .fw-stage.panel-wide.has-panel .fw-key { right: calc(min(640px, 100%) + var(--space-12)); } }
+/* 3D sits above the time bar, so its own buttons (turn, zoom, reset) are never under it; the picture keeps to the room there is, and the words below it scroll */
+.fw-3d { overflow: auto; overscroll-behavior: contain; container-type: size; }
+#fw3d { min-height: 0; }   /* the 3D view fills its page by itself; here its box is exactly the room above the time bar */
+.fw-stage.is-3d { background: var(--bg); }
+.fw-stage.has-strip .fw-3d { bottom: calc(var(--striph, 68px) + 2 * var(--space-12)); }
+.fw-3d .f3d-stage { height: clamp(200px, calc(100cqh - 72px), 620px); }
+/* Compare plans: the plan's own reason, the plan the map and 3D show, and each plan's figures with their "i" */
+.fw-why { margin: 0 0 var(--space-12); font-size: var(--fs-small); line-height: 1.45; }
+.fw-show { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 6px 12px; margin: 0 0 var(--space-8); }
+.fw-panel .fw-showl { margin: 0; font-size: var(--fs-small); color: var(--ink2); }
+.fw-figs { display: grid; gap: 6px; margin: var(--space-8) 0 0; padding-top: var(--space-8); border-top: .5px solid var(--sep); }
+.fw-fig dt { font-size: var(--fs-micro); color: var(--ink2); }
+.fw-fig dd { margin: 0; display: flex; align-items: center; gap: 6px; font-size: var(--fs-small); font-weight: var(--fw-semi); overflow-wrap: anywhere; }
+.fw-fig:is([data-state=unread], [data-state=wait]) dd { font-weight: var(--fw-regular); color: var(--ink2); }
+@media (max-width: 700px) {
+  .fw-top { gap: var(--space-8); }
+  .fw-pick, .fw .fw-compare { flex: 1 1 100%; }   /* each row fills the width: the picker, then Compare plans */
+  .fw-bar { flex-wrap: nowrap; overflow: visible; gap: var(--space-8); }   /* Map | 3D | More fill the row, and More's menu is never clipped */
+  .fw-bar > .fw-seg { flex: 2 1 0; min-width: 0; } .fw-bar .fw-segb { flex: 1 1 0; min-width: 0; }
+  .fw-bar > .fw-morewrap { flex: 1 1 0; min-width: 0; } .fw-more { width: 100%; padding-inline: 8px; }
+  .fw-date { font-size: var(--fs-small); }
+  .fw-key { top: var(--space-8); right: var(--space-8); }
+  .fw-stage.has-strip .fw-3d { bottom: calc(var(--striph, 60px) + 2 * var(--space-8)); }
+}
+
+/* the place step of Add a field: the home's own two choices and search, one spacing step between the parts */
+.fw-place { display: grid; gap: var(--space-12); } .fw-place .bigbtns { display: grid; gap: var(--space-12); margin: 0; } .fw-place .search { margin: 0; } .fw-place .fw-muted { margin: 0; }
+.fw-top[hidden], .fw-date[hidden], .fw-bar[hidden], .fw-finding[hidden] { display: none; }
+
+/* the finding: one short line, the rest folded */
+/* the key is a small fold, closed at first: "What the colours mean" */
+.fw-key > summary { display: flex; align-items: center; min-height: var(--touch); margin: -6px -10px; padding: 0 10px; cursor: pointer; list-style: none; } .fw-key > summary::-webkit-details-marker { display: none; }
+.fw-key[open] > summary { margin-bottom: 0; } .fw-key ul { margin-top: 2px; }
+@media (max-width: 700px) { .fw-stage.has-panel .fw-key { display: none; } }   /* behind a sheet the key is out of reach, and it would crowd it */
+
+/* the head of the first view: the field's name, its size and place, the plan to try with the report's score, the next job; then one bar of four */
+.fw-hud { display: grid; gap: var(--space-4); } .fw-name { margin: 0; font-size: var(--fs-title2); line-height: 1.2; } .fw-name[hidden], .fw-plan[hidden], .fw-next[hidden], .fw-headsub:empty { display: none; }
+.fw-headsub, .fw-plan, .fw-next { margin: 0; font-size: var(--fs-small); color: var(--ink2); max-width: 75ch; } .fw-plan { color: var(--ink); } .fw-next { color: var(--ink); font-weight: var(--fw-medium); }
+.fw-scorechip { display: inline-block; padding: 1px 10px; border-radius: var(--r-chip); background: var(--fill); font-weight: var(--fw-semi); font-size: var(--fs-small); color: var(--ink); }
+.fw-bar { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: var(--space-8); align-items: center; } .fw-bar > .btn { width: 100%; }
+@media (min-width: 600px) { .fw-bar { grid-template-columns: repeat(4, auto); justify-content: start; } .fw-bar > .btn { width: auto; } }
+
+/* Compare plans: the switch, three key days, two cards (side by side on a laptop), one sowing line, one fold */
+.fw-role { margin: 0; font-size: var(--fs-small); color: var(--ink2); } .fw-figline { margin: var(--space-4) 0 0; }
+.fw-window { margin: var(--space-8) 0; } .fw-moreplan p { margin: var(--space-4) 0; font-size: var(--fs-small); } .fw-changeplan { margin: var(--space-4) 0; }
+@media (min-width: 701px) { .fw-stage.has-panel .fw-cards { grid-template-columns: minmax(0, 1fr); } }
+.fw-emptybtns { display: grid; gap: var(--space-8); justify-items: center; margin-top: var(--space-8); } .fw-emptybtns .btn { min-width: 14em; }
+.fw-bar > .btn { white-space: normal; line-height: 1.2; padding-inline: 8px; text-align: center; }
+/* measured on the phone: every control 44 px, no text under 12 px, the dot dark enough */
+.fw { --fs-micro: 12px; }
+.fw .leaflet-control-zoom a { width: 44px; height: 44px; line-height: 44px; font-size: 22px; }
+.fw .leaflet-control-attribution a { display: inline-flex; align-items: center; min-width: 44px; min-height: 44px; }
+.fw .srci { position: relative; } .fw .srci::after { content: ""; position: absolute; inset: -10px; }   /* the small "i" keeps its look and gets a 44 px tap area */
+.fw-dot { color: var(--ink2); }
+
+/* weak spots: squares over the field and numbered pins; they fade in at Full, quickly at Less, and are simply there at Still */
+.fw-weakpin { background: none; border: 0; } .fw-weakbtn { display: grid; place-items: center; width: 44px; height: 44px; padding: 0; border: 3px solid #fff; border-radius: 50%; background: #7a3e00; color: #fff; font: inherit; font-weight: var(--fw-semi); box-shadow: var(--shadow-ctl); cursor: pointer; }
+.fw-weaksq { animation: fwweakin 300ms ease both; } @keyframes fwweakin { from { opacity: 0; } to { opacity: 1; } }
+html[data-motion=less] .fw-weaksq { animation-duration: 160ms; } html[data-motion=reduce] .fw-weaksq { animation: none; }
+.fw-weak .fw-weakbody p { margin: var(--space-4) 0; }
+.fw-bar > .btn.primary::after { display: none; }   /* the hover sweep of a primary button is wider than this narrow button and counted as hidden words: this one has none (calm motion) */

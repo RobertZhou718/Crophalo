@@ -1,0 +1,111 @@
+# The data server's image: on every push to main that changes the server (or by hand from the Actions tab), GitHub builds the Dockerfile for linux/amd64,
+# tests the image (it starts, answers /api/health and /api/ready with its Python tools, runs as its own user, its six libraries load), and only then
+# publishes it to GitHub's container registry as ghcr.io/<owner>/crophalo-api with two tags: sha-<first 7 letters of the commit> and latest.
+# Only the workflow's own GITHUB_TOKEN is used: no password, no Azure key. The NASA login is never here: the image runs its test without it.
+# Azure does not follow the image by itself: after a build, the run's summary names the new tag to type in the portal (AZURE-GOING-LIVE.md, "A new server").
+name: api image
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - Dockerfile
+      - .dockerignore
+      - scripts/**
+      - .github/workflows/api-image.yml
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  packages: write
+
+concurrency:
+  group: api-image
+  cancel-in-progress: true
+
+jobs:
+  image:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v7
+
+      - name: The image name (the registry wants lower case)
+        run: echo "IMAGE=ghcr.io/${GITHUB_REPOSITORY_OWNER,,}/crophalo-api" >> "$GITHUB_ENV"
+
+      - uses: docker/setup-buildx-action@v4
+
+      - name: Sign in to GitHub's container registry with this run's own token
+        uses: docker/login-action@v4
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Tags and labels
+        id: meta
+        uses: docker/metadata-action@v6
+        with:
+          images: ${{ env.IMAGE }}
+          tags: |
+            type=sha,format=short
+            type=raw,value=latest,enable={{is_default_branch}}
+
+      - name: Build (kept on this runner for the test, not published yet)
+        uses: docker/build-push-action@v7
+        with:
+          context: .
+          platforms: linux/amd64
+          load: true
+          push: false
+          tags: crophalo-api:test
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+      - name: Test the image before anyone can pull it
+        run: |
+          set -eu
+          docker run -d --name api -p 8080:8080 crophalo-api:test
+          ok=""
+          for i in $(seq 1 60); do
+            if curl -fsS http://127.0.0.1:8080/api/health -o health.json 2>/dev/null; then ok=1; break; fi
+            sleep 1
+          done
+          if [ -z "$ok" ]; then echo "The server did not answer /api/health within 60 s"; docker logs api; exit 1; fi
+          cat health.json; echo
+          jq -e '.ok == true and .python == true' health.json > /dev/null || { echo "health: not ok, or the Python tools are missing"; exit 1; }
+          test "$(curl -s -o /dev/null -w '%{http_code}' http://127.0.0.1:8080/api/ready)" = 200 || { echo "/api/ready is not 200"; exit 1; }
+          test "$(docker exec api id -u)" = 10001 || { echo "the server does not run as its own user"; exit 1; }
+          echo "a page of the website from this server: $(curl -s -o /dev/null -w '%{http_code}' http://127.0.0.1:8080/index.html) (404 when .dockerignore leaves the website out)"
+          echo "the push key from this server: $(curl -s -o /dev/null -w '%{http_code}' http://127.0.0.1:8080/api/push/key) (404 when .dockerignore leaves push out)"
+          docker exec api /app/.venv/bin/python -c "import numpy, h5py, netCDF4, rasterio, earthaccess, openpyxl; print('the six Python libraries load')"
+          docker logs api
+          docker rm -f api > /dev/null
+
+      # One plain linux/amd64 image, with no provenance or SBOM entries beside it: the build tool adds those by default, and the Container Apps
+      # portal then refuses the tag ("Selected tag uses an invalid operating system").
+      - name: Publish
+        uses: docker/build-push-action@v7
+        with:
+          context: .
+          platforms: linux/amd64
+          push: true
+          provenance: false
+          sbom: false
+          tags: ${{ steps.meta.outputs.tags }}
+          labels: ${{ steps.meta.outputs.labels }}
+          cache-from: type=gha
+
+      - name: What to type in Azure
+        run: |
+          short="sha-${GITHUB_SHA::7}"
+          {
+            echo "### New data server image"
+            echo
+            echo "Registry: \`ghcr.io\`"
+            echo
+            echo "Image and tag: \`${IMAGE#ghcr.io/}:${short}\`"
+            echo
+            echo "To use it: Azure portal, the container app, **Revisions and replicas**, **Create new revision**, select the container, **Edit**, put \`${short}\` after the colon in **Image and tag**, **Save**, **Create**."
+            echo "Nothing else changes: the secrets and settings stay. Until then the old image keeps answering."
+          } >> "$GITHUB_STEP_SUMMARY"

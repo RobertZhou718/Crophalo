@@ -1,6 +1,6 @@
 # Crophalo's start on a Windows PC: the twin of scripts/run.sh, the same thirteen steps in the same order, written for the
 # Windows PowerShell 5.1 that every Windows 10 and 11 PC has. Options: --no-open, --port N, --login, --no-login. Settings: CROPHALO_PORT, FW_CACHE.
-# Pure: Test-Port, ConvertTo-NetrcWord, Get-NetrcLine, Get-OtherLogins. The rest reads the folder, the PC or the network.
+# Pure: Test-Port, ConvertTo-NetrcWord, Get-NetrcLine. The rest reads the folder, the PC or the network.
 # No suite can run it on a Mac: scripts/WINDOWS-CHECKLIST.md is its check, by hand on a PC. Keep this file plain ASCII with Windows line ends.
 
 if ($ExecutionContext.SessionState.LanguageMode -ne 'FullLanguage') {   # a work PC locked by its administrator: nothing below may run there
@@ -46,7 +46,13 @@ function Add-Log([string]$text) { try { [IO.File]::AppendAllText($LogFile, $text
 function Log([string]$text) { Add-Log ([DateTime]::Now.ToString('yyyy-MM-dd HH:mm:ss', [Globalization.CultureInfo]::InvariantCulture) + ' ' + $text) }
 function New-Folder([string]$path) { $null = [IO.Directory]::CreateDirectory($path) }
 function Remove-File([string]$path) { try { if ([IO.File]::Exists($path)) { [IO.File]::Delete($path) } } catch { } }
-function Move-Over([string]$from, [string]$to) { if ([IO.File]::Exists($to)) { [IO.File]::Delete($to) }; [IO.File]::Move($from, $to) }
+function Move-Over([string]$from, [string]$to) {   # the old file stays until the new one is in its place: Windows swaps the two in one step, never a delete first
+  if (-not [IO.File]::Exists($to)) { [IO.File]::Move($from, $to); return }   # a first file: there is nothing to keep
+  $before = "$to.before"; Remove-File $before   # left by an earlier swap that ended well: the file itself is in its place
+  try { [IO.File]::Replace($from, $to, $before) }
+  catch { if (-not [IO.File]::Exists($to) -and [IO.File]::Exists($before)) { [IO.File]::Move($before, $to) }; throw }   # a swap stopped halfway: the old file goes back
+  Remove-File $before
+}
 function Test-Link([string]$path) {   # a link to another place; the marks a cloud drive puts on its own files do not count
   try { $kind = (Get-Item -LiteralPath $path -Force).LinkType; return ($kind -eq 'SymbolicLink' -or $kind -eq 'Junction') } catch { return $false }
 }
@@ -110,7 +116,7 @@ if ($found.Success) { $PyImports = $found.Groups[1].Value }
 
 function Show-Usage { Say 'Use: "Start Crophalo.bat" [--no-open] [--port N] [--login] [--no-login]' }
 function Test-Port([string]$p) { return ($p -match '^[0-9]{1,5}$' -and [int]$p -ge 1024 -and [int]$p -le 65535) }
-$Open = $true; $Ask = 'auto'; $Port = ''
+$Open = $true; $Ask = 'auto'; $Port = ''; $Running = $false
 for ($i = 0; $i -lt $Words.Count; $i++) {
   $word = $Words[$i]; $key = $word.TrimStart('-').ToLowerInvariant().Replace('-', '')   # --no-open and -NoOpen are one option
   if ($word -notlike '-*') { Say "Unknown option: $word"; Show-Usage; exit 2 }
@@ -177,14 +183,14 @@ if ($Chip -eq 'ARM64' -and $Os.Build -ge 22000) {
 }
 
 # ---- 6 - already running from this folder? then only open the browser. The server names its own folder (root) in /api/health;
-#      the cache is no sign of it, since two folders may share one FW_CACHE
+#      the cache is no sign of it, since two folders may share one FW_CACHE. With --login (the "Add NASA login" starter) the login
+#      is asked first, in step 9; the Python set-up is left alone meanwhile, and the start ends there, with no second server
 $Url = "http://localhost:$Port/"
 $RootFull = [IO.Path]::GetFullPath($Root)   # as the server names it in /api/health
 $health = Get-Health $Port 3000
 if ($health -and ([string]$health.root) -ieq $RootFull) {   # capitals do not tell two Windows folders apart
-  Say "Crophalo is already running from this folder: $Url"; Log "already running on $Port"
-  if ($Open) { Open-Browser }
-  exit 0
+  if ($Ask -ne 'yes') { Say "Crophalo is already running from this folder: $Url"; Log "already running on $Port"; if ($Open) { Open-Browser }; exit 0 }
+  $Running = $true
 }
 
 # ---- downloads: each file into FILE.part first, so a half file never looks like a whole one
@@ -368,7 +374,7 @@ function Build-Venv {   # sets $Why when it fails; Crophalo's own old venv comes
   $script:Why = 'the NASA data libraries could not be installed'; return $false
 }
 # The six libraries have ready-built files for every 64-bit Windows 10 and 11, so no Windows that got this far is too old for them.
-if (Test-Venv) { Log 'venv reused: its fingerprint matches and the six libraries load' } else {
+if ($Running) { } elseif (Test-Venv) { Log 'venv reused: its fingerprint matches and the six libraries load' } else {   # while it runs, the server uses this .venv: it is left as it is
   Say 'Setting up Python and the NASA data tools inside this folder (a few minutes, once)...'
   if (Build-Venv) { Say 'The NASA data tools are ready.' }
 }
@@ -392,19 +398,10 @@ function ConvertTo-NetrcWord([string]$value) {   # a value with anything but A-Z
   return $value
 }
 function Get-NetrcLine([string]$user, [string]$pass) { return "machine $EarthdataHost login $(ConvertTo-NetrcWord $user) password $(ConvertTo-NetrcWord $pass)`n" }
-function Get-OtherLogins([string]$text) {   # the lines of a netrc file that belong to other services
-  $keep = New-Object System.Text.StringBuilder; $skip = $false
-  $lines = @($text -split "`r?`n"); $last = $lines.Count - 1
-  for ($i = 0; $i -le $last; $i++) {
-    $line = $lines[$i]
-    if ($i -eq $last -and $line -eq '') { break }   # what follows the last line end is not a line
-    if ($line -cmatch '^[ \t]*(machine|default)([ \t]|$)') {
-      $w = @($line.Trim() -split '[ \t]+')
-      $skip = ($w[0] -ceq 'machine' -and $w.Count -gt 1 -and $w[1] -ceq $EarthdataHost)
-    }
-    if (-not $skip) { $null = $keep.Append($line).Append("`n") }
-  }
-  return $keep.ToString()
+function Get-OtherLogins([string]$file) {   # the bytes of a netrc file without its NASA entry, word by word (another service on the same line stays): the same code as on a Mac
+  $said = Get-ToolText $Node @("$Root\scripts\earthdata.mjs", '--others', $file, '--base64')   # base64: Windows PowerShell would change the letters of plain text on the way
+  if ($said -notlike 'ok:*') { throw 'the other entries of the netrc file could not be read' }   # then nothing is written
+  return ,([Convert]::FromBase64String($said.Substring(3)))   # the comma keeps the bytes one array
 }
 function Get-RealFile([string]$file) {   # where a link leads in the end (a .netrc kept in another folder stays a link to it)
   for ($n = 0; $n -lt 16 -and (Test-Link $file); $n++) {
@@ -424,11 +421,11 @@ function Save-Login([string]$file, [string]$user, [string]$pass) {   # written w
   try {
     $real = Get-RealFile $file; if (Test-Link $real) { return $false }   # links that lead in a circle: nothing is written
     New-Folder ([IO.Path]::GetDirectoryName($real))
-    $bytewise = [Text.Encoding]::GetEncoding(28591)   # one byte, one letter: other services' lines go back exactly as they were
-    $kept = ''; if ([IO.File]::Exists($real)) { $kept = Get-OtherLogins ($bytewise.GetString([IO.File]::ReadAllBytes($real))) }
+    $kept = [byte[]]@(); if ([IO.File]::Exists($real)) { $kept = Get-OtherLogins $real }   # other services' entries go back exactly as they were
     [IO.File]::WriteAllText("$real.part", '', $Utf8)   # made empty and closed to others first, so the login is never in a file others can open
     $script:Closed = Protect-File "$real.part" 'F'
-    [IO.File]::WriteAllBytes("$real.part", [byte[]]($bytewise.GetBytes($kept) + $Utf8.GetBytes((Get-NetrcLine $user $pass))))
+    [IO.File]::WriteAllBytes("$real.part", [byte[]]($kept + $Utf8.GetBytes((Get-NetrcLine $user $pass))))
+    if ([IO.File]::Exists($real) -and -not (Protect-File $real 'F')) { $script:Closed = $false }   # the swap keeps the old file's rights, so the old file is closed to others first
     Move-Over "$real.part" $real
     return $true
   } catch {
@@ -472,6 +469,7 @@ function Read-Login {
       Remove-File "$Root\.secrets\earthdata.netrc"   # an older login in the folder would be found first and hide this one
     } else { Say 'The login could not be saved in your home folder.' }
   }
+  if ($saved -and $Running) { Say 'The running Crophalo uses this login from its next lookup.' }
   if ($saved -and -not $Closed) { Say 'This disk cannot close a file to other people, so anyone who can open that folder can read the saved login.'; Log 'the saved login could not be closed to other users' }
   $user = $null; $pass = $null   # blanked: nothing of the login stays in this window
 }
@@ -482,6 +480,7 @@ if ($Ask -eq 'yes') {
 } elseif ($Ask -eq 'auto') {
   if (-not (Test-Login) -and -not [IO.File]::Exists("$RT\earthdata-skipped") -and $CanAsk) { Read-Login }
 }
+if ($Running) { Say "Crophalo is already running from this folder: $Url"; Log "already running on $Port (login asked)"; if ($Open) { Open-Browser }; exit 0 }   # step 6 found it running: nothing more is started
 
 # ---- 10 - the check-up: plain lines, never blocks the start
 $env:FW_PYTHON = $VenvPy

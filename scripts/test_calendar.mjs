@@ -89,11 +89,20 @@ check('the timeline says what it shows, in words', /<svg class="tl"[^>]*role="im
 check('the timeline draws the window, what is left of it, the harvest and the sowing', ['tl-window', 'tl-left', 'tl-harvest', 'tl-sow'].every(c => timelineSVG(w).includes(c)) && !timelineSVG({ ...w, squeeze: { kind: 'open' } }).includes('tl-left'));
 check('the guide line is there: dates can differ by a few weeks', /Local dates and varieties can differ by a few weeks/.test(html));
 check('no plans read: the tab says so and draws no ground', (() => { const h = calendarHTML(none); return /have not been read yet/.test(h) && !/fc-ground/.test(h) && !/When to sow/.test(h) && /fc-rain/.test(h); })());
-check('no data at all: not read', calendarHTML(null).includes('has not been read yet'));
+check('no data at all: not read', calendarHTML(null).includes('could not be worked out'));
 check('words from outside are plain text', !/<img src=x/.test(calendarHTML(buildCalendar({ result: { current: { ...current, name: '<img src=x onerror=1>' }, recommended: { ...proposed, name: '<b>x</b>' } }, climate }))));
 check('the record never says a chance or a forecast', !/\b(chance|probability|forecast)\b/i.test(html.replace(/probab/g, '')), html.match(/\b(chance|probability|forecast)\b/i)?.[0]);
 const OLD_TR = new RegExp('\\b' + 'Tur' + 'key' + '\\b');   // the old English spelling, written in pieces so this file never holds it
 check('no old spelling of Türkiye and no key names but crophalo.*', !OLD_TR.test(html) && !/\bfw\./.test(html));
+// ---- visible month labels on the plan grids, the rain unit written out, and the year labels not hidden on a phone
+{
+  const plans = html.split('class="fc-plan"').slice(1);
+  check('each plan grid has a visible month header of 12 months, above its years', plans.length >= 2 && plans.every(h => /class="fc-yearrow fc-yearhead"/.test(h) && (h.slice(h.indexOf('fc-yearhead'), h.indexOf('fc-yearrow', h.indexOf('fc-yearhead') + 12)).match(/class="fc-m"/g) ?? []).length === 12), plans.length);
+  check('the month header shows both the short name and the one-letter form (CSS picks one by width)', plans.every(h => /fc-full">Jan</.test(h) && /fc-ini">J</.test(h)));
+  check('the rain chart says its unit in a line that is not hidden: "Rain in millimetres (mm) for each month"', /<p class="cap fc-unit">Rain in millimetres \(mm\) for each month/.test(html) && !/aria-hidden="true"><p class="cap fc-unit"/.test(html));
+  const css = fs.readFileSync(new URL('../css/calendar.css', import.meta.url), 'utf8'), phone = css.slice(css.indexOf('@media (max-width: 620px)'), css.indexOf('}', css.indexOf('@media (max-width: 620px)') + 30) + 200);
+  check('on a phone the year label of each ground row stays visible (shown as a line above it)', !/,\s*\.fc-year\s*\{\s*display:\s*none/.test(css) && /@media \(max-width: 620px\) \{ \.fc-year \{ display: block/.test(css), phone.slice(0, 200));
+}
 
 console.log(`calendar: ${passed} passed, ${failed} failed`);
 process.exit(failed ? 1 : 0);

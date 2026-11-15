@@ -1,0 +1,18 @@
+/* The 3D view's own big animations: PLAY THE DAY (the button, the dial, the play bar) and THE SKELETON BECOMES THE FIELD (the sketch filling in as the build reaches each part). Opacity and a conic angle only.
+   Every Full rule sits where only Full reaches; Less and Still keep what is drawn without it. */
+.m-day { display: flex; flex-wrap: wrap; align-items: center; gap: var(--space-12); margin-top: var(--space-12); }
+.m-day[hidden] { display: none; }
+.m-day-btn { min-height: var(--touch); min-width: var(--touch); }
+.m-sundial { --sun-az: 0deg; position: relative; width: 64px; height: 64px; flex: none; border-radius: 50%; border: 2px solid var(--sep); background: conic-gradient(from calc(var(--sun-az) - 20deg), transparent, var(--sun-fill) 20deg, transparent 40deg), var(--fill); }
+.m-sundial::after { content: ''; position: absolute; left: 50%; top: 6px; width: 8px; height: 8px; margin-left: -4px; border-radius: 50%; background: var(--sunArc, #e0a526); transform-origin: 50% 26px; transform: rotate(var(--sun-az)); }
+.m-day-controls { display: flex; flex-wrap: wrap; gap: var(--space-8); }
+@media (prefers-reduced-motion: no-preference) {
+  html:not([data-motion]) .f3d[data-state=building] .f3d-sk-slab, html:not([data-motion]) .f3d[data-state=building] .f3d-sk-field { opacity: .35; transition: opacity var(--m-t-step) var(--m-ease-fade); }
+  html:not([data-motion]) .f3d[data-built~=land] .f3d-sk-slab { opacity: 1; }
+  html:not([data-motion]) .f3d[data-built~=ground] .f3d-sk-field { opacity: 1; }
+  html:not([data-motion]) .f3d-sk-field::before { content: ''; position: absolute; inset: 0; border-radius: inherit; opacity: 0; background: repeating-linear-gradient(90deg, var(--c-g) 0 2px, transparent 2px 9px); transition: opacity var(--m-t-step) var(--m-ease-fade); }
+  html:not([data-motion]) .f3d[data-built~=plants] .f3d-sk-field::before { opacity: .35; }   /* the rows at a third of their colour, as the sketch had them */
+  html:not([data-motion]) .f3d-sk-land { transition: filter var(--m-t-step) var(--m-ease-fade); }
+  html:not([data-motion]) .f3d[data-built~=light] .f3d-sk-land { filter: brightness(1.06); }
+}
+@media (forced-colors: active) { .m-sundial { border-color: CanvasText; } }

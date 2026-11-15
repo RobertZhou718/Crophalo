@@ -1,0 +1,27 @@
+/* Crophalo's Look ahead page: one steady column, the note box, a horizon switch that wraps, tiles for each model, a table that scrolls inside its own box. Only the tokens of css/app.css. */
+.ahead { display: grid; gap: var(--space-16); max-width: 760px; margin: 0 auto; padding: var(--space-16) var(--gutter) var(--space-48); }
+.ahead-top { display: grid; gap: var(--space-8); justify-items: start; }
+.ahead-note { background: var(--accent-soft); }
+.ahead-switch { display: grid; gap: var(--space-4); }
+.ahead-switch .seg { flex-wrap: wrap; }
+.ahead-scale { display: flex; justify-content: space-between; margin: 0; }
+.ahead-panel { display: grid; gap: var(--space-12); }
+.ahead-head { font-size: var(--fs-headline); font-weight: var(--fw-semi); margin: 0; }
+.ahead-tiles { list-style: none; margin: 0; padding: 0; display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: var(--space-12); }
+.ahead-tile { display: grid; gap: var(--space-4); }
+.ahead-disagree { background: var(--warn-soft); }
+.ahead .btn { min-height: var(--touch); }
+.ahead .tbl { overflow: auto; }
+.ahead table { width: 100%; border-collapse: collapse; } .ahead th, .ahead td { text-align: left; padding: 6px 8px; border-bottom: .5px solid var(--sep2); white-space: nowrap; }
+.ahead .seg button { min-height: var(--touch); min-width: var(--touch); }
+
+.ahead-figs { display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: var(--space-16); }
+.ahead-fig { margin: 0; display: grid; gap: var(--space-8); align-content: start; }
+.ahead-fold summary { min-height: var(--touch); display: flex; align-items: center; cursor: pointer; font-size: var(--fs-caption); }
+.ab-all { fill: var(--c-hi); opacity: .22; } .ab-all.thin { opacity: .1; }
+.ab-mid { fill: var(--c-hi); opacity: .45; } .ab-mid.thin { opacity: .22; }
+.ab-line { stroke: var(--ink); stroke-width: 1; stroke-dasharray: 4 3; }
+.ab-usual { fill: none; stroke: var(--ink2); stroke-width: 1.2; stroke-dasharray: 3 3; } .ab-mean { fill: none; stroke: var(--ink); stroke-width: 1.8; }
+.ab-season { fill: var(--accent-soft); opacity: .7; }
+.ab-bar { fill: var(--c-rain); opacity: .55; } .ab-bar.seasonal { opacity: .9; } .ab-tick { stroke: var(--ink); stroke-width: 1.2; }
+.ab-chart, .ab-chart * { animation: none !important; transition: none !important; }

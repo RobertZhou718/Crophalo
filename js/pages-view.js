@@ -1,22 +1,20 @@
-// Crophalo's info pages as pure markup: Privacy (on your device, sent to other services, your choices), Limitations (one flat page), and Settings (Units, Accessibility, Saved on this device,
-// Reminders, Admin). Each page with tabs has a tab strip with roving arrow keys; each choice is a segmented control; each delete asks twice. The page glue is js/pages-info.js.
+// Crophalo's info pages as pure markup: Privacy (two tabs: on your device, with each Delete beside its line and the backup; sent to other services), Limitations (cards and a few chips), and Settings (one calm page of grouped cards).
+// Privacy's tabs have roving arrow keys; each choice is a segmented control; each delete asks twice. The page glue is js/pages-info.js.
 // Pure: functions of plain data that return text. Nothing is read from the page.
 // Checked by scripts/test_pages.mjs (every recipient named, the three sureness levels, the four unit pickers and their samples, every settings tab, plain-text escaping).
 import { esc } from './words.js';
-import { SENT, NO_ACCOUNT, NOT_BACKUP, keptLines, GROUPS, PRIVACY_TABS } from './privacy.js';
+import { SENT, NO_ACCOUNT, NOT_BACKUP, PRIVACY_TABS } from './privacy.js';
 import { DIMS, sampleLines } from './units.js';
 import { CURRENCIES, fxNote } from './currency.js';
 import { SETTING_CHOICES } from './settings.js';
 import { installCardHtml } from './offline.js';
 import { settingsRemindersHTML, remindListHTML } from './remind.js';
 import { SURE_WORDS } from './report-view.js';
-import { adminHTML } from './admin-view.js';
 
-export const SETTINGS_TABS = Object.freeze([{ id: 'units', label: 'Units' }, { id: 'access', label: 'Accessibility' }, { id: 'stored', label: 'Saved on this device' }, { id: 'remind', label: 'Reminders' }, { id: 'admin', label: 'Admin' }]);
-export const PAGE_LEADS = Object.freeze({ privacy: 'What stays on your device, and what is sent out.', limits: 'What Crophalo cannot do, and how to read how sure it is.', settings: 'Units, accessibility, saved data and reminders. Your choices are kept on this device.', data: 'Where every number comes from.' });
+export const PAGE_LEADS = Object.freeze({ privacy: 'What stays on your device, and what is sent out.', limits: 'What Crophalo cannot know.', settings: 'Kept on this device.', data: 'Where every number comes from.' });
 
 export const tabsHTML = (tabs, current, label) => `<div class="pg-tabs" role="tablist" aria-label="${esc(label)}">${tabs.map(t => `<button type="button" role="tab" class="tab" id="pgtab-${t.id}" aria-controls="pgpanel" aria-selected="${t.id === current}" tabindex="${t.id === current ? 0 : -1}" data-pgtab="${t.id}">${esc(t.label)}</button>`).join('')}</div>`;
-const panel = (id, body) => `<div class="pgpanel" id="pgpanel" role="tabpanel" aria-labelledby="pgtab-${id}" tabindex="0">${body}</div>`;
+const panel = (id, body, cls = '') => `<div class="pgpanel${cls ? ' ' + cls : ''}" id="pgpanel" role="tabpanel" aria-labelledby="pgtab-${id}" tabindex="0">${body}</div>`;
 // A segmented control: radios in a group; the pressed one is checked. data-set names the setting, data-val the value.
 export const segHTML = (name, label, choices, current) => `<div class="field"><span id="lab-${esc(name)}">${esc(label)}</span><div class="seg" role="radiogroup" aria-labelledby="lab-${esc(name)}">${choices.map(([v, t]) => `<button type="button" role="radio" aria-checked="${v === current}" tabindex="${v === current ? 0 : -1}" data-set="${esc(name)}" data-val="${esc(v)}">${esc(t)}</button>`).join('')}</div></div>`;
 
@@ -25,58 +23,71 @@ export function privacyHTML(tab, counts) {
   const tabs = tabsHTML(PRIVACY_TABS, tab, 'Parts of Privacy');
   if (tab === 'sent') return `${tabs}${panel(tab, `<h2>Sent to other services</h2><p class="lead">To build a report, your field’s position goes to the services below. Nothing here includes your name, because Crophalo does not have it.</p>
     <div class="tbl" role="region" tabindex="0" aria-label="What each service receives"><table class="sent-table"><thead><tr><th scope="col">Service</th><th scope="col">What it receives</th><th scope="col">Why</th></tr></thead><tbody>${SENT.map(r => `<tr><th scope="row">${esc(r.service)}</th><td data-label="What it receives">${esc(r.gets)}</td><td data-label="Why">${esc(r.why)}</td></tr>`).join('')}</tbody></table></div>`)}`;
-  if (tab === 'choices') return `${tabs}${panel(tab, `<h2>Your choices</h2><p class="lead">Everything Crophalo keeps is on this device, so you can remove it here. Each button asks once more before it deletes.</p>
-    <ul class="gl choices-list">${GROUPS.map(g => `<li class="row"><span>${esc(g.label)}${g.sub ? `<br><small>${esc(g.sub)}</small>` : ''}</span>${g.again ? `<button type="button" class="btn" data-open-welcome>Read it again</button>` : `<button type="button" class="btn danger" data-erase="${g.id}" data-label="Delete">Delete</button>`}</li>`).join('')}</ul>
-    <p class="cap">A deleted item cannot be brought back, unless you made a backup file first (Settings, Saved on this device).</p>`)}`;
+  const c = counts ?? {}, n = (v, one, many) => `${v ?? 0} ${v === 1 ? one : many}`;
+  const rows = [['farms', 'Your farms and what-ifs', n(c.farms, 'farm', 'farms')], ['notes', 'Notes, to-do and crop history', `${n(c.notes, 'note', 'notes')}, ${n(c.todo, 'to-do job', 'to-do jobs')}, ${n(c.record, 'crop-history entry', 'crop-history entries')}`], ['answers', 'Remembered answers and costs', 'What you told Crophalo about each place'], ['everything', 'Everything', 'All of the above, your reminders, your settings and the saved copy of the app']];
   return `${tabs}${panel('device', `<h2>On your device</h2>
-    <section class="card pad" aria-labelledby="pvAcct"><h3 id="pvAcct">No account</h3><p>${esc(NO_ACCOUNT)}</p><div data-slot="signin"></div></section>
-    <section class="card pad" aria-labelledby="pvKept"><h3 id="pvKept">What is kept here</h3><ul id="keptList">${keptLines(counts).map(l => `<li>${esc(l)}</li>`).join('')}</ul><p class="cap">${esc(NOT_BACKUP)}</p></section>`)}`;
+    <section class="st-card" aria-labelledby="pvAcct"><h2 id="pvAcct">No account</h2><p class="st-note">${esc(NO_ACCOUNT)}</p><div data-slot="signin"></div></section>
+    <section class="st-card" aria-labelledby="pvKept"><h2 id="pvKept">What is kept here</h2><ul class="st-list" id="keptList">${rows.map(([id, label, what]) => `<li class="st-row"><span class="st-l">${esc(label)}<small>${esc(what)}</small></span><button type="button" class="btn danger" data-erase="${id}" data-label="Delete" aria-label="Delete: ${esc(label)}">Delete</button></li>`).join('')}</ul><p class="st-note">${esc(NOT_BACKUP)}</p><p class="sr" id="eraseLive" role="status" aria-live="polite"></p></section>
+    <section class="st-card" aria-labelledby="bkT"><h2 id="bkT">Keep a copy</h2><p class="st-note">Everything you saved, in one file. Open it on the other computer with Restore.</p>
+      <div class="st-row"><span class="st-l">Fields, notes, answers and settings</span><span class="btnrow"><button type="button" class="btn" data-backup>Download a backup file</button><button type="button" class="btn" data-restore>Restore from a backup file</button></span><input type="file" accept="application/json,.json" class="sr" id="restoreFile" aria-label="Choose a backup file to restore" tabindex="-1" aria-hidden="true"></div>
+      <div id="restoreAsk" role="status" aria-live="polite"></div></section>`, 'cards')}`;
 }
 
-// ---- Limitations: one flat page
+// ---- Limitations: what Crophalo cannot know, in a few cards. The first lines say it; "Show more" holds the rest.
+const icon = id => `<svg class="ic lim-ic" aria-hidden="true" focusable="false"><use href="#i-${id}"/></svg>`;
+const LIM_CARDS = Object.freeze([
+  { id: 'weather', icon: 'cloud', title: 'Weather is for a wide area', say: 'One number covers a square about 50 km wide. Your field can be colder, wetter or windier.',
+    more: ['The square is about 30 miles wide.', 'A valley floor can be colder than the square says, a hill windier, a coast milder. A second weather record is read beside NASA for the coldest night.', 'When your field’s height is known and differs from the square’s by 100 m or more, the temperatures are moved to it.'] },
+  { id: 'sat', icon: 'globe', title: 'Satellites see big squares', say: 'Satellites see squares 30 m to 300 km wide, not your field alone.',
+    more: ['Each figure says how wide its square is.', 'A regional value is one figure for a whole square, never a pattern inside your field.'] },
+  { id: 'soil', icon: 'soil', title: 'Soil is from maps', say: 'Soil comes from maps. A soil test is better.',
+    more: ['What crops need, and the yields nearby, are rules of thumb and map estimates.', 'Where nothing was measured, Crophalo says the soil is assumed and the answer is less sure.', 'Crop checks cover Canada and the United States.'] },
+  { id: 'price', icon: 'scale', title: 'Prices are averages', say: 'Prices are averages, not what you will be paid.', more: ['They are national or world averages from the latest year published.'] },
+  { id: 'data', icon: 'lock', title: 'Your data stays here', say: 'No account. Your field’s position goes to NASA and other services.', link: ['#privacy', 'See Privacy'],
+    more: ['Your answers stay on this device.', 'To build a report, only the field’s position is sent, never your name.'] },
+]);
+export const NOT_KNOWN = Object.freeze(['Pests and diseases this year', 'Seed and fertiliser supply', 'What a buyer pays', 'Local rules and contracts', 'Your machines', 'Greenhouses', 'More than two crops a year']);
+export const NOT_KNOWN_MORE = Object.freeze(['The exact days of your seed', 'Cold hollows inside the field', 'Crops outside Canada and the United States']);
+const fold = (id, lines) => (lines.length ? `<details class="lim-fold" id="lf-${id}"><summary>Show more</summary>${lines.map(t => `<p>${esc(t)}</p>`).join('')}</details>` : '');
 export function limitsHTML() {
   const sure = Object.entries(SURE_WORDS);
-  return `<section class="lim" aria-labelledby="lmA"><h2 id="lmA">A guide, not an order</h2>
-      <p><b>You decide what to plant.</b> You know your land best. Before you change what you plant, talk it over with someone who knows your area.</p>
-      <p><b>No account.</b> Your answers stay on this device. To get your data, your field’s position is sent to NASA and the other services listed under Privacy.</p></section>
-    <section class="lim" aria-labelledby="lmB"><h2 id="lmB">Data limits</h2>
-      <p><b>Weather is for a 50 km square: your field can differ.</b> NASA weather is one number for a square about 50 km wide. A valley floor can be colder than the square says, a hill windier, a coast milder. A second weather record is read beside NASA for the coldest night, and a cold hollow can still be several degrees colder than both. Rain from space can read wetter than rain gauges in dry valleys behind mountains.</p>
-      <p><b>Satellite layers are not the size of your field.</b> They range from 30 m to about 300 km wide. Each figure says how wide its square is. A regional value is one figure for a whole square, never a pattern inside your field.</p>
-      <p><b>Soil comes from maps unless you test it.</b> A soil test is better. What crops need, and the yields nearby, are rules of thumb and map estimates. Where nothing was measured, Crophalo says the soil is assumed and the answer is less sure.</p></section>
-    <section class="lim" aria-labelledby="lmC"><h2 id="lmC">Not covered</h2><p>Crophalo does not know about:</p>
-      <ul><li>Pests and diseases this year.</li><li>Seed and fertiliser supply, and what a buyer pays.</li><li>Local rules, contracts and your machines.</li><li>More than two crops a year, or crops grown side by side.</li><li>Greenhouses.</li><li>The exact days of your seed.</li><li>Cold hollows and what happens inside the field.</li></ul></section>
-    <section class="lim" aria-labelledby="lmD"><h2 id="lmD">How sure is this?</h2>
-      <p>Every answer says how sure it is, and why. Confirm the few things it lists before you act.</p>
-      <ul class="sure-list">${sure.map(([level, words]) => `<li><span class="chip ${level === 'Very sure' ? 'ok' : level === 'Fairly sure' ? '' : 'warn'}">${esc(level)}</span> ${esc(words)}</li>`).join('')}</ul>
-      <p class="cap">A score is a guide to compare plans on your field. It is not a yield and not a chance of success. Crophalo’s crop rules are tested against expected answers; that does not prove the advice on your farm.</p></section>`;
+  return `<aside class="lim-decide" aria-labelledby="lmA"><h2 id="lmA">You decide</h2><p>Crophalo is a guide. Talk to someone who knows your area before you change what you plant.</p></aside>
+    <div class="lim-grid">${LIM_CARDS.map(c => `<section class="lim-card" aria-labelledby="lc-${c.id}">${icon(c.icon)}<h2 id="lc-${c.id}">${esc(c.title)}</h2><p>${esc(c.say)}</p>${c.link ? `<p><a href="${esc(c.link[0])}">${esc(c.link[1])}</a></p>` : ''}${fold(c.id, c.more)}</section>`).join('')}
+      <section class="lim-card" aria-labelledby="lc-sure">${icon('shieldok')}<h2 id="lc-sure">How sure is it?</h2><p>Every answer says how sure it is. Check the few things it lists.</p>
+        <details class="lim-fold" id="lf-sure"><summary>Show more</summary><ul class="sure-list">${sure.map(([level, words]) => `<li><span class="chip ${level === 'Very sure' ? 'ok' : level === 'Fairly sure' ? '' : 'warn'}">${esc(level)}</span> ${esc(words)}</li>`).join('')}</ul>
+        <p>A score helps you compare plans on your field. It is not a yield and not a chance of success.</p></details></section></div>
+    <section class="lim-not" aria-labelledby="lmN"><h2 id="lmN">What Crophalo does not know</h2><ul class="lim-chips">${NOT_KNOWN.map(t => `<li class="chip">${esc(t)}</li>`).join('')}</ul><details class="lim-fold" id="lf-not"><summary>Show more</summary><ul class="lim-chips">${NOT_KNOWN_MORE.map(t => `<li class="chip">${esc(t)}</li>`).join('')}</ul></details></section>`;
 }
 
-// ---- Settings
+// ---- Settings: one calm page, no tabs. Grouped cards, each row a label on the left and its control on the right; every choice is the segmented control.
 const choicesOf = (key, words) => SETTING_CHOICES[key].map((v, i) => [v, words[i]]);
-export function settingsHTML(tab, ctx = {}) {
-  const tabs = tabsHTML(SETTINGS_TABS, tab, 'Parts of Settings'), s = ctx.settings ?? {}, u = ctx.units ?? {};
-  if (tab === 'access') return `${tabs}${panel(tab, `<h2>Accessibility</h2>
-    ${segHTML('text', 'Text size', choicesOf('text', ['Default', 'Larger', 'Largest']), s.text)}<p class="cap">Makes everything on the page bigger, not only the words, and every label still fits its box. Your browser’s own zoom also works.</p>
-    ${segHTML('contrast', 'Contrast', choicesOf('contrast', ['Standard', 'High']), s.contrast)}<p class="cap">Darker grey text and stronger lines.</p>
-    ${segHTML('links', 'Links', choicesOf('links', ['Standard', 'Always underlined']), s.links)}
-    ${segHTML('motion', 'Motion', choicesOf('motion', ['Follow my device', 'Always still']), s.motion)}<p class="cap">Always still stops every animation on the page.</p>
-    ${segHTML('listen', 'Listening speed', choicesOf('listen', ['Normal', 'Slower', 'Faster']), s.listen)}<p><button type="button" class="btn" data-sample>Hear a sample</button> <span class="cap">This is how Crophalo sounds when it reads your report aloud.</span></p>`)}`;
-  if (tab === 'stored') return `${tabs}${panel(tab, `<h2>Saved on this device</h2><p class="lead">Your saved data stays on this device. See it or delete it in <a href="#privacy/choices">Privacy</a>.</p>
-    <section class="card pad" aria-labelledby="bkT"><h3 id="bkT">Move to another computer</h3><p>Your saved fields, notes, crop history, answers and settings in one file. On the other computer, open Crophalo, go to Settings and choose “Restore from a backup file”.</p>
-      <div class="btnrow"><button type="button" class="btn" data-backup>Download a backup file</button><button type="button" class="btn" data-restore>Restore from a backup file</button><input type="file" accept="application/json,.json" class="sr" id="restoreFile" tabindex="-1" aria-hidden="true"></div>
-      <div id="restoreAsk" role="status" aria-live="polite"></div></section>
-    ${installCardHtml()}
-    <section class="card pad" aria-labelledby="rsT"><h3 id="rsT">Reset settings</h3><p>Puts units, currency, listening, motion, text size, contrast and link style back to their defaults.</p><p><button type="button" class="btn danger solid" data-reset-settings>Reset settings</button></p></section>`)}`;
-  if (tab === 'remind') return `${tabs}${panel(tab, `<h2>Reminders</h2><p class="lead" id="remindCount">${ctx.reminders?.length ?? 0} ${ctx.reminders?.length === 1 ? 'reminder' : 'reminders'} set. They stay on this device.</p>
+// A row: its label, its control (a segmented control or any other control) and an optional line under it
+const seg = (name, label, choices, current, { quick = false, none = false } = {}) => `<div class="st-row"><span class="st-l" id="lab-${esc(name)}">${esc(label)}</span><div class="seg" role="radiogroup" aria-labelledby="lab-${esc(name)}">${choices.map(([v, t], i) => `<button type="button" role="radio" aria-checked="${v === current}" tabindex="${v === current || (none && i === 0) ? 0 : -1}" ${quick ? `data-quick="${esc(v)}"` : `data-set="${esc(name)}" data-val="${esc(v)}"`}>${esc(t)}</button>`).join('')}</div></div>`;
+const card = (id, title, body) => `<section class="st-card" aria-labelledby="st-${id}"><h2 id="st-${id}">${esc(title)}</h2>${body}</section>`;
+const line = (text, id = '') => `<p class="st-note"${id ? ` id="${id}"` : ''}>${esc(text)}</p>`;
+export const unitSystem = u => (u.rain === 'mm' && u.temp === 'C' && u.area === 'metric' && u.yield === 't' ? 'metric' : u.rain === 'in' && u.temp === 'F' && u.area === 'imperial' && u.yield === 'bu' ? 'imperial' : 'mixed');
+// "25 mm of rain · 18 °C · 40 ha": what the choices look like, in one line
+export const exampleLine = (u, lines) => { const by = Object.fromEntries(lines); return `${by.Rain} of rain · ${by.Temperature} · ${by['A field'].split(' at ')[0]}`; };
+export function settingsHTML(ctx = {}) {
+  const s = ctx.settings ?? {}, u = ctx.units ?? {}, system = unitSystem(u), cur = s.currency ?? 'USD', n = ctx.reminders?.length ?? 0;
+  const units = card('units', 'Units', `${seg('u:system', 'Units', [['metric', 'Metric'], ['imperial', 'US']], system, { quick: true, none: system === 'mixed' })}
+    ${line(system === 'mixed' ? 'You chose some units yourself. Pick Metric or US to set them all.' : 'Follows your country until you change it.')}
+    <details class="st-fold" id="stEach"><summary>Choose each unit</summary>
+      ${seg('u:rain', 'Rain', [['mm', 'mm'], ['in', 'in']], u.rain)}${seg('u:temp', 'Temperature', [['C', '°C'], ['F', '°F']], u.temp)}${seg('u:area', 'Area and distance', [['metric', 'ha · m · km/h'], ['imperial', 'acres · ft · mph']], u.area)}${seg('u:yield', 'Yield', [['t', 't/ha'], ['bu', 'bu · t/acre']], u.yield)}
+    </details>
+    <p class="st-example" aria-label="What the units look like">${esc(exampleLine(u, sampleLines(u, ctx.moneySample)))}</p>`);
+  const money = card('money', 'Money', `<div class="st-row"><label class="st-l" for="curSel">Currency</label><select id="curSel">${CURRENCIES.map(([c, nm]) => `<option value="${c}"${c === cur ? ' selected' : ''}>${esc(`${c} · ${nm}`)}</option>`).join('')}</select></div>
+    ${line('Prices are published in US dollars.')}${cur === 'USD' ? '' : line(fxNote(cur, ctx.rates), 'fxNote')}`);
+  const reading = card('read', 'Reading and motion', `${seg('text', 'Text size', choicesOf('text', ['Default', 'Larger', 'Largest']), s.text)}
+    ${seg('contrast', 'Contrast', choicesOf('contrast', ['Standard', 'High']), s.contrast)}
+    ${seg('links', 'Links', choicesOf('links', ['Standard', 'Underlined']), s.links)}
+    ${seg('motion', 'Motion', choicesOf('motion', ['Full', 'Less', 'Still']), s.motion)}${line('Full: all animations. Less: quick fades only. Still: nothing moves.')}${ctx.deviceStill ? '<p class="st-note" role="status" id="motionDevice">Your device asks for less motion, so Crophalo keeps still.</p>' : ''}
+    ${seg('listen', 'Listening speed', choicesOf('listen', ['Normal', 'Slower', 'Faster']), s.listen)}
+    <div class="st-row"><span class="st-l">Hear how Crophalo sounds</span><button type="button" class="btn" data-sample>Hear a sample</button></div>`);
+  const remind = card('remind', 'Reminders', `<p class="st-note" id="remindCount">${n ? `${n} ${n === 1 ? 'reminder' : 'reminders'} set. They stay on this device.` : 'They stay on this device.'}</p>
     <div id="remindList">${remindListHTML(ctx.reminders ?? [], ctx.nowLocal ?? '2000-01-01T00:00')}</div><div id="remindWays">${settingsRemindersHTML(ctx.remindState)}</div>
-    <p><button type="button" class="btn danger" data-erase="reminders" data-label="Delete all reminders">Delete all reminders</button></p>`)}`;
-  if (tab === 'admin') return `${tabs}${panel(tab, adminHTML(ctx.sources))}`;
-  const picks = DIMS;
-  return `${tabs}${panel('units', `<h2>Units</h2><p class="lead">Choose each unit on its own: acres with millimetres and °C is fine. The default follows your country.</p>
-    <div class="field"><span id="lab-quick">All units at once</span><div class="seg" role="group" aria-labelledby="lab-quick"><button type="button" data-quick="metric" aria-pressed="${picks.rain.includes(u.rain) && u.rain === 'mm' && u.temp === 'C' && u.area === 'metric' && u.yield === 't'}">mm · °C · ha</button><button type="button" data-quick="imperial" aria-pressed="${u.rain === 'in' && u.temp === 'F' && u.area === 'imperial' && u.yield === 'bu'}">in · °F · acres</button></div></div>
-    <h3>One at a time</h3>${segHTML('u:rain', 'Rain', [['mm', 'mm'], ['in', 'in']], u.rain)}${segHTML('u:temp', 'Temperature', [['C', '°C'], ['F', '°F']], u.temp)}${segHTML('u:area', 'Area and distance', [['metric', 'ha · m · km/h'], ['imperial', 'acres · ft · mph']], u.area)}${segHTML('u:yield', 'Yield', [['t', 't/ha'], ['bu', 'bushels · tons/acre']], u.yield)}
-    <h3>Money</h3><p class="cap">Crop prices are published in US dollars. Choose your currency to see prices, income and your own costs in it.</p>
-    <div class="field"><label for="curSel"><span>Currency</span></label><select id="curSel">${CURRENCIES.map(([c, n]) => `<option value="${c}"${c === (s.currency ?? 'USD') ? ' selected' : ''}>${esc(`${c} · ${n}`)}</option>`).join('')}</select></div><p class="cap" id="fxNote">${esc(fxNote(s.currency ?? 'USD', ctx.rates))}</p>
-    <h3>What it looks like</h3><dl class="sample">${sampleLines(u, ctx.moneySample).map(([k, v]) => `<div><dt>${esc(k)}</dt><dd>${esc(v)}</dd></div>`).join('')}</dl>`)}`;
+    <div class="st-row"><span class="st-l">Remove every reminder</span><button type="button" class="btn danger" data-erase="reminders" data-label="Delete all reminders">Delete all reminders</button></div>`);
+  const foot = `${installCardHtml()}<div class="st-reset"><a class="link st-status" href="#admin">Service status</a><button type="button" class="btn ghost danger" data-reset-settings>Reset settings</button>${line('Puts units, currency, listening, motion, text size, contrast and link style back to their defaults.')}</div>`;
+  return `<div class="st">${units}${money}${reading}${remind}${foot}</div>`;
 }
-export const SETTINGS_TAB_IDS = SETTINGS_TABS.map(t => t.id), PRIVACY_TAB_IDS = PRIVACY_TABS.map(t => t.id);
+export const PRIVACY_TAB_IDS = PRIVACY_TABS.map(t => t.id);

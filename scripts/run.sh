@@ -14,7 +14,7 @@ unset PYTHONPATH PYTHONHOME   # another program's Python settings must not reach
 
 usage() { say "Use: sh scripts/run.sh [--no-open] [--port N] [--login] [--no-login]"; }
 is_port() { case $1 in '' | *[!0-9]* | ??????*) return 1 ;; esac; [ "$1" -ge 1024 ] && [ "$1" -le 65535 ]; }
-OPEN=1; ASK=auto; PORT=
+OPEN=1; ASK=auto; PORT=; RUNNING=
 while [ $# -gt 0 ]; do
   case $1 in
     --no-open) OPEN=0 ;;
@@ -54,14 +54,18 @@ case $OSMAJOR in '' | *[!0-9]*) OSMAJOR=0 ;; esac
 RUN_ARCH=$ARCH
 
 # ---- 6 · already running from this folder? then only open the browser. The server names its own folder (root) in /api/health;
-#      the cache is no sign of it, since two folders may share one FW_CACHE
+#      the cache is no sign of it, since two folders may share one FW_CACHE. With --login (the "Add NASA login" starter) the login
+#      is asked first, in step 9; the Python set-up is left alone meanwhile, and the start ends there, with no second server
 URL="http://localhost:$PORT/"
 ROOT_JSON=$(printf '%s' "$ROOT" | sed -e 's/\\/\\\\/g' -e 's/"/\\"/g')   # as the server writes it in /api/health
 case $(curl -s -m 3 "http://127.0.0.1:$PORT/api/health" 2>/dev/null) in
   *"\"root\":\"$ROOT_JSON\""* | *"\"root\": \"$ROOT_JSON\""*)
-    say "Crophalo is already running from this folder: $URL"; log "already running on $PORT"
-    [ "$OPEN" = 1 ] && open "$URL"
-    exit 0 ;;
+    if [ "$ASK" != yes ]; then
+      say "Crophalo is already running from this folder: $URL"; log "already running on $PORT"
+      [ "$OPEN" = 1 ] && open "$URL"
+      exit 0
+    fi
+    RUNNING=1 ;;
 esac
 
 # ---- 7 · Node: the folder's own, else the Mac's when new enough, else a checked download
@@ -110,7 +114,8 @@ build_venv() {   # sets WHY when it fails; Crophalo's own old venv comes back th
   WHY="the NASA data libraries could not be installed"; return 1
 }
 PY_MIN=$(pinned MACOS_MIN_PY "$ARCH")
-if [ "$OSMAJOR" -lt "$PY_MIN" ]; then WHY="this Mac has macOS $OSVER, and they need macOS $PY_MIN or newer"
+if [ -n "$RUNNING" ]; then :   # the running server uses this .venv: it is left as it is
+elif [ "$OSMAJOR" -lt "$PY_MIN" ]; then WHY="this Mac has macOS $OSVER, and they need macOS $PY_MIN or newer"
 elif venv_ok; then log "venv reused: its fingerprint matches and the six libraries load"
 else
   say "Setting up Python and the NASA data tools inside this folder (a few minutes, once)…"
@@ -124,8 +129,8 @@ fi
 # A login counts only as the server counts it (an active entry with both a login and a password, in the folder, the settings or ~/.netrc):
 # scripts/earthdata.mjs answers "yes <where>" or "no", and never prints the login itself.
 has_login() { case $("$NODE" "$ROOT/scripts/earthdata.mjs" 2>/dev/null) in 'yes '*) return 0 ;; esac; return 1; }
-other_logins() {   # the lines of a netrc file that belong to other services
-  awk -v host="$EARTHDATA_HOST" '/^[ \t]*(machine|default)([ \t]|$)/ { skip = ($1 == "machine" && $2 == host) } !skip { print }' "$1"
+other_logins() {   # other_logins FILE: the file without its NASA entry, word by word (another service on the same line stays), by scripts/earthdata.mjs
+  "$NODE" "$ROOT/scripts/earthdata.mjs" --others "$1"
 }
 real_file() {   # real_file FILE: where a link leads in the end (a ~/.netrc kept in another folder stays a link to it)
   _rf=$1; _rn=0
@@ -140,7 +145,9 @@ save_login() (   # save_login FILE: only the owner can read it; written whole be
   umask 077
   _sf=$(real_file "$1"); [ -L "$_sf" ] && exit 1   # links that lead in a circle: nothing is written
   mkdir -p "$(dirname "$_sf")" || exit 1
-  { if [ -f "$_sf" ]; then other_logins "$_sf"; fi; netrc_line "$ED_USER" "$ED_PASS"; } > "$_sf.part" && chmod 600 "$_sf.part" && mv -f "$_sf.part" "$_sf"
+  _sp="$_sf.part.$$"   # one name per start: two starts saving at once never write into the same half-made file
+  if [ -f "$_sf" ]; then other_logins "$_sf" > "$_sp" || { rm -f "$_sp"; exit 1; }; else : > "$_sp"; fi   # the other services' entries could not be read: nothing is written
+  netrc_line "$ED_USER" "$ED_PASS" >> "$_sp" && chmod 600 "$_sp" && mv -f "$_sp" "$_sf" || { rm -f "$_sp"; exit 1; }
 )
 ask_login() {
   say ""
@@ -162,18 +169,19 @@ ask_login() {
   say "Where should Crophalo keep this login?"
   say "  1  Only on this Mac (~/.netrc)"
   say "  2  Inside the Crophalo folder (.secrets/, so it moves with the folder)"
-  ED_WHERE=x
+  ED_WHERE=x; ED_SAVED=
   until [ -z "$ED_WHERE" ] || [ "$ED_WHERE" = 1 ] || [ "$ED_WHERE" = 2 ]; do
     printf 'Type 1 or 2, then Return (Return alone means 1): '; IFS= read -r ED_WHERE || ED_WHERE=
   done
   if [ "$ED_WHERE" = 2 ]; then
     if save_login "$ROOT/.secrets/earthdata.netrc" && chmod 700 "$ROOT/.secrets"; then
-      say "Saved inside the Crophalo folder (.secrets), so it moves with the folder."; log "earthdata login saved (folder)"; rm -f "$RT/earthdata-skipped"
+      say "Saved inside the Crophalo folder (.secrets), so it moves with the folder."; log "earthdata login saved (folder)"; rm -f "$RT/earthdata-skipped"; ED_SAVED=1
     else say "The login could not be saved in the Crophalo folder."; fi
   elif [ -n "${HOME:-}" ] && save_login "$HOME/.netrc"; then
-    say "Saved in your home folder (~/.netrc), so it stays on this Mac."; log "earthdata login saved (home)"; rm -f "$RT/earthdata-skipped"
+    say "Saved in your home folder (~/.netrc), so it stays on this Mac."; log "earthdata login saved (home)"; rm -f "$RT/earthdata-skipped"; ED_SAVED=1
     rm -f "$ROOT/.secrets/earthdata.netrc"   # an older login in the folder would be found first and hide this one
   else say "The login could not be saved in your home folder."; fi
+  [ -n "$RUNNING" ] && [ -n "$ED_SAVED" ] && say "The running Crophalo uses this login from its next lookup."
   ED_USER=; ED_PASS=   # blanked: nothing of the login stays in this shell
 }
 case $ASK in
@@ -181,6 +189,11 @@ case $ASK in
   yes) if [ -t 0 ] && [ -t 1 ]; then ask_login; else say "The NASA login can only be typed in a Terminal window: double-click Start Crophalo.command."; fi ;;
   *) if ! has_login && [ ! -e "$RT/earthdata-skipped" ] && [ -t 0 ] && [ -t 1 ]; then ask_login; fi ;;
 esac
+if [ -n "$RUNNING" ]; then   # step 6 found this folder's Crophalo running: the login was asked, and nothing more is started
+  say "Crophalo is already running from this folder: $URL"; log "already running on $PORT (login asked)"
+  [ "$OPEN" = 1 ] && open "$URL"
+  exit 0
+fi
 
 # ---- 10 · the check-up: plain lines, never blocks the start
 [ -f "$ROOT/scripts/preflight.mjs" ] && { FW_PYTHON="$VENV/bin/python" "$NODE" "$ROOT/scripts/preflight.mjs" --doctor || :; }

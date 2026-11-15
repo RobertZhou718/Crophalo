@@ -16,7 +16,7 @@ check('the first step blocks only until the field has a position', !canGo('field
 const NEED_PLACE = 'Tap the map or draw your field to go on.';
 check('step one blocks with no position', needFor('field', { ...s, loc: null }) === NEED_PLACE && needFor('field', { ...s, loc: {} }) === NEED_PLACE && !hasPlace({ loc: { lat: '43', lon: 1 } }) && needFor('field', { ...s, loc: { lat: '43', lon: 1 } }) === NEED_PLACE);
 check('step one opens with a real position', needFor('field', { ...s, loc: { lat: 43.1, lon: -80.7 } }) === '' && hasPlace({ loc: { lat: 0, lon: 0 } }) && !hasPlace(null) && !hasPlace({ loc: { lat: NaN, lon: 1 } }));
-check('step two blocks until a rotation is chosen', !canGo('crops', s) && needFor('crops', s) === 'Tap what you grow to go on.');
+check('step two blocks until a rotation is chosen', !canGo('crops', s) && needFor('crops', s) === 'Pick what you grow to go on.');   // the crop step now offers a suggestion and cards to pick from, so the line says Pick
 s.rotation.preset = 'corn-soy'; check('a ready rotation lets step two go on', canGo('crops', s));
 s.rotation.preset = 'custom'; check('building your own with no year does not', !hasRotation(s));
 s.rotation.custom = ['corn']; check('building your own with one year does', hasRotation(s));
@@ -39,7 +39,13 @@ const d = { ...newState(), ...readyAnswers(newState(), region) };
 check('a demo region is ready for the report at once', isReady(d));
 same('its answers', [d.rotation.preset, d.farm.irrigation, d.soil.mode], ['corn-soy-wheat', 'none', 'assumed']);
 check('a field that is not a demo is never ready', !isReady(newState()));
-check('a broken region file puts nothing impossible in', !isReady({ ...newState(), ...readyAnswers(newState(), { rotation: 'zz', defaults: { irrigation: 'flood', soil: 'x' } }) }));
+// a demo field whose soil comes from a soil map, and whose tillage is known (as data/regions.json gives Mead)
+const mapped = { ...newState(), ...readyAnswers(newState(), { rotation: 'corn-soy', defaults: { irrigation: 'none', tillage: 'notill', soil: 'map', soil_texture: 'silt' } }) };
+check('a demo field with a soil map\'s texture is ready for the report at once', isReady(mapped) && hasSoil(mapped));
+same('its soil and tillage are the region\'s', [mapped.soil.mode, mapped.soil.texture, mapped.farm.tillage], ['map', 'silt', 'notill']);
+check('a soil map with no texture is not a soil', !hasSoil({ ...newState(), soil: { mode: 'map', texture: null, om: null, omPct: null } }));
+same('a region that says nothing of tillage keeps the usual one', readyAnswers(newState(), { rotation: 'corn-soy', defaults: { irrigation: null, soil: 'map', soil_texture: 'loam' } }).farm.tillage, newState().farm.tillage);
+check('a broken region file puts nothing impossible in',!isReady({ ...newState(), ...readyAnswers(newState(), { rotation: 'zz', defaults: { irrigation: 'flood', soil: 'x' } }) }));
 
 // the crop chooser's list
 import { pickList, tabs, ALL, TREES } from '../js/croppicker.js';
@@ -62,5 +68,40 @@ check('every tile has a title', [...WATER, ...FEEL, ...COLOUR, ...MATTERS, ...TI
 check('Türkiye is written with its own name wherever the parcel links name it', JSON.stringify(PARCEL_FOR).indexOf('Tur' + 'key') === -1);
 check('every parcel link is https', Object.values(PARCEL_FOR).flat().every(([, url]) => url.startsWith('https://')));
 
+import { countryCode } from '../js/steps.js';
+same('a region\'s country becomes the two letters the report and the units read', [countryCode('United States'), countryCode('Canada'), countryCode('Türkiye'), countryCode('')], ['US', 'CA', '', '']);
+check('a demo region\'s tillage default is read (a no-till field starts no-till); none given leaves the default', readyAnswers(newState(), { rotation: 'corn-soy', defaults: { irrigation: 'none', soil: 'assumed', tillage: 'notill' } }).farm?.tillage === 'notill' && readyAnswers(newState(), { rotation: 'corn-soy', defaults: { irrigation: 'none', soil: 'assumed' } }).farm?.tillage === 'reduced');
+// the three demo fields (Mead, Beltsville and Barrie): each walks all four steps with Next, and the report can open
+{
+  const fs = await import('node:fs'), REGIONS = JSON.parse(fs.readFileSync(new URL('../data/regions.json', import.meta.url), 'utf8'));
+  const { SOIL_MAP_WORDS } = await import('../js/steps.js'), { checkSerialized, serialize } = await import('../js/state.js');
+  check('the region file holds the three demo fields', ['mead-field', 'beltsville-field', 'barrie-field'].every(id => REGIONS.some(r => r.id === id)), REGIONS.map(r => r.id).join());
+  for (const id of ['mead-field', 'beltsville-field', 'barrie-field']) {
+    const r = REGIONS.find(x => x.id === id); if (!r) continue;
+    const base = { ...newState(), loc: { lat: Math.round(r.lat * 1e4) / 1e4, lon: Math.round(r.lon * 1e4) / 1e4, label: r.country, cc: '' }, name: r.name };
+    const st = { ...base, ...readyAnswers(base, r) };
+    check(`${id}: every step can be passed with Next (place, crops, water and soil)`, stepsFor(st).every(step => canGo(step.id, st)), stepsFor(st).map(step => `${step.id}:${needFor(step.id, st)}`).join(' | '));
+    check(`${id}: the soil is the soil map's, said in words`, st.soil.mode === 'map' && st.soil.texture === r.defaults.soil_texture && typeof SOIL_MAP_WORDS[st.soil.texture] === 'string', JSON.stringify(st.soil));
+    check(`${id}: the tillage and the water answer follow the region; water not known stays open`, st.farm.irrigation === (r.defaults.irrigation ?? null) && (!r.defaults.tillage || st.farm.tillage === r.defaults.tillage), JSON.stringify(st.farm));
+    const again = checkSerialized(JSON.parse(JSON.stringify(st)));
+    check(`${id}: the state the report opens with is a valid one and keeps the soil map`, again.ok && again.state.soil.mode === 'map' && hasPlace(again.state) && hasRotation(again.state), JSON.stringify(again.ok ? again.state.soil : again));
+  }
+}
+// The seam home -> setup -> map for the three real demo fields of data/regions.json: the home's spot ({ lat, lon, outline, name, place, country, region, demo, ... }, js/home.js openRegion)
+// gives the setup its two-letter country (js/wizard.js setPlace: countryCode(country ?? place)), and the map finds the field by its id, or by nearness from the pin kept to 4 decimals, and draws its own outline.
+{
+  const fsm = await import('node:fs'), { regionAt, regionOutline } = await import('../js/places.js'), { areaHa } = await import('../js/geo.js');
+  const demo = JSON.parse(fsm.readFileSync(new URL('../data/regions.json', import.meta.url), 'utf8'));
+  const want = { 'mead-field': 'US', 'beltsville-field': 'US', 'barrie-field': 'CA' };
+  for (const region of demo.filter(r => Object.hasOwn(want, r.id))) {
+    const spot = { lat: region.lat, lon: region.lon, outline: region.outline, name: region.name, place: region.country, country: region.country, region: region.id, demo: true, rotation: region.rotation, defaults: region.defaults, from: 'region' };
+    const pin = { lat: Math.round(spot.lat * 1e4) / 1e4, lon: Math.round(spot.lon * 1e4) / 1e4 }, ring = regionOutline(regionAt(demo, { ...pin, region: spot.region }));
+    same(`demo ${region.id}: the setup reads its country as ${want[region.id]}`, countryCode(spot.country ?? spot.place), want[region.id]);
+    check(`demo ${region.id}: the map finds it by its id and by nearness from the pin`, regionAt(demo, { ...pin, region: spot.region })?.id === region.id && regionAt(demo, pin)?.id === region.id);
+    check(`demo ${region.id}: its own outline is a real ring of its own size`, Array.isArray(ring) && ring.length >= 3 && areaHa(ring) > 1, ring && areaHa(ring));
+  }
+  const mead = demo.find(r => r.id === 'mead-field');
+  check('demo mead-field: its outline is about 64 ha, never the estimated 10 ha square', mead && Math.abs(areaHa(regionOutline(mead)) - 64) < 3, mead && areaHa(regionOutline(mead)));
+}
 console.log(`wizard: ${passed} passed, ${failed} failed`);
 process.exit(failed ? 1 : 0);

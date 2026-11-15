@@ -1,45 +1,49 @@
-// Crophalo's spot card: the floating card on the map that tells about the place or the outline: Weather, Area and Sun.
+// Crophalo's spot card: the floating card on the map that tells about the place or the outline: Weather, Area and Sun. A closed outline's card stands on the right of a wide map.
 // Pure parts live in js/cardplace.js. The rest builds the card, drags it and fills its tabs; it asks the map for what it needs and never reaches into it.
-// Checked by scripts/test_spot.mjs (js/cardplace.js) and scripts/e2e_map.mjs (opens, tabs, drag, arrows, Escape, stays inside, the phone's bottom card).
-import { areaWords, slopeWords, pinWords } from './geo.js';
+// Checked by scripts/test_spot.mjs (js/cardplace.js), scripts/e2e_map.mjs (opens, tabs, drag, arrows, Escape, stays inside, the phone's bottom card) and scripts/e2e_maptools.mjs (the Area tab).
+import { slopeWords, pinWords, areaPair } from './geo.js';
+import { SAY } from './mapwords.js';
 import { getForecast, conditionWords, fieldwork, dayName, degrees } from './weather.js';
-import { sunEvents, clock, timesAreWords, shadowRatio, heightWords } from './sun.js';
-import { initListen } from './listen.js';
+import { sunEvents, clock } from './sun.js';
 import { srcButton } from './srci.js';
-import { motionOff } from './motion.js';
+import { motionOff, motionLess, easeOut } from './motion.js';
 
-import { clampCard, placeCard, MARGIN, TOP, WIDE, NARROW_BELOW, STACK_ROOM } from './cardplace.js';
+import { clampCard, placeCard, sideCard, MARGIN, TOP, WIDE, NARROW_BELOW, STACK_ROOM } from './cardplace.js';
 export { clampCard, placeCard };
 const GRIP = 16, GRIP_BIG = 64;
 const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[c]);
 
 // ---- the card
-let card = null, ctx = null, opener = null, tab = 'weather', followTimer = 0;
+let card = null, ctx = null, opener = null, tab = 'weather', followTimer = 0, rollNext = false, rollFrame = 0, takeFocus = true;
 export const spotOpen = () => !!card;
 export const spotTab = () => tab;
 
 function tabsNow() { return ctx.ring() ? ['weather', 'area', 'sun'] : ['weather', 'sun']; }
-const TAB_WORDS = { weather: 'Weather', area: 'Area', sun: 'Sun' };
+const TAB_WORDS = SAY.card.tabs;
 function title() {
   const pin = ctx.pin(), name = String(pin?.name || '').split(',').map(s => s.trim()).filter(Boolean).slice(0, 2).join(', ');
-  return tab === 'area' && !pin?.name ? 'Your outlined area' : name || 'This spot';
+  return tab === 'area' && !pin?.name ? SAY.title : name || 'This spot';
 }
 
-export function openSpot(context, wanted = 'weather', from = null) {
+// quiet: the map has just said what the card would (a closed outline says its area once); the card then says nothing of its own and takes no focus.
+// roll: the figure rolls in (a close; not an undo that brings an outline back)
+export function openSpot(context, wanted = 'weather', from = null, { quiet = false, roll = quiet } = {}) {
   ctx = context; opener = from || document.activeElement;
   const have = tabsNow(); tab = have.includes(wanted) ? wanted : 'weather';
-  closeSpot(false);
+  closeSpot(false, false);
   card = document.createElement('section');
   card.className = 'spot'; card.setAttribute('role', 'dialog'); card.tabIndex = -1; card.setAttribute('aria-labelledby', 'spotTitle');
   card.style.opacity = '0';   // built now (its words are in the page), seen in the next frame once it has its place (see settle); opacity, not visibility, so its words still read as text
   ctx.box.append(card); ctx.box.classList.add('spot-open');
+  rollNext = roll && tab === 'area'; takeFocus = !quiet;   // a card the map opened by itself (a close) leaves the keyboard on the map, where the farmer is working
   draw(); settle(true);
-  ctx.say(`Weather card opened for ${title()}`.replace('Weather', tab === 'area' ? 'Area' : tab === 'sun' ? 'Sun' : 'Weather'));
+  if (!quiet) ctx.say(SAY.card.opened(TAB_WORDS[tab], title()));
 }
-export function closeSpot(refocus = true) {
+export function closeSpot(refocus = true, tell = true) {
   if (!card) return;
-  cancelAnimationFrame(raf); clearTimeout(timer); pendingFirst = false;
+  cancelAnimationFrame(raf); cancelAnimationFrame(rollFrame); clearTimeout(timer); pendingFirst = false;
   card.remove(); card = null; ctx?.box.classList.remove('spot-open');
+  if (tell) ctx?.closed?.();
   if (refocus && opener?.isConnected) opener.focus();
 }
 // The place or the outline changed: the card follows the pin, and is rebuilt if its tabs changed.
@@ -50,12 +54,14 @@ export function refreshSpot() {
 }
 
 function draw() {
-  const have = tabsNow();
+  const have = tabsNow(), a = document.activeElement, was = card.contains(a) ? (a.dataset.spot ? `[data-spot=${a.dataset.spot}]` : a.dataset.tab ? `[data-tab=${a.dataset.tab}]` : a.classList.contains('spot-grip') ? '.spot-grip' : null) : null;
   card.innerHTML = `<header class="spot-head"><span class="spot-grip" role="button" tabindex="0" aria-label="Move this card. Use the arrow keys, or drag."><i></i><i></i><i></i><i></i><i></i><i></i></span>
-      <h3 id="spotTitle">${esc(title())}</h3><button type="button" class="btn sm" data-spot="done">Done</button></header>
-    <div class="spot-tabs" role="tablist" aria-label="About this spot">${have.map(t => `<button type="button" role="tab" id="spotTab-${t}" aria-controls="spotPanel" aria-selected="${t === tab}" tabindex="${t === tab ? 0 : -1}" data-tab="${t}">${TAB_WORDS[t]}</button>`).join('')}</div>
+      <h2 id="spotTitle">${esc(title())}</h2><button type="button" class="btn sm" data-spot="done">${esc(SAY.card.done)}</button></header>
+    <div class="spot-tabs seg" role="tablist" aria-label="About this spot">${have.map(t => `<button type="button" role="tab" id="spotTab-${t}" aria-controls="spotPanel" aria-selected="${t === tab}" tabindex="${t === tab ? 0 : -1}" data-tab="${t}">${TAB_WORDS[t]}</button>`).join('')}</div>
     <div class="spot-panel" id="spotPanel" role="tabpanel" aria-labelledby="spotTab-${tab}" tabindex="0"></div>`;
+  if (tab === 'area') card.setAttribute('aria-describedby', 'spotFigure spotFigureLine'); else card.removeAttribute('aria-describedby');
   wire(); fill();
+  if (was) card.querySelector(was)?.focus({ preventScroll: true });   // a control that had the keyboard keeps it when the card is drawn again
 }
 function wire() {
   card.querySelector('[data-spot=done]').addEventListener('click', () => closeSpot());
@@ -72,7 +78,7 @@ function wire() {
     const step = e.shiftKey ? GRIP_BIG : GRIP, dx = e.key === 'ArrowLeft' ? -step : e.key === 'ArrowRight' ? step : 0, dy = e.key === 'ArrowUp' ? -step : e.key === 'ArrowDown' ? step : 0;
     if (!dx && !dy) return; e.preventDefault(); e.stopPropagation(); moveBy(dx, dy);
   });
-  card.querySelector('.spot-head h3').addEventListener('pointerdown', dragStart);
+  card.querySelector('.spot-head h2').addEventListener('pointerdown', dragStart);
 }
 function pick(next, focus) {
   tab = next; draw();
@@ -92,7 +98,7 @@ function settle(first) {
     if (!card) return;
     const opening = pendingFirst; pendingFirst = false;
     place(opening);
-    if (card.style.opacity) { card.style.opacity = ''; if (opening) card.focus({ preventScroll: true }); }
+    if (card.style.opacity) { card.style.opacity = ''; if (opening && takeFocus) card.focus({ preventScroll: true }); }
   };
   raf = requestAnimationFrame(run); timer = setTimeout(run, 120);
 }
@@ -100,17 +106,18 @@ const size = () => ({ w: card.offsetWidth, h: card.offsetHeight });
 const boxSize = () => ({ w: ctx.box.clientWidth, h: ctx.box.clientHeight });
 let spot = null;   // where the farmer left it, until the card closes
 function place(first) {
-  const box = boxSize(), s = size(), narrow = box.w < NARROW_BELOW;
+  const full = boxSize(), dock = ctx.dock?.() ?? 0, box = { w: full.w, h: full.h - dock }, narrow = full.w < NARROW_BELOW, top = ctx.top?.() ?? TOP;   // the card never reaches down into the dock at the foot of the map
   card.classList.toggle('bottom', narrow);
-  if (narrow) { card.style.cssText = ''; card.style.left = `${MARGIN}px`; card.style.right = `${MARGIN}px`; card.style.bottom = '22px'; card.style.top = 'auto'; return; }
-  card.style.right = 'auto'; card.style.bottom = 'auto'; card.style.width = `${WIDE}px`;
-  const top = ctx.top?.() ?? TOP, p = spot ? clampCard(spot, size(), box, MARGIN, top, STACK_ROOM) : placeCard({ anchor: ctx.anchor(), size: { w: WIDE, h: s.h || 360 }, box, avoid: ctx.avoid(), top });
-  card.style.left = `${p.left}px`; card.style.top = `${p.top}px`;
+  if (narrow) { card.style.cssText = ''; card.style.left = `${MARGIN}px`; card.style.right = `${MARGIN}px`; card.style.bottom = `${dock + MARGIN}px`; card.style.top = 'auto'; card.style.maxHeight = `${Math.max(140, full.h - dock - top - MARGIN)}px`; return; }
+  card.style.right = 'auto'; card.style.bottom = 'auto'; card.style.width = `${WIDE}px`; card.style.maxHeight = `${Math.max(160, box.h - top - MARGIN)}px`;
+  const s = size();
+  if (ctx.side?.() && !spot) { const p = sideCard({ size: { w: WIDE, h: s.h || 360 }, box: full, top, dock }); card.style.left = `${p.left}px`; card.style.top = `${p.top}px`; card.style.maxHeight = `${p.maxH}px`; }
+  else { const p = spot ? clampCard(spot, size(), box, MARGIN, top, STACK_ROOM) : placeCard({ anchor: ctx.anchor(), size: { w: WIDE, h: s.h || 360 }, box, avoid: ctx.avoid(), top }); card.style.left = `${p.left}px`; card.style.top = `${p.top}px`; }
   if (first && !motionOff()) card.classList.add('spot-in');
 }
 function moveBy(dx, dy) {
   if (card.classList.contains('bottom')) return;
-  const now = { left: card.offsetLeft + dx, top: card.offsetTop + dy }, p = clampCard(now, size(), boxSize(), MARGIN, ctx.top?.() ?? TOP, STACK_ROOM);
+  const b = boxSize(), now = { left: card.offsetLeft + dx, top: card.offsetTop + dy }, p = clampCard(now, size(), { w: b.w, h: b.h - (ctx.dock?.() ?? 0) }, MARGIN, ctx.top?.() ?? TOP, STACK_ROOM);
   spot = p; card.style.left = `${p.left}px`; card.style.top = `${p.top}px`;
 }
 function dragStart(event) {
@@ -144,24 +151,30 @@ async function fillWeather(panel) {
   const word = conditionWords(now.code);
   panel.innerHTML = `<p class="spot-now"><span class="spot-temp">${esc(degrees(now.temp))}</span> <span>${esc(word)}</span></p>
     <p class="cap">${now.feels == null ? '' : `Feels like ${esc(degrees(now.feels))}`}${now.wind == null ? '' : ` · wind ${Math.round(now.wind)} km/h`}</p>
-    <p><button type="button" class="listen" id="spotListen" hidden><svg class="ic" aria-hidden="true"><use href="#i-speaker"/></svg><span class="t">Listen</span></button></p>
-    <p>Today high ${esc(degrees(t.hi))}, low ${esc(degrees(t.lo))}${rain}${mm} ${srcButton('forecast', got.updated ? `Updated at ${got.updated}, local time at the field. The forecast for the 1 km square around your pin.` : 'The forecast for the 1 km square around your pin.')}</p>
-    ${got.updated ? `<p class="cap">Updated at ${esc(got.updated)}, local time at the field.</p>` : ''}
+    <p>Today high ${esc(degrees(t.hi))}, low ${esc(degrees(t.lo))}${rain}${mm} ${srcButton('forecast', `${got.updated ? `Updated at ${got.updated}, local time at the field. ` : ''}The forecast for the 1 km square around your pin, ${pinWords(pin.lat, pin.lon).replace('Pin at ', '')}.`)}</p>
+    ${got.updated ? `<p class="cap">Updated ${esc(got.updated)}, field time.</p>` : ''}
     <p class="cap spot-credit"><a href="https://open-meteo.com/" target="_blank" rel="noopener noreferrer">Weather data by Open-Meteo.com</a></p>
     <p class="spot-calm ${calm.ok === true ? 'ok' : calm.ok === false ? 'no' : ''}">${esc(calm.words)}</p>
-    <ul class="spot-days">${got.days.slice(1).map(d => `<li><b>${esc(dayName(d.date))}</b> <span>${esc(conditionWords(d.code))}</span> <span>${esc(degrees(d.hi))} / ${esc(degrees(d.lo))}</span></li>`).join('')}</ul>
-    <dl class="spot-rows"><div><dt>Height</dt><dd>${got.elevation == null ? 'not available' : `${Math.round(got.elevation)} m (weather model)`}</dd></div><div><dt>Spot</dt><dd>${esc(pinWords(pin.lat, pin.lon).replace('Pin at ', ''))}</dd></div></dl>`;
-  initListen(panel.querySelector('#spotListen'), () => `${word}, ${degrees(now.temp)}. ${calm.words}`);
+    <details class="fold spot-week"><summary>Next 6 days</summary><ul class="spot-days">${got.days.slice(1).map(d => `<li><b>${esc(dayName(d.date))}</b> <span>${esc(conditionWords(d.code))}</span> <span>${esc(degrees(d.hi))} / ${esc(degrees(d.lo))}</span></li>`).join('')}</ul></details>`;
 }
+// The Area tab: the area in the first unit, large (rolling to its value once, under Full, when a close opened the card); the second unit and the corners under it;
+// whether the report uses it; the heights not read; and Use for my report, Edit outline, Start again.
 function fillArea(panel) {
-  const info = ctx.areaInfo();
-  if (!info) { panel.innerHTML = '<p class="cap">Draw an outline to see its area.</p>'; return; }
-  panel.innerHTML = `<p class="spot-big">${esc(areaWords(info.ha, ctx.units()))}</p><p><span class="chip ${info.used ? 'on' : ''}">${info.used ? 'Used in report' : 'Selected area'}</span></p>
-    <dl class="spot-rows"><div><dt>Elevation</dt><dd>not read yet</dd></div><div><dt>Slope of the field</dt><dd>not read yet</dd></div><div><dt>Corners</dt><dd>${info.corners}</dd></div></dl>
-    <p class="cap">Heights for the outline come from the height map once that lookup is switched on. Crophalo does not guess them.</p>
-    <div class="btnrow"><button type="button" class="btn primary" data-spot="use"${info.used ? ' disabled' : ''}>Use for my report</button><button type="button" class="btn" data-spot="clear">Clear area</button></div>`;
-  panel.querySelector('[data-spot=use]').addEventListener('click', () => ctx.use());
-  panel.querySelector('[data-spot=clear]').addEventListener('click', () => { closeSpot(false); ctx.clear(); });
+  const info = ctx.areaInfo(), C = SAY.card, B = SAY.btn;
+  if (!info) { panel.innerHTML = `<p class="cap">${esc(C.drawFirst)}</p>`; return; }
+  const p = info.pair || areaPair(info.ha, ctx.order?.() ?? 'hectares'), roll = rollNext && !motionOff() && !motionLess();
+  rollNext = false; cancelAnimationFrame(rollFrame);
+  panel.innerHTML = `<p class="spot-big fig" id="spotFigure"><span class="spot-roll" aria-hidden="true">${esc(roll ? areaPair(0, ctx.order?.() ?? 'hectares').first : p.first)}</span><span class="sr">${esc(p.first)}</span></p>
+    <p class="spot-second" id="spotFigureLine">${esc(SAY.figureLine(p.second, info.corners))}</p><p><span class="chip ${info.used ? 'on' : ''}">${esc(info.used ? SAY.usedChip : SAY.selected)}</span></p>
+    <div class="btnrow">${info.used ? '' : `<button type="button" class="btn primary" data-spot="use">${esc(B.use)}</button>`}<button type="button" class="btn" data-spot="edit" aria-pressed="${info.editing ? 'true' : 'false'}">${esc(B.edit)}</button><button type="button" class="btn" data-spot="again">${esc(B.again)}</button></div>`;
+  panel.querySelector('[data-spot=use]')?.addEventListener('click', () => { if (!ctx.areaInfo()?.used) ctx.use(); });
+  panel.querySelector('[data-spot=edit]').addEventListener('click', () => ctx.edit?.());
+  panel.querySelector('[data-spot=again]').addEventListener('click', () => ctx.again?.());
+  if (roll) {   // the figure counts up from 0 over 500 ms with tabular numbers; a screen reader only ever reads the final value
+    const el = panel.querySelector('.spot-roll'), t0 = performance.now(), order = ctx.order?.() ?? 'hectares';
+    const tick = now => { const t = Math.min(1, (now - t0) / 500); el.textContent = areaPair(info.ha * easeOut(t), order).first; if (t < 1 && el.isConnected) rollFrame = requestAnimationFrame(tick); };
+    rollFrame = requestAnimationFrame(tick);
+  }
 }
 async function fillSun(panel) {
   const pin = ctx.pin();
@@ -172,10 +185,10 @@ async function fillSun(panel) {
   panel.removeAttribute('aria-busy');
   const known = got.ok && got.offsetS != null && got.today, opts = known ? { offsetMin: got.offsetS / 60, lon: pin.lon } : { lon: pin.lon };
   const [y, m, d] = (known ? got.today : new Date().toISOString().slice(0, 10)).split('-').map(Number);
-  const ev = sunEvents({ y, m, d }, pin.lat, pin.lon), shadow = shadowRatio(ev.noonHeight);
+  const ev = sunEvents({ y, m, d }, pin.lat, pin.lon);
   const hours = Math.floor(ev.daylightMinutes / 60), mins = Math.round(ev.daylightMinutes % 60), day = mins ? `${hours} h ${mins} min` : `${hours} h`;
   const rows = ev.state === 'day' ? '<p>The sun does not set today.</p>' : ev.state === 'night' ? '<p>The sun does not rise today.</p>'
     : `<dl class="spot-rows"><div><dt>Sun up</dt><dd>${clock(ev.rise, opts)}</dd></div><div><dt>Sun down</dt><dd>${clock(ev.set, opts)}</dd></div><div><dt>Daylight</dt><dd>${day}</dd></div></dl>`;
-  panel.innerHTML = `${rows}<p>Highest at ${clock(ev.noon, opts)}, ${heightWords(ev.noonHeight)} above the horizon.${shadow ? ` On flat ground a 1 m post casts a ${shadow.toFixed(1)} m shadow then.` : ''}</p>
-    <p class="cap">${known ? timesAreWords({ offsetMin: opts.offsetMin }) : 'The field\'s clock could not be read, so these are sun times (noon is when the sun is highest).'} Worked out on this device from the date and the place.</p>`;
+  panel.innerHTML = `${rows}<p>Highest at ${clock(ev.noon, opts)}.</p>
+    <p class="cap">${known ? 'Field\'s own time' : 'Sun time (the field\'s clock could not be read)'}; worked out on this device.</p>`;
 }

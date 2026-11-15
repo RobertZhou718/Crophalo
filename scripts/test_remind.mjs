@@ -7,6 +7,7 @@ import os from 'node:os';
 import path from 'node:path';
 import http from 'node:http';
 import crypto from 'node:crypto';
+import vm from 'node:vm';
 import { encryptPush, decryptPush, b64u, vapidToken, verifyToken, publicKey, loadKeys, cleanEndpoint, cleanKeys, cleanReminder as cleanPushReminder, networkOf, createPush, LIMITS, triesFor } from './push.mjs';
 import { addDays, fromDoy, nextOnOrAfter, windowWords, dayWords, reportJobs, checklistJobs, alertJobs, farmJobs, isDay } from '../js/remind-plan.js';
 import { newId, cleanWhen, cleanReminder, cleanStore, checkDraft, addReminder, inYear, occurrence, isDue, toAnnounce, markSeen, markDone, snooze, groups, dueMessage, icsEscape, icsFold, icsFile, icsName, pushPayload, pushSupport, notifyState, readReminders, writeReminders, forgetMemory, remindListHTML, settingsRemindersHTML, turnPushOn, turnPushOff, MAX_REMINDERS } from '../js/remind.js';
@@ -303,7 +304,9 @@ check('the screens draw: an empty list, a list, the settings in each state', /No
 check('a title with markup is shown as plain text', !/<img/.test(remindListHTML([rem('2026-11-14T08:00', { title: '<img src=x onerror=1>' })], NOW_LOCAL)));
 
 // ======== the service worker's notice
-import { pushNotice, safeLink } from '../js/remind-sw.js';
+// js/remind-sw.js is a plain script (sw.js loads it with importScripts), so it is run here as the worker runs it, and its two functions are read from self.
+const workerSelf = {}; vm.runInNewContext(fs.readFileSync(new URL('../js/remind-sw.js', import.meta.url), 'utf8'), { self: workerSelf }, { filename: 'remind-sw.js' });
+const { pushNotice, safeLink } = workerSelf.crophaloRemind;
 same('a push becomes a notice, cut and tagged', (() => { const n = pushNotice({ title: 'x'.repeat(200), body: 'y'.repeat(900), tag: 'rone|2026', url: '/farm' }); return [n.title.length, n.options.body.length, n.options.tag, n.options.data.url]; })(), [80, 300, 'rone|2026', '/farm']);
 same('an unreadable push still shows the default words', [pushNotice(null).title, pushNotice('x').title, pushNotice({}).options.data.url], ['Crophalo reminder', 'Crophalo reminder', '/']);
 same('a link is kept only when it starts with / or #', ['/farm', '#data', 'https://evil.example', '//evil.example', 'javascript:1', '/a b', 7].map(safeLink), ['/farm', '#data', '/', '/', '/', '/', '/']);
