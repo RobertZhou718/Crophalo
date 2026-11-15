@@ -381,7 +381,9 @@ await group('offline', async () => {
   check('offline: the cut-off request was seen and listed', cutOff.slice(before).filter(c => c.where.startsWith('power.larc.nasa.gov')).length === 1, cutOff.slice(before));
   none('offline: the app asks no outside address for a script, a style or a font', cutOff.filter(c => /Script|Stylesheet|Font/i.test(c.kind)).map(c => `${c.kind}: ${c.where}`));
   check('offline: the app\'s own files were asked for from the throwaway copy', asked.includes('/js/app.js') && asked.includes('/css/app.css') && asked.includes('/vendor/leaflet/leaflet.js'), asked.slice(0, 12));
-  none('offline: the first screen does not ask for three.js or MapLibre', [...new Set(asked.filter(a => /\/vendor\/(three|maplibre)\//.test(a)))]);
+  // the first screen alone, loaded afresh: the setup map asks for MapLibre when it opens (its Light map and the place names), as earlier groups do
+  const firstFrom = asked.length; await go('/'); await until(`!document.querySelector('#view-home').hidden`); await sleep(1500);
+  none('offline: the first screen does not ask for three.js or MapLibre', [...new Set(asked.slice(firstFrom).filter(a => /\/vendor\/(three|maplibre)\//.test(a)))]);
 });
 
 // ---- errors: every screen once more, at a wide and a narrow width; the group ends red on any page error or console error

@@ -3,6 +3,7 @@
 // RULE: never loosen a check here to make it pass without a written farming reason beside the check itself. A failure means the app would show
 // a farmer something wrong, or the folder would say something untrue about itself: fix the project, not the test. Run: node scripts/test.mjs
 import fs from 'node:fs';
+import { createHash } from 'node:crypto';
 import { flagged, badPath } from './wordguard.mjs';
 import path from 'node:path';
 import { fileURLToPath, pathToFileURL } from 'node:url';
@@ -21,7 +22,8 @@ const ROOT = path.resolve(process.env.CROPHALO_ROOT || path.join(HERE, '..'));
 const BEGAN = '2026-11-14', BEGAN_MS = new Date(2026, 10, 14).getTime();   // the day this build began: nothing in the folder may be older or say an older date
 const MADE_HERE = ['.cache', 'runtime', '.venv', '.secrets', '.userdata'];   // made on each computer, never shipped
 const SKIP_DIRS = new Set([...MADE_HERE, '.git', 'scripts/_cache']);
-const OTHERS_BYTES = rel => /^(vendor|scripts\/vendor-test)\//.test(rel) && !/(^|\/)(README\.md|VERSION\.json)$/.test(rel);   // the published files of a library: checked byte for byte below, so their words and dates are the library's own
+const LICENCE = 'LICENSE', LICENCE_SHA256 = 'cfc7749b96f63bd31c3c42b5c471bf756814053e847c10f3eb003417bc523d30';   // the Apache License 2.0 as the Apache Software Foundation publishes it (apache.org/licenses/LICENSE-2.0.txt)
+const OTHERS_BYTES = rel => rel === LICENCE || /^(vendor|scripts\/vendor-test)\//.test(rel) && !/(^|\/)(README\.md|VERSION\.json)$/.test(rel);   // the published files of a library, and the licence text: checked byte for byte below, so their words and dates are their publisher's own
 const W = (...parts) => parts.join('');   // words this suite looks for are put together from pieces, so the suite never finds itself
 
 function walk(dir = '', out = []) {
@@ -120,7 +122,9 @@ await group('the folder', async () => {
   const iso = (y, m, d) => `${y}-${String(m).padStart(2, '0')}-${String(d).padStart(2, '0')}`, month = name => MONTHS.indexOf(name.slice(0, 3)) + 1;
   // Recorded outside answers keep the dates of their data: a weather record since 2001 is the data itself, not a date of the project. Only files under
   // scripts/fixtures/ (answers recorded from the outside services, played back by the suites) are passed over; nothing the project writes itself is.
-  const RECORDED = rel => rel.startsWith('scripts/fixtures/');
+  // docs/data-sources/ is the same kind of record in words: what each outside service answered on the day it was checked. A farmer has to see how old a source's
+  // newest data is (a satellite's last sending day, a station's last report, the month a product ended), so those dates stay exactly as the services gave them.
+  const RECORDED = rel => rel.startsWith('scripts/fixtures/') || rel.startsWith('docs/data-sources/');
   const early = [];
   for (const [rel, text] of TEXT) {
     if (!OURS(rel) || RECORDED(rel)) continue;
@@ -135,6 +139,13 @@ await group('the folder', async () => {
     });
   }
   none(`no date before ${BEGAN} is written anywhere in the project (data ranges are listed with their reason)`, early);
+
+  // The licence. The challenge asks for an open-source licence and for the licences of everything bundled to be named, and for SI tool use to be said plainly.
+  check('LICENSE is the Apache License 2.0 exactly as published, byte for byte', has(LICENCE) && createHash('sha256').update(fs.readFileSync(path.join(ROOT, LICENCE))).digest('hex') === LICENCE_SHA256);
+  const readme = has('README.md') ? read('README.md') : '';
+  check('the README has a Licence part that names the Apache License 2.0 and the LICENSE file', /^## Licence$/m.test(readme) && readme.includes('Apache License, Version 2.0') && readme.includes('`LICENSE`'));
+  none('the README names the licence of every bundled library', ['BSD 2-Clause', 'BSD 3-Clause', 'ISC', 'MIT', 'MPL 2.0'].filter(name => !readme.includes(name)));
+  check('the README says SI tools helped write the code, and that the app itself does not use SI', /^## Use of Super Intelligence \(SI\) tools$/m.test(readme) && /does not use SI/.test(readme));
 
   none(`the country is never written "${W('Tur', 'key')}", in any file`, finds(new RegExp(W('tur', 'key'), 'i')));
   check('"Türkiye" is how the project writes it', [...TEXT].some(([rel, text]) => rel.startsWith('js/') && text.includes('Türkiye')));

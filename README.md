@@ -77,6 +77,7 @@ The lookups and their suites use the folder's own Python: `FW_PYTHON=.venv/bin/p
 | `scripts/run.sh`, `start-windows.ps1`, `earthdata.mjs`, `preflight.mjs`, `vendor.mjs`, `portable.sh`, `pack-runtimes.sh` | the starters, the NASA login, the start checks, the bundled libraries, the portable copy |
 | `vendor/` | Leaflet, MapLibre and three.js, kept in the folder (no build step, no packages) |
 | `docs/nasa-data-used.md` | the NASA data Crophalo uses, with credit and links |
+| `LICENSE` | the Apache License 2.0, the licence of Crophalo's own code (see "Licence" below) |
 
 ## What works today
 
@@ -85,8 +86,11 @@ The lookups and their suites use the folder's own Python: `FW_PYTHON=.venv/bin/p
   rain-fed, loam assumed); you click through the same steps a farmer does.
 - The field report: Overview (one recommendation, why it suits the field, and the comparison with the current rotation),
   Options (the plans side by side), Weather (the field's record, this year so far, the next 7 days, the regional SMAP
-  soil-moisture card) and Calendar (the farming year and the ground month by month). Every figure has an "i" with its source,
-  NASA first. History is written as counts over the tested years, never as a chance.
+  soil-moisture card), Calendar (the farming year and the ground month by month), Field (outline, slope, height and soil)
+  and Satellites & prices (NASA GPM IMERG rain, GRACE-FO water storage, ECOSTRESS ground temperature, HLS greenness, and
+  the crop map of farms nearby). Every figure has an "i" with its source, NASA first. History is written as counts over the
+  tested years, never as a chance.
+- A kept copy of the app for working offline, with a bar that says when you are offline.
 - "Add to My Farm" opens the same field in My Farm: the map board, one date, one finding, Compare plans (current and proposed,
   each marked Planned), the 3D look of the same field and date, and editing the field.
 - The Data page lists every source, with the NASA line and the link to `docs/nasa-data-used.md`.
@@ -95,11 +99,9 @@ The lookups and their suites use the folder's own Python: `FW_PYTHON=.venv/bin/p
 
 ## What is not built yet
 
-- The report's Field, Satellites & prices and Notes & to-do tabs say "Not built yet".
-- The soil-test form, the reminder screens and the Share or print menu: their rules and texts are written and tested, and the
-  server routes for reminders and drought weeks answer, but no screen shows them yet.
-- The report does not yet ask the crop-map lookup, so "grown nearby" is not shown on screen.
-- Working offline (a kept copy of the app) is not in this folder yet.
+- The report's Notes & to-do tab says "Not built yet".
+- The soil-test form, the screens that set a reminder and the Share or print menu: their rules and texts are written and
+  tested, and the server routes for reminders and drought weeks answer, but no screen shows them yet.
 - Safari and Firefox have not been run through the browser suites; Chrome has.
 
 ## NASA data used
@@ -113,6 +115,33 @@ The lookups and their suites use the folder's own Python: `FW_PYTHON=.venv/bin/p
 
 Credit, links and what each one feeds: [docs/nasa-data-used.md](docs/nasa-data-used.md). Crophalo is not made, reviewed or
 endorsed by NASA.
+
+## Licence
+
+Crophalo's own code, tests and documents are open source under the Apache License, Version 2.0. The full text is in
+`LICENSE`. Copyright 2026 the Crophalo team.
+
+The libraries kept in the folder stay under their own licences. Each licence text sits beside its library:
+
+| Library | Licence | Where its licence text is |
+|---|---|---|
+| Leaflet 1.9.4 | BSD 2-Clause | `vendor/leaflet/LICENSE` |
+| MapLibre GL JS 4.7.1 | BSD 3-Clause | `vendor/maplibre/LICENSE.txt` |
+| MapLibre GL Leaflet 0.0.22 | ISC | `vendor/maplibre/LICENSE-leaflet-plugin.txt` |
+| three.js r160 | MIT | `vendor/three/LICENSE` |
+| axe-core 4.14.0 (used by the test suites only, not part of the app) | MPL 2.0 | `scripts/vendor-test/LICENSE-axe-core.txt` |
+
+The data is not ours. Every source keeps its own terms, and each one is named, with its credit and link, on the app's
+Data page and in `docs/`.
+
+## Use of Super Intelligence (SI) tools
+
+We used Super Intelligence (SI) coding tools to help write Crophalo's code (including the icons and drawings that are made
+in code), its tests and its documents. Our team chose what to build, directed the work, and reviewed and tested the result.
+
+Crophalo itself does not use SI or machine learning to work out its answers: it uses fixed rules and counts over the public
+data named above. Some of that data (for example the crop maps and the SoilGrids soil map) is made by its publishers with
+machine-learning methods, as their own documents describe.
 
 ## Changes
 

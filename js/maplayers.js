@@ -186,7 +186,7 @@ export function initLayers(ui, env) {
   ui.legends.addEventListener('click', event => {
     const off = event.target.closest('[data-off]'); if (off) return turnOff(off.dataset.off);
     const look = event.target.closest('[data-look]'); if (look) { look.disabled = true; return lookFires(); }
-    const stepBtn = event.target.closest('[data-step]');
+    const stepBtn = event.target.closest('button[data-step]');   // a button: the setup screen around the map carries data-step too (the wizard's step)
     if (stepBtn) { const id = stepBtn.dataset.id, layer = layerOf(id), to = stepBy(keep.ranges[id] ?? [], keep.date[id], +stepBtn.dataset.step, layer.step, today()); if (!to) { env.say?.(+stepBtn.dataset.step < 0 ? 'No earlier image.' : 'No later image: this is the newest.'); return; } return setDay(id, to); }
     const now = event.target.closest('[data-newest]'); if (now) { const id = now.dataset.newest, to = newest(keep.ranges[id] ?? [], today()); if (to) setDay(id, to); }
   });

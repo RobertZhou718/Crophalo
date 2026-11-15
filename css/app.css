@@ -249,6 +249,8 @@ dialog.sheet::backdrop { background: var(--backdrop); -webkit-backdrop-filter: b
 .btn.sm { min-height: var(--ctl-sm); padding: 2px 10px; font-size: var(--fs-small); }
 .btn.lg { min-height: var(--ctl-lg); padding: 6px 28px; border-radius: var(--r2); font-size: var(--fs-btn-lg); font-weight: 560; }
 .btn.danger { color: var(--bad); }
+.btn.danger.solid { background: var(--delete); color: #fff; box-shadow: var(--shadow-primary); }   /* a red button for an action that undoes the farmer's own choices (Reset settings) */
+.btn.danger.solid:hover:not(:disabled) { background: #8f0015; }
 .btn.danger.armed { background: var(--delete); color: #fff; box-shadow: var(--shadow-primary); }   /* Delete is always red */
 .btn:disabled, .btn[aria-disabled=true] { opacity: .4; cursor: default; }
 :is(.btn, .tbtn, .tab, .bigbtn, .iconbtn, .mapbtn, .listen, .mic, button.chip):active:not(:disabled) { filter: brightness(.94); }

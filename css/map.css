@@ -67,7 +67,7 @@ body.kbd-mode .mapx:focus-within .mapx-cross { display: block; }
   .mapx-top { top: var(--space-4); }
   .mapx-credit { display: none; }
 }
-@container mapx (max-height: 330px) and (min-height: 1px) { .mapx-seg button, .mapx-base button { min-height: 36px; } }
+/* the tools keep their full 44 px in a short map too: a finger needs the same room on the strip as on the full map */
 
 /* the spot card: white, 340 px, over the map; along the bottom of a narrow map, where the stack and the hint step aside */
 .spot { position: absolute; z-index: 8; display: flex; flex-direction: column; width: 340px; max-width: calc(100% - 16px); max-height: calc(100% - 64px); border-radius: var(--r1); background: var(--card); box-shadow: var(--shadow-lg); overflow: hidden; outline: none; }
@@ -195,3 +195,15 @@ html[data-motion=reduce] .mapx-pin svg, html[data-motion=reduce] .spot.spot-in, 
 /* Reselect stands apart from the map's white controls: the one accent colour with white words, so "start the outline again" is easy to find over the photo */
 #mapxReselect { background: var(--accent); color: var(--accent-ink); box-shadow: var(--shadow-map); }
 #mapxReselect:hover { background: var(--accent-text); }
+
+/* A phone map at full height (the setup's field step, about 360 px tall): the guiding sentence sits clear of the two-line credit and gives way while a panel or a
+   legend is open; Layers lists what is on, so its legends wait while it is open; the card covers the About button and the credit while it is open, and its own credit line says the source. */
+@container mapx (max-width: 519px) {
+  .mapx-hint { bottom: 64px; }
+  .mapx:has(.mapx-panel) .mapx-hint, .mapx:has(.mapx-legend) .mapx-hint { display: none !important; }
+  .mapx:has(.mapx-panel) .mapx-lcol { display: none; }
+  .mapx.spot-open #mapxAbout, .mapx.spot-open .mapx-credit, .mapx.spot-open .mapx-right { display: none; }   /* the zoom buttons step aside for the card too (above) */
+}
+@container mapx (max-width: 820px) { .mapx.spot-open .mapx-lcol { display: none; } }   /* a tablet: the card and the left column would share the same room */
+@container mapx (min-width: 520px) and (max-width: 820px) { .mapx:has(.mapx-panel) .mapx-lcol { width: min(420px, calc(100% - 392px)); } }   /* an open panel on the right: the left column stops 8 px short of it */
+@container mapx (max-width: 470px) { .mapx-right { flex-direction: column; right: calc(var(--space-8) + var(--touch) + var(--space-4)); } }   /* a narrow map: Places and Layers stand in a column beside the zoom buttons, so the wrapped tools on the left never reach them, whatever the text size */

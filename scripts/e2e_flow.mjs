@@ -10,6 +10,9 @@ const YR = 2026;   // the year of the hand-made soil-moisture reading's day
 
 const run = await openRun('e2e_flow');
 const { ROOT, js, page, until, seen, tap, tapAt, press, size, go, check, same, group, finish, sleep, send } = run;
+// The copy under test has no Python, so the server's own lookups cannot answer there. The early lookups a place on the map starts (js/report-load.js prefetchPlace)
+// are answered "not read" at the page from the first moment of every visit, the way quietApi() below answers them, so the copy's refusals are not logged as errors of the page.
+await send('Page.addScriptToEvaluateOnNewDocument', { source: "(() => { const first = window.fetch.bind(window); window.fetch = (u, ...rest) => /[/]api[/](smaproot|cropsnear|imergrain|gracecell|ecopass|hlsndvi|dem|ndvihist)[?]/.test(String(u)) ? Promise.resolve({ json: async () => ({ ok: false }) }) : first(u, ...rest); })();" });
 const REGION = JSON.parse(fs.readFileSync(path.join(ROOT, 'data', 'regions.json'), 'utf8'))[0], ROT = PRESETS[REGION.rotation].label;   // the demo region and its ready rotation come from the data file
 const WIDTHS = [320, 375, 390, 768, 1280], WELCOME = JSON.stringify({ v: '2026-11-14', at: 'test' });
 const accepted = () => js(`localStorage.setItem('crophalo.welcome.v1', ${JSON.stringify(WELCOME)})`);

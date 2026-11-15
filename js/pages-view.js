@@ -66,7 +66,7 @@ export function settingsHTML(tab, ctx = {}) {
       <div class="btnrow"><button type="button" class="btn" data-backup>Download a backup file</button><button type="button" class="btn" data-restore>Restore from a backup file</button><input type="file" accept="application/json,.json" class="sr" id="restoreFile" tabindex="-1" aria-hidden="true"></div>
       <div id="restoreAsk" role="status" aria-live="polite"></div></section>
     ${installCardHtml()}
-    <section class="card pad" aria-labelledby="rsT"><h3 id="rsT">Reset settings</h3><p>Puts units, currency, listening, motion, text size, contrast and link style back to their defaults.</p><p><button type="button" class="btn" data-reset-settings>Reset settings</button></p></section>`)}`;
+    <section class="card pad" aria-labelledby="rsT"><h3 id="rsT">Reset settings</h3><p>Puts units, currency, listening, motion, text size, contrast and link style back to their defaults.</p><p><button type="button" class="btn danger solid" data-reset-settings>Reset settings</button></p></section>`)}`;
   if (tab === 'remind') return `${tabs}${panel(tab, `<h2>Reminders</h2><p class="lead" id="remindCount">${ctx.reminders?.length ?? 0} ${ctx.reminders?.length === 1 ? 'reminder' : 'reminders'} set. They stay on this device.</p>
     <div id="remindList">${remindListHTML(ctx.reminders ?? [], ctx.nowLocal ?? '2000-01-01T00:00')}</div><div id="remindWays">${settingsRemindersHTML(ctx.remindState)}</div>
     <p><button type="button" class="btn danger" data-erase="reminders" data-label="Delete all reminders">Delete all reminders</button></p>`)}`;

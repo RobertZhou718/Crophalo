@@ -121,10 +121,15 @@ export function initBase(map, ui, { say = () => {} } = {}) {
   map.on('moveend', onMove);
   const onOnline = () => { if (failed || !using.names) retry(); };
   window.addEventListener('online', onOnline);
-  segment(); credits(); apply();
+  // The base starts when the map is on the screen: the map drawn in the hidden setup screen at the page start asks for no tiles and no MapLibre until it is shown, so the first screen stays light.
+  const box = map.getContainer(), onScreen = () => box.offsetWidth > 0 && box.offsetHeight > 0;
+  let waitShown = null;
+  segment(); credits();
+  if (onScreen()) apply();
+  else { waitShown = new ResizeObserver(() => { if (dead || !onScreen()) return; waitShown.disconnect(); waitShown = null; apply(); }); waitShown.observe(box); }
   const api = {
     set, state: () => ({ choice, ...using, failed, gl: !!glMap, names: namesStyle }), glMap: () => glMap, leaflet: () => map, apply, retry,
-    dispose() { dead = true; clearTimeout(retryTimer); clearTimeout(stallTimer); window.removeEventListener('online', onOnline); map.off('moveend', onMove); },
+    dispose() { dead = true; waitShown?.disconnect(); clearTimeout(retryTimer); clearTimeout(stallTimer); window.removeEventListener('online', onOnline); map.off('moveend', onMove); },
   };
   current = api;
   return api;

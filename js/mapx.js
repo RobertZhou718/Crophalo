@@ -357,7 +357,7 @@ function mount(root) {
   map = L.map(ui.canvas, { zoomControl: false, attributionControl: false, zoomSnap: 1, worldCopyJump: true, keyboard: false, maxBoundsViscosity: 0, minZoom: 2, maxZoom: 19 });
   const start = keep.pin ? { c: [keep.pin.lat, keep.pin.lon], z: keep.zoom ?? 14 } : { c: WORLD.center, z: WORLD.zoom };   // the zoom the farmer chose survives the wizard redrawing the map
   map.setView(start.c, start.z, { animate: false });
-  map.on('zoomend', () => { keep.zoom = map.getZoom(); });
+  const mine = map; mine.on('zoomend', () => { if (mine === map) keep.zoom = mine.getZoom(); });   // a zoom that ends after the wizard has redrawn the map belongs to the old map: it is left out
   baseCtl = initBase(map, { segment: ui.base, credit: ui.credit, note: ui.baseNote }, { say });
   panels = initPanels({ box: ui.box, right: ui.right, host: ui.panelHost }, { say, swallow: () => { tapSwallow = Date.now(); }, beforeOpen: () => closeSpot(false) });
   panels.add(placesPanel({ pin: () => keep.pin, areaHa: () => (keep.ring ? areaHa(keep.ring) : null), areaWords: () => (keep.ring ? areaWords(areaHa(keep.ring), keep.units) : ''), goTo, show: showOnMap }));
