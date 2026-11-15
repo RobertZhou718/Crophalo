@@ -110,7 +110,7 @@ function pageKit() {
     for (const el of document.body.querySelectorAll('*')) {
       if (!T.shown(el)) continue;
       const cs = getComputedStyle(el), b = T.box(el);
-      if (!/hidden|clip/.test(cs.overflowX) || cs.textOverflow === 'ellipsis' || T.tiny(b) || !el.textContent.trim() || el.classList.contains('leaflet-container')) continue;   // a map's panes are drawn, not read
+      if (!/hidden|clip/.test(cs.overflowX) || cs.textOverflow === 'ellipsis' || T.tiny(b) || !el.textContent.trim() || el.classList.contains('leaflet-container') || el.classList.contains('sr')) continue;   // a map's panes are drawn, not read; a screen-reader-only line is 1 px by design
       if (el.scrollWidth > el.clientWidth + 1) out.push(`${T.name(el)} holds ${el.scrollWidth} px in ${el.clientWidth} px`);
     }
     return out.slice(0, 3);

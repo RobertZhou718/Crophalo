@@ -28,6 +28,7 @@ async function open(where = WOOD, zoom = 16) {   // the setup for a place, the m
 }
 const S = () => js(`import('/js/mapx.js').then(m => JSON.parse(JSON.stringify(m.mapState())))`);
 const zoomNow = () => js(`(async () => ${MAP}.getZoom())()`);
+const giveField = async () => { const cc = await mid(); for (const p of [{ x: cc.x - 70, y: cc.y + 40 }, { x: cc.x + 60, y: cc.y + 40 }, { x: cc.x + 10, y: cc.y - 50 }]) { await touchTap(p.x, p.y); await sleep(400); } await sleep(500); };   // a drawn field for the setup (three taps with the Rectangle armed): Next needs one
 const centreLL = () => js(`(async () => { const c = ${MAP}.getCenter(); return [c.lat, c.lng]; })()`);
 const xy = (lat, lon) => js(`(async () => { const map = ${MAP}, r = map.getContainer().getBoundingClientRect(), p = map.latLngToContainerPoint([${lat}, ${lon}]); return { x: r.left + p.x, y: r.top + p.y }; })()`);
 const ll = (x, y) => js(`(async () => { const map = ${MAP}, r = map.getContainer().getBoundingClientRect(), q = map.containerPointToLatLng([${x} - r.left, ${y} - r.top]); return [q.lat, q.lng]; })()`);
@@ -62,54 +63,11 @@ const COLOURS = ['color', 'backgroundColor', 'background-color', 'borderColor', 
 const UNDER_TOAST = `(() => { const t = document.querySelector('#toast'); if (!t.classList.contains('show')) return ['no toast']; const a = t.getBoundingClientRect(); return ['#mapxHint', '#wNext'].filter(s => { const e = document.querySelector(s); if (!e || !e.getClientRects().length) return false; const r = e.getBoundingClientRect(); return a.left < r.right && r.left < a.right && a.top < r.bottom && r.top < a.bottom; }); })()`;
 
 // ---------------------------------------------------------------- the pin, by mouse
-await group('pin', async () => {
-  await open(WOOD, 16);
-  const s0 = await S();
-  same('the map says its tool and its state', await boxState(), ['pin', 'idle']);
-  const c0x = await mid(); await tapAt(c0x.x - 200, c0x.y + 150); await sleep(200); await tap('#toast .btn').catch(() => {}); await sleep(200);
-  same('a click on the map, coming from outside it, shows no focus ring and does not start keyboard mode', [await js(`document.querySelector('#mapx').matches(':focus-visible')`), await js(`document.body.classList.contains('kbd-mode')`)], [false, false]);
-  same('with a pin, the words fit a mouse', await words(), 'Click the map to move your field, or drag the pin. Click the pin for the weather.');
-  check('the pin is named and described for a screen reader', await js(`(() => { const p = document.querySelector('.mapx-pin'); const d = document.getElementById(p.getAttribute('aria-describedby') || 'none'); return p.getAttribute('aria-label') === 'Your field pin' && d?.textContent === 'Arrow keys move your field. Enter shows the weather.'; })()`));
-  // an answer on step 2 must survive a pin move
-  await tap('#wNext'); await until(`document.querySelector('#setupRoot').dataset.step === 'crops'`);
-  await tap('.rcard'); await sleep(150);
-  const answers = await js(`import('/js/wizard.js').then(m => JSON.stringify(m.currentState().rotation))`);
-  check('an answer was chosen on step 2', JSON.parse(answers).preset !== null, answers);
-  const c = await mid(), c0 = await centreLL(), target = await ll(c.x + 150, c.y + 70);
-  await tapAt(c.x + 150, c.y + 70); await sleep(250);
-  const s1 = await S();
-  check('a click elsewhere moves the pin there at once', near(s1.pin.lat, target[0], 2e-4) && near(s1.pin.lon, target[1], 2e-4), [s1.pin, target]);
-  same('the move says so with an Undo', [await toastNow(), await js(`document.querySelector('#toast .btn')?.textContent`)], ['Field moved.', 'Undo']);
-  same('the Undo line covers neither the bar\'s words nor the Next button (it stands over the map, above the bar)', await js(UNDER_TOAST), []);
-  same('the map is the same map: nothing was rebuilt', s1.mapId, s0.mapId);
-  check('the view did not move (the centre within 1 px)', (await drift(c0)) <= 1, await drift(c0));
-  same('the wizard kept its step and the answer', [await js(`document.querySelector('#setupRoot').dataset.step`), await js(`import('/js/wizard.js').then(m => JSON.stringify(m.currentState().rotation))`)], ['crops', answers]);
-  check('the page knows the new place', await js(`import('/js/wizard.js').then(m => m.currentState().loc.lat === ${s1.pin.lat} && m.currentState().loc.lon === ${s1.pin.lon})`));
-  check('the screen reader hears what the toast leaves out: the new spot', /^Pin at -?\d+\.\d{4}, -?\d+\.\d{4}$/.test(await said()), await said());
-  await tap('#toast .btn'); await sleep(200);
-  const s2 = await S();
-  same('Undo puts the pin back', [s2.pin.lat, s2.pin.lon], [s0.pin.lat, s0.pin.lon]);
-  // a drag of the pin moves it, with no redraw and no jump of the view
-  const tip = await pinTip();
-  await dragMouse({ x: tip.x, y: tip.y - 20 }, { x: tip.x + 90, y: tip.y + 40 }, { steps: 10 }); await sleep(250);
-  const s3 = await S(), want = await ll(tip.x + 90, tip.y + 60);
-  check('a mouse drag moves the pin with the cursor, no lift', near(s3.pin.lat, want[0], 3e-4) && near(s3.pin.lon, want[1], 3e-4), [s3.pin, want]);
-  same('still the same map after a drag', s3.mapId, s0.mapId);
-  check('and the view still did not move', (await drift(c0)) <= 1, await drift(c0));
-  await shot('pin-moved-1280.png');
-  // a click on the pin opens the weather
-  const tip2 = await pinTip();
-  await tapAt(tip2.x, tip2.y - 20); await until(`!!document.querySelector('.spot')`, 3000).catch(() => {});
-  same('a click on the pin opens the weather card', await js(`document.querySelector('.spot [aria-selected=true]')?.textContent ?? null`), 'Weather');
-});
-
-// ---------------------------------------------------------------- the rectangle, by mouse
 await group('rect', async () => {
   await open(WOOD, 16);
   const c = await mid(), c0 = await centreLL();
   await tool('rect'); await sleep(200);
-  same('Rectangle is armed, its words fit a mouse', [await boxState(), await words()], [['rect', 'armed'], 'Click 2 corners along one side of your field, or drag a box.']);
-  same('the tool is said with the words for the hand', await said(), 'Rectangle tool. Click 2 corners along one side of your field, or drag a box.');
+  same('Rectangle is armed, its words fit a mouse', [await boxState(), await words()], [['rect', 'armed'], 'Draw your field here: drag a rectangle, or click its corners.']);
   check('the highlight slides to the pressed tool', await js(`(() => { const seg = document.querySelector('.mapx-seg'), b = seg.querySelector('[aria-pressed=true]'); return seg.classList.contains('slide') && Math.abs(parseFloat(seg.style.getPropertyValue('--x')) - b.offsetLeft) <= 1 && Math.abs(parseFloat(seg.style.getPropertyValue('--w')) - b.offsetWidth) <= 1; })()`));
   await sleep(250);
   check('the pin dims and steps out of the way while drawing', await js(`(() => { const p = document.querySelector('.mapx-pin'), cs = getComputedStyle(p); return +cs.opacity <= .45 && cs.pointerEvents === 'none' && p.tabIndex === -1 && p.getAttribute('aria-hidden') === 'true'; })()`));
@@ -142,7 +100,7 @@ await group('rect', async () => {
   const u = await S();
   same('Undo after the finish goes back to the side-set step, with a real mouse click', [u.ring, u.draft?.length, await words()], [null, 2, 'Click the far side of your field.']);
   await tap(bar('cancel')); await sleep(200);
-  same('Cancel removes the drawing, back to Pin, with an Undo', [await boxState(), await toastNow()], [['pin', 'idle'], 'Rectangle drawing removed.']);
+  same('Cancel removes the drawing, the Rectangle stays armed (there is no Pin), with an Undo', [await boxState(), await toastNow()], [['rect', 'armed'], 'Rectangle drawing removed.']);
   await tap('#toast .btn'); await sleep(200);
   same('the toast\'s Undo brings the drawing and its tool back', [(await S()).draft?.length, await boxState()], [2, ['rect', 'drawing']]);
   check('and the keyboard is back on the map, not lost with the toast', await js(`document.querySelector('#mapx').contains(document.activeElement)`));
@@ -217,32 +175,13 @@ await group('touch', async () => {
     await size(375, 812); await touchOn(true); await open(WOOD, 17);
     const vh = await js('innerHeight');
     check('on the field step the map is at least 60% of the screen', (await js(`document.querySelector('#mapx').getBoundingClientRect().height`)) >= vh * 0.6 - 1, [await js(`document.querySelector('#mapx').getBoundingClientRect().height`), vh]);
-    same('with a finger the words say Tap', await words(), 'Tap the map to move your field, or touch and hold the pin to drag it. Tap the pin for the weather.');
-    const c = await mid(), s0 = await S(), z0 = await zoomNow();
-    await touchTap(c.x + 60, c.y + 40); await sleep(100);
-    same('a tap elsewhere waits a moment (a second tap may follow)', [(await S()).pin.lat, (await S()).pin.lon], [s0.pin.lat, s0.pin.lon]);
-    await sleep(400);
-    check('then the pin moves there, with an Undo', (await S()).pin.lat !== s0.pin.lat && await toastNow() === 'Field moved.');
-    const s1 = await S();
-    await touchTap(c.x - 70, c.y - 60, { hold: 30 }); await touchTap(c.x - 70, c.y - 60, { hold: 30 }); await sleep(700); await still();   // two taps in quick succession: a double tap
-    same('a double tap zooms in and leaves the pin where it was', [await zoomNow(), (await S()).pin.lat, (await S()).pin.lon], [z0 + 1, s1.pin.lat, s1.pin.lon]);
-    await touchTap(c.x + 30, c.y + 90, { wiggle: 8, hold: 120 }); await sleep(500);
-    same('a brush of the thumb (8 px) is not a tap: the pin stays', [(await S()).pin.lat, (await S()).pin.lon], [s1.pin.lat, s1.pin.lon]);
-    // the pin by finger: held 250 ms it lifts 48 px above the finger (its tip on the spot) and drags; a quick swipe from it pans the map instead
-    const tipT = await pinTip(), pinBefore = (await S()).pin, cz0 = await centreLL();
-    await swipe({ x: tipT.x, y: tipT.y - 20 }, { x: tipT.x + 50, y: tipT.y + 40 }, { hold: 20, steps: 8 }); await sleep(400);
-    same('a quick swipe that starts on the pin pans the map and leaves the pin', [(await drift(cz0)) > 20, (await S()).pin.lat, (await S()).pin.lon], [true, pinBefore.lat, pinBefore.lon]);
-    await still(); await js(`(async () => { const map = ${MAP}, p = (await import('/js/mapx.js')).mapState().pin; map.setView([p.lat, p.lon], map.getZoom(), { animate: false }); })()`); await sleep(200);   // the swipe's glide took the pin aside: bring it back to the middle
-    const tipH = await pinTip();
-    await swipe({ x: tipH.x, y: tipH.y - 20 }, { x: tipH.x + 60, y: tipH.y + 30 }, { hold: 330, steps: 8 }); await sleep(400);
-    const lifted = await S(), wantH = await ll(tipH.x + 60, tipH.y + 30 - 48);   // the finger ends there; the tip is 48 px above it
-    check('held, the pin lifts 48 px above the finger and lands where its tip is', Math.abs(lifted.pin.lat - wantH[0]) < 3e-4 && Math.abs(lifted.pin.lon - wantH[1]) < 3e-4, [lifted.pin, wantH]);
-    same('and the map is the same map', lifted.mapId, s0.mapId);
+    same('with a finger the words say how to draw', await words(), 'Draw your field here: drag a rectangle, or tap its corners.');
+    const c = await mid(), s0 = await S();
     await js(`(async () => { ${MAP}.setZoom(16, { animate: false }); })()`); await sleep(200);   // a field of a few hectares fills the phone at 16: its corners, kept to about 1 m, keep it square to half a degree
     // the rectangle by three taps, in the drawing view
     await fingerOn('.mapx-seg [data-tool=rect]'); await sleep(400);
     same('on a phone Rectangle opens the full drawing view', [await js(`document.querySelector('#mapx').classList.contains('full')`), await boxState()], [true, ['rect', 'armed']]);
-    same('its words are for a finger', await words(), 'Tap 2 corners along one side of your field. Pinch to zoom.');
+    same('its words are for a finger', await words(), 'Draw your field here: drag a rectangle, or tap its corners.');
     await shot('touch-rect-armed-375.png');
     const m = await mid(), A = { x: m.x - 110, y: m.y + 40 }, B = { x: m.x + 10, y: m.y - 70 }, P = { x: m.x + 90, y: m.y + 30 };
     const [la, lb, lp] = [await ll(A.x, A.y), await ll(B.x, B.y), await ll(P.x, P.y)];
@@ -292,12 +231,12 @@ await group('keys', async () => {
   await open(WOOD, 16);
   await focusMap();
   same('Tab reaches the map, and keyboard mode is on with its cross', [await js(`document.activeElement.id`), await js(`document.body.classList.contains('kbd-mode')`), await looks('.mapx-cross')], ['mapx', true, true]);
-  same('the words are the key words, and the bar offers the step at the cross', [await words(), await looks(bar('step')), await js(`document.querySelector('${bar('step')}').textContent.trim()`)], ['Press Space to move your field to the cross. Tab to the pin to move it with the arrow keys.', true, 'Move pin here']);
+  same('the words are the key words, and the bar offers the step at the cross', [await words(), await looks(bar('step')), await js(`document.querySelector('${bar('step')}').textContent.trim()`)], ['Press Space to put a corner of your field at the cross.', true, 'Set corner']);
   const z = await zoomNow();
   await press('+'); await sleep(250); const zin = await zoomNow(); await press('-'); await sleep(250);
   same('plus and minus zoom', [zin, await zoomNow()], [z + 1, z]);
-  await press('3'); await sleep(150);
-  same('3 chooses Corners', await boxState(), ['poly', 'armed']);
+  await press('2'); await sleep(150);
+  same('2 chooses Corners', await boxState(), ['poly', 'armed']);
   same('the keys words', await words(), 'Put the cross on a corner of your field, then press Space.');
   let lost = 0;
   for (const moves of [[], ['ArrowRight', 'ArrowRight'], ['ArrowDown', 'ArrowDown'], ['ArrowLeft', 'ArrowLeft']]) {
@@ -314,10 +253,9 @@ await group('keys', async () => {
   same('Escape first closes the card, one layer at a time', [await js(`!!document.querySelector('.spot')`), (await boxState())[1]], [false, 'finished']);
   await press('Escape'); await sleep(150);
   same('then ends the editing, nothing is lost', [await boxState(), (await S()).ring?.length], [['pin', 'idle'], 4]);
-  await press('2'); await sleep(150); same('2 chooses Rectangle', (await boxState())[0], 'rect');
-  await press('1'); await sleep(150); same('1 chooses Pin', (await boxState())[0], 'pin');
+  await press('1'); await sleep(150); same('1 chooses Rectangle', (await boxState())[0], 'rect');
   // a rectangle by three Spaces
-  await press('2'); await sleep(150);
+  await press('1'); await sleep(150);
   await press(' '); await sleep(120);
   for (const k of ['ArrowRight', 'ArrowRight', 'ArrowRight']) { await press(k); await sleep(40); }
   await press(' '); await sleep(120);
@@ -325,7 +263,7 @@ await group('keys', async () => {
   await press(' '); await sleep(300);
   same('Space three times draws a rectangle, focus still on the map', [(await S()).ring?.length, (await S()).state, await js(`document.activeElement.id`)], [4, 'finished', 'mapx']);
   // Backspace, then Escape cancels the drawing with an Undo
-  await press('3'); await sleep(120); await press(' '); await sleep(100); await press('ArrowRight'); await sleep(40); await press(' '); await sleep(120);
+  await press('2'); await sleep(120); await press(' '); await sleep(100); await press('ArrowRight'); await sleep(40); await press(' '); await sleep(120);
   await press('Backspace'); await sleep(150);
   same('Backspace takes the last corner away', (await S()).draft?.length, 1);
   await press('Escape'); await sleep(150);
@@ -390,13 +328,6 @@ await group('edit', async () => {
   same('the drop is refused in words and the outline is as it was', [(await S()).ring, await words()], [r0, 'Lines can\'t cross. Put this corner where they don\'t.']);
   check('the card comes back when the hand lets go', await js(`!document.querySelector('.spot') || +getComputedStyle(document.querySelector('.spot')).opacity === 1`));
   await tap(bar('done')); await sleep(200);
-  const tip = await pinTip(), sp = await S();
-  await dragMouse({ x: tip.x, y: tip.y - 20 }, { x: tip.x + 60, y: tip.y + 10 }, { steps: 8 }); await sleep(300);
-  const r2 = (await S()).ring;
-  check('dragging the pin moves the whole field: every corner by the same step, the same area', r2 && near(r2[0][0] - r0[0][0], r2[2][0] - r0[2][0], 2e-5) && near(r2[0][1] - r0[0][1], r2[2][1] - r0[2][1], 2e-5) && r2[0][1] !== r0[0][1] && near(await area(r2), a0, a0 * 0.01), [r0, r2]);
-  check('and the pin stays inside the outline', await js(`import('/js/geo.js').then(g => { const s = ${JSON.stringify(await S())}; return g.insideRing(s.pin.lat, s.pin.lon, s.ring); })`));
-  await press('z', { ctrl: true }); await sleep(250);
-  same('one Undo puts the field and the pin back', [(await S()).ring, (await S()).pin.lat], [r0, sp.pin.lat]);
 });
 
 // ---------------------------------------------------------------- nothing is lost
@@ -445,19 +376,19 @@ await group('lose', async () => {
 });
 
 // ---------------------------------------------------------------- the pin is never in the way of drawing
-await group('pinway', async () => {
-  await open(WOOD, 16);
-  const tip = await pinTip();
-  await tool('poly'); await sleep(250);
-  await tapAt(tip.x, tip.y - 18); await sleep(200);
-  same('a click on the pin while drawing adds a corner, it does not open the weather', [(await S()).draft?.length, await js(`!!document.querySelector('.spot')`)], [1, false]);
-  await press('Escape'); await sleep(150); await tool('rect'); await sleep(250);
-  await dragMouse({ x: tip.x, y: tip.y - 18 }, { x: tip.x + 160, y: tip.y + 110 }, { steps: 10 }); await sleep(300);
-  const r = (await S()).ring;
-  check('a box dragged from the pin is a box', Array.isArray(r) && r.length === 4 && r[0][0] === r[1][0], r);
+await group('firstrect', async () => {
+  // HELP 3's fix, kept: a first rectangle drawn with NO place chosen brings its own place, and "Go to the next step" turns on
+  await open(null, 2);
+  check('with no field the next step is blocked and says to draw one', await js(`document.querySelector('#wNext')?.disabled === true`) && /Draw your field on the map to go on\./.test(await js(`document.querySelector('#ctaNote')?.textContent ?? ''`)), await js(`document.querySelector('#ctaNote')?.textContent ?? ''`));
+  await js(`(async () => { ${MAP}.setView([43.1, -80.75], 16, { animate: false }); })()`); await sleep(600);
+  const c = await mid();
+  await dragMouse({ x: c.x - 90, y: c.y - 60 }, { x: c.x + 90, y: c.y + 60 }, { steps: 8 }); await sleep(900);
+  const st = await S();
+  check('a first rectangle drawn with no place chosen makes a 4-corner outline and a place inside it', Array.isArray(st.ring) && st.ring.length === 4 && !!st.pin, st);
+  await until(`document.querySelector('#wNext') && !document.querySelector('#wNext').disabled`, 8000).catch(() => {});
+  check('"Go to the next step" is then on', await js(`document.querySelector('#wNext')?.disabled === false`), await js(`document.querySelector('#ctaNote')?.textContent ?? ''`));
 });
 
-// ---------------------------------------------------------------- too far out to draw
 await group('zoomguard', async () => {
   await open(WOOD, 11);
   const c = await mid();
@@ -467,10 +398,10 @@ await group('zoomguard', async () => {
   same('a click zooms in two levels and adds no corner', [await zoomNow(), (await S()).draft?.length ?? 0], [13, 0]);
   await open(null, 2);
   await js(`(async () => { ${MAP}.setZoom(4, { animate: false }); })()`); await sleep(200);
-  same('with no pin, far out, the words ask to zoom in first', await words(), 'Zoom in to your field: click near it, or search with Places.');
+  same('with no outline, far out, the words ask to zoom in first', await words(), 'Zoom in to your field to draw it. Click it to zoom in.');
   const m = await mid();
   await tapAt(m.x + 30, m.y + 20); await sleep(700);
-  same('a click at zoom 4 zooms in three levels and drops no pin', [await zoomNow(), (await S()).pin], [7, null]);
+  same('a click at zoom 4 zooms in two levels and sets no place', [await zoomNow(), (await S()).pin], [6, null]);
   same('and says what to do next', await said(), 'Zoomed in. Now tap your field.');
 });
 
@@ -514,7 +445,9 @@ await group('names', async () => {
   check('the sentence about missing names shows on the map at rest', shown && await looks('#mapxBaseNote'));
   const c = await mid();
   await tool('poly'); await sleep(150);
-  check('it steps aside while a field is drawn (it would cover corners and take their clicks)', !(await looks('#mapxBaseNote')));
+  { const cc = await mid(); await tapAt(cc.x - 150, cc.y + 60); await sleep(200); }
+  check('it steps aside once a corner is set (it would cover corners and take their clicks)', !(await looks('#mapxBaseNote')));
+  await press('Backspace'); await sleep(150);
   await mouseDraw([{ x: c.x - 150, y: c.y + 60 }, { x: c.x + 130, y: c.y + 70 }, { x: c.x + 20, y: c.y - 120 }]);
   await tapAt(c.x - 150 + 10, c.y + 60 + 8); await sleep(700);
   check('and while the outline just drawn is shown and changed', (await S()).ring && !(await looks('#mapxBaseNote')));
@@ -573,21 +506,17 @@ await group('phone', async () => {
       if (largest) await js(`import('/js/settings.js').then(m => m.saveSettings({ text: 'default' }))`);
     }
     // the later steps: a view-only strip with one way back to the field
-    await size(375, 740); await open(WOOD, 16);
+    await size(375, 740); await open(WOOD, 16); await giveField(); await sleep(300);
     await fingerOn('#wNext'); await sleep(500);
-    check('on later steps the map is a strip that only shows, with a Change field button', await looks('#mapxChange') && !(await looks('.mapx-seg')) && !(await looks('#mapxHint')) && !(await looks('.mapx-stack')));
+    check('on later steps the map is a strip that only shows, with a Change field button', await looks('#mapxChange') && !(await looks('.mapx-seg')) && !(await looks('#mapxHint')) && !(await looks('.mapx-stack')), [await looks('#mapxChange'), await looks('.mapx-seg'), await looks('#mapxHint'), await looks('.mapx-stack'), await js(`document.querySelector('#setupRoot')?.dataset.step`), await js(`document.querySelector('#wNext')?.disabled`)]);
     await fingerOn('#mapxChange'); await sleep(400);
-    same('Change field opens the drawing view in the Pin tool', [await js(`document.querySelector('#mapx').classList.contains('full')`), (await boxState())[0]], [true, 'pin']);
+    same('Change field opens the drawing view with the Rectangle armed', [await js(`document.querySelector('#mapx').classList.contains('full')`), (await boxState())[0]], [true, 'rect']);
     // a reload keeps the history entries of the page before it (a phone that dropped the tab, a pull to refresh): an old drawing-view entry must not keep the view open on Back
     await size(375, 740); await open(WOOD, 16);
     await js(`history.replaceState({ ...(history.state || {}), mapx: 'draw' }, ''); 1`);   // what a reload in the drawing view leaves behind
     await fingerOn('.mapx-seg [data-tool=rect]'); await sleep(400);
     await js('history.back()'); await sleep(500);
     same('after a reload one Back still closes the drawing view, on the setup', [await js(`document.querySelector('#mapx').classList.contains('full')`), await js(`!document.querySelector('#view-setup').hidden`)], [false, true]);
-    // on the field step a tap moves the pin with an Undo line: it stands over the map, above the bar, and never over the Next button
-    await open(WOOD, 16);
-    const m = await mid(); await touchTap(m.x - 60, m.y - 40); await sleep(700);
-    same('a phone\'s Undo line covers neither the map\'s bar nor the Next button', await js(UNDER_TOAST), []);
     // the smallest phone with the largest text: the tap that closes a field must never press a bar button that the result puts under the finger (a phone sends a click
     // after the tap), the view stack ends above the result bar, and the outline shows above it under no control
     await size(320, 640); await open(WOOD, 16);
@@ -637,12 +566,7 @@ await group('layout', async () => {
 await group('motion', async () => {
   await open(WOOD, 16);
   const c = await mid();
-  // Full: the pin lands, the close plays once, nothing loops
   await js(`document.documentElement.dataset.motion = ''`);
-  await tapAt(c.x + 120, c.y - 60); await sleep(40);
-  const land = await animsNow();
-  check('Full: the pin lands with a slide and a fade', land.some(a => /translate|transform/.test(a.props.join()) && a.ms <= 300) && land.some(a => a.props.includes('opacity')), land);
-  await sleep(500);
   await tool('poly'); await sleep(450);
   await mouseDraw([{ x: c.x - 120, y: c.y - 90 }, { x: c.x + 120, y: c.y - 90 }, { x: c.x + 120, y: c.y + 90 }, { x: c.x - 120, y: c.y + 90 }]);
   await press('Enter'); await sleep(60);

@@ -416,10 +416,10 @@ path.mapx-fire { filter: drop-shadow(0 0 2px rgba(0,0,0,.55)); }
 .sk-block { display: block; } .sk-lines { display: grid; gap: 10px; padding: var(--space-4) 0; }
 .sk-lines .sk.num { height: 30px; }
 
-/* ---- ONE tidy switch (the owner's order): the track has 3 px of padding all round; the chosen part is an inset pill (the track's radius minus the padding) with the same height and the same left and right padding as the other part; the words are centred; the tick sits 6 px before the word. 3 + 38 + 3 = 44 px, the touch size. */
-.mapx-seg, .mapx-base, .spot-tabs.seg { padding: 3px; gap: 0; border-radius: 12px; align-items: stretch; box-sizing: border-box; }
-.mapx-seg button, .mapx-base button, .spot-tabs.seg [role=tab] { box-sizing: border-box; min-height: 38px; padding: 0 13px; border: 0; background-clip: border-box; border-radius: 9px; justify-content: center; text-align: center; line-height: 1.2; }
-.mapx-seg.slide::before { top: 3px; bottom: 3px; border-radius: 9px; }
+/* ---- ONE tidy switch (the owner's order): the chosen part is an inset pill: each button is 44 px high (the touch size) with a 3 px transparent border, and its fill stops at the padding box, so the pill has 3 px of free space all round, the track's radius (12) minus the border, the same height and the same 13 px side space as the other part; the words are centred; the tick sits 6 px before the word. */
+.mapx-seg, .mapx-base, .spot-tabs.seg { padding: 0; gap: 0; border-radius: 12px; align-items: stretch; box-sizing: border-box; }
+.mapx-seg button, .mapx-base button, .spot-tabs.seg [role=tab] { box-sizing: border-box; min-height: 44px; padding: 0 10px; border: 3px solid transparent; background-clip: padding-box; border-radius: 12px; justify-content: center; text-align: center; line-height: 1.2; }
+.mapx-seg.slide::before { top: 3px; bottom: 3px; left: 3px; width: calc(var(--w, 0px) - 6px); border-radius: 9px; }
 .mapx-base button:is([aria-pressed=true])::before, .spot-tabs.seg [role=tab][aria-selected=true]::before { margin-right: 6px; }
 .spot-tabs.seg { display: flex; align-items: stretch; }
 .spot-tabs.seg [role=tab] { flex: 1 1 0; display: inline-flex; align-items: center; }
