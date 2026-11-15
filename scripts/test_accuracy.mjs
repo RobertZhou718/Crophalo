@@ -64,7 +64,7 @@ await group('2. a pin on water', () => {
   for (const name of ['georgianbay', 'lakesimcoe', 'lakenipissing', 'lakeofthewoods', 'lakestclair', 'clearlake']) {
     const answer = JSON.parse(fs.readFileSync(path.join(FIX, `cropsnear_${name}.json`), 'utf8'));
     const R = E.optionsFor(state('corn-soy'), B.C, { lat: answer.box.south + 0.125, lon: answer.box.west + 0.125, country: answer.country, ...NB.spotFields(answer) }, { today: TODAY });
-    same(`${name}: the crop map says water at the pin (class ${answer.pin?.code}), so there is no plan, only the words`, [NB.gateFrom(answer).water, R.current, R.recommended, R.others.length, R.reason], [true, null, null, 0, 'This point is water: Crophalo cannot compare crops here. Put the pin on the field itself.']);
+    same(`${name}: the crop map says water at the pin (class ${answer.pin?.code}), so there is no plan, only the words`, [NB.gateFrom(answer).water, R.current, R.recommended, R.others.length, R.reason], [true, null, null, 0, 'This point is water: Crophalo cannot compare crops here. Draw the field itself.']);
   }
   // the same five lakes in the accuracy run's own crop-map answers, with the class at the point the run read (AAFC 20 Water)
   for (const id of ['P0898', 'P0900', 'P0901', 'P0902', 'P0903']) {
@@ -81,7 +81,7 @@ await group('3. not a field at all', async () => {
   same('0, 0 is refused in words where a position is typed and where it is asked for', [PL.parseCoords('0, 0')?.reason, PL.parseCoords('0.00001, -0.00002')?.reason, D.cleanPlace(0, 0).reason], Array(3).fill('The position reads 0, 0: that point is open sea off West Africa, and it is what a missing position usually turns into. Check the two numbers and try again.'));
   same('a place on one zero line is still a place', [PL.parseCoords('0, 32.5'), PL.parseCoords('5.6, 0'), D.cleanPlace(0, 32.5)], [{ lat: 0, lon: 32.5 }, { lat: 5.6, lon: 0 }, { lat: 0, lon: 32.5 }]);
   const sw = PLACES.P0990, S = D.buildSeries(power(sw.cell), { lat: sw.lat, lon: sw.lon });   // latitude and longitude swapped: -80.75, 43.13 (Antarctica)
-  same('swapped latitude and longitude (Antarctica): NASA has no land under the square, said in words', D.landProblem(S), 'NASA POWER’s weather square here is sea or ice: it holds no soil wetness and no water from the land on any day, so Crophalo cannot compare crops here. Put the pin on the field itself.');
+  same('swapped latitude and longitude (Antarctica): NASA has no land under the square, said in words', D.landProblem(S), 'NASA POWER’s weather square here is sea or ice: it holds no soil wetness and no water from the land on any day, so Crophalo cannot compare crops here. Draw the field itself.');
   const C = CL.computeClimate(S, sw.lat, { today: TODAY }), R = E.optionsFor(state('corn-soy'), C, { lat: sw.lat, lon: sw.lon }, { today: TODAY });
   same('…and the engine gives no plan and no figure there', [R.notFarmland, R.current, R.recommended, R.others.length], [true, null, null, 0]);
   const calls = [], env = { fetch: async url => { calls.push(url); return new Response(JSON.stringify(/power\.larc/.test(url) ? power(sw.cell) : {}), { status: /power\.larc/.test(url) ? 200 : 500 }); }, caches: null, now: () => Date.parse('2026-11-14T12:00:00Z') };
