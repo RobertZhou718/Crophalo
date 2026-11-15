@@ -346,3 +346,5 @@ html[data-motion=reduce] .fw .leaflet-container *, html[data-motion=less] .fw .l
 html[data-motion=less] .fw-weaksq { animation-duration: 160ms; } html[data-motion=reduce] .fw-weaksq { animation: none; }
 .fw-weak .fw-weakbody p { margin: var(--space-4) 0; }
 .fw-bar > .btn.primary::after { display: none; }   /* the hover sweep of a primary button is wider than this narrow button and counted as hidden words: this one has none (calm motion) */
+/* Compare plans is the one main action, but it is not a view: outlined while its drawer is closed, filled only while the drawer is open. A filled blue control in this bar means "this is on" (Map, 3D), and the owner read the closed button as selected. */
+.fw .fw-compare.primary:not([aria-expanded=true]) { background: var(--card); color: var(--accent-text); box-shadow: inset 0 0 0 2px var(--accent), var(--shadow-ctl); }
