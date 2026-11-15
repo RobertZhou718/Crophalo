@@ -103,7 +103,7 @@ backup file, and Restore it on the other computer.
 ## Run the checks
 
     sh scripts/check.sh              every suite, in one order, stopping at the first failure
-    E2E=0 sh scripts/check.sh        the 108 offline suites only (no browser)
+    E2E=0 sh scripts/check.sh        the 110 offline suites only (no browser)
     NET=1 sh scripts/check.sh        also test_fallback, which asks the internet once and keeps the answers
     node scripts/test_engine.mjs     one suite alone
 
@@ -221,6 +221,7 @@ Data page and in `docs/`.
 
 We used Super Intelligence (SI) coding tools to help write Crophalo's code (including the icons and drawings that are made
 in code), its tests and its documents. Our team chose what to build, directed the work, and reviewed and tested the result.
+The 30-second video of how Crophalo works shows the app's own screens; its narration is a synthetic voice, and the video says so.
 
 Crophalo itself does not use SI or machine learning to work out its answers: it uses fixed rules and counts over the public
 data named above. Some of that data (for example the crop maps and the SoilGrids soil map) is made by its publishers with

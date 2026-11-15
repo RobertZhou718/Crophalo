@@ -60,11 +60,12 @@ export function initBase(map, ui, { say = () => {} } = {}) {
   // NASA's picture: MODIS 250 m for the whole world (native to zoom 9, drawn larger beyond), and over it the HLS 30 m picture of the day chosen for the place (native to zoom 12, drawn larger beyond: honestly blurrier)
   const day = yesterday();
   // The base is clean: Blue Marble (NASA GIBS, cloud-free, no date) for zoom 0 to 8 and Sentinel-2 cloudless 2016 (EOX, 10 m) from zoom 9; neither has a day. The newest NASA picture below is a choice in the Layers panel, off at first.
-  const far = watchTiles(L.tileLayer(blueTemplate, { minZoom: 0, maxZoom: CLEAR_FAR_MAX, maxNativeZoom: CLEAR_FAR_MAX, zIndex: 0, attribution: '', crossOrigin: true }), 'base-clear');
+  // Blue Marble stays under everything at EVERY zoom (drawn larger, so soft close up): where the Sentinel-2 or the USGS tile has not come yet, or never comes, the farmer sees this and never a dark hole. Order, bottom to top: Blue Marble, Sentinel-2, USGS photos, the daily picture.
+  const far = watchTiles(L.tileLayer(blueTemplate, { minZoom: 0, maxZoom: 19, maxNativeZoom: CLEAR_FAR_MAX, zIndex: 0, attribution: '', crossOrigin: true }), 'base-clear');
   const near = watchTiles(L.tileLayer(eoxTemplate, { minZoom: CLEAR_NEAR_MIN, maxZoom: 19, maxNativeZoom: CLEAR_NEAR_NATIVE, zIndex: 0, attribution: '', crossOrigin: true }), 'base-clear');
   // Zoom 13 and nearer: USGS aerial photographs over the Sentinel-2 tiles; a tile the USGS does not have (outside the United States answers 404) leaves the Sentinel-2 tile showing, so there is never a hole. The credit names what is really in view.
   const BLANK = 'data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7';
-  const aerialLayer = L.tileLayer(aerialTemplate, { minZoom: AERIAL_MIN_ZOOM, maxZoom: 19, maxNativeZoom: AERIAL_NATIVE, zIndex: 1, attribution: '', crossOrigin: true, errorTileUrl: BLANK });
+  const aerialLayer = L.tileLayer(aerialTemplate, { minZoom: AERIAL_MIN_ZOOM, maxZoom: 19, maxNativeZoom: AERIAL_NATIVE, zIndex: 1, attribution: '', crossOrigin: true, errorTileUrl: BLANK, keepBuffer: 4 });
   const seenOk = new Set(), seenNo = new Set(); let creditTimer = 0;
   const key = e => `${e.coords.z}/${e.coords.x}/${e.coords.y}`;
   const aerialNow = () => (map.getZoom() >= AERIAL_MIN_ZOOM && seenOk.size ? (seenNo.size ? 'both' : 'usgs') : 'none');
@@ -105,7 +106,7 @@ export function initBase(map, ui, { say = () => {} } = {}) {
   }
   function putFine() {
     fine?.remove(); fine = null;
-    if (picked?.ok) { fine = watchTiles(L.tileLayer(hlsTemplate(HLS[picked.layer]), { time: picked.day, maxNativeZoom: HLS_NATIVE, minZoom: HLS_MIN_ZOOM, maxZoom: 19, zIndex: 2, attribution: '', crossOrigin: true }), 'base-fine'); if (using.ground === 'photo' && newestOn) fine.addTo(map); }
+    if (picked?.ok) { fine = watchTiles(L.tileLayer(hlsTemplate(HLS[picked.layer]), { time: picked.day, maxNativeZoom: HLS_NATIVE, minZoom: HLS_MIN_ZOOM, maxZoom: 19, zIndex: 1, attribution: '', crossOrigin: true }), 'base-fine'); if (using.ground === 'photo' && newestOn) fine.addTo(map); }
   }
   async function wantPick(before = null) {
     if (dead || waitShown || !newestOn || using.ground !== 'photo' || !closeUp()) return;   // nothing is asked of NASA before the map is on the screen

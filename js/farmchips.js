@@ -226,3 +226,10 @@ export function engineAdapter(onChange) {
     },
   };
 }
+
+// The plan's name on the board: its crops in order, and the cover crop when its seasons carry one ("Corn, Soybeans, with cereal rye cover"), so a plan with a cover never reads like the plan without.
+export function planTitle(plan, nameOf) {
+  const seasons = Array.isArray(plan?.seasons) ? plan.seasons : [], word = id => String(nameOf(id) || '').replace(/ \(.*\)$/, '');
+  const crops = [...new Set(seasons.map(x => word(x.crop)).filter(Boolean))], covers = [...new Set(seasons.map(x => x.cover).filter(Boolean).map(id => word(id).toLowerCase()).filter(Boolean))];
+  return crops.join(', ') + (covers.length ? `, with ${covers.length > 1 ? `${covers.slice(0, -1).join(', ')} and ${covers.at(-1)}` : covers[0]}` : '');
+}

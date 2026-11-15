@@ -1,5 +1,5 @@
 // Crophalo's server: one Node script, no packages. It serves the files of the app and the /api/* endpoints.
-// Pure parts: pickEncoding(), tagMatches(), pointArgs(), hostOK(), originOK(). The rest reads the request, the folder or the clock.
+// Pure parts: pickEncoding(), tagMatches(), partOf(), pointArgs(), hostOK(), originOK(). The rest reads the request, the folder or the clock.
 // Checked by scripts/test_server.mjs: run it after every change here.
 import http from 'node:http';
 import fs from 'node:fs';
@@ -417,17 +417,18 @@ const TYPES = {
   '.html': 'text/html; charset=utf-8', '.js': 'text/javascript', '.css': 'text/css', '.json': 'application/json', '.svg': 'image/svg+xml', '.png': 'image/png', '.md': 'text/markdown',
   '.txt': 'text/plain; charset=utf-8', '.xml': 'application/xml', '.webmanifest': 'application/manifest+json', '.ico': 'image/x-icon', '.webp': 'image/webp', '.jpg': 'image/jpeg',
   '.jpeg': 'image/jpeg', '.gif': 'image/gif', '.woff2': 'font/woff2', '.glb': 'model/gltf-binary', '.wasm': 'application/wasm',
+  '.mp4': 'video/mp4', '.vtt': 'text/vtt; charset=utf-8',   // the video of how Crophalo works, and its words with their times
 };
 const TEXT = new Set(['.html', '.js', '.css', '.json', '.svg', '.md', '.txt', '.xml', '.webmanifest', '.wasm']);   // the types worth compressing
 // What the page asks for: its own pages and files at the top, and the six folders of the app, and the citation pages in docs/. Everything else (the server's code, the tests,
 // the starters, the folder's own pages) stays on this computer, so the public site never hands it out.
-const SERVED = /^(index\.html|design\.html|manifest\.json|sw\.js|robots\.txt|favicon\.ico|docs\/[a-z0-9-]+\.md|(js|css|data|design|icons|vendor)\/.+|img\/(craft|earth)\/[a-z0-9-]+\.webp)$/;   // sw.js: the worker that keeps the copy for offline use, served from the top so it can look after the whole app
+const SERVED = /^(index\.html|design\.html|manifest\.json|sw\.js|robots\.txt|favicon\.ico|docs\/[a-z0-9-]+\.md|(js|css|data|design|icons|vendor)\/.+|img\/(craft|earth)\/[a-z0-9-]+\.webp|media\/[a-z0-9-]+\.(mp4|vtt|txt|jpg|webp))$/;   // sw.js: the worker that keeps the copy for offline use, served from the top so it can look after the whole app
 const REAL_ROOT = fs.realpathSync.native(ROOT);   // the folder as the disk names it, to judge where a link really leads (native: the same spelling realpath gives each file, whatever capitals or letter forms the start was typed with)
 function refused(rel) {   // a path relative to the folder: outside it, hidden, runtime/ or anything the page never asks for (scripts/ among them)
   const outside = rel.startsWith('..') || path.isAbsolute(rel), hidden = /(^|\/)\./.test(rel), packed = /^runtime(\/|$)/i.test(rel);   // "RUNTIME" too: this Mac's disk does not tell capitals apart
   return outside || hidden || packed || !SERVED.test(rel);
 }
-const KEPT_A_DAY = /^(data\/spam|icons|design|vendor|img\/craft|img\/earth)\//;   // these change only with a release; code is asked about on every visit
+const KEPT_A_DAY = /^(data\/spam|icons|design|vendor|img\/craft|img\/earth|media)\//;   // these change only with a release; code is asked about on every visit
 const ZIPPED = new Map(), ZIPPED_MAX = 400;   // compressed copies by kind and file, reused while the ETag matches
 
 const tagMatches = (header, etag) => String(header || '').split(',').some(tag => tag.trim() === '*' || tag.trim().replace(/^W\//, '') === etag.replace(/^W\//, ''));
@@ -439,6 +440,14 @@ function zipped(file, etag, enc) {
   bytes.catch(() => { if (ZIPPED.get(key)?.bytes === bytes) ZIPPED.delete(key); });
   while (ZIPPED.size > ZIPPED_MAX) ZIPPED.delete(ZIPPED.keys().next().value);   // oldest out first
   return bytes;
+}
+// One part of a file, for the video: "bytes=0-99", "bytes=100-" or "bytes=-500" of a file of that size. Pure. A phone will not play a video, and nobody can jump
+// forward in one, unless the server can send a part. null: no part was asked for (or several, which get the whole file); false: a part that does not exist (416).
+function partOf(header, size) {
+  const m = /^bytes=(\d*)-(\d*)$/.exec(String(header ?? '').trim());
+  if (!m || (!m[1] && !m[2])) return header && !String(header).includes(',') ? false : null;
+  const first = m[1] ? +m[1] : Math.max(0, size - +m[2]), last = m[1] && m[2] ? Math.min(+m[2], size - 1) : size - 1;
+  return (!m[1] && +m[2] === 0) || first >= size || first > last ? false : { first, last };
 }
 async function file(req, res, url) {
   let asked;
@@ -462,9 +471,13 @@ async function file(req, res, url) {
   if (tagMatches(req.headers['if-none-match'], etag)) return send(req, res, 304, head);
   const enc = TEXT.has(ext) && st.size > 1024 ? pickEncoding(req.headers['accept-encoding']) : null;
   if (enc) return send(req, res, 200, { ...head, 'content-encoding': enc }, await zipped(full, etag, enc));
-  open(res, 200, { ...head, 'content-length': st.size });
+  const part = rel.startsWith('media/') ? partOf(req.headers.range, st.size) : null;   // parts are answered for the video's folder only
+  if (part === false) return send(req, res, 416, { 'content-range': `bytes */${st.size}`, 'accept-ranges': 'bytes' });
+  if (rel.startsWith('media/')) head['accept-ranges'] = 'bytes';
+  if (part) open(res, 206, { ...head, 'content-range': `bytes ${part.first}-${part.last}/${st.size}`, 'content-length': part.last - part.first + 1 });
+  else open(res, 200, { ...head, 'content-length': st.size });
   if (req.method === 'HEAD') return res.end();
-  const stream = fs.createReadStream(full).on('error', () => res.destroy());
+  const stream = fs.createReadStream(full, part ? { start: part.first, end: part.last } : {}).on('error', () => res.destroy());
   res.on('close', () => stream.destroy());   // a visitor who leaves mid-file must not keep the file open
   stream.pipe(res);
 }

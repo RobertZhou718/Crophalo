@@ -41,6 +41,7 @@ const FILES = {
   'img/craft/test.webp': 'RIFFtest',
   'img/earth/test.webp': 'RIFFtest',
   'img/other/test.webp': 'RIFFtest',
+  'media/test.mp4': lines('test video bytes, line', 40), 'media/test.vtt': 'WEBVTT\n\n00:00.000 --> 00:01.000\ntest words\n', 'media/notes.md': 'not a video',
   'img/craft/notes.md': 'not a picture',
   'data/spam/index.json': JSON.stringify({ test: true }),
   'design/tokens.json': JSON.stringify({ test: true }),
@@ -169,6 +170,22 @@ async function filesOfTheApp(A) {
   same('the design page, the install file and the robots file are served', await Promise.all(['/design.html', '/manifest.json', '/robots.txt'].map(async u => (await get(u)).status)), [200, 200, 200]);
   { const r = await get('/img/craft/test.webp'); same('a spacecraft picture under img/craft is served as image/webp and kept a day', [r.status, r.headers['content-type'], r.headers['cache-control']], [200, 'image/webp', 'public, max-age=86400']); }
   { const r = await get('/img/earth/test.webp'); same('the Earth pictures under img/earth are served as image/webp and kept a day', [r.status, r.headers['content-type'], r.headers['cache-control']], [200, 'image/webp', 'public, max-age=86400']); }
+  // the video: a phone will not play it, and nobody can jump forward in it, unless the server can send a part of the file
+  { const whole = Buffer.from(FILES['media/test.mp4']), n = whole.length, r = await get('/media/test.mp4');
+    same('the video under media is served whole as video/mp4, kept a day, and says it can send parts', [r.status, r.headers['content-type'], r.headers['cache-control'], r.headers['accept-ranges'], r.headers['content-length'], r.bytes.equals(whole)], [200, 'video/mp4', 'public, max-age=86400', 'bytes', String(n), true]);
+    const part = await ask(p, '/media/test.mp4', { headers: { range: 'bytes=10-19' } });
+    same('a part of the video: 206 with its place in the file and exactly those bytes', [part.status, part.headers['content-range'], part.headers['content-length'], part.bytes.equals(whole.subarray(10, 20))], [206, `bytes 10-19/${n}`, '10', true]);
+    const tail = await ask(p, '/media/test.mp4', { headers: { range: 'bytes=-5' } }), rest = await ask(p, '/media/test.mp4', { headers: { range: `bytes=${n - 3}-` } });
+    same('the last bytes and "from here to the end" are parts too', [tail.status, tail.headers['content-range'], tail.bytes.equals(whole.subarray(n - 5)), rest.status, rest.headers['content-range'], rest.bytes.length], [206, `bytes ${n - 5}-${n - 1}/${n}`, true, 206, `bytes ${n - 3}-${n - 1}/${n}`, 3]);
+    const over = await ask(p, '/media/test.mp4', { headers: { range: `bytes=0-${n + 500}` } });
+    same('a part that runs past the end stops at the end', [over.status, over.headers['content-range'], over.bytes.length], [206, `bytes 0-${n - 1}/${n}`, n]);
+    for (const bad of [`bytes=${n}-`, 'bytes=9-2', 'bytes=-0', 'lines=1-2']) { const r416 = await ask(p, '/media/test.mp4', { headers: { range: bad } }); same(`a part that does not exist (${bad}): 416 with the file's size, empty`, [r416.status, r416.headers['content-range'], r416.bytes.length], [416, `bytes */${n}`, 0]); }
+    const head = await ask(p, '/media/test.mp4', { method: 'HEAD', headers: { range: 'bytes=0-9' } });
+    same('HEAD of a part: the headers of the part, no body', [head.status, head.headers['content-range'], head.headers['content-length'], head.bytes.length], [206, `bytes 0-9/${n}`, '10', 0]);
+    same('two parts in one request get the whole file', (await ask(p, '/media/test.mp4', { headers: { range: 'bytes=0-1,4-5' } })).status, 200);
+    const words = await get('/media/test.vtt'); same('the video\'s timed words are served as text/vtt', [words.status, words.headers['content-type']], [200, 'text/vtt; charset=utf-8']);
+    same('a file under media that is not part of the video is refused', (await get('/media/notes.md')).status, 403);
+    const pic = await ask(p, '/img/earth/test.webp', { headers: { range: 'bytes=0-1' } }); same('parts are answered for the video\'s folder only: a picture comes whole', [pic.status, pic.headers['accept-ranges'] ?? null], [200, null]); }
   same('another folder under img, and a file there that is not a picture, are still refused', [(await get('/img/other/test.webp')).status, (await get('/img/craft/notes.md')).status], [403, 403]);
   same('a missing /favicon.ico is a plain 404', (await get('/favicon.ico')).status, 404);
   // The page never asks for these: the server's own code, its tests, the starters and the folder's own pages stay on this computer, never on the public site.

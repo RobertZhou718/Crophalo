@@ -12,7 +12,7 @@ import { startFarm } from './farmstart.js';
 import { renderFarms, renderSettings } from './farmlist.js';
 import { loadObserved, observedFor, forgetObserved, dayShort } from './farmobserved.js';
 import { fitHeight } from './data.js';
-import { stressOf, weekModel, engineAdapter, dataFetch, readingsFor, whenSeries, planFigures, weatherNow, sheetFor, setDataEnv, setEngineClient, forgetReadings } from './farmchips.js';
+import { planTitle, stressOf, weekModel, engineAdapter, dataFetch, readingsFor, whenSeries, planFigures, weatherNow, sheetFor, setDataEnv, setEngineClient, forgetReadings } from './farmchips.js';
 import { alertJobs } from './remind-plan.js';
 import { srcButton, initSources } from './srci.js';
 import { cropsFor } from './farmhistory.js';
@@ -836,7 +836,7 @@ function renderLayers() {
 
 // ---- drawing the whole screen
 // ---- the head of the first view
-const planNames = plan => [...new Set((plan?.seasons || []).map(x => cropName(x.crop)))].join(', ');
+const planNames = plan => planTitle(plan, cropName);   // the cover crop is named when the plan has one
 const SCORE_WORDS = (score, flag) => flag === 'fails' ? 'Does not suit here' : flag === 'borderline' ? 'Only just suits' : !Number.isFinite(score) ? '' : `${Math.round(score)} · ${score >= 70 ? 'Good fit' : score >= 50 ? 'OK fit' : 'Poor fit'}`;
 function subLine(f, fm) {
   const size = `${f.estimated ? 'About ' : ''}${areaWords(f.area)}${f.estimated ? ' (estimated)' : ''}`, place = fm?.pin?.label ? String(fm.pin.label).split(',').slice(0, 2).join(',').trim() : '';

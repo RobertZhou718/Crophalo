@@ -370,7 +370,8 @@ async function addFarm() {
   const out = await addToFarm(payload, seam.farm);
   btn.disabled = false;
   if (out.ok) { cur.farm = out; cur.farmFor = cur.chosen ?? ''; cur.farmNote = ''; document.dispatchEvent(new CustomEvent('crophalo:did', { detail: { what: 'added', button: btn, label: 'Added', ring: Array.isArray(cur.state.area?.pts) && cur.state.area.pts.length >= 3 ? cur.state.area.pts.map(p => [p[0], p[1]]) : null } })); const nav = document.getElementById('navFarm'); nav?.setAttribute('data-new', '');   // a quiet mark on "My farm" until My farm is opened
-    cur.farmNote = 'Added to My farm.'; redrawKeep(); }   // the page stays: the button turns to Added with its check, a star travels to My farm, a screen reader hears the note; nothing opens by itself
+    cur.farmNote = 'Added to My farm.'; redrawKeep();
+    toast('This field is added to My farm.', { action: 'Open My farm', onAction: () => document.getElementById('navFarm')?.click(), ms: 7000 }); }   // the page stays: the button turns to Added with its check, a star travels to My farm, a screen reader hears the note; nothing opens by itself
   else { cur.farmNote = out.reason; if (note) note.textContent = out.reason; }
 }
 

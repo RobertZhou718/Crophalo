@@ -28,6 +28,8 @@
     ".md": "text/markdown; charset=utf-8",
     ".webmanifest": "application/manifest+json",
     ".glb": "model/gltf-binary",
+    ".mp4": "video/mp4",
+    ".vtt": "text/vtt; charset=utf-8",
     ".wasm": "application/wasm"
   }
 }

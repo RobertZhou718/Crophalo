@@ -107,6 +107,8 @@ try { var kept = JSON.parse(localStorage.getItem('crophalo.settings.v1')) || {},
   <div class="nav-in">
     <a class="brand" href="./"><svg class="brand-mark" aria-hidden="true"><use href="#logo"/></svg><span class="brand-name">Crophalo</span></a>
     <nav class="nav-links" aria-label="Main">
+      <!-- The video of how Crophalo works: this button opens its player (js/video.js) -->
+      <button type="button" class="tbtn" id="navVideo" aria-haspopup="dialog"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M8 5.5v13l10.5-6.5z"/></svg><span class="t">Watch the video</span></button>
       <button type="button" class="tbtn" id="navFarm"><svg class="ic" aria-hidden="true"><use href="#i-cube"/></svg><span class="t">My farm</span></button>
       <button type="button" class="tbtn nav-menu-btn" id="navMenuBtn" aria-expanded="false" aria-controls="navMenu"><svg class="ic" aria-hidden="true"><use href="#i-menu"/></svg><span class="t">Menu</span><i class="chev" aria-hidden="true"></i></button>
       <div class="nav-menu" id="navMenu">
@@ -193,6 +195,8 @@ try { var kept = JSON.parse(localStorage.getItem('crophalo.settings.v1')) || {},
   <section class="view" id="view-farm" hidden><div class="wrap"><div class="sec"><h1>My farm</h1></div></div></section>
 </main>
 
+<!-- The video of how Crophalo works: the dialog the top bar's "Watch the video" button opens (js/video.js) -->
+<dialog class="sheet vid-dlg" id="dlgVideo" aria-labelledby="vidTitle"><div class="sheet-head"><h2 id="vidTitle">How Crophalo works</h2><button type="button" class="btn" id="vidClose">Close</button></div><div class="sheet-body" id="vidHere"></div></dialog>
 
 <div id="toast" class="toast" role="status"></div>
 

@@ -116,10 +116,11 @@ function shell(root) {
       <button type="button" data-view="full" aria-label="${esc(SAY.view.full)}" aria-pressed="false" title="${esc(SAY.view.full)}">${svg('full')}</button>
     </div>
     <div class="mapx-cross" aria-hidden="true"></div><div class="mapx-chip" id="mapxChip" aria-hidden="true" hidden></div>
+    <div class="mapx-far" id="mapxFar" role="status" aria-live="polite" hidden><span>Zoom in to choose your field.</span> <button type="button" class="btn sm primary" data-act="zoomhere">Zoom in here</button></div>
     <p class="mapx-busy" id="mapxBusy" role="status" aria-live="polite" hidden><i class="dot busy" aria-hidden="true"></i> <span data-busytext>Loading the map…</span></p>
     <button type="button" class="mapbtn mapx-change" id="mapxChange">${esc(B.changeField)}</button></div>`;
   const q = s => root.querySelector(s);
-  return { box: q('#mapx'), canvas: q('#mapxCanvas'), live: q('#mapxLive'), pic: q('#mapxPic'), busy: q('#mapxBusy'), hintBox: q('#mapxHint'), hint: q('#mapxHintText'), hintBtns: q('#mapxHintBtns'), why: q('#mapxWhy'),
+  return { box: q('#mapx'), canvas: q('#mapxCanvas'), live: q('#mapxLive'), pic: q('#mapxPic'), busy: q('#mapxBusy'), far: q('#mapxFar'), hintBox: q('#mapxHint'), hint: q('#mapxHintText'), hintBtns: q('#mapxHintBtns'), why: q('#mapxWhy'),
     result: q('#mapxResult'), big: q('#mapxBig'), second: q('#mapxSecond'), usedChip: q('#mapxUsed'), chip: q('#mapxChip'), barChip: q('#mapxBarChip'), dock: q('#mapxDock'), foot: q('#mapxFoot'),
     credit: q('#mapxCredit'), stack: q('.mapx-stack'), top: q('.mapx-top'), tools: q('.mapx-seg'), base: q('.mapx-base'), baseNote: q('#mapxBaseNote'), right: q('#mapxRight'), panelHost: q('#mapxPanels'),
     legends: q('#mapxLegends'), cross: q('.mapx-cross'), change: q('#mapxChange'), btn: act => q(`#mapxHintBtns [data-act=${act}]`) };
@@ -368,7 +369,7 @@ function undoWords(kind, before, now) {
 const DRAWING = ['rect', 'poly'];
 function setTool(tool) {
   if (!['pin', ...DRAWING].includes(tool)) return;
-  if (tool === keep.tool) { if (draft && compact()) enterDrawView(); return; }   // the tool already pressed changes nothing (on a phone it only brings the drawing view back)
+  if (tool === keep.tool) { if (draft && compact()) enterDrawView(); checkFar(); return; }   // the tool already pressed changes nothing (on a phone it only brings the drawing view back)
   const had = draft;
   if (had?.pts.length) { step('switch'); kit.clearDraft(true); }
   clearRefusal();
@@ -382,7 +383,13 @@ function setTool(tool) {
   if (draft && compact()) enterDrawView();
   dimPin(); saveDraft(); sync();
   say(`${SAY.toolSaid[tool]} ${lineWords()}`);
+  checkFar();
 }
+// Too far out to choose a field: a clear message at once near the top centre (the same pill as "Loading the map…") with a button that zooms to the pressed spot; it goes away when the map is close enough.
+let farAt = null;
+const needZoom = () => (keep.tool === 'pin' ? PIN_FROM : DRAW_FROM);
+function showFar(at) { if (!ui?.far || !map || map.getZoom() >= needZoom()) return; farAt = at ?? map.getCenter(); ui.far.hidden = false; }
+function checkFar(at) { if (!ui?.far || !map) return; if (map.getZoom() >= needZoom()) { ui.far.hidden = true; farAt = null; } else showFar(at); }
 // The drawing is taken away (Cancel, or Escape on a drawing): back to Pin, and the old outline rests again. An Undo brings it back.
 function cancelDrawing() {
   if (!draft) return;
@@ -446,12 +453,12 @@ function onTap(t) {
   if (ui.box.classList.contains('strip')) return;
   if (preciseNow()) { glideToCross(t.point); return; }   // Precise: a tap glides that spot under the cross; it never places a point
   if (draft) {
-    if (map.getZoom() < DRAW_FROM) { zoomInAt(t.latlng, 2); return; }
+    if (map.getZoom() < DRAW_FROM) { showFar(t.latlng); zoomInAt(t.latlng, 2); return; }
     if (draft.tool === 'rect') rectTap(t); else polyTap(t);
     return;
   }
   // the Pin tool
-  if (map.getZoom() < PIN_FROM) { zoomInAt(t.latlng, 3, true); return; }
+  if (map.getZoom() < PIN_FROM) { showFar(t.latlng); zoomInAt(t.latlng, 3, true); return; }
   if (keep.ring) {
     const on = onOutline(t.point);
     if (on && !selected) select({ open: true });
@@ -981,9 +988,9 @@ function togglePrecise() {
 // the step at the cross: Space, Enter, or the bar's step button
 function stepAtCross() {
   const latlng = crossLatLng(), t = { point: crossPoint(), latlng, type: 'cross', at: performance.now() };
-  if (draft) { if (map.getZoom() < DRAW_FROM) { zoomInAt(latlng, 2); return; } draft.tool === 'rect' ? rectTap(t) : polyTap(t); return; }
+  if (draft) { if (map.getZoom() < DRAW_FROM) { showFar(latlng); zoomInAt(latlng, 2); return; } draft.tool === 'rect' ? rectTap(t) : polyTap(t); return; }
   if (selected) { if (chosen >= 0) moveCornerTo(chosen, latlng); return; }
-  if (map.getZoom() < PIN_FROM) { zoomInAt(latlng, 3, true); return; }
+  if (map.getZoom() < PIN_FROM) { showFar(latlng); zoomInAt(latlng, 3, true); return; }
   if (!keep.ring) movePinTo(latlng);
 }
 
@@ -1259,7 +1266,8 @@ function mount(root) {
   ui.box.addEventListener('focusout', () => setTimeout(() => { if (!ui.box.contains(document.activeElement)) kbdOff(); else syncCross(); }));   // a moment later: a handle drawn again hands its focus on first
   map.on('movestart', () => { if (gesture && !glide) gesture.moved = true; });
   map.on('move', () => { if ((draft || (selected && chosen >= 0)) && (kbd || preciseNow())) liveRedraw(); });
-  map.on('zoomend', () => { if (draft || selected) sync(); else drawBar(); });
+  map.on('zoomend', () => { if (draft || selected) sync(); else drawBar(); checkFar(); });
+  ui.far?.querySelector('[data-act=zoomhere]')?.addEventListener('click', () => { const at = farAt ?? map.getCenter(); map.setView(at, Math.max(map.getZoom() + 1, needZoom() + 1), { animate: !motionQuiet() }); say(SAY.said.zoomedIn); });
   map.on('moveend', () => { if (selected) sync(); });
   document.addEventListener('crophalo:settings', () => { makeScale(); sync(); if (spotOpen()) refreshSpot(); });
   addEventListener('popstate', onPop);

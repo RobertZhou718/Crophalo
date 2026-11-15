@@ -978,5 +978,13 @@ await group('the next 7 days on This field', async () => {
   same('no forecast, no part', [K.weekModel(null, {}), K.weekModel({ days: [] }, {}), K.weekModel({ today: fc.today, days: [{ date: fc.today, tmax: NaN, tmin: NaN }] }, {})], [null, null, null]);
 });
 
+// The plan's name says its cover crop, so a plan with a cover never reads like the plan without
+group('plan title', () => {
+  const nm = id => CR.cropName(id), seasons = [{ crop: 'corn', cover: null }, { crop: 'soy', cover: 'ryecover' }];
+  same('without a cover the name is the crops', K.planTitle({ seasons: seasons.map(x => ({ ...x, cover: null })) }, nm), 'Corn, Soybeans');
+  same('with a cover the name says it', K.planTitle({ seasons }, nm), 'Corn, Soybeans, with cereal rye cover');
+  same('two covers are joined with "and"', K.planTitle({ seasons: [{ crop: 'corn', cover: 'ryecover' }, { crop: 'soy', cover: 'vetchmix' }] }, nm), 'Corn, Soybeans, with cereal rye cover and vetch + rye cover');
+  same('no plan is no name', K.planTitle(null, nm), '');
+});
 console.log(`${passed} passed, ${failed} failed`);
 process.exit(failed ? 1 : 0);

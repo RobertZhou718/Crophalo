@@ -987,6 +987,17 @@ await group('motion', async () => {
   await js(`document.documentElement.dataset.motion = ''`);
 });
 
+await group('farmsg', async () => {
+  // the owner's order: a press with Pin, Rectangle or Corners while the map is too far out says so at once, with a button that zooms to the spot
+  await mapReady();
+  await js(`import('/js/mapbase.js').then(m => m.baseNow().leaflet().setView([44.25, -85.4], 5, { animate: false }) && 1)`); await sleep(400);
+  await js(`document.querySelector('[data-tool=rect]').click()`); await sleep(400);
+  check('too far out, pressing Rectangle shows "Zoom in to choose your field." with a button, as a status', await js(`(() => { const f = document.querySelector('#mapxFar'); return !f.hidden && f.getAttribute('role') === 'status' && /^Zoom in to choose your field\\./.test(f.textContent.trim()) && /Zoom in here/.test(f.querySelector('button').textContent); })()`));
+  await js(`document.querySelector('[data-act=zoomhere]').click()`); await sleep(1500);
+  check('"Zoom in here" zooms in to where a field can be drawn and the message goes away', await js(`import('/js/mapbase.js').then(m => m.baseNow().leaflet().getZoom() >= 13) && document.querySelector('#mapxFar').hidden`));
+  check('every chosen part of a switch is white (the accent ink) on the blue, with a contrast of at least 4.5 to 1', await js(`(() => { const rgb = c => c.match(/[\\d.]+/g).slice(0, 3).map(Number), lum = ([r, g, b]) => { const f = v => { v /= 255; return v <= .03928 ? v / 12.92 : ((v + .055) / 1.055) ** 2.4; }; return .2126 * f(r) + .7152 * f(g) + .0722 * f(b); }, parts = [...document.querySelectorAll('.mapx-seg [aria-pressed=true], .mapx-base [aria-pressed=true], .spot-tabs [aria-selected=true]')]; if (!parts.length) return false; return parts.every(b => { const cs = getComputedStyle(b), fg = rgb(cs.color), bg = rgb(getComputedStyle(b.closest('.slide') ? b.closest('.slide') : b).backgroundColor === 'rgba(0, 0, 0, 0)' ? getComputedStyle(document.documentElement).getPropertyValue('--accent') .startsWith('#') ? 'rgb(10,99,216)' : 'rgb(10,99,216)' : cs.backgroundColor), a = Math.max(lum(fg), lum(bg)), d = Math.min(lum(fg), lum(bg)); return fg.join() === '255,255,255' && (a + .05) / (d + .05) >= 4.5; }); })()`));
+});
+
 await group('basenote', async () => {
   // the map's status line (the longest one: the detailed names did not load) sits at the bottom edge, never over the middle third of the map's height, at the phone widths and with the largest text
   for (const largest of [false, true]) for (const w of [320, 375, 390]) {

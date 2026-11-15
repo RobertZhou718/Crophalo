@@ -12,7 +12,7 @@ const SEEDS = ['index.html', 'manifest.json', 'data/regions.json'];
 // Files a screen asks by a built name (css/${sheet}.css, macro-${name}.js), which reading the modules cannot find. A big animation that lands adds its module here too.
 // One of them that this folder does not have (404) is left out; any other failure still drops the whole copy.
 const BY_NAME = ['css/market.css', 'css/fx.css', 'css/fx-halo.css', 'css/history.css', 'css/ahead.css', 'css/explain.css', 'css/notes.css', 'css/share.css', 'css/macro-report.css', 'css/trends.css',
-  'js/macro-turn.js', 'js/macro-setup.js', 'js/macro-descent.js', 'js/macro-light.js', 'js/macro-skeleton.js', 'js/macro-sun.js', 'css/macro-3d.css'];
+  'js/macro-turn.js', 'js/macro-setup.js', 'js/macro-descent.js', 'js/macro-light.js', 'js/macro-skeleton.js', 'js/macro-sun.js', 'css/macro-3d.css', 'css/video.css'];
 
 const here = new URL('./', self.location.href);
 if (typeof importScripts === 'function') importScripts('js/remind-sw.js');   // the reminders: a push shows its notice, and a press on it opens Crophalo

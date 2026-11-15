@@ -6,6 +6,7 @@ import { applySettings } from './settings.js';
 import { own } from './words.js';
 import { initHome } from './home.js';
 import { initWelcome, openWelcome } from './welcome.js';
+import { openVideo } from './video.js';   // the 30-second video of how Crophalo works: the top bar's "Watch the video" button
 import { toast } from './toast.js';
 import { loadLeaflet, warmLeaflet } from './leaflet-load.js';
 // The Start page loads only what it shows. The setup (wizard and map), the report, the info pages and My farm are fetched the first time they are asked for, each by the few lines below.
@@ -78,6 +79,7 @@ function initTopBar() {
   $('.skip').addEventListener('click', event => { event.preventDefault(); focusOnce($('#main')); });
   $('.brand').addEventListener('click', event => { if (event.metaKey || event.ctrlKey || event.shiftKey) return; event.preventDefault(); show('home'); });   // a new-tab click stays the browser's
   $('#navFarm').addEventListener('click', () => show('farm'));
+  $('#navVideo').addEventListener('click', openVideo);
   menuBtn.addEventListener('click', () => setMenu(!menuOpen()));   // the same button twice closes it
   menu.addEventListener('click', event => { const link = event.target.closest('a'); if (!link) return; setMenu(false); if (link.hash === location.hash) focusHeading(); });
   for (const kind of ['click', 'focusin']) document.addEventListener(kind, event => { if (!menuBtn.contains(event.target) && !menu.contains(event.target)) setMenu(false); });   // a click or a Tab that lands outside closes the list, so it never covers what has focus

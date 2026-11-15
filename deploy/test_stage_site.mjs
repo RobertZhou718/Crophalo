@@ -114,6 +114,9 @@ fs.rmSync(TMP, { recursive: true, force: true });
   if (fs.existsSync(path.join(REPO, 'scripts', 'serve.mjs'))) {
     const r = S.stage(REPO, null, { check: true, env: { CROPHALO_API: 'https://api.example.org' } });
     same('this repository: nothing stops the website from being staged', r.problems, []);
+    const real = S.servedRule(fs.readFileSync(path.join(REPO, 'scripts', 'serve.mjs'), 'utf8'));
+    same('this repository: the video of how Crophalo works goes online with its first picture, its timed words and its text; another file under media never', ['media/crophalo-30s.mp4', 'media/crophalo-30s-poster.jpg', 'media/crophalo-30s.vtt', 'media/crophalo-30s-transcript.txt', 'media/notes.md', 'media/.DS_Store'].map(f => S.shipped(f, real)), [true, true, true, true, false, false]);
+    same('this repository: the video is on the staged site\'s list', ['media/crophalo-30s.mp4', 'media/crophalo-30s-poster.jpg', 'media/crophalo-30s.vtt'].map(f => r.files.includes(f)), [true, true, true]);
     same('this repository: every outside address in the pages is allowed by the policy or listed as a plain link (deploy/stage-site.mjs, LINK_ONLY)', r.warnings.filter(w => w.includes('content security policy does not allow')), []);
   } else console.log('note  this folder is not inside the Crophalo repository yet: the check of its own pages runs once it is');
 }
