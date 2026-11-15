@@ -117,7 +117,7 @@ async function nameThePlace(mine) {
   const bar = $('#reportBar'); if (bar && !bar.contains(document.activeElement)) bar.outerHTML = barHTML();
 }
 // The page's parts as jump links, fixed under the top bar while the page scrolls: the current part is marked and a heading is never hidden under the bar.
-const PARTS = [['blkAnswer', 'Plant next'], ['blkCompare', 'Strategies'], ['blkWrong', 'What could go wrong'], ['blkWhen', 'When'], ['blkMore', 'Your field'], ['blkShare', 'Print']];
+const PARTS = [['blkAnswer', 'Plant next'], ['blkCompare', 'Strategies']];   // the other parts are hidden for now (the owner's order of 15 November); a printed or saved report still holds every part
 // The row of parts also carries the page's two actions at its right end, so Add to My farm and Print are always in reach while the page scrolls.
 const partsHTML = () => { const added = !!(cur?.farm && cur.farmFor === (cur.chosen ?? ''));
   return `<nav class="rv-parts" aria-label="Parts of this page"><div class="rv-parts-in"><ul>${PARTS.map(([id, label], i) => `<li><a href="#${id}" data-part="${id}"${i === 0 ? ' aria-current="true"' : ''}>${esc(label)}</a></li>`).join('')}</ul><span class="rv-parts-acts"><button type="button" class="btn" data-act="share" aria-haspopup="dialog"><svg class="ic" aria-hidden="true"><use href="#i-share"/></svg><span>Print or save</span></button><button type="button" class="btn primary" data-act="farm">${added ? '<svg class="ic" aria-hidden="true"><use href="#i-tick"/></svg> Added' : cur?.inFarm ? 'Open in My farm' : 'Add to My farm'}</button></span></div></nav>`; };
@@ -334,10 +334,13 @@ const SLOPE_NEWS = 'your field’s slope';
 const freshHTML = () => `<p>New data has arrived: ${esc([...cur.late.keys()].join(', '))}.</p><button type="button" class="btn primary" data-act="refresh" id="rvRefresh">Refresh the report</button>`;
 async function refreshReport() {
   if (!cur?.late?.size) return;
+  const host = root()?.querySelector('.rv-letter'), began = performance.now(); host?.classList.add('is-refreshing'); host?.setAttribute('aria-busy', 'true');
   const mine = run, queue = [...cur.late.values()], needsWork = [...cur.late.keys()].some(k => /crops|soil survey|slope/.test(k));
   cur.late.clear(); for (const apply of queue) { try { apply(); } catch { /* one late answer that cannot be applied leaves the others in */ } }
   if (needsWork) { await work(); if (mine !== run) return; }
-  figuresNow(); redrawKeep(); paintFresh();
+  const left = 650 - (performance.now() - began); if (left > 0) await new Promise(r => setTimeout(r, left));   // long enough to be seen as a refresh
+  if (mine !== run) return; figuresNow(); redrawKeep(); paintFresh();
+  const h2 = root()?.querySelector('.rv-letter'); h2?.classList.remove('is-refreshing'); h2?.removeAttribute('aria-busy');
 }
 // Draw a ready answer without loading (the tests and the engine's own demo use it): the state and the engine's result.
 export async function renderResult(state, result, { climate = null, weather = null, reading = null, imerg, dem, demo = false, series = null } = {}) {
@@ -413,9 +416,16 @@ function bind() {
   const r = root();
   r.addEventListener('click', event => {
     if (event.target.closest('[data-ff-reset]')) return filterReset();
-    const jump = event.target.closest('[data-part]'); if (jump) { event.preventDefault(); const el = document.getElementById(jump.dataset.part); partNow = jump.dataset.part; markPart(); const bar = $('#reportBar'), top = document.querySelector('.rv-letter'); if (bar && top) { const y = top.getBoundingClientRect().top + scrollY - bar.getBoundingClientRect().bottom - 16; if (scrollY > y) scrollTo({ top: Math.max(0, y), behavior: 'auto' }); } const h = el?.querySelector('h2'); if (h) { h.tabIndex = -1; h.focus({ preventScroll: true }); } return; }
+    const jump = event.target.closest('.rv-parts [data-part]'); if (jump) { event.preventDefault(); const el = document.getElementById(jump.dataset.part); partNow = jump.dataset.part; markPart(); const bar = $('#reportBar'), top = document.querySelector('.rv-letter'); if (bar && top) { const y = top.getBoundingClientRect().top + scrollY - bar.getBoundingClientRect().bottom - 16; if (scrollY > y) scrollTo({ top: Math.max(0, y), behavior: 'auto' }); } const h = el?.querySelector('h2'); if (h) { h.tabIndex = -1; h.focus({ preventScroll: true }); } return; }
     const zoom = event.target.closest('[data-zoom]'); if (zoom) return openZoom(zoom);
     const chip = event.target.closest('[data-hy-year]'); if (chip) { cur.hyYear = +chip.dataset.hyYear; redrawKeep(); document.getElementById(`hy-${cur.hyYear}`)?.focus({ preventScroll: true }); return; }
+    const sum = event.target.closest('.srow > summary');
+    if (sum && cur && !cur.loading && !event.target.closest('.srow-more, button, a, input')) {
+      event.preventDefault(); const row = sum.parentElement, id = row.dataset.planRow, was = row.hasAttribute('open'), now = row.classList.contains('is-now');
+      cur.chosen = now || cur.chosen === id ? null : id; cur.preselected = false; cur.picked = true; redrawKeep();
+      if (was) document.getElementById(`sr-${id}`)?.setAttribute('open', '');
+      toast(cur.chosen ? `You chose: ${optionLabel(allPlans(cur.result).find(p => p.id === id), cur.result)}` : 'Back to our suggestion'); return;
+    }
     const t = event.target.closest('[data-act], [data-plan]'); if (!t) return;
     if (t.dataset.act === 'money') { const f = cur?.money?.byPlan?.[t.dataset.plan]; if (f?.ok) openMoneySheet(f, allPlans(cur.result).find(p => p.id === t.dataset.plan), cur.money.rates, unitsNow(), t); return; }
     if (t.dataset.act === 'try' || t.dataset.act === 'untry') { const id = t.dataset.plan; cur.chosen = t.dataset.act === 'untry' ? null : id; cur.preselected = false; cur.picked = true; const open = id ? `sr-${id}` : ''; redrawKeep(); if (open) document.getElementById(open)?.setAttribute('open', ''); toast(cur.chosen ? `You chose: ${optionLabel(allPlans(cur.result).find(p => p.id === id), cur.result)}` : 'Back to our suggestion'); return; }
