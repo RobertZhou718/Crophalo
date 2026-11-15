@@ -142,7 +142,7 @@ await group('the folder', async () => {
   // scripts/fixtures/ (answers recorded from the outside services, played back by the suites) are passed over; nothing the project writes itself is.
   // docs/data-sources/ is the same kind of record in words: what each outside service answered on the day it was checked. A farmer has to see how old a source's
   // newest data is (a satellite's last sending day, a station's last report, the month a product ended), so those dates stay exactly as the services gave them.
-  const RECORDED = rel => rel.startsWith('scripts/fixtures/') || rel.startsWith('docs/data-sources/');
+  const RECORDED = rel => rel.startsWith('scripts/fixtures/') || rel.startsWith('scripts/recorded/') || rel.startsWith('docs/data-sources/');   // scripts/recorded/: real answers of the demo fields, dated by their data
   const early = [];
   for (const [rel, text] of TEXT) {
     if (!OURS(rel) || RECORDED(rel)) continue;

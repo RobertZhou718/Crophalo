@@ -1,0 +1,76 @@
+{
+ "mead-field": [
+  {
+   "lookup": "hlsbox",
+   "path": "/api/hlsbox?lat=41.1795&lon=-96.4398&ring=-96.4446%2C41.1830%3B-96.4349%2C41.1830%3B-96.4349%2C41.1829%3B-96.4349%2C41.1759%3B-96.4440%2C41.1759%3B-96.4447%2C41.1764",
+   "file": "hlsbox_99a59a34d2efe74ac994.json"
+  },
+  {
+   "lookup": "crophist",
+   "path": "/api/crophist?lat=41.1795&lon=-96.4398&country=US&near=0&ring=-96.4446%2C41.1830%3B-96.4349%2C41.1830%3B-96.4349%2C41.1829%3B-96.4349%2C41.1759%3B-96.4440%2C41.1759%3B-96.4447%2C41.1764%3B-96.4446%2C41.1830",
+   "file": "crophist_fae6fa02ef2b72bf0a56.json"
+  },
+  {
+   "lookup": "crophist",
+   "path": "/api/crophist?lat=41.1795&lon=-96.4398&country=US&near=0&ring=-96.4446%2C41.1830%3B-96.4350%2C41.1830%3B-96.4349%2C41.1829%3B-96.4349%2C41.1759%3B-96.4440%2C41.1759%3B-96.4446%2C41.1764",
+   "file": "crophist_665d44e0e77500eedd57.json"
+  },
+  {
+   "lookup": "dem",
+   "path": "/api/dem?lat=41.1795&lon=-96.4398&w=1120&d=1087&nx=129&ny=129",
+   "file": "dem_f4e5a10913b241506978.json"
+  },
+  {
+   "lookup": "ecopass",
+   "path": "/api/ecopass?lat=41.1795&lon=-96.4398",
+   "file": "ecopass_8fe059c5034d49d0dfd9.json"
+  },
+  {
+   "lookup": "hlsndvi",
+   "path": "/api/hlsndvi?lat=41.1795&lon=-96.4398",
+   "file": "hlsndvi_c33c7c383aa8a0f49b27.json"
+  },
+  {
+   "lookup": "ndvihist",
+   "path": "/api/ndvihist?lat=41.1795&lon=-96.4398",
+   "file": "ndvihist_eeb58d01d3eabf8b0404.json"
+  }
+ ],
+ "beltsville-field": [
+  {
+   "lookup": "crophist",
+   "path": "/api/crophist?lat=39.0310&lon=-76.8441&country=US&near=0&ring=-76.8460%2C39.0320%3B-76.8450%2C39.0320%3B-76.8446%2C39.0317%3B-76.8431%2C39.0317%3B-76.8427%2C39.0319%3B-76.8422%2C39.0320%3B-76.8421%2C39.0318%3B-76.8418%2C39.0316%3B-76.8418%2C39.0313%3B-76.8419%2C39.0311%3B-76.8422%2C39.0309%3B-76.8425%2C39.0308%3B-76.8427%2C39.0306%3B-76.8432%2C39.0298%3B-76.8443%2C39.0301%3B-76.8460%2C39.0303%3B-76.8460%2C39.0320",
+   "file": "crophist_ef66ba48347825bf451b.json"
+  },
+  {
+   "lookup": "crophist",
+   "path": "/api/crophist?lat=39.0310&lon=-76.8441&country=US&near=0&ring=-76.8460%2C39.0320%3B-76.8449%2C39.0320%3B-76.8446%2C39.0317%3B-76.8431%2C39.0317%3B-76.8427%2C39.0319%3B-76.8422%2C39.0320%3B-76.8421%2C39.0318%3B-76.8418%2C39.0316%3B-76.8418%2C39.0313%3B-76.8419%2C39.0311%3B-76.8422%2C39.0309%3B-76.8425%2C39.0308%3B-76.8427%2C39.0306%3B-76.8432%2C39.0298%3B-76.8443%2C39.0301%3B-76.8460%2C39.0303",
+   "file": "crophist_8c304455c95f43c5f397.json"
+  },
+  {
+   "lookup": "dem",
+   "path": "/api/dem?lat=39.0309&lon=-76.8439&w=563&d=448&nx=129&ny=129",
+   "file": "dem_3ac8fdd137c573dfefec.json"
+  },
+  {
+   "lookup": "ecopass",
+   "path": "/api/ecopass?lat=39.0310&lon=-76.8441",
+   "file": "ecopass_40169eb7ff2739bb54e0.json"
+  },
+  {
+   "lookup": "hlsndvi",
+   "path": "/api/hlsndvi?lat=39.0310&lon=-76.8441",
+   "file": "hlsndvi_3b6266b6932c64606324.json"
+  },
+  {
+   "lookup": "ndvihist",
+   "path": "/api/ndvihist?lat=39.0310&lon=-76.8441",
+   "file": "ndvihist_a41b0494f0d764010cbc.json"
+  },
+  {
+   "lookup": "hlsbox",
+   "path": "/api/hlsbox?lat=39.0310&lon=-76.8441&ring=-76.8460%2C39.0320%3B-76.8450%2C39.0320%3B-76.8446%2C39.0317%3B-76.8431%2C39.0317%3B-76.8427%2C39.0319%3B-76.8422%2C39.0320%3B-76.8421%2C39.0318%3B-76.8418%2C39.0316%3B-76.8418%2C39.0313%3B-76.8419%2C39.0311%3B-76.8422%2C39.0309%3B-76.8425%2C39.0308%3B-76.8427%2C39.0306%3B-76.8432%2C39.0298%3B-76.8443%2C39.0301%3B-76.8460%2C39.0303",
+   "file": "hlsbox_4252ada823370c1ec015.json"
+  }
+ ]
+}

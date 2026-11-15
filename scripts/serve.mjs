@@ -197,6 +197,15 @@ function keepFor(answer, row) {   // a whole answer for the row's time; a partia
   return answer.incomplete || answer.stale || answer.read_errors > 0 ? H : row.ttl;
 }
 function readKept(file, now) { try { const kept = JSON.parse(fs.readFileSync(file, 'utf8')); return now >= kept.stored && now < kept.until ? kept : null; } catch { return null; } }
+// ---- the slow lookups answer at once from what is kept: an answer past its keep time is still served (and made new behind it), and before anything is kept the two United States demo fields have a real answer recorded in the repository
+const STALE_OK = new Set(['dem', 'crophist', 'ndvihist', 'hlsndvi', 'hlsbox', 'ecopass', 'gracecell', 'imergrain']);
+const RECORDED_DIR = path.join(ROOT, 'scripts', 'recorded');
+function readStale(file) { try { const kept = JSON.parse(fs.readFileSync(file, 'utf8')); return kept?.answer?.ok === true ? kept : null; } catch { return null; } }   // a whole answer, however old (the cleaning-up removes it after twice its time)
+// A real answer recorded for a demo field: the file is named like the kept answer (same lookup, same arguments, so never another place) and holds { recorded_on, answer }, with its source and licence inside the answer.
+function readRecorded(file) {
+  try { const rec = JSON.parse(fs.readFileSync(path.join(RECORDED_DIR, path.basename(file)), 'utf8')); return rec?.answer?.ok === true && /^\d{4}-\d{2}-\d{2}$/.test(rec.recorded_on) ? rec : null; } catch { return null; }
+}
+const recordedWords = on => `Recorded on ${on}: a real answer kept for this demo field while the live lookup runs.`;
 function writeKept(file, answer, keep) {
   try { fs.mkdirSync(path.dirname(file), { recursive: true }); const tmp = `${file}.${process.pid}.tmp`, now = Date.now(); fs.writeFileSync(tmp, JSON.stringify({ stored: now, until: now + keep, answer })); fs.renameSync(tmp, file); return now; }
   catch { return Date.now(); }   // a full disk only means no keeping
@@ -323,7 +332,19 @@ async function lookup(req, res, id, row, url) {
   const spot = row.point && (row.snap || row.centre) ? { lat: Number(args[0]), lon: Number(args[1]) } : null;   // the place really read: the answer says it
   const send = (answer, cached, at) => json(req, res, 200, { ...answer, ...(spot && answer.ok ? { spot } : {}), cached, fetched: new Date(at).toISOString() });
   const file = cacheFile(id, args), finalFile = cacheFile(id, args, true), now = Date.now(), hit = readKept(file, now) || readKept(finalFile, now);
+  if (ENV.FW_LOG_KEPT === '1') console.log(`kept-file ${id} ${path.basename(file)}`);   // for recording a demo field's answers: which kept file a request is
   if (hit) return send(hit.answer, true, hit.stored);
+  const behind = () => {   // the answer is made new behind the one just served: one run, only when the lane has room, never waiting in the queue for it
+    if (inFlight.has(file) || !mayStart(laneOf(id)) || lane[laneOf(id)].q.length) return;
+    const bg = { id, promise: (async () => { const release = await takeSlot(id); try { return await runScript(id, row, args); } finally { release(); } })().then(answer => { const keep = keepFor(answer, row); return { answer, at: keep ? writeKept(answer.ok ? file : finalFile, answer, keep) : Date.now() }; }) };
+    inFlight.set(file, bg); bg.promise.catch(() => {}).finally(() => inFlight.delete(file));
+  };
+  if (STALE_OK.has(id) && !inFlight.has(file)) {
+    const old = readStale(file);
+    if (old) { behind(); return send({ ...old.answer, kept_since: new Date(old.stored).toISOString() }, true, old.stored); }
+    const rec = readRecorded(file);
+    if (rec) { behind(); return send({ ...rec.answer, recorded: true, recorded_on: rec.recorded_on, note: recordedWords(rec.recorded_on) }, true, Date.parse(`${rec.recorded_on}T12:00:00Z`)); }
+  }
   let job = inFlight.get(file);
   if (!job) {   // visitors asking the same thing share one run
     if (!mayStart(laneOf(id)) && lane[laneOf(id)].q.length >= LIVE_WAIT_MAX) return json(req, res, 200, { ok: false, reason: 'The data server is busy. Try again in a minute.' });
