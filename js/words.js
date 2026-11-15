@@ -109,7 +109,6 @@ export const PARCEL_FOR = Object.freeze({   // where a farmer looks up a parcel 
 export const PARCEL_ELSE = ['FAO GeoNetwork: find your country’s parcel map', 'https://www.fao.org/geonetwork/'];
 
 export const WORDS = Object.freeze({
-  roadTitle: 'This region comes with ready answers.', roadSub: 'The rotation, the water and the soil are filled in. You can change any answer in the steps below.',
   placeLoading: 'Finding the place…', demoChip: 'Demo region', stepLabel: (n, name) => `Step ${n} of 4: ${name}`,
   fold: 'Type coordinates or look up a parcel', coordLabel: 'Coordinates', go: 'Go', badCoords: 'Could not read those coordinates. Try 42.03, -93.62',
   parcelLead: 'Have a parcel or legal land number? Look it up on your government map, then paste the coordinates above:',

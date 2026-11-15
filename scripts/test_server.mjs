@@ -249,7 +249,9 @@ async function statusRoutes(A) {
   same('health: a login was found, in the folder', [h.netrc, h.login], [true, 'folder']);
   same('health: the saved-fields copy is off until its route exists', h.userdata, false);
   check('health: uptime in whole seconds', Number.isInteger(h.uptime_s) && h.uptime_s >= 0, show(h.uptime_s));
-  same('health: the two lookups the server has (SMAP root-zone moisture, kept 6 hours; land heights, kept 30 days), never run yet', h.live, { smaproot: { last_ok: null, error: null, ttl_hours: 6 }, dem: { last_ok: null, error: null, ttl_hours: 720 } });
+  const ROWS = [['smaproot', 'NASA SMAP root-zone soil moisture', 6], ['dem', 'Land heights (the finest free height map)', 720], ['imergrain', 'NASA GPM IMERG satellite rain, last 30 days', 6], ['gracecell', 'NASA GRACE-FO regional water storage', 168],
+    ['ecopass', 'NASA ECOSTRESS ground temperature passes', 6], ['hlsndvi', 'NASA HLS greenness (Landsat and Sentinel-2)', 24], ['cropsnear', 'Crops grown nearby (AAFC and USDA crop maps)', 720]];   // id, name, hours a whole answer is kept
+  same('health: the seven lookups the server has, each with how long a whole answer is kept, never run yet', h.live, Object.fromEntries(ROWS.map(([id, , hours]) => [id, { last_ok: null, error: null, ttl_hours: hours }])));
   check('health never holds the login itself', !health.text.includes(USER) && !health.text.includes(WORD));
   const named = await askJson(p, '/api/health', { headers: { host: 'uptime-checker.example', origin: 'https://uptime-checker.example' } });
   same('health answers for any Host name', [named.status, named.json?.ok], [200, true]);
@@ -265,7 +267,14 @@ async function statusRoutes(A) {
   same('POST to health from another name: refused', (await ask(p, '/api/health', { method: 'POST', headers: { host: 'evil.example' } })).status, 403);
 
   const sources = await askJson(p, '/api/sources');
-  same('/api/sources: 200, a list: the SMAP root-zone moisture and the land heights, nothing run, nothing kept', [sources.status, sources.json.map(r => [r.id, r.name, r.last_ok_time, r.cache_items, r.ttl_hours])], [200, [['smaproot', 'NASA SMAP root-zone soil moisture', null, 0, 6], ['dem', 'Land heights (the finest free height map)', null, 0, 720]]]);
+  same('/api/sources: 200, a list: one row per lookup, in order, nothing run, nothing kept', [sources.status, sources.json.map(r => [r.id, r.name, r.last_ok_time, r.cache_items, r.ttl_hours])], [200, ROWS.map(([id, name, hours]) => [id, name, null, 0, hours])]);
+  // The new lookups check what they are asked before any Python runs: a plain 400 with the reason.
+  const asked = async q => { const r = await askJson(p, q); return [r.status, r.json?.reason]; };
+  same('crop map with no country: 400, the country is asked for', await asked('/api/cropsnear?lat=43.13&lon=-80.75'), [400, 'The country of the field is needed to read the crop map (country=CA or US)']);
+  same('crop map beyond 84 degrees: 400', await asked('/api/cropsnear?lat=85&lon=-80.75&country=CA'), [400, 'lat must be -84..84 and lon -180..180']);
+  same('greenness with half a window: 400', await asked('/api/hlsndvi?lat=43.13&lon=-80.75&first=20261101'), [400, 'first and last must both be given as YYYYMMDD']);
+  same('satellite rain with no place: 400', (await asked('/api/imergrain?lat=&lon=-80.75'))[0], 400);
+  same('water storage with no place: 400', (await asked('/api/gracecell?lat=43.13'))[0], 400);
   same('/api/sources: never stored', sources.headers['cache-control'], 'no-store');
   const wrong = await askJson(p, '/api/sources', { method: 'POST' });
   same('POST to sources: 405 as JSON with allow', [wrong.status, wrong.headers.allow, wrong.json], [405, 'GET', { ok: false, reason: 'Use GET' }]);

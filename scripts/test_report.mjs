@@ -1,8 +1,14 @@
 // Crophalo's report suite: the markup of the Overview and Options from the engine's answer, the "i" with its sources, the honest "not read yet" state when
 // there is no engine, and the joins that never invent a plan. The fixture below is made for these checks only: no screen ever shows it.
 // RULE: never loosen a check to make it pass; fix the project. No page and no internet are needed. Run: node scripts/test_report.mjs
-import { overviewHTML, optionsHTML, laterHTML, loadingHTML, infoButton, sourceNotes, assumptions, estimatedArea, coverLines, windowLines, barsHTML, scoresFoldHTML, optionDetailHTML, sureHTML, planName, allPlans, TABS, WILL_HOLD, NOT_READ, dayWords } from '../js/report-view.js';
+import { planWithCrops, PRESELECT_WORDS, farmPlans, proposedPlan, betterOptions, overviewHTML, optionsHTML, laterHTML, loadingHTML, infoButton, sourceNotes, assumptions, estimatedArea, coverLines, windowLines, barsHTML, scoresFoldHTML, optionDetailHTML, sureHTML, planName, allPlans, TABS, WILL_HOLD, NOT_READ, dayWords } from '../js/report-view.js';
 import { getOptions, addToFarm } from '../js/joins.js';
+import { engineSpot, loadNearby } from '../js/near-load.js';
+import { climateFor } from '../js/joins.js';
+import { once, spotKey, forgetAll } from '../js/memo.js';
+import { loadSpot, spotFor, forgetSpots, prefetchPlace, getSmap } from '../js/report-load.js';
+import { buildSeries } from '../js/data.js';
+import { computeClimate } from '../js/climate.js';
 import { MORE, ALL_SOURCES } from '../js/sources.more.js';
 import { cardHtml } from '../js/srci.js';
 import fs from 'node:fs';
@@ -61,6 +67,37 @@ same('plan names from the crops', [planName(now), planName(other)], ['Corn, then
 same('cover lines come only from what the plan says', [coverLines(now).length, coverLines({ seasons: [{ year: 1, crop: 'corn' }] }).length], [3, 0]);
 same('windows come only from dates the plan carries', [windowLines(wheat).length, windowLines(now).length, windowLines({ seasons: [{ crop: 'wheat', window: { earliest: 'x', latest: '2028-10-15' } }] }).length], [1, 0, 0]);
 
+// ---- keep, the options worth trying, and the plan that goes to My Farm
+const cover73 = { id: 'cover', name: 'With a cover crop', kind: 'proposed', seasons: wheat.seasons, score: 73, flag: 'holds' };
+const wsoy = { id: 'wsoy', name: 'Winter wheat, then soybeans', kind: 'proposed', seasons: [now.seasons[1], wheat.seasons[2]], score: 73, flag: 'holds' };
+const cws = { id: 'cws', name: 'Corn, soybeans, winter wheat', kind: 'proposed', seasons: wheat.seasons, score: 69, flag: 'holds' };
+const weak = { id: 'weak', name: 'Barley', kind: 'proposed', seasons: other.seasons, score: 90, flag: 'fails' };
+const KEEP = { ...RESULT, recommended: now, others: [cws, weak, wsoy, cover73], reason: 'Keeping it scores 70; nothing gains the 8 points it takes to call a change.' };
+same('the best option that holds up is the default plan for My Farm when nothing was chosen (a plan that does not hold up never is)', [proposedPlan(KEEP).plan.id, proposedPlan(KEEP).why], ['wsoy', 'best']);
+same('a plan the farmer chose wins', [proposedPlan(KEEP, 'cws').plan.id, proposedPlan(KEEP, 'cws').why], ['cws', 'chosen']);
+same('My Farm gets the engine\'s own plan ids, never a made-up one', [farmPlans(KEEP, 'cws').current.id, farmPlans(KEEP, 'cws').proposed.id, farmPlans(KEEP, 'cws').current.kind, farmPlans(KEEP, 'cws').proposed.kind], [KEEP.current.id, 'cws', 'current', 'proposed']);
+same('even a plan that does not hold up, when the farmer chose it', proposedPlan(KEEP, 'weak').plan.id, 'weak');
+same('choosing what is grown now means nothing chosen', proposedPlan(KEEP, 'now').why, 'best');
+same('a suggested change is the proposed plan when nothing was chosen', [proposedPlan(RESULT).plan.id, proposedPlan(RESULT).why], ['wheat', 'recommended']);
+// the engine marks a plan with flag 'holds' | 'borderline' | 'fails' | 'risky' (never a "holds" field)
+const borderline = { id: 'bl', name: 'Oats', kind: 'proposed', seasons: other.seasons, score: 88, flag: 'borderline' }, noFlag = { id: 'nf', name: 'Rye', kind: 'proposed', seasons: other.seasons, score: 95 };
+same('a plan that only just suits, or has no flag, is never "the best option that holds up"', betterOptions({ ...KEEP, others: [borderline, noFlag, cws] }).map(p => p.id), ['cws']);
+same('only a plan flagged "holds" can go to My Farm by default', proposedPlan({ ...KEEP, others: [borderline, noFlag] }).why, 'recommended');
+same('the demo plan is found by its crops, not by a made-up id', [planWithCrops({ ...KEEP, others: [cws, wsoy] }, ['corn', 'soy', 'wheat'])?.id, planWithCrops({ ...KEEP, others: [wsoy] }, ['corn', 'soy', 'wheat'])], ['cws', null]);
+same('a demo plan that does not hold up is not pre-selected', planWithCrops({ ...KEEP, others: [{ ...cws, flag: 'borderline' }] }, ['corn', 'soy', 'wheat']), null);
+check('a pre-selected plan is labelled an option, not our firm suggestion', overviewHTML(KEEP, { chosen: 'cws', preselected: true }).includes(PRESELECT_WORDS) && !overviewHTML(KEEP, { chosen: 'cws' }).includes(PRESELECT_WORDS) && /not our firm suggestion/.test(PRESELECT_WORDS));
+same('keep with nothing that holds up: the suggestion itself', proposedPlan({ ...KEEP, others: [weak] }).why, 'recommended');
+same('no answer, no plan', proposedPlan(null), { plan: null, why: 'none' });
+same('the better options are those that hold up, best first', betterOptions(KEEP).map(p => p.id), ['wsoy', 'cover', 'cws']);
+const kept = overviewHTML(KEEP, { state: STATE });
+check('keep: the headline says Keep and the compare shows what is grown now beside the best option worth trying', /Keep Corn, then Soybeans, then Corn/.test(kept) && kept.includes('Now (our suggestion: keep it)') && kept.includes('Worth trying'));
+check('keep: "Options worth trying" lists the best two that hold up, each with its score and a "Try this plan" button', (() => { const w = kept.split('Options worth trying')[1] ?? ''; return (w.match(/data-act="try"/g) ?? []).length === 2 && /Winter wheat, then Soybeans|Winter wheat/.test(w) && /Score 73/.test(w) && /what you grow now: 62/.test(w) && !/Barley/.test(w); })());
+check('keep: a plan chosen to try is shown as chosen, and sits in the compare', (() => { const h = overviewHTML(KEEP, { state: STATE, chosen: 'wsoy' }); return /aria-pressed="true">Chosen to try</.test(h) && h.includes('The plan you chose to try'); })());
+check('a suggested change has no "worth trying" list', !/Options worth trying/.test(overviewHTML(RESULT, { state: STATE })));
+check('Options: every plan but the one grown now has a "Try this plan" button in its detail', /data-act="try" data-plan="wheat"/.test(optionsHTML(KEEP, 'cws')) === false && /data-act="try" data-plan="cws"/.test(optionsHTML(KEEP, 'cws')) && !/data-act="try"/.test(optionsHTML(KEEP, 'now')));
+check('Options: the chosen plan says so on its card and its button, and offers to go back to the suggestion', (() => { const h = optionsHTML(KEEP, 'wsoy', 'wsoy'); return /Chosen to try: add it to My Farm/.test(h) && /<span class="ocard-tag chip">Chosen to try/.test(h) && /data-act="untry"/.test(h) && !/data-act="untry"/.test(optionsHTML(KEEP, 'wsoy')); })());
+check('the chosen button is not the primary one: Add to My Farm stays the one blue action', !/btn primary/.test(optionsHTML(KEEP, 'wsoy', 'wsoy') + overviewHTML(KEEP, { state: STATE, chosen: 'wsoy' })));
+
 // ---- the "i"
 same('NASA is listed first', sourceNotes(['fao', 'power', 'rules']).map(n => n.key), ['power', 'fao', 'rules']);
 same('an unknown key is left out and a key counts once', sourceNotes(['power', 'power', 'nope', '__proto__']).map(n => n.key), ['power']);
@@ -113,6 +150,57 @@ check('one entry for every source in the table, built from the table', (dp.match
 check('NASA sources come first, each with its "i"', dp.indexOf('NASA</span>') < dp.indexOf('class="src">') && (dp.match(/class="srci/g) ?? []).length === Object.keys(ALL_SOURCES).length);
 check('the NASA line says NASA does not endorse it', /not made, reviewed or endorsed by NASA/.test(dp));
 check('a note from outside is plain text on the Data page', !/<img src=x/.test(dataPageHTML({ x: { org: 'A', name: '<img src=x>', nasa: false, who: 'w', what: '<b>', talk: 't', url: 'https://x.invalid/' } })));
+
+// ---- the place the engine is asked about (crops grown nearby, country, today)
+{ const st = { name: 'Oxford', loc: { lat: 43.13, lon: -80.75, label: 'Oxford', cc: 'CA' }, area: { slope: 2.1 } };
+  const ANS = { ok: true, country: 'CA', year: 2025, box: { north: 43.27, south: 42.99, east: -80.58, west: -80.92 }, cropland_ha: 90000, crops: [{ crop: 'corn', share: 0.3, ha: 27000 }, { crop: 'soy', share: 0.3, ha: 27000 }, { crop: 'canola', share: 0.0001, ha: 9 }], wider: [], classes: [] };
+  let asked = ''; const near = await loadNearby(st.loc, async url => { asked = url; return { json: async () => ANS }; });
+  same('the route asked, with the country the crop maps need', asked, '/api/cropsnear?lat=43.1300&lon=-80.7500&country=CA');
+  { let byName = '', none = ''; await loadNearby({ lat: 43.13, lon: -80.75, label: 'Woodstock, Ontario, Canada', cc: '' }, async url => { byName = url; return { json: async () => ANS }; }); await loadNearby({ lat: 43.13, lon: -80.75 }, async url => { none = url; return { json: async () => ({ ok: false, reason: 'x' }) }; });
+    same('with no code, the country is the last part of the place line; with no place line, none is sent', [byName, none], ['/api/cropsnear?lat=43.1300&lon=-80.7500&country=Canada', '/api/cropsnear?lat=43.1300&lon=-80.7500']); }
+  check('the crop-map route is asked with the field\'s position', typeof near === 'object' && Array.isArray(near.absent) && near.absent.includes('canola'), JSON.stringify(Object.keys(near)));
+  const spot = engineSpot(st, near);
+  check('the engine gets the country (not only cc), the slope, what is absent nearby, and the nearby line', spot.country === 'CA' && spot.slope === 2.1 && spot.absent.includes('canola') && /Farmland in a box/.test(spot.nearby.line) && spot.cc === 'CA', JSON.stringify(Object.keys(spot)));
+  const failed = await loadNearby(st.loc, async () => { throw new Error('x'); }); check('a failed lookup leaves the gate open and says so', failed.absent === undefined && /could not be read/.test(failed.nearby.gap), JSON.stringify(failed).slice(0, 160));
+  const slow = await loadNearby(st.loc, () => new Promise(() => {}), 30); check('a lookup that never answers is given up on', slow.absent === undefined && /could not be read/.test(slow.nearby.gap));
+  same('no position asks nothing', (await loadNearby({}, async () => { throw new Error('asked'); })).absent, undefined);
+  const seen = []; await getOptions({}, {}, spot, async () => ({ optionsFor: (a, b, c, d) => { seen.push(d); return { recommended: now, current: now }; } }), { today: '2026-11-15' });
+  same('optionsFor is given today', seen[0], { today: '2026-11-15' }); }
+
+// ---- the what-if sliders move the climate the options are worked out on
+{ const REC = JSON.parse(fs.readFileSync(new URL('./fixtures/power_barrie.json', import.meta.url), 'utf8')), lat = REC.geometry.coordinates[1], series = buildSeries(REC, { lat, lon: REC.geometry.coordinates[0] }), real = computeClimate(series, lat);
+  same('sliders at zero leave the real climate as it is', climateFor(series, real, { rainPct: 0, tempC: 0 }, lat) === real, true);
+  const wet = climateFor(series, real, { rainPct: 30, tempC: 0 }, lat), hot = climateFor(series, real, { rainPct: 0, tempC: 3 }, lat);
+  check('more rain gives a different, wetter climate (the yearly rain rises)', wet !== real && JSON.stringify(wet.yearly) !== JSON.stringify(real.yearly) && JSON.stringify(wet.monthly) !== JSON.stringify(real.monthly));
+  check('warmer weather gives a different climate (the cold nights move)', hot !== real && JSON.stringify(hot.coldNight) !== JSON.stringify(real.coldNight) && JSON.stringify(hot.yearly) !== JSON.stringify(real.yearly));
+  same('no record leaves the climate alone', climateFor(null, real, { rainPct: 30 }, lat) === real, true); }
+
+// ---- speed: the report does not wait for the forecast, shares lookups started earlier, and needs no pause for kept answers
+{ const PW = fs.readFileSync(new URL('./fixtures/power_barrie.json', import.meta.url), 'utf8'), FC = fs.readFileSync(new URL('./fixtures/forecast_barrie.json', import.meta.url), 'utf8'), P = JSON.parse(PW), where = { lat: P.geometry.coordinates[1], lon: P.geometry.coordinates[0] };
+  const mk = (delays, log = []) => async url => { const kind = /power\.larc/.test(url) ? 'power' : /open-meteo/.test(url) ? 'forecast' : 'other'; log.push(kind); await new Promise(r => setTimeout(r, delays[kind] ?? 0)); const text = kind === 'power' ? PW : kind === 'forecast' ? FC : '{}'; return { ok: true, status: 200, headers: { get: () => null }, text: async () => text, json: async () => JSON.parse(text) }; };
+  const t0 = Date.now(), r = await loadSpot(where, { fetch: mk({ power: 50, forecast: 4000 }) }), took = Date.now() - t0; let settled = false; r.forecastP.then(() => { settled = true; });
+  await new Promise(res => setTimeout(res, 0));
+  check('loadSpot answers once the weather and the climate are in, while the forecast (4 s) is still on its way', r.ok && settled === false && took < 3900 && r.forecast === null && typeof r.forecastP?.then === 'function', `${took} ms, settled ${settled}`);
+  const fc = await r.forecastP; check('the forecast comes back later as a promise with the raw answer', fc && typeof fc === 'object');
+  same('answers that had to be fetched are not "kept"', r.allCached, false);
+  let usedHook = 0; const hooked = await loadSpot(where, { fetch: mk({}), climateFrom: async (json, place) => { usedHook++; return { ok: true, series: { stand: 'in' }, climate: { stand: 'in' } }; } });
+  check('the climate can be made away from the page (climateFrom): the page gets what it returns', hooked.ok && usedHook === 1 && hooked.climate.stand === 'in' && hooked.series.stand === 'in');
+  const bad = await loadSpot(where, { fetch: mk({}), climateFrom: async () => ({ ok: false, reason: 'No.' }) }); check('a refusal from the worker falls back to the back-up record, in words', bad.ok === false || bad.note !== undefined);
+  // sharing
+  forgetSpots(); forgetAll(); const log = [], env = { fetch: mk({ power: 30, forecast: 30 }, log) }, rows = [];
+  const first = spotFor(where, env), second = spotFor(where, env, (...e) => rows.push(e)); const [a, b] = await Promise.all([first, second]);
+  check('two asks for one place start the lookups once', log.filter(k => k === 'power').length === 1 && log.filter(k => k === 'forecast').length === 1 && a.ok && b.ok, log.join());
+  const late = []; const third = await spotFor(where, env, (...e) => late.push(e)); check('a report opened after the lookups finished is told every row at once and asks nothing', late.length >= 1 && late.some(e => e[0] === 'power' && e[1] === 'ok') && log.length === 2, `${late.length} rows, ${log.join()}`);
+  const own = log.length; await prefetchPlace(where, env); check('a prefetch for a place already asked asks nothing more for the weather', log.length === own, `${log.length} vs ${own}`);
+  forgetSpots(); const bog = [], failEnv = { fetch: async () => { bog.push(1); throw new Error('down'); } }; await spotFor(where, failEnv).catch(() => {}); await spotFor(where, failEnv).catch(() => {});
+  check('a failed lookup is not remembered: the next ask tries again', bog.length >= 2, String(bog.length));
+  // the memory itself
+  forgetAll(); let starts = 0; const run = async () => { starts++; return { ok: true }; };
+  await Promise.all([once('k', run), once('k', run)]); await once('k', run); same('once: one start however many ask', starts, 1);
+  starts = 0; forgetAll(); let n = 0; await once('f', async () => (n++ ? { ok: true } : { ok: false })); await once('f', async () => (n++ ? { ok: true } : { ok: false })); same('once: a { ok: false } answer is forgotten at once', n, 2);
+  let clock = 0; forgetAll(); starts = 0; await once('old', run, { now: () => clock }); clock = 11 * 60e3; await once('old', run, { now: () => clock }); same('once: an answer older than ten minutes is asked again', starts, 2);
+  same('once: two places are two keys', spotKey('smap', { lat: 43.13, lon: -80.75 }) === spotKey('smap', { lat: 43.1300, lon: -80.7500 }) && spotKey('smap', { lat: 43.13, lon: -80.75 }) !== spotKey('smap', { lat: 43.14, lon: -80.75 }), true);
+  forgetAll(); forgetSpots(); }
 
 console.log(`report: ${passed} passed, ${failed} failed`);
 process.exit(failed ? 1 : 0);

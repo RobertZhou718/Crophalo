@@ -1,8 +1,8 @@
 /* Crophalo: the setup wizard's look. It only uses the tokens and classes of css/app.css and never restates a token value. */
 #view-setup { padding: 0; }
-.setup { display: grid; grid-template-columns: minmax(340px, 460px) minmax(0, 1fr); align-items: start; gap: var(--space-16); max-width: var(--nav-w); margin: 0 auto; padding: var(--space-16); }
-.panel { min-width: 0; display: flex; flex-direction: column; gap: var(--space-16); padding: var(--space-16) var(--space-16) 0; border-radius: var(--r1); background: var(--card); box-shadow: var(--shadow); }
-.mapcol { min-height: 420px; border-radius: var(--r1); background: var(--map-ph); box-shadow: var(--shadow); position: sticky; top: calc(var(--navh) + var(--space-16)); height: calc(86vh / var(--tz) - var(--navh)); }
+.setup { display: grid; grid-template-columns: minmax(340px, 30%) minmax(0, 1fr); align-items: stretch; gap: 0; max-width: none; margin: 0; padding: 0; }   /* the map takes all the room the steps do not need, edge to edge */
+.panel { min-width: 0; display: flex; flex-direction: column; gap: var(--space-16); padding: var(--space-16) var(--space-16) 0; border-radius: 0; background: var(--card); box-shadow: 1px 0 0 var(--sep); }
+.mapcol { min-height: 420px; border-radius: 0; background: var(--map-ph); position: sticky; top: var(--navh); height: calc(100dvh / var(--tz) - var(--navh)); }
 .panel-name { font-size: var(--fs-title2); }
 .panel-place { display: flex; flex-wrap: wrap; align-items: center; gap: 6px var(--space-8); margin-top: var(--space-4); color: var(--ink2); font-size: var(--fs-small); }
 .wh { font-size: 26px; }
@@ -11,7 +11,7 @@
 
 /* step bar: one equal tile per step; a done step shows a tick, the current one a ring, steps far ahead are off */
 .wsteps { display: grid; grid-auto-flow: column; grid-auto-columns: 1fr; gap: 6px; margin: 0; padding: 0; list-style: none; }
-.wstep { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 6px; width: 100%; min-height: 64px; padding: 8px 4px; border: 0; border-radius: var(--r2); background: var(--fill2); color: var(--ink2); font-size: 12.5px; font-weight: var(--fw-semi); line-height: 1.2; text-align: center; overflow-wrap: anywhere; cursor: pointer; }
+.wstep { display: flex; flex-direction: column; align-items: center; justify-content: flex-start; gap: 6px; width: 100%; min-height: 64px; padding: 10px 4px 8px; border: 0; border-radius: var(--r2); background: var(--fill2); color: var(--ink2); font-size: 12.5px; font-weight: var(--fw-semi); line-height: 1.2; text-align: center; overflow-wrap: anywhere; cursor: pointer; }
 .wstep:disabled { opacity: .45; cursor: default; }
 .wnum { display: grid; place-items: center; width: 24px; height: 24px; border-radius: 50%; background: var(--fill); font-size: var(--fs-small); font-weight: var(--fw-bold); }
 .wstep.done .wnum { background: var(--good-soft); color: var(--good); }
@@ -68,15 +68,13 @@
 @media (max-height: 560px) { .cta { position: static; } }
 
 @media (max-width: 860px) {
-  .setup { grid-template-columns: minmax(0, 1fr); padding: var(--space-8); }
-  .mapcol { position: static; order: -1; height: 22vh; min-height: 140px; }
+  .setup { grid-template-columns: minmax(0, 1fr); }
+  .mapcol { position: static; order: -1; height: 46vh; min-height: 260px; }
+  .setup:not([data-step=field]) .mapcol { height: 18vh; min-height: 120px; }   /* once the field is chosen the questions come first */
   .panel { padding: var(--space-12) var(--space-12) 0; } .cta { margin: 0 calc(-1 * var(--space-12)); padding-left: var(--space-12); padding-right: var(--space-12); }
 }
 @media (forced-colors: active) { .panel, .fold-card, .soilcard, .wheel { border: 1px solid CanvasText; } .wstep.now { outline: 2px solid Highlight; } }
 
-/* the short road for a demo region: one tap to the report */
-.road { display: grid; gap: var(--space-12); padding: var(--space-16); border-radius: var(--r2); background: var(--accent-soft); box-shadow: inset 0 0 0 1px var(--accent); }
-.road .btn { width: 100%; }
 
 /* the crop chooser: a button for the chosen crop, a panel under it */
 .year { position: relative; }
@@ -99,3 +97,11 @@
 /* a parcel link is a list row on a phone: 44 px to hit */
 .plinks { list-style: none; padding: 0; display: grid; gap: 2px; }
 .plinks a { display: flex; align-items: center; min-height: var(--touch); }
+
+/* the sentence that stands in for the map is for the moment before it loads: once the map is in its place the sentence is gone */
+.panel:has(+ .mapcol > *) #mapSlot { display: none; }
+/* the steps column is a third of the screen at most, the map takes the rest; the step chips line their numbers up and let long labels wrap below */
+@media (min-width: 861px) { .setup { grid-template-columns: clamp(340px, 30%, 460px) minmax(0, 1fr); } .panel { min-height: calc(100dvh / var(--tz) - var(--navh)); } }
+.wsteps { align-items: stretch; }
+.wstep { hyphens: manual; overflow-wrap: break-word; }
+.cta { margin-top: auto; }   /* the bar rests at the bottom of the column, not under the last question */

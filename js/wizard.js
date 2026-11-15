@@ -3,7 +3,7 @@
 // Nothing here is pure: it draws into #view-setup and keeps the farmer's answers in one state object (js/state.js).
 // Checked by scripts/test_wizard.mjs (the pure rules) and scripts/e2e_flow.mjs (the steps, the keys, 320 px, the largest text).
 import { esc } from './words.js';
-import { hasRotation, hasSoil, isGarden, stepsFor, needFor, canGo, rotationSlots, readyAnswers, isReady } from './steps.js';
+import { hasRotation, hasSoil, isGarden, stepsFor, needFor, canGo, rotationSlots, readyAnswers } from './steps.js';
 import { STEPS, WATER, FEEL, COLOUR, MATTERS, TILLAGE, HABITS, PARCEL_FOR, PARCEL_ELSE, WORDS } from './words.js';
 import { newState, checkSerialized, PRIORITY_SETS } from './state.js';
 import { parseCoords, coordText } from './places.js';
@@ -56,11 +56,8 @@ function parcel() {
   const links = PARCEL_FOR[state.loc?.cc] ?? [PARCEL_ELSE];
   return `<p>${esc(WORDS.parcelLead)}</p><ul class="plinks">${links.map(([name, url]) => `<li><a href="${esc(url)}" target="_blank" rel="noopener noreferrer">${esc(name)}</a></li>`).join('')}</ul>`;
 }
-function shortRoad() {   // a demo region comes with ready answers: one tap reaches the report, the four steps stay for anyone who wants to change one
-  return spot?.demo && isReady(state) ? `<div class="road"><p><b>${WORDS.roadTitle}</b><br><span class="cap">${WORDS.roadSub}</span></p><button type="button" class="btn primary lg" id="wRoad">${WORDS.last}</button></div>` : '';
-}
-function stepField() {
-  return `${shortRoad()}${fold('foldCoords', esc(WORDS.fold), `<form class="coords" id="coordForm"><label class="field"><span>${WORDS.coordLabel}</span><input type="text" id="coordInput" inputmode="decimal" autocomplete="off" autocapitalize="off" enterkeyhint="go" spellcheck="false" value="${state.loc ? esc(coordText(state.loc.lat, state.loc.lon)) : ''}"></label><button type="submit" class="btn">${WORDS.go}</button></form>${parcel()}`)}
+function stepField() {   // a demo region walks these same four steps with its answers already chosen: no shortcut, the chip by the place is its only mark
+  return `${fold('foldCoords', esc(WORDS.fold), `<form class="coords" id="coordForm"><label class="field"><span>${WORDS.coordLabel}</span><input type="text" id="coordInput" inputmode="decimal" autocomplete="off" autocapitalize="off" enterkeyhint="go" spellcheck="false" value="${state.loc ? esc(coordText(state.loc.lat, state.loc.lon)) : ''}"></label><button type="submit" class="btn">${WORDS.go}</button></form>${parcel()}`)}
     <p class="cap" id="mapSlot">${WORDS.mapMissing}</p>`;
 }
 function rotationCards() {
@@ -114,6 +111,7 @@ export function render({ focus = false } = {}) {
   const step = steps()[at], root = $('#setupRoot');
   root.innerHTML = `<aside class="panel" id="setupPanel" aria-label="Setup">${head()}${bar()}<p class="listen-row"><button type="button" class="listen" id="wListen" hidden><svg class="ic" aria-hidden="true"><use href="#i-speaker"/></svg><span class="t">Listen to this step</span></button></p>
     <h1 class="${step.id === 'field' ? 'sr' : 'wh'}" id="wHeading">${esc(step.heading)}</h1><div class="wbody">${BODY[step.id]()}</div>${cta()}</aside><div class="mapcol" id="setupMap" role="group" aria-label="Map"></div>`;
+  root.dataset.step = step.id;   // the stylesheet shrinks the map on a phone once the field is chosen
   enhancePickers($('#setupRoot'));
   initListen($('#wListen'), step.listen);
   if (focus) { $('#wHeading').tabIndex = -1; $('#wHeading').focus(); $('#setupPanel').scrollTop = 0; if (!motionOff()) scrollTo({ top: 0, behavior: 'smooth' }); else scrollTo(0, 0); }
@@ -160,7 +158,6 @@ function bind() {
     if (!t) return;
     if (t.dataset.go) return go(+t.dataset.go);
     if (t.id === 'wNext') return next();
-    if (t.id === 'wRoad') return void where.report(structuredClone(state));
     if (t.id === 'wBack') return at === 0 ? where.home() : go(at - 1);
     if (t.id === 'assumeSoil') { state.soil = { ...state.soil, mode: 'assumed' }; return refresh(false); }
     if (t.id === 'addYear') { state.rotation.custom = [...state.rotation.custom, ...(state.rotation.custom.length ? [] : ['']), 'wheat'].slice(0, 4); return refresh(false); }

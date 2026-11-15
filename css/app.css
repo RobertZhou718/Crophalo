@@ -599,11 +599,6 @@ html[data-motion=reduce] .dot.busy { animation: none !important; }
 .search-try .link { margin-block: 2px; }   /* when the two examples wrap onto two lines (large text, small phone) they never touch */
 @media (hover: hover) and (pointer: fine) { .sugg-row:hover:not([aria-selected=true]) { background: var(--fill2); } }
 
-/* the lens: fields seen plainly, and through a satellite's eye inside the ring */
-.lens { max-width: var(--search-w); margin: var(--space-24) auto 0; text-align: center; }
-.lens svg { display: block; width: 100%; height: auto; border-radius: var(--r1); background: var(--soil); box-shadow: var(--shadow-lg); touch-action: pan-y; }
-.lens-ring { fill: none; stroke: #fff; stroke-width: 3; filter: drop-shadow(0 1px 3px rgba(0,0,0,.35)); }
-.lens figcaption { margin-top: var(--space-12); font-size: var(--fs-caption); color: var(--ink2); }
 
 /* a place card: a demo region or a saved field. The whole card is one target; its words keep their headings */
 .place-card { position: relative; }
@@ -654,10 +649,17 @@ dialog.welcome::backdrop { background: var(--backdrop-welcome); }
   .welcome h2 { font-size: 26px; }
   .welcome-card { padding: var(--space-12); gap: var(--space-12); }
 }
-@media (forced-colors: active) { .sugg, .welcome-card { border: 1px solid CanvasText; } .sugg-row[aria-selected=true] { outline: 2px solid Highlight; outline-offset: -2px; } .lens-ring { stroke: CanvasText; } }
-@media print { .lens, .search-box, .bigbtns, .hero-listen, .search-try { display: none !important; } }
+@media (forced-colors: active) { .sugg, .welcome-card { border: 1px solid CanvasText; } .sugg-row[aria-selected=true] { outline: 2px solid Highlight; outline-offset: -2px; } }
+@media print { .search-box, .bigbtns, .hero-listen, .search-try { display: none !important; } }
 
-/* the lens's inner ring: dashed, turning slowly (14 s a turn, linear), paused when off screen; the still switch and the device's setting stop it with every other animation */
-.lens-turn { fill: none; stroke: #fff; stroke-opacity: .75; stroke-width: 1.5; stroke-dasharray: 3 7; transform-box: fill-box; transform-origin: center; animation: lensturn 14s linear infinite; }
-.lens-paused .lens-turn { animation-play-state: paused; }
-@keyframes lensturn { to { transform: rotate(360deg); } }
+/* the info pages: Data, Privacy, Limitations, Settings. One steady rhythm: the heading, a short line under it, then blocks with room between them. */
+#view-info .sec { margin-top: var(--space-32); }
+#view-info h1 { margin-bottom: var(--space-8); }
+#infoBody { display: grid; gap: var(--space-16); max-width: 720px; }
+#infoBody > h2 { margin-top: var(--space-16); }
+#infoBody > .lead { margin-top: calc(-1 * var(--space-8)); }
+.data-note { padding: var(--space-12) var(--space-16); border-radius: var(--r2); background: var(--accent-soft); color: var(--ink); font-size: var(--fs-small); }
+.data-sources .row { align-items: flex-start; flex-wrap: nowrap; gap: var(--space-12); padding: var(--space-12) var(--space-16); }
+.src-body { display: grid; gap: var(--space-4); min-width: 0; } .src-body .cap { margin: 0; }
+#view-info h1 { margin-bottom: var(--space-12); }
+.src-head { display: flex; flex-wrap: wrap; align-items: center; gap: 4px var(--space-8); }

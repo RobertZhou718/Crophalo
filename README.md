@@ -56,7 +56,7 @@ The lookups and their suites use the folder's own Python: `FW_PYTHON=.venv/bin/p
 | Where | What |
 |---|---|
 | `index.html`, `design.html` | the one page of the app; the page of looks (colours, type, controls) |
-| `css/` | `app.css` (the looks every screen shares) and one sheet per screen: setup, map, report, weather, calendar, sources, region, farm, farm3d, soiltest, remind, fieldcard, statement |
+| `css/` | `app.css` (the looks every screen shares) and one sheet per screen: setup, map, report, weather, calendar, satellites, field, pages, sources, region, farm, farm3d, soiltest, remind, fieldcard, statement |
 | `js/app.js` | the page start: views, the top bar, Back, and the joins between the parts |
 | `js/home.js`, `welcome.js`, `places.js`, `saved.js`, `listen.js`, `toast.js` | the home screen, the welcome sheet, place search and coordinates, saved fields, read aloud, the one-line notices |
 | `js/wizard.js`, `steps.js`, `state.js`, `croppicker.js` | the four setup steps, their rules, the answers and share links, the crop chooser |
@@ -65,12 +65,14 @@ The lookups and their suites use the folder's own Python: `FW_PYTHON=.venv/bin/p
 | `js/crops.js`, `pics.js`, `season.js`, `fit.js`, `sure.js`, `engine.js`, `nearby.js` | the crop table, crop pictures, sowing windows, fit checks, the stress test over past years, the report engine, the "grown nearby" gate |
 | `js/report.js`, `report-view.js`, `report-load.js`, `joins.js`, `weather-data.js`, `weather-view.js`, `calendar-data.js`, `calendar-view.js` | the field report and its Overview, Options, Weather and Calendar tabs |
 | `js/sources.js`, `sources.more.js`, `srci.js`, `region.js`, `pages.js` | the source cards behind every "i", the regional-reading card, the Data page |
+| `js/satellites-data.js`, `satellites-view.js`, `satellites2-data.js`, `satellites2-view.js`, `field-data.js`, `field-view.js`, `near-load.js`, `memo.js`, `outline.js` | the report's Satellites & prices tab (NASA GPM IMERG rain, GRACE-FO water storage, ECOSTRESS ground temperature, HLS greenness), its Field tab (slope, height, soil, outline), the crop map of farms nearby, and the lookups shared between the tabs |
+| `js/pages-info.js`, `pages-view.js`, `privacy.js`, `backup.js`, `units.js`, `currency.js`, `admin-view.js` | the Privacy, Limitations and Settings pages: what stays on the device and what is sent, deleting, backup and restore, units, currency, and the read-only Admin panel (no password) |
 | `js/farm.js`, `simulate.js`, `farmio.js`, `fielddrawer.js`, `fieldedit.js` | My Farm: the farm store, the map board, Compare plans, editing a field, map files and spreadsheets |
 | `js/farm3d.js`, `farm3d-data.js`, `heights3d.js`, `shade.js`, `shade-worker.js`, `moon.js` | the 3D field look, land heights, shade and the sun's and moon's place |
 | `js/soiltest.js`, `soiltestui.js`, `remind.js`, `remind-plan.js`, `remind-sw.js`, `sharetext.js`, `statement.js`, `fieldcard.js`, `discuss.js`, `notice.js`, `exports.js` | soil-test rules and form, reminders, share texts, the season weather record, the printed field card, spreadsheets |
 | `data/regions.json` | the demo region: Oxford County, Ontario, with its answers already chosen |
 | `scripts/serve.mjs` | the server: the app's files, `/api/health`, `/api/sources`, the live lookups, reminders (`/api/push/*`) and US drought weeks (`/api/drought`) |
-| `scripts/live/` | the Python lookups: `smaproot.py` (NASA SMAP), `dem.py` and `heights.py` (land heights), `cropsnear.py` (crop maps), with `common.py` and `README.md` |
+| `scripts/live/` | the Python lookups: `smaproot.py` (NASA SMAP), `imergrain.py` (NASA GPM IMERG rain), `gracecell.py` (NASA GRACE-FO), `ecopass.py` (NASA ECOSTRESS), `hlsndvi.py` (NASA HLS greenness), `dem.py` and `heights.py` (land heights), `cropsnear.py` (crop maps), with `common.py`, `dap4.py` and `README.md` |
 | `scripts/test*.mjs`, `scripts/e2e*.mjs`, `scripts/check.sh` | the suites and the one check; `scripts/fixtures/` holds recorded answers of the outside services |
 | `scripts/run.sh`, `start-windows.ps1`, `earthdata.mjs`, `preflight.mjs`, `vendor.mjs`, `portable.sh`, `pack-runtimes.sh` | the starters, the NASA login, the start checks, the bundled libraries, the portable copy |
 | `vendor/` | Leaflet, MapLibre and three.js, kept in the folder (no build step, no packages) |

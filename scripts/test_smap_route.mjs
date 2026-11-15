@@ -29,7 +29,7 @@ const FAKE = path.join(TMP, 'fakepy.sh'), RUNS = path.join(TMP, 'runs.log'), PID
 fs.writeFileSync(FAKE, `#!/bin/sh
 # args: -u smaproot.py LAT LON
 lat="$3"; lon="$4"
-echo "$lat $lon login=$(env | grep -c '^EARTHDATA_') leak=$(env | grep -c '^SERVER_ONLY_SECRET')" >> "${RUNS}"
+echo "$lat $lon login=$(env | grep -c '^EARTHDATA_') leak=$(env | grep -c '^SERVER_ONLY_SECRET') script=$2 rest=$5,$6,$7" >> "${RUNS}"
 case "$lat" in
   0.00) echo '{"ok":false,"reason":"SMAP has no soil-moisture value for the square that holds this place (open water or ice)","final":true}' ;;
   10.00) echo '{"ok":false,"reason":"NASA did not answer just now; try again in a minute"}' ;;
@@ -97,6 +97,25 @@ try {
   check('two different places wait their turn (LIVE_MAX=1, as on a small host): both answer, one after the other (each takes a second here)', two.every(r => r.body.ok) && span >= 1900, span);
   const part = await get(base, '?lat=50&lon=5'), partAgain = await get(base, '?lat=50&lon=5');
   same('a partial answer is kept, but for an hour only (the second is kept all the same here)', [part.body.incomplete, partAgain.body.cached], ['part of it is missing', true]);
+
+  // the satellite and crop-map routes hand their lookup the place as their rows say: a coarse grid read at the centre of its square, never rounded into the next one
+  const route = async (id, q) => { const n = runsOf().length, r = await fetch(`${base}/api/${id}${q}`), body = await r.json(), run = runsOf()[n] ?? ''; const [lat, lon] = run.split(' '); return { status: r.status, body, lat, lon, script: /script=(\S+)/.exec(run)?.[1], rest: /rest=(\S*)/.exec(run)?.[1] }; };
+  const rain = await route('imergrain', '?lat=43.13&lon=-80.75');
+  same('satellite rain: the centre of the 0.1 degree square, and the answer says which place was read', [rain.script, rain.lat, rain.lon, rain.body.spot], ['imergrain.py', '43.1500', '-80.7500', { lat: 43.15, lon: -80.75 }]);
+  const rainSouth = await route('imergrain', '?lat=-0.01&lon=-0.01');
+  same('satellite rain just south and west of 0: the square below, not the one across the line', [rainSouth.lat, rainSouth.lon], ['-0.0500', '-0.0500']);
+  const rainEdge = await route('imergrain', '?lat=90&lon=180');
+  same('satellite rain on the last line of the grid (90 N, 180 E): the last square, never one beyond it', [rainEdge.lat, rainEdge.lon], ['89.9500', '179.9500']);
+  const water = await route('gracecell', '?lat=43.99&lon=-80.01');
+  same('water storage: the centre of the 0.5 degree cell that holds the pin (43.99 stays in the 43.5 to 44 cell)', [water.script, water.lat, water.lon, water.body.spot], ['gracecell.py', '43.7500', '-80.2500', { lat: 43.75, lon: -80.25 }]);
+  const heat = await route('ecopass', '?lat=43.1302&lon=-80.7498');
+  same('ground temperature: the pin snapped to 0.0005 degrees (finer than the 70 m pixel)', [heat.script, heat.lat, heat.lon], ['ecopass.py', '43.1300', '-80.7500']);
+  const green = await route('hlsndvi', '?lat=43.13&lon=-80.75'), greenDays = await route('hlsndvi', '?lat=43.13&lon=-80.75&first=20261115&last=20261201');
+  same('greenness: the pin as sent, with the window only when both ends are given', [green.script, green.lat, green.rest, greenDays.rest], ['hlsndvi.py', '43.1300', ',,', '20261115,20261201,']);
+  const crops = await route('cropsnear', '?lat=43.13&lon=-80.75&country=Canada'), cropsUs = await route('cropsnear', '?lat=42.5&lon=-93.5&country=us'), cropsElse = await route('cropsnear', '?lat=37.87&lon=32.48&country=Türkiye');
+  same('crop map: the country by name or code reaches the lookup as its code; any other country as ZZ, which the lookup says it does not cover', [crops.script, crops.rest, cropsUs.rest, cropsElse.rest], ['cropsnear.py', 'CA,,', 'US,,', 'ZZ,,']);
+  const noCountry = await fetch(`${base}/api/cropsnear?lat=43.13&lon=-80.75`);
+  same('crop map with no country: refused at the door, nothing runs', [noCountry.status, (await noCountry.json()).reason], [400, 'The country of the field is needed to read the crop map (country=CA or US)']);
 
   // the status routes know the lookup
   const src = await (await fetch(`${base}/api/sources`)).json(), row = src.find(x => x.id === 'smaproot');

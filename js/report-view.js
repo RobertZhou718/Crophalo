@@ -3,11 +3,10 @@
 // Pure: every function takes plain data and returns text. Nothing is read from the page, nothing is drawn here. The page glue is js/report.js.
 // Checked by scripts/test_report.mjs (every field of the plan shape, the honest "not read yet" state, plain-text escaping, the "i" with its sources, NASA first).
 /*
- *
  * The engine's answer this reads (optionsFor(state, climate, spot)):
  * { current: Plan, recommended: Plan, others: [Plan], reason, evidence: [{ text, sources: [key] }], gaps: [text], risks: [text], sureness: 'Very sure' | 'Fairly sure' | 'Somewhat sure' }
  * Plan = { id, name, kind: 'current' | 'proposed', seasons: [{ year, crop, sow, harvest, after: 'residue' | 'cover' | 'bare', residueUntil, window: { earliest, latest } | null }] }
- * Asked for, not in the contract yet: plan.score (0 to 100) and plan.scores { water, soil, erosion, income, weather } (0 to 100), plan.why. Without them no score or bar is drawn.
+ * plan.score (0 to 100), plan.scores { water, soil, erosion, income, weather } (0 to 100) and plan.why: without them no score or bar is drawn.
  */
 import { esc } from './words.js';
 import { cropName } from './crops.js';
@@ -70,15 +69,36 @@ export function assumptions(state) {
   return out;
 }
 
+// ---- which plan goes to My Farm as the proposed one: the one the farmer chose to try; else the engine's suggestion when it is a change; else, when the suggestion is to keep what is grown now,
+// the best-scoring other plan that holds up (the engine's plan.flag is 'holds'); else the suggestion itself.
+const samePlan = (a, b) => !!a && !!b && (a.id === b.id || planName(a) === planName(b));
+export const betterOptions = result => allPlans(result).filter(p => !samePlan(p, result.current)).filter(p => p.flag === 'holds').sort((a, b) => (fin(b.score) ? b.score : -1) - (fin(a.score) ? a.score : -1));
+// A plan other than the one grown now, that holds up, whose seasons grow exactly these crops in this order (found by its crops, never by a made-up id).
+export const cropsOf = p => (Array.isArray(p?.seasons) ? p.seasons : []).map(x => x?.crop);
+export const planWithCrops = (result, crops) => Array.isArray(crops) && crops.length ? allPlans(result).find(p => !samePlan(p, result.current) && p.flag === 'holds' && JSON.stringify(cropsOf(p)) === JSON.stringify(crops)) ?? null : null;
+export const PRESELECT_WORDS = 'An option worth a look, not our firm suggestion';
+export function proposedPlan(result, chosenId = null) {
+  if (!result?.recommended) return { plan: null, why: 'none' };
+  const plans = allPlans(result), chosen = chosenId ? plans.find(p => p.id === chosenId && !samePlan(p, result.current)) : null;
+  if (chosen) return { plan: chosen, why: 'chosen' };
+  if (!samePlan(result.recommended, result.current)) return { plan: result.recommended, why: 'recommended' };
+  const best = betterOptions(result)[0];
+  return best ? { plan: best, why: 'best' } : { plan: result.recommended, why: 'recommended' };
+}
+// The two plans handed to My Farm: the engine's own objects, with the engine's own ids (My Farm matches its chips by them), only marked current or proposed.
+export const farmPlans = (result, chosenId = null) => ({ current: { ...result.current, kind: 'current' }, proposed: { ...proposedPlan(result, chosenId).plan, kind: 'proposed' } });
+export const PROPOSED_WORDS = Object.freeze({ chosen: 'The plan you chose to try', recommended: 'Our suggestion', best: 'The best option that holds up' });
+
 // ---- Overview
 // ctx: { state, today: 'YYYY-MM-DD' }. result: the engine's answer, or null / { ok: false } when it is not read yet.
 export function overviewHTML(result, ctx = {}) {
   const head = `<section class="rv-sec" aria-labelledby="ovTitle"><h2 id="ovTitle">Overview</h2>`;
   if (!result || result.ok === false || !result.recommended) return `${head}<div class="rv-notread" role="status"><p>${esc(result?.reason || NOT_READ)}</p></div>${assumptionsHTML(ctx.state)}</section>`;
-  const rec = result.recommended, cur = result.current, same = planName(rec) === planName(cur);
+  const rec = result.recommended, cur = result.current, same = samePlan(rec, cur), alt = proposedPlan(result, ctx.chosen), worth = betterOptions(result).slice(0, 2);
   const headline = same ? `Keep ${planName(cur)}` : `Try ${planName(rec)}`;
   const evidence = Array.isArray(result.evidence) ? result.evidence : [];
-  const cover = [['Now', cur], [same ? 'Suggested' : 'Suggested', rec]].map(([label, p]) => ({ label, plan: p, lines: coverLines(p) }));
+  const cols = same ? (alt.plan && !samePlan(alt.plan, cur) ? [['Now (our suggestion: keep it)', cur], [alt.why === 'chosen' ? (ctx.preselected ? PRESELECT_WORDS : 'The plan you chose to try') : 'Worth trying', alt.plan]] : [['Now (our suggestion: keep it)', cur]]) : [['Now', cur], ['Suggested', rec]];
+  const cover = cols.map(([label, p]) => ({ label, plan: p, lines: coverLines(p) }));
   return `${head}
     <article class="card rv-answer" id="answer">
       <div class="rv-answer-main">
@@ -88,13 +108,19 @@ export function overviewHTML(result, ctx = {}) {
         ${scoreRing(rec.score)}
       </div>
       <div class="rv-compare" aria-label="Your rotation now and the suggested one">
-        ${cover.map(c => `<div class="rv-col${c.plan === rec ? ' is-rec' : ''}"><h4>${esc(c.label)}${c.plan === cur && !same ? '' : ''}</h4>${cropsRow(c.plan)}${c.lines.length ? `<ul class="rv-cover">${c.lines.map(l => `<li><b>${esc(l.crop)}, ${l.year}:</b> after harvest, ${esc(l.words)}${l.until ? ` (until ${esc(l.until)})` : ''}</li>`).join('')}</ul>` : ''}</div>`).join('')}
+        ${cover.map(c => `<div class="rv-col${c.plan !== cur ? ' is-rec' : ''}"><h4>${esc(c.label)}${c.plan === cur && !same ? '' : ''}</h4>${cropsRow(c.plan)}${c.lines.length ? `<ul class="rv-cover">${c.lines.map(l => `<li><b>${esc(l.crop)}, ${l.year}:</b> after harvest, ${esc(l.words)}${l.until ? ` (until ${esc(l.until)})` : ''}</li>`).join('')}</ul>` : ''}</div>`).join('')}
       </div>
-      ${caveatHTML(rec)}
+      ${caveatHTML(same && alt.plan ? alt.plan : rec)}
       ${sureHTML(result)}
     </article>
+    ${same && worth.length ? worthHTML(worth, result, ctx.chosen) : ''}
     ${evidence.length ? `<details class="fold-card" id="ovEvidence"><summary><span class="t">What this is based on</span></summary><div class="fold-b"><ul class="rv-evidence">${evidence.map(e => `<li>${esc(e.text)} ${infoButton(e.sources, e.text)}</li>`).join('')}</ul></div></details>` : ''}
     ${assumptionsHTML(ctx.state)}</section>`;
+}
+export function worthHTML(list, result, chosenId) {
+  return `<section class="rv-worth" aria-labelledby="ovWorth"><h3 id="ovWorth">Options worth trying</h3><p class="cap">Our suggestion is to keep what you grow now. These plans score higher or about the same, and hold up on your field’s weather record.</p>
+    <ul class="rv-worth-list">${list.map(p => `<li class="card pad"><div><b>${esc(planName(p))}</b>${fin(p.score) ? ` <span class="chip">Score ${Math.round(p.score)}</span>` : ''}${fin(result.current?.score) ? ` <span class="cap">(what you grow now: ${Math.round(result.current.score)})</span>` : ''}</div>${cropsRow(p)}
+      <button type="button" class="btn${chosenId === p.id ? ' chosen' : ''}" data-act="try" data-plan="${esc(p.id)}" aria-pressed="${chosenId === p.id}">${chosenId === p.id ? 'Chosen to try' : 'Try this plan'}</button></li>`).join('')}</ul></section>`;
 }
 const unionSources = ev => [...new Set(ev.flatMap(e => Array.isArray(e.sources) ? e.sources : []))];
 export function caveatHTML(plan) {
@@ -118,12 +144,12 @@ export function assumptionsHTML(state) {
 // selectedId: the plan whose detail shows. Cards: what you grow now, then the suggestion, then the others.
 export function allPlans(result) { return result && result.recommended ? [result.current, result.recommended, ...(Array.isArray(result.others) ? result.others : [])].filter(Boolean) : []; }
 const tag = (plan, result) => plan === result.current ? 'Today' : plan === result.recommended ? 'Our suggestion' : 'Option';
-export function optionCardHTML(plan, result, selected) {
-  const t = tag(plan, result), lines = coverLines(plan);
+export function optionCardHTML(plan, result, selected, chosenId = null) {
+  const t = chosenId === plan.id ? 'Chosen to try' : tag(plan, result), lines = coverLines(plan);
   return `<button type="button" class="card act ocard${selected ? ' on' : ''}" data-plan="${esc(plan.id)}" aria-pressed="${selected}"><span class="ocard-tag chip">${esc(t)}</span>${scoreRing(plan.score)}
     <h3>${esc(planName(plan))}</h3>${cropsRow(plan)}${lines[0] ? `<span class="cap">After ${esc(lines[0].crop)}: ${esc(lines[0].words)}</span>` : ''}</button>`;
 }
-export function optionDetailHTML(plan, result) {
+export function optionDetailHTML(plan, result, chosenId = null) {
   const isNow = plan === result.current, why = plan.why || (plan === result.recommended ? result.reason : '');
   const list = (title, items, id) => `<details class="fold-card" id="${id}"><summary><span class="t">${esc(title)} <span class="count soft">${items.length}</span></span></summary><div class="fold-b">${items.length ? `<ul>${items.map(i => `<li>${i}</li>`).join('')}</ul>` : '<p class="cap">Nothing to add here.</p>'}</div></details>`;
   const evidence = plan === result.recommended || isNow ? (Array.isArray(result.evidence) ? result.evidence : []) : [];
@@ -132,6 +158,7 @@ export function optionDetailHTML(plan, result) {
   const cover = coverLines(plan).map(l => `<b>${esc(l.crop)}, ${l.year}:</b> ${esc(l.words)}${l.until ? ` (until ${esc(l.until)})` : ''}`);
   return `<section class="card pad sdetail" id="sdetail" aria-live="polite"><h3>${esc(planName(plan))}</h3>
     <p>${isNow ? 'What you grow now: the yardstick for every other option.' : why ? `<b>Why we suggest it:</b> ${esc(why)}` : 'Why it is here has not been read yet.'}</p>
+    ${isNow ? '' : `<p><button type="button" class="btn${chosenId === plan.id ? ' chosen' : ''}" data-act="try" data-plan="${esc(plan.id)}" aria-pressed="${chosenId === plan.id}">${chosenId === plan.id ? 'Chosen to try: add it to My Farm' : 'Try this plan'}</button>${chosenId === plan.id ? ` <button type="button" class="btn ghost" data-act="untry" data-plan="${esc(plan.id)}">Use our suggestion instead</button>` : ''}</p>`}
     ${barsHTML(plan.scores)}${!plan.scores ? '<p class="cap">Scores are not read yet for this option.</p>' : ''}
     <div class="folds">${list('Your rotation, year by year', years, 'dYears')}${list('When is the soil covered?', cover, 'dCover')}${list('What the data suggests', evidence.map(e => `${esc(e.text)} ${infoButton(e.sources, e.text)}`), 'dEvidence')}${list('What we cannot see', gaps.map(esc), 'dGaps')}${list('Check before you switch', risks.map(esc), 'dRisks')}</div></section>`;
 }
@@ -143,11 +170,11 @@ export function scoresFoldHTML(result) {
     ${plans.length ? `<div class="tbl"><table><thead><tr><th scope="col">Plan</th>${Object.values(SCORE_NAMES).map(n => `<th scope="col">${esc(n)}</th>`).join('')}</tr></thead><tbody>${plans.map(p => `<tr><th scope="row">${esc(planName(p))}${p === result.recommended ? ' (suggested)' : ''}</th>${Object.keys(SCORE_NAMES).map(k => `<td>${fin(p.scores[k]) ? Math.round(p.scores[k]) : ''}</td>`).join('')}</tr>`).join('')}</tbody></table></div>` : '<p class="cap">The scores are not read yet.</p>'}
     <p class="cap">A score is a guide to compare plans on this field. It is not a yield and not a chance of success.</p></div></details>`;
 }
-export function optionsHTML(result, selectedId) {
+export function optionsHTML(result, selectedId, chosenId = null) {
   const head = '<section class="rv-sec" aria-labelledby="opTitle"><h2 id="opTitle">Your options</h2>';
   if (!result || result.ok === false || !result.recommended) return `${head}<div class="rv-notread" role="status"><p>${esc(result?.reason || NOT_READ)}</p></div></section>`;
   const plans = allPlans(result), chosen = plans.find(p => p.id === selectedId) ?? result.recommended;
-  return `${head}<p class="lead">Tap an option to see why.</p><div class="grid opts" role="group" aria-label="Options">${plans.map(p => optionCardHTML(p, result, p === chosen)).join('')}</div>${optionDetailHTML(chosen, result)}${scoresFoldHTML(result)}</section>`;
+  return `${head}<p class="lead">Tap an option to see why.</p><div class="grid opts" role="group" aria-label="Options">${plans.map(p => optionCardHTML(p, result, p === chosen, chosenId)).join('')}</div>${optionDetailHTML(chosen, result, chosenId)}${scoresFoldHTML(result)}</section>`;
 }
 
 // ---- the other five tabs: plainly, what they will hold

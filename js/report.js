@@ -3,18 +3,22 @@
 // Not pure: it draws into #view-report and listens to the page. Back steps Report → Setup → Home through the app's own history, never between tabs.
 // Checked by scripts/e2e_flow.mjs (the report group: tabs, keys, the panel, the "i", Add to My Farm, Back) and scripts/test_report.mjs (the markup).
 import { esc } from './words.js';
-import { TABS, overviewHTML, optionsHTML, laterHTML, loadingHTML, infoButton, estimatedArea, planName, allPlans, longDate, NOT_READ } from './report-view.js';
-import { loadSpot, freshRows, loadSmap } from './report-load.js';
+import { farmPlans, planWithCrops, proposedPlan, PROPOSED_WORDS, TABS, overviewHTML, optionsHTML, laterHTML, loadingHTML, infoButton, estimatedArea, planName, allPlans, longDate, NOT_READ } from './report-view.js';
+import { spotFor, freshRows, getSmap, getNearby, getImerg, getGrace, getEco, getHls, getDem, prefetchPlace } from './report-load.js';
 import { wireRegion } from './region.js';
 import { buildWeather } from './weather-data.js';
 import { weatherHTML, chartZoomHTML } from './weather-view.js';
 import { buildCalendar } from './calendar-data.js';
 import { calendarHTML } from './calendar-view.js';
-import { getOptions, addToFarm } from './joins.js';
+import { satellitesHTML } from './satellites-view.js';
+import { fieldHTML } from './field-view.js';
+import { getOptions, addToFarm, climateFor } from './joins.js';
 import { toast } from './toast.js';
 import { initSources } from './srci.js';
 import { motionOff } from './motion.js';
 import { currentState } from './wizard.js';
+import { loadRegions } from './places.js';
+import { engineSpot } from './near-load.js';
 import { hasRotation, hasSoil, hasPlace } from './steps.js';
 
 const $ = (sel, root = document) => root.querySelector(sel), $$ = (sel, root = document) => [...root.querySelectorAll(sel)];
@@ -23,15 +27,24 @@ const WORDS = { change: 'Change answers', farm: 'Add to My Farm', farmDone: 'Ope
 const PRIO_NAMES = ['Water fit', 'Soil health', 'Soil wash-off', 'Income', 'Weather safety (drought, heat, frost)'], PRIO_WORDS = ['Not a concern', 'A little', 'Some', 'Important', 'Very important', 'Most important'];
 // The Calendar tab's stylesheet is added when the report starts, so the page's own file does not have to list it.
 function ensureStyle(href) { if (!document.querySelector(`link[href="${href}"]`)) { const l = document.createElement('link'); l.rel = 'stylesheet'; l.href = href; document.head.append(l); } }
-let seam = { change() {}, home() {}, farmOpened() {}, engine: null, farm: null }, cur = null, run = 0;
+let seam = { change() {}, home() {}, farmOpened() {}, engine: null, farm: null, climateFrom: null }, cur = null, run = 0;
 const today = () => new Date().toLocaleDateString('en-CA');
 const root = () => $('#reportRoot');
 
 // ---- the answers the screens read
 export const spotOf = (state, extra = {}) => ({ lat: state.loc.lat, lon: state.loc.lon, name: state.name, label: state.loc.label, cc: state.loc.cc, ...extra });
 async function work() {   // the options for the answers now; the screens redraw from cur.result
-  cur.result = await getOptions(cur.state, cur.climate, spotOf(cur.state), seam.engine);
+  cur.result = await getOptions(cur.state, climateFor(cur.series, cur.climate, cur.state.sc, cur.state.loc.lat), engineSpot(cur.state, cur.near), seam.engine, { today: today() });
   cur.plan = cur.result.ok ? (allPlans(cur.result).find(p => p.id === cur.plan) ? cur.plan : cur.result.recommended.id) : null;
+  await preselect();
+}
+// A demo region may name a plan worth a look (its crops, in order). While the answer says keep, that plan is pre-selected to try, labelled as an option and not as our suggestion, and it is the plan carried to My Farm.
+// The farmer's own choice is never overwritten.
+async function preselect() {
+  if (cur.chosen || cur.picked || !cur.result?.ok || cur.result.recommended.id !== cur.result.current.id) return;
+  let regions = []; try { regions = await loadRegions(); } catch { /* no regions: nothing to pre-select */ }
+  const loc = cur.state.loc, region = regions.find(r => Math.abs(r.lat - loc.lat) < 1e-3 && Math.abs(r.lon - loc.lon) < 1e-3 && Array.isArray(r.try)), plan = region ? planWithCrops(cur.result, region.try) : null;
+  if (plan) { cur.chosen = plan.id; cur.preselected = true; }
 }
 
 // ---- drawing
@@ -48,7 +61,7 @@ function tabsHTML() {
 }
 function panelHTML() {
   const id = cur.tab, ctx = { state: cur.state, today: today() };
-  const body = id === 'overview' ? overviewHTML(cur.result, ctx) : id === 'options' ? optionsHTML(cur.result, cur.plan) : id === 'weather' ? weatherHTML(cur.weather, { reading: cur.reading }) : id === 'calendar' ? calendarHTML(buildCalendar({ result: cur.result?.ok ? cur.result : null, climate: cur.climate ?? cur.weather?.C ?? null })) : laterHTML(id);
+  const body = id === 'overview' ? overviewHTML(cur.result, { ...ctx, chosen: cur.chosen, preselected: cur.preselected }) : id === 'options' ? optionsHTML(cur.result, cur.plan, cur.chosen) : id === 'weather' ? weatherHTML(cur.weather, { reading: cur.reading }) : id === 'calendar' ? calendarHTML(buildCalendar({ result: cur.result?.ok ? cur.result : null, climate: cur.climate ?? cur.weather?.C ?? null })) : id === 'satellites' ? satellitesHTML({ rain: cur.imerg, reading: cur.reading, grace: cur.grace, eco: cur.eco, hls: cur.hls }) : id === 'field' ? fieldHTML({ state: cur.state, dem: cur.dem, outline: outlineOf(cur.state), loading: !!cur.demLoading }) : laterHTML(id);
   const nextTab = TABS[TABS.findIndex(t => t.id === id) + 1];
   return `<div class="rv-panel" role="tabpanel" id="panel-${id}" aria-labelledby="tab-${id}" tabindex="0">${body}${nextTab ? `<p class="rv-nextrow"><button type="button" class="btn lg" data-tab="${nextTab.id}" data-focus="1">Next: ${esc(nextTab.label)}</button></p>` : ''}</div>`;
 }
@@ -77,25 +90,29 @@ const prioShown = () => ['overview', 'options', 'weather', 'calendar'].includes(
 export async function openReport(state, { demo = false } = {}) {
   const mine = ++run;
   cur = { state: structuredClone(state), tab: 'overview', plan: null, rows: freshRows(), loading: true, result: null, climate: null, prioOpen: matchMedia('(min-width: 861px)').matches, demo };
-  if (!hasPlace(cur.state)) { cur.loading = false; cur.noPlace = true; cur.failed = 'Tap the map or draw your field, then open the report again.'; draw(); return; }   // never ask for weather without a position
+  if (!hasPlace(cur.state)) { cur.loading = false; cur.noPlace = true; cur.failed = 'Tap the map or draw your field, then open the report again.'; draw(); return; }   // no position: nothing is asked of any service
   draw({ focus: true });
-  const rowOf = key => cur.rows.find(r => r.key === key);
-  const loaded = await loadSpot(cur.state.loc, { fetch: globalThis.fetch.bind(globalThis), caches: globalThis.caches }, (key, st, reason) => { if (mine !== run) return; const r = rowOf(key); if (r) { r.state = st; r.reason = reason; } if (cur.loading) draw(); });
+  const rowOf = key => cur.rows.find(r => r.key === key), loc = cur.state.loc, env = { fetch: globalThis.fetch.bind(globalThis), caches: globalThis.caches, climateFrom: seam.climateFrom };
+  const smapP = getSmap(loc), nearP = getNearby(loc);   // asked now, side by side with the weather; if the place was chosen a while ago they were asked then and are already in
+  const loaded = await spotFor(loc, env, (key, st, reason) => { if (mine !== run) return; const r = rowOf(key); if (r) { r.state = st; r.reason = reason; } if (cur.loading) draw(); });
   if (mine !== run) return;
   if (!loaded.ok) { cur.loading = false; cur.failed = loaded.reason; draw(); return; }
-  cur.climate = loaded.climate; cur.note = loaded.note;
-  cur.weather = buildWeather({ series: loaded.series, climate: loaded.climate, forecast: loaded.forecast, loc: cur.state.loc });
-  if (cur.weather.ok && loaded.note) cur.weather.note = loaded.note;
-  loadSmap(cur.state.loc).then(reading => { if (mine !== run) return; cur.reading = reading; if (!cur.loading && cur.tab === 'weather') { const main = $('.rv-main'); if (main) { main.innerHTML = panelHTML(); wireRegion(main); } } });   // the regional card fills in when it answers; the report does not wait for it
+  cur.climate = loaded.climate; cur.series = loaded.series; cur.note = loaded.note;
+  const weatherWith = forecast => { cur.weather = buildWeather({ series: loaded.series, climate: loaded.climate, forecast, loc }); if (cur.weather.ok && loaded.note) cur.weather.note = loaded.note; };
+  weatherWith(null);
+  loaded.forecastP?.then(forecast => { if (mine !== run || !forecast) return; weatherWith(forecast); if (!cur.loading && cur.tab === 'weather') { const main = $('.rv-main'); if (main) { main.innerHTML = panelHTML(); wireRegion(main); } } });   // the forecast joins the Weather tab when it arrives; the report did not wait for it
+  smapP.then(reading => { if (mine !== run) return; cur.reading = reading; if (!cur.loading && cur.tab === 'weather') { const main = $('.rv-main'); if (main) { main.innerHTML = panelHTML(); wireRegion(main); } } });   // the regional card fills in when it answers; the report does not wait for it
+  cur.near = await nearP;   // what farmers grow around the field: a failed lookup leaves the engine's gate open and says so
+  if (mine !== run) return;
   await work();
   if (mine !== run) return;
-  await new Promise(r => setTimeout(r, motionOff() ? 0 : 450));   // the screen resolves 450 ms after the last source
+  await new Promise(r => setTimeout(r, motionOff() || loaded.allCached ? 0 : 150));   // answers that were kept need no pause; fresh ones keep a moment so the rows are seen to finish
   if (mine !== run) return;
   cur.loading = false; draw({ focus: true, keepScroll: false }); scrollTo(0, 0);
 }
 // Draw a ready answer without loading (the tests and the engine's own demo use it): the state and the engine's result.
-export async function renderResult(state, result, { climate = null, weather = null, reading = null } = {}) {
-  run++; cur = { state: structuredClone(state), tab: 'overview', plan: result?.recommended?.id ?? null, rows: [], loading: false, result: result ? { ...result, ok: result.ok !== false } : null, climate, weather, reading, prioOpen: true };
+export async function renderResult(state, result, { climate = null, weather = null, reading = null, imerg, dem } = {}) {
+  run++; cur = { state: structuredClone(state), tab: 'overview', plan: result?.recommended?.id ?? null, rows: [], loading: false, result: result ? { ...result, ok: result.ok !== false } : null, climate, weather, reading, imerg, dem, prioOpen: true };   // imerg and dem: answers given in advance (undefined means: ask when the tab opens)
   draw({ focus: true, keepScroll: false });
 }
 // When the report view opens: a report in hand stays; else the wizard's own answers, if they are enough; else the way back.
@@ -107,10 +124,22 @@ export function showReport() {
   root().innerHTML = `<div class="rv-wrap"><section class="rv-sec"><h1 id="reportTitle" tabindex="-1">Your report</h1><p>${WORDS.none}</p><p><button type="button" class="btn primary" data-act="home">${WORDS.home}</button></p></section></div>`;
 }
 
+// The outline a report works with: the one the farmer drew, or an estimated 10 ha square round the pin, always flagged.
+const outlineOf = state => state.area ? { ...state.area, estimated: false } : estimatedArea(state.loc);
+// The tabs that ask the server when they are first opened: Satellites & prices (30 days of satellite rain) and Field (the height map). Each fills its panel when it answers.
+function loadFor(tab) {
+  const mine = run, panel = () => { if (mine !== run || cur.tab !== tab) return; const main = $('.rv-main'); if (main) { main.innerHTML = panelHTML(); wireRegion(main); } };
+  if (tab === 'satellites' && cur.imerg === undefined) { cur.imerg = { loading: true }; getImerg(cur.state.loc).then(r => { cur.imerg = r; panel(); }); }
+  if (tab === 'satellites' && cur.grace === undefined) { cur.grace = { loading: true }; getGrace(cur.state.loc).then(r => { cur.grace = r; panel(); }); }
+  if (tab === 'satellites' && cur.hls === undefined) { cur.hls = { loading: true }; getHls(cur.state.loc).then(r => { cur.hls = r; panel(); }); }
+  if (tab === 'satellites' && cur.eco === undefined) { cur.eco = { loading: true }; getEco(cur.state.loc).then(r => { cur.eco = r; panel(); }); }
+  if (tab === 'field' && cur.dem === undefined) { cur.dem = null; cur.demLoading = true; getDem(cur.state.loc, outlineOf(cur.state)).then(r => { cur.dem = r; cur.demLoading = false; panel(); }); }
+}
+
 // ---- the tabs
 function setTab(id, { focus = true } = {}) {
   if (!TABS.some(t => t.id === id) || id === cur.tab) { if (focus) $(`#tab-${id}`)?.focus(); return; }
-  cur.tab = id; draw();
+  cur.tab = id; loadFor(id); draw();
   const tab = $(`#tab-${id}`); tab?.scrollIntoView?.({ inline: 'nearest', block: 'nearest' }); if (focus) tab?.focus();
   const panel = $(`#panel-${id}`); if (panel && panel.getBoundingClientRect().top < 0) scrollTo({ top: scrollY + panel.getBoundingClientRect().top - ($('#reportBar')?.offsetHeight ?? 60) - 60 });
 }
@@ -137,7 +166,7 @@ function openZoom(button) {
 async function addFarm() {
   if (!cur?.result?.ok) return;
   const s = cur.state, r = cur.result, area = s.area ? { ...s.area, estimated: false } : estimatedArea(s.loc);
-  const payload = { place: spotOf(s), area, areaEstimated: !s.area, current: { ...r.current, kind: 'current' }, proposed: { ...r.recommended, kind: 'proposed' }, date: today() };
+  const payload = { place: spotOf(s), area: area.ha, outline: s.area ? s.area.pts : null, areaEstimated: !s.area, ...farmPlans(r, cur.chosen), date: today() };
   const note = $('#farmNote'), btn = $('#rbFarm');
   btn.disabled = true;
   const out = await addToFarm(payload, seam.farm);
@@ -152,6 +181,7 @@ function bind() {
     const zoom = event.target.closest('[data-zoom]'); if (zoom) return openZoom(zoom);
     const t = event.target.closest('[data-act], [data-tab], [data-plan]'); if (!t) return;
     if (t.dataset.tab) return setTab(t.dataset.tab, { focus: true });
+    if (t.dataset.act === 'try' || t.dataset.act === 'untry') { const id = t.dataset.plan; cur.chosen = t.dataset.act === 'untry' ? null : id; cur.preselected = false; cur.picked = true; const y = scrollY; const was = `[data-act="${t.dataset.act}"][data-plan="${CSS.escape(id)}"]`; draw({ keepScroll: false }); scrollTo(0, y); $(was)?.focus(); toast(cur.chosen ? `Plan to try: ${planName(allPlans(cur.result).find(p => p.id === id))}. Add to My Farm to compare it with what you grow now.` : 'No plan chosen to try'); return; }
     if (t.dataset.plan) { cur.plan = t.dataset.plan; draw(); $(`[data-plan="${CSS.escape(cur.plan)}"]`)?.focus(); toast(`Details below changed to ${planName(allPlans(cur.result).find(p => p.id === cur.plan))}`); return; }
     const act = t.dataset.act;
     if (act === 'change') return seam.change(cur?.state);
@@ -170,5 +200,15 @@ function bind() {
   });
 }
 // seam: { change(state), home(), farmOpened(result), engine: () => import('./engine.js'), farm: () => import('./farm.js') } (the last two are given by the page start once those files exist)
-export function initReport(next) { seam = { ...seam, ...next }; initSources(); ensureStyle('css/calendar.css'); if (root()) bind(); }
+// The map says a place was chosen ('crophalo:prefetch', detail { lat, lon, outline? }): the lookups the report will want start now, once the place has settled for 600 ms (a dragged pin starts nothing).
+let prefetchTimer = 0, prefetchBound = false;
+export const PREFETCH_MS = 600;
+function bindPrefetch() {
+  if (prefetchBound) return; prefetchBound = true;
+  document.addEventListener('crophalo:prefetch', event => {
+    const d = event.detail ?? {}; clearTimeout(prefetchTimer);
+    prefetchTimer = setTimeout(() => prefetchPlace({ lat: d.lat, lon: d.lon }, { fetch: globalThis.fetch.bind(globalThis), caches: globalThis.caches, climateFrom: seam.climateFrom }, d.outline ?? null), PREFETCH_MS);
+  });
+}
+export function initReport(next) { seam = { ...seam, ...next }; initSources(); bindPrefetch(); for (const sheet of ['calendar', 'satellites', 'field']) ensureStyle(`css/${sheet}.css`); if (root()) bind(); }
 export const currentReport = () => cur;

@@ -44,6 +44,10 @@ try { var kept = JSON.parse(localStorage.getItem('crophalo.settings.v1')) || {},
 <link rel="stylesheet" href="css/statement.css">
 <link rel="stylesheet" href="css/farm.css">
 <link rel="stylesheet" href="css/farm3d.css">
+<link rel="stylesheet" href="css/calendar.css">
+<link rel="stylesheet" href="css/satellites.css">
+<link rel="stylesheet" href="css/field.css">
+<link rel="stylesheet" href="css/pages.css">
 <link rel="modulepreload" href="js/app.js">
 <link rel="modulepreload" href="js/settings.js">
 <link rel="modulepreload" href="js/words.js">
@@ -127,19 +131,15 @@ try { var kept = JSON.parse(localStorage.getItem('crophalo.settings.v1')) || {},
       <p class="search-try" id="searchTry">Try <button type="button" class="link" id="tryRegion">Oxford County, Ontario</button> or <button type="button" class="link">42.03, -93.62</button></p>
     </div>
     <div class="wrap">
-      <figure class="lens">
-        <svg id="lens" viewBox="0 0 640 172" aria-hidden="true" focusable="false"></svg>
-        <figcaption>Run your finger or mouse over the fields to look through a satellite’s eyes: greener means more growing crop.</figcaption>
-      </figure>
       <section aria-labelledby="homeRegionsTitle">
-        <div class="sec-head"><h2 id="homeRegionsTitle">Try a demo region</h2><p>This opens instantly. Any other place works too; its first report takes a few minutes.</p></div>
+        <div class="sec-head"><h2 id="homeRegionsTitle">Try a demo region</h2></div>
         <div class="grid" id="homeRegions"></div>
       </section>
       <section id="homeSaved" aria-labelledby="homeSavedTitle" hidden>
         <div class="sec-head"><h2 id="homeSavedTitle">Your saved fields</h2></div>
         <div class="grid" id="homeSavedGrid"></div>
       </section>
-      <p class="foot">Crophalo · NASA Space Apps 2026 · A guide, not advice. You decide.</p>
+      <p class="foot">Crophalo · NASA Space Apps 2026</p>
     </div>
   </section>
   <section class="view" id="view-setup" hidden><div class="setup" id="setupRoot"><h1>Farm setup</h1></div></section>

@@ -1,0 +1,21 @@
+/* Crophalo: the Satellites & prices tab: the rain chart with its gaps and first estimates, and the cards. Only the tokens of css/app.css. Nothing rests on colour alone:
+   a first estimate is an outlined lighter bar, a day not read is a hatched marker. */
+.sat-grid { --min: 330px; }
+.sat-card h3 { font-size: var(--fs-headline); margin-bottom: var(--space-8); }
+.sat-card .wk-big { margin-bottom: var(--space-4); }
+.sr-bar { fill: var(--c-rain); } .sr-bar.early { fill: var(--accent-soft); stroke: var(--c-rain); stroke-width: 1; stroke-dasharray: 2 1.5; }
+.sr-gap { fill: var(--card); stroke: var(--ink2); stroke-width: 1; }
+.ch-key.early { background: var(--accent-soft); box-shadow: inset 0 0 0 1px var(--c-rain); }
+.ch-key.gap { background: var(--card); box-shadow: inset 0 0 0 1px var(--ink2); }
+.sat-card .disc { margin-top: var(--space-8); } .sat-card .tbl { max-height: 40vh; overflow: auto; }
+.sat-card .region { margin-top: var(--space-8); }
+.gr-line { fill: none; stroke: var(--c-rain); stroke-width: 1.5; } .gr-dot { fill: var(--c-rain); }
+.gr-trend { stroke: var(--ink); stroke-width: 1.5; stroke-dasharray: 5 3; } .gr-zero { stroke: var(--ink3); stroke-width: 1; }
+.gr-gap { fill: var(--fill); stroke: var(--ink2); stroke-width: .5; stroke-dasharray: 2 2; }
+.ch-key.trend { background: none; box-shadow: inset 0 -2px 0 0 var(--ink); }
+.gr-head, .eco-head { display: flex; flex-wrap: wrap; gap: var(--space-12); align-items: center; justify-content: space-between; }
+.gr-box { fill: var(--fill2); stroke: var(--ink2); stroke-width: 1; } .gr-field, .eco-pix { fill: var(--c-hi); stroke: var(--ink); stroke-width: 1; }
+.eco-list { list-style: none; margin: 0 0 var(--space-8); padding: 0; display: grid; gap: var(--space-4); } .eco-pass { display: flex; flex-wrap: wrap; gap: 4px var(--space-8); align-items: baseline; }
+.sat-card h4 { margin: var(--space-8) 0 var(--space-4); font-size: var(--fs-subhead, 1rem); } .eco-means { flex: 1 1 14rem; margin: 0; }
+.hl-dot { fill: var(--c-g); stroke: var(--ink); stroke-width: .75; }
+.sat-grid { align-items: start; }   /* a short card stays short: no empty white boxes stretched to the tallest card */

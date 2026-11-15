@@ -433,6 +433,45 @@ one thing changed by hand, in a temp folder.
 
 *To be written.*
 
+## ecopass
+
+**What it is.** The ground temperature, seen from space at about 70 m, of the pixel that holds the field, for the newest clear passes of NASA's ECOSTRESS instrument (on the International Space Station) in the last 60 days. It is the temperature of the surface (soil, leaves, snow), not the air temperature. ECOSTRESS passes at different hours (the station's orbit drifts through the day), so each pass says its own date and local solar time, and passes made at different hours must never be compared as if they were the same time of day. Only the field's own pixel is read; a pixel with cloud, lower quality, water or no view is never a reading. Needs the NASA login.
+
+**Request.** `GET /api/ecopass?lat=43.13&lon=-80.75`; latitude -52..52 (ECOSTRESS does not see further). The server snaps the place to 0.0005 degrees (about 50 m, finer than the 70 m pixel, so the pin keeps its own pixel) and runs `ecopass.py LAT LON`.
+
+**Good answer** (real numbers, Oxford County, 2026-11-14; the days are written as they come):
+
+    {"ok":true,"source":"NASA ECOSTRESS tiled land surface temperature, 70 m (ECO_L2T_LSTE), from NASA's Land Processes DAAC",
+     "data_date":"YYYY-MM-DD","units":"Ground (surface skin) temperature seen from space for one 70 m pixel, in degrees Celsius (and kelvin), at the time of each pass; not the air temperature",
+     "pixel_m":70,"window":{"first":"YYYY-MM-DD","last":"YYYY-MM-DD"},
+     "passes":[{"date":"YYYY-MM-DD","utc":"07:02","solar_time":"01:39","solar_date":"YYYY-MM-DD","day_night":"night","lst_c":-2.3,"lst_k":270.82,"error_k":1.0,"orbit":47324,"version":"002","granule":"ECOv002_L2T_LSTE_47324_006_17TNH_..."}, "..."],
+     "clear_passes":4,"passes_checked":24,"not_usable":{"cloud":2,"quality":2,"water":0,"no_data":16},"read_errors":0,"newest_clear":"YYYY-MM-DD","note":"..."}
+
+| Field | Meaning |
+|---|---|
+| `passes` | up to 4 clear passes, newest first, one per orbit (the next scene of the same overpass is not a second pass). `lst_c` / `lst_k` the ground temperature, `error_k` the file's own estimate of its error (kelvin) |
+| `utc`, `solar_time`, `day_night` | when the pass was made: UTC, the field's mean local solar time (UTC plus longitude / 15 hours; not the clock on the wall, which depends on the time zone and the season), and NASA's own day or night flag |
+| `version` | the product version the pass came from: 003 where it has the pass, else 002 (the passes of both versions are the same overpasses) |
+| `passes_checked`, `not_usable` | how many passes were looked at (newest first, at most 36) and why the others gave no reading: `cloud` (the final cloud mask), `quality` (the quality code is not the best quality, or the value is outside 200 to 360 K), `water`, `no_data` (the pass did not see the field's pixel, or its cloud mask is "not known") |
+| `incomplete` | present when some pass could not be read just now, or the time ran out before the newest 36 were looked at |
+| `why_none` | present when no pass was clear: the answer is still a good one (`passes` empty), never a made-up temperature |
+
+**Failure answers.** The common two for bad arguments (`lat must be -52..52`); `NASA's catalogue lists no ECOSTRESS pass over this place in the last 60 days...` (not final); `NASA did not accept this computer's login`; the files refused for the login (it may need approving for NASA LP DAAC); `NASA's ECOSTRESS files could not be read just now` (every pass failed, not final).
+
+**Partial answers.** Yes: `incomplete` and `read_errors` say which passes were not read.
+
+**Time limit.** 150 s on the server. Live, Oxford: 48 to 65 s (about 50 small reads; the service allows two at a time). The lookup stops looking at older passes 25 s before its limit and says so.
+
+**Memory.** Limit 300 MB. Measured live: peak 104 MB (rasterio and numpy loaded; one pixel per read).
+
+**Kept.** Suggested: 6 hours for a whole answer (a new pass lands every day or two); a final failure an hour.
+
+**Source and manners.** NASA CMR (open) for the granules over the point; NASA's token service; then range reads of ONE pixel of the `LST`, `cloud`, `QC`, `water` and `LST_err` layers of each pass (cheap exits first: a pass the field is not in costs one read). Rules: cloud mask 0 only; the quality code's two lowest bits `00` (best quality; "nominal" can mean possible cloud contamination, so it is not used); water mask 0; value 200 to 360 K. Cite ECO_L2T_LSTE, NASA LP DAAC.
+
+**Checked by.** `scripts/test_live_ecopass.mjs` (offline: small GeoTIFFs built the real way by rasterio, whose neighbours of the field's pixel are deliberately wrong), `scripts/live_check_ecopass.mjs` (by hand, live).
+
+**Checked against the live service.** Oxford, 2026-11-14: 24 passes looked at, 4 clear (the newest night passes and one morning pass), 2 cloud, 2 lower quality, 16 not covering the field's pixel; one pass's five layers compared with a direct sample of the same files, same values (282.26 K, error 1.36 K, quality code 35520 whose lowest two bits are 00, cloud 0, water 0).
+
 ## faostat
 
 *To be written.*
@@ -449,9 +488,90 @@ one thing changed by hand, in a temp folder.
 
 *To be written.*
 
+## gracecell
+
+**What it is.** The water stored in the ground and soil (groundwater, soil water, snow and surface water together) over a region about 300 km wide round the field, month by month since the first month of the record, from NASA's GRACE and GRACE-FO satellites (JPL mascon solution RL06.3Mv04, coastal-filtered). It is the change in centimetres of water from the 2004 to 2009 average, not a well and not a reading in the field. Needs the NASA login. The values are read from the 0.5 degree cell that holds the field; the satellites cannot see finer than about 300 km (the mascons are 3 degree caps), so the answer's `area_km` is 300 and a screen should draw the region as about 300 km, never as the 0.5 degree cell.
+
+**Request.** `GET /api/gracecell?lat=43.13&lon=-80.75`; the server snaps the place to the CENTRE of its 0.5 degree cell (`lat = floor(lat*2)/2 + 0.25`, same for lon; never round-to-0.5) and runs `gracecell.py LAT LON`.
+
+**Good answer** (real numbers, Oxford County, 2026-11-14; `months` is shortened here):
+
+    {"ok":true,"source":"NASA GRACE and GRACE-FO, JPL mascon solution RL06.3Mv04 (Coastal Resolution Improvement filter), from NASA's Physical Oceanography DAAC",
+     "data_date":"2002-04/2026-09","units":"Centimetres of water, as the change from the 2004 to 2009 average, for the whole of the ground, soil, snow and surface water over a region about 300 km wide",
+     "cell":{"lat":43.25,"lon":-80.75,"width_km":40.5,"height_km":55.6,"edges":{"n":43.5,"s":43.0,"e":-80.5,"w":-81.0}},"area_km":300,
+     "months":[["2002-04",1.18,13.01],["2002-05",3.8,6.9],["2002-06",null,null],"...",["2026-09",-4.12,7.54]],
+     "months_read":259,"gaps":["2002-06","2002-07","..."],"gap_spans":[["2002-06","2002-07"],"..."],"merged_months":["2012-01","2015-04"],
+     "newest_month":"YYYY-MM","newest_date":"YYYY-MM-DD","value_cm":-4.12,"uncertainty_cm":7.54,
+     "trend_cm_per_year":0.17,"trend_from":"2002-04","trend_to":"2026-09","trend_years":24.4,"note":"..."}
+
+| Field | Meaning |
+|---|---|
+| `months` | one entry per calendar month from the first to the newest month: `[month, cm, uncertainty_cm]`. A month with no solution is `[month, null, null]`: the satellites did not measure it (the 2017 to 2018 gap between GRACE and GRACE-FO, and single months before and after). Never 0, never interpolated |
+| `merged_months` | months the file has two part-month solutions for; the entry is their mean |
+| `gaps` / `gap_spans` | the empty months, and the runs of them as `[first, last]` |
+| `value_cm`, `uncertainty_cm` | the newest month's value and the file's own one-sigma uncertainty for it (several centimetres: most single months are within the noise, so show the trend and the series, not one month as a fact) |
+| `trend_cm_per_year` | the least-squares straight line through all months read, in cm of water a year; `null` unless at least 5 years are spanned and at least 60 months were read (then `trend_note` says so). A long-term slope of a regional signal, not a forecast |
+| `cell`, `area_km` | the 0.5 degree cell read, with its size on the ground and edges; and the region the value stands for |
+
+**Failure answers.** The common two for bad arguments; `NASA's catalogue lists no GRACE-FO groundwater file just now; try again later`; `NASA did not accept this computer's login`; the file refused for the login (it may need approving for PO.DAAC); `This place is open water for the GRACE-FO data...` and `NASA has no GRACE-FO value for this place` (both final); `NASA's GRACE-FO file is no longer laid out the way Crophalo was checked against` (shape, units, axes or the cell's own coordinates differ: no value is better than one from the wrong place).
+
+**Partial answers.** None for the lookup as a whole: gaps are part of the answer, not a failure, and are named.
+
+**Time limit.** 150 s on the server. Live, Oxford: about 27 s (the file's index is read first, then the cell's chunks in parallel).
+
+**Memory.** Limit 300 MB. Measured live: peak 110 MB (h5py and numpy loaded; the cell's chunks are decompressed one at a time). The file is never loaded: 21 requests of 256 KB, 5.4 MB of a 44 MB file. The old design that needed 2 GB read the whole file.
+
+**Kept.** Suggested: a whole answer for 7 days (a new month arrives about once a month); a failure for an hour.
+
+**Source and manners.** NASA CMR (open) names the one file; NASA's token service; then Range requests to NASA PO.DAAC's archive for ONLY the pieces that hold the cell (h5py opens a block-reading stand-in for the file), never more than 80 requests or 24 MB. NASA's OPeNDAP service does not serve this collection, so the range read is the one-cell method. Cite the DOI 10.5067/TEMSC-3JC634.
+
+**Checked by.** `scripts/test_live_gracecell.mjs` (offline: a small file built the real way by h5py and served in the same pieces), `scripts/live_check_gracecell.mjs` (by hand, live).
+
+**Checked against the live service.** Oxford, 2026-11-14: 294 months from 2002-04 to 2026-09, 259 with a value and 35 empty; every month compared with a full read of the file (netCDF4) with no difference; trend 0.17 cm a year over 24.4 years.
+
 ## hls
 
 *To be written.*
+
+## hlsndvi
+
+**What it is.** How green the field looked from space, about 30 m per dot, for the last 12 months: NDVI (greenness) from NASA's Harmonized Landsat and Sentinel-2 surface reflectance (HLS v2.0: Sentinel-2 bands B04 and B8A, Landsat 8 and 9 bands B04 and B05), averaged over the clear dots of a 3 by 3 box (90 m) round the pin. One value for each 15-day period, from the pass of that period with the lowest cloud cover over its tile that is also clear at the field; a period with no clear pass is left empty and named in `gaps`. Needs the NASA login. A cloud, a cloud shadow, a dot next to either, snow, ice or water is never "low greenness": it is left out, and a pass counts only when at least 5 of the 9 dots are clear.
+
+**Request.** `GET /api/hlsndvi?lat=43.13&lon=-80.75`, optionally `&first=YYYYMMDD&last=YYYYMMDD` for another window (at most 800 days; this is how to ask for the same days of earlier years: HLS holds Landsat since 2013 and Sentinel-2 since late 2015, so the record allows it, one call per year); the server snaps the place to 0.0001 degrees (about 10 m, so the pin keeps its own box) and runs `hlsndvi.py LAT LON [FIRST LAST]`.
+
+**Good answer** (real numbers, Oxford County, 2026-11-14; the days are written as they come, `passes` is shortened):
+
+    {"ok":true,"source":"NASA / USGS Harmonized Landsat and Sentinel-2 (HLS) surface reflectance, 30 m, version 2.0, from NASA's Land Processes DAAC",
+     "data_date":"YYYY-MM-DD/YYYY-MM-DD","units":"NDVI (greenness) from the red and near-infrared surface reflectance of the 30 m dots round the field, 0 is bare ground or dead plants and about 0.8 is thick healthy green",
+     "pixel_m":30,"box":{"pixels":"3x3","size_m":90,"lat":43.13,"lon":-80.75},"window":{"first":"YYYY-MM-DD","last":"YYYY-MM-DD"},
+     "passes":[{"date":"YYYY-MM-DD","sensor":"Sentinel-2","ndvi":0.528,"clear_pixels":9,"of_pixels":9,"tile_cloud_pct":19.0,"tile":"T17TNH","granule":"HLS.S30.T17TNH.YYYYDDDThhmmss.v2.0"}, "..."],
+     "periods":24,"periods_read":17,"gaps":[["YYYY-MM-DD","YYYY-MM-DD"], "..."],"skipped_periods":[],"not_usable":{"cloud":8,"snow":13,"water":0,"outside":0},"read_errors":0,
+     "newest_date":"YYYY-MM-DD","newest_ndvi":0.436,"note":"..."}
+
+| Field | Meaning |
+|---|---|
+| `passes` | the readings, oldest first: date, satellite (`Sentinel-2` or `Landsat 8 and 9`), the box's mean NDVI (3 decimals), how many of the 9 dots were clear and used, the tile's own cloud percentage (the whole 110 km tile, not the field), the tile and the granule. A pass seen from two neighbouring tiles is one pass, taken from the first tile listed |
+| `gaps` | the 15-day periods with no clear reading (cloud, snow in winter, shadow): draw them empty, never as zero |
+| `periods`, `periods_read` | how many periods the window has passes in, and how many gave a reading |
+| `not_usable` | the candidate passes rejected, by the main reason: `cloud` (cloud, shadow, next to either, or the file's "not known"), `snow`, `water`, `outside` |
+| `skipped_periods` | the older periods not looked at before the time ran out (the newest are read first); `incomplete` says so |
+| `ndvi` | (near-infrared - red) / (near-infrared + red) of each clear dot, then the mean of the dots; reflectance is the stored value times the file's own scale (0.0001); a dot with no value, or a reflectance or NDVI that cannot be real, is dropped |
+
+**Failure answers.** The common two for bad arguments, and `the first day must be... written YYYYMMDD`; `NASA's catalogue lists no Landsat or Sentinel-2 surface-reflectance pass over this place between ... and ...` (not final); `NASA did not accept this computer's login`; the files refused for the login (it may need approving for NASA LP DAAC); `NASA's satellite greenness files could not be read just now` (every pass failed, not final).
+
+**Partial answers.** Yes: `incomplete` with `read_errors` and `skipped_periods`. No clear pass at all in the window is a good answer with `passes` empty and `why_none`.
+
+**Time limit.** 150 s on the server. Live, Oxford: 83 to 91 s (about 75 small reads at about 2 s each: every file costs a signed redirect, and the service allows two at a time, so one period takes 3 to 9 s). The lookup stops starting new periods 22 s before its limit and says which older ones it left.
+
+**Memory.** Limit 300 MB. Measured live: peak 80 MB.
+
+**Kept.** Suggested: 24 hours for a whole answer; a final failure an hour. A same-days call for an earlier year never changes: it can be kept a week.
+
+**Source and manners.** NASA CMR (open) for the HLSS30 and HLSL30 granules over the point; NASA's token service; then range reads of the 3 by 3 box of three layers (`Fmask`, `B04`, `B8A` or `B05`), never a whole file, cheap exits first (a cloudy pass costs one read). Fmask bits used: 1 cloud, 2 adjacent to cloud or shadow, 3 cloud shadow, 4 snow or ice, 5 water; bit 0 (cirrus) is unused and the aerosol level (bits 6 and 7) is ignored: in this region "high aerosol" is on most clear scenes and says the air was hazy, not that the dot is unusable.
+
+**Checked by.** `scripts/test_live_hlsndvi.mjs` (offline: small GeoTIFFs built the real way by rasterio, whose dots round the box are deliberately wrong), `scripts/live_check_hlsndvi.mjs` (by hand, live).
+
+**Checked against the live service.** Oxford, 2026-11-14: 24 periods, 17 with a reading, 7 empty (the winter), NDVI between 0.29 and 0.53, 8 cloudy and 13 snowy candidates passed over, no read errors; one pass recomputed from a direct read of its three files, same value (0.528, nine dots).
 
 ## horizon
 
@@ -460,6 +580,45 @@ one thing changed by hand, in a temp folder.
 ## imerg
 
 *To be written.*
+
+## imergrain
+
+**What it is.** The last 30 days of satellite rain for the one 0.1 degree square (about 8 by 11 km in Ontario) of NASA's GPM IMERG grid that holds the field: one value in millimetres for each day. Day values come from the Late Run (the final-quality run, published about a day behind) and, for the newest days it does not have yet, from the Early Run, named as first estimates. Needs the NASA login. One value is for the whole square, not a gauge in the field.
+
+**Request.** `GET /api/imergrain?lat=43.13&lon=-80.75`; the server snaps the place to the CENTRE of its 0.1 degree square (`floor(v*10)/10 + 0.05`, for lat and lon; never round-to-0.1, which can move the pin into the next square) and runs `imergrain.py LAT LON`.
+
+**Good answer** (real numbers, Oxford County, 2026-11-14):
+
+    {"ok":true,"source":"NASA GPM IMERG daily precipitation, version 07 (Late Run; Early Run for the newest days), from NASA's Goddard Earth Sciences DAAC (GES DISC)",
+     "data_date":"YYYY-MM-DD/YYYY-MM-DD","units":"Millimetres of rain over the whole day (UTC day), for the whole 0.1 degree square",
+     "cell":{"lat":43.15,"lon":-80.75,"width_km":8.1,"height_km":11.1,"edges":{"n":43.2,"s":43.1,"e":-80.7,"w":-80.8}},
+     "days":[["YYYY-MM-DD",0.17,"late"],["YYYY-MM-DD",5.28,"late"],"...",["YYYY-MM-DD",0.0,"late"]],
+     "days_read":30,"total_mm":31.3,"late":30,"early":0,"not_published":[],"read_errors":0,"first_estimate":[],"newest_day":"YYYY-MM-DD","note":"..."}
+
+| Field | Meaning |
+|---|---|
+| `days` | 30 entries, oldest first: `[day, mm, run]`. `mm` is a number (a true 0 is 0, a day that was read) or `null`: a day NASA has not published, a day the file has no value for, or a day that could not be read. Never 0 for a day nobody read. `run` is `"late"`, `"early"` or `null` |
+| `total_mm` | the sum of the days that have a value, 1 decimal; with missing days it is a total of fewer days, and `incomplete` says so |
+| `first_estimate` | the days read from the Early Run: a first estimate that may change |
+| `not_published` / `read_errors` | the days NASA lists no file for / the days that failed just now |
+| `incomplete` | present only when some day is null: plain words saying how many and why |
+| `cell` | the square's centre, size on the ground and four edges; the field lies inside it |
+
+**Failure answers.** The common two for bad arguments; `NASA has not published its satellite rain for this period yet`; `NASA did not accept this computer's login`; the files refused for the login (it may need approving for GES DISC); `...could not be read just now` (every day failed, not final); a file whose cell is not the one asked for.
+
+**Partial answers.** Yes: some days null, with `incomplete`, `not_published` and `read_errors`. Never zeros in their place.
+
+**Time limit.** 150 s on the server. Live, Oxford: about 19 s for 32 requests.
+
+**Memory.** Limit 300 MB. Measured live: peak 28 MB.
+
+**Kept.** Suggested: 6 hours for a whole answer; a partial one is kept short or not at all.
+
+**Source and manners.** NASA CMR (open) for the day files (Late first, Early only for days the Late Run lacks); NASA's token service; NASA's OPeNDAP service for ONE cell per day: `/precipitation[0][i][j]` with the cell's own `lon` and `lat` read back and checked within 0.011 degrees.
+
+**Checked by.** `scripts/test_live_imergrain.mjs` (offline, NASA's answers hand-made in the real format), `scripts/live_check_imergrain.mjs` (by hand, live).
+
+**Checked against the live service.** Oxford, 2026-11-14: 30 of 30 days from the Late Run, 31.3 mm in total, 32 requests, 19 s.
 
 ## isda
 

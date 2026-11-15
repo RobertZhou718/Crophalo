@@ -1,14 +1,13 @@
-// Crophalo's home screen: the two big buttons, the place search with its list, the demo region cards, the farmer's saved fields
-// (cards on the page and the Saved sheet) and the satellite-lens picture. Nothing is sent anywhere until a place is searched for or chosen.
+// Crophalo's home screen: the two big buttons, the place search with its list, the demo region cards and the farmer's saved fields
+// (cards on the page and the Saved sheet). Nothing is sent anywhere until a place is searched for or chosen.
 // Nothing here is pure: it reads and changes the page. The pure parts live in places.js and saved.js.
-// Checked by scripts/e2e_flow.mjs (the list and its keys, the messages, the demo card, the Saved sheet with delete and undo, the still lens).
+// Checked by scripts/e2e_flow.mjs (the list and its keys, the messages, the demo card, the Saved sheet with delete and undo, nothing moving on the home).
 import { esc } from './words.js';
 import { parseCoords, coordText, matchRegions, loadRegions, geocode } from './places.js';
 import { presetOf } from './crops.js';
 import { readSaved, removeSaved, restoreSaved, savedDate } from './saved.js';
 import { initListen } from './listen.js';
 import { toast, hideToast, runToastAction } from './toast.js';
-import { motionOff } from './motion.js';
 
 const $ = (sel, root = document) => root.querySelector(sel), $$ = (sel, root = document) => [...root.querySelectorAll(sel)];
 
@@ -226,65 +225,6 @@ function initSaved() {
   addEventListener('storage', event => { if (event.key === null || event.key === 'crophalo.saved.v1') drawSaved(); });
 }
 
-// ---- the lens: a patchwork of fields; a round window over it shows how green each one is, as a satellite sees it
-const LENS = { w: 640, h: 172, r: 58, sweepMs: 4500, cols: [58, 92, 60, 82, 44, 96, 52, 62, 70], rows: [44, 76, 40] };
-const DULL = ['#dfe3c8', '#e9e0c9', '#c6d1a4', '#d8cba8', '#bccb9d'], GREEN = ['#f0d560', '#c9dd6c', '#8fc647', '#4fa32e'];   // bare soil to full crop
-function initLens() {
-  const svg = $('#lens');
-  if (!svg) return;
-  let seed = 20261114;
-  const next = () => { seed = (seed * 1103515245 + 12345) % 2147483648; return seed / 2147483648; };   // the same patchwork every visit
-  const gap = 3, fields = [];
-  let y = gap;
-  for (const high of LENS.rows) {
-    let x = gap;
-    for (const wide of LENS.cols) { fields.push({ x, y, w: wide - gap, h: high - gap, dull: Math.floor(next() * DULL.length), green: Math.floor(next() * GREEN.length) }); x += wide; }
-    y += high;
-  }
-  const patch = (f, fill) => `<rect x="${f.x}" y="${f.y}" width="${f.w}" height="${f.h}" rx="3" fill="${fill}"/>`;
-  svg.innerHTML = `
-    <defs>
-      <pattern id="lensRows" width="7" height="7" patternUnits="userSpaceOnUse" patternTransform="rotate(28)"><path d="M0 3.5h7" stroke="#6b5a2e" stroke-opacity=".16"/></pattern>
-      <clipPath id="lensEye"><circle r="${LENS.r}"/></clipPath>
-    </defs>
-    ${fields.map(f => patch(f, DULL[f.dull])).join('')}
-    <rect width="${LENS.w}" height="${LENS.h}" fill="url(#lensRows)"/>
-    <g clip-path="url(#lensEye)">${fields.map(f => patch(f, GREEN[f.green])).join('')}</g>
-    <circle class="lens-turn" r="${LENS.r - 7}"/><circle class="lens-ring" r="${LENS.r}"/>`;
-  const eye = $('#lensEye circle', svg), ring = $('.lens-ring', svg), turn = $('.lens-turn', svg);
-  const put = (x, yy) => { for (const c of [eye, ring, turn]) { c.setAttribute('cx', x.toFixed(1)); c.setAttribute('cy', yy.toFixed(1)); } };
-  const rest = [LENS.w * 0.83, LENS.h * 0.46], path = [[0.16, 0.38], [0.34, 0.68], [0.52, 0.3], [0.68, 0.64], [0.83, 0.46]].map(([x, y]) => [LENS.w * x, LENS.h * y]);   // a path across the patchwork
-  let px = path[0][0], py = path[0][1], target = path[0], steered = false, onScreen = true, last = 0, began = 0, raf = 0;
-  put(...rest);
-  // On load the lens sweeps by itself for 4.5 s: it eases toward each point of the path (x += (tx - x) * min(1, dt * 4)), then rests where it began its rest and
-  // follows the pointer or finger (the same ease at 10 when steered). It never sweeps under Always still or the device's reduce-motion; it still follows a pointer then.
-  const tick = now => {
-    raf = 0;
-    if (!onScreen) { last = 0; return; }
-    const dt = last ? Math.min(0.1, (now - last) / 1000) : 0.016; last = now; began ||= now;
-    const t = now - began;
-    if (!steered) {
-      const stage = Math.min(path.length - 1, Math.floor(t / (LENS.sweepMs / path.length)));
-      target = t >= LENS.sweepMs ? rest : path[stage];
-    }
-    const k = Math.min(1, dt * (steered ? 10 : 4));
-    px += (target[0] - px) * k; py += (target[1] - py) * k; put(px, py);
-    const settled = Math.abs(target[0] - px) < 0.3 && Math.abs(target[1] - py) < 0.3;
-    if (steered || t < LENS.sweepMs || !settled) raf = requestAnimationFrame(tick); else { put(target[0], target[1]); last = 0; }
-  };
-  const go = () => { if (!raf && onScreen && (steered || !motionOff())) raf = requestAnimationFrame(tick); };   // still: nothing starts by itself
-  const follow = event => {
-    steered = true;
-    const frame = svg.getBoundingClientRect();
-    target = [(event.clientX - frame.left) / frame.width * LENS.w, (event.clientY - frame.top) / frame.height * LENS.h];
-    if (motionOff()) { px = target[0]; py = target[1]; put(px, py); return; }   // still: it goes where it is pointed, with no travelling
-    go();
-  };
-  svg.addEventListener('pointermove', follow); svg.addEventListener('pointerdown', follow);
-  if ('IntersectionObserver' in window) new IntersectionObserver(entries => { onScreen = entries.some(e => e.isIntersecting); svg.classList.toggle('lens-paused', !onScreen); if (onScreen) go(); }, { threshold: 0.1 }).observe(svg);
-  if (!motionOff()) { px = path[0][0]; py = path[0][1]; put(px, py); go(); }
-}
-
 // ---- start. where: { place(spot), mapPick(), saved(field) } says what each choice opens.
 export function initHome(where) {
   go = { ...go, ...where };
@@ -294,5 +234,4 @@ export function initHome(where) {
   initSearch();
   initRegions();
   initSaved();
-  initLens();
 }

@@ -1,5 +1,6 @@
 [
   { "id": "oxford", "name": "Oxford County, Ontario", "country": "Canada", "lat": 43.13, "lon": -80.75, "rotation": "corn-soy", "defaults": { "irrigation": "none", "soil": "assumed" },
+    "try": ["corn", "soy", "wheat"],
     "aliases": ["Ontario", "Oxford", "Woodstock"],
     "blurb": "Corn and soybean country in south-central Ontario, where winter wheat is often sown after soybeans." }
 ]

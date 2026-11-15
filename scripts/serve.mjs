@@ -98,7 +98,7 @@ function rateOK(req) {
 }
 
 // ---- live lookups: one Python script per row in scripts/live/, run by the runner below. Health, ready and sources read everything from here.
-const LIVE = { smaproot: { name: 'NASA SMAP root-zone soil moisture', ttl: 6 * H, point: true, snap: 0.01, timeout: 150e3, script: 'smaproot.py' }, dem: { name: 'Land heights (the finest free height map)', ttl: 30 * 24 * H, timeout: 120e3, args: boxArgs, script: 'dem.py' } };   // id → { name, ttl, point?, snap?, timeout?, args?, script }. Keep this on one line: test_server.mjs puts test rows into a copy of it.
+const LIVE = { smaproot: { name: 'NASA SMAP root-zone soil moisture', ttl: 6 * H, point: true, snap: 0.01, timeout: 150e3, script: 'smaproot.py' }, dem: { name: 'Land heights (the finest free height map)', ttl: 30 * 24 * H, timeout: 120e3, args: boxArgs, script: 'dem.py' }, imergrain: { name: 'NASA GPM IMERG satellite rain, last 30 days', ttl: 6 * H, point: true, centre: 0.1, timeout: 150e3, script: 'imergrain.py' }, gracecell: { name: 'NASA GRACE-FO regional water storage', ttl: 7 * 24 * H, point: true, centre: 0.5, timeout: 150e3, script: 'gracecell.py' }, ecopass: { name: 'NASA ECOSTRESS ground temperature passes', ttl: 6 * H, point: true, snap: 0.0005, timeout: 150e3, script: 'ecopass.py' }, hlsndvi: { name: 'NASA HLS greenness (Landsat and Sentinel-2)', ttl: 24 * H, timeout: 150e3, args: windowArgs, script: 'hlsndvi.py' }, cropsnear: { name: 'Crops grown nearby (AAFC and USDA crop maps)', ttl: 30 * 24 * H, timeout: 120e3, args: countryArgs, script: 'cropsnear.py' } };   // id → { name, ttl, point?, snap?, timeout?, args?, script }. Keep this on one line: test_server.mjs puts test rows into a copy of it.
 const liveStats = {}, inFlight = new Map(), liveQueue = [];
 let liveRunning = 0;
 const statOf = id => (liveStats[id] ||= { last_ms: null, last_time: null, last_ok_time: null, last_error: null });   // times in ms; ISO only on the way out
@@ -108,6 +108,25 @@ function pointArgs(q) {   // decimal degrees; a blank is missing, never 0
   const read = v => (/^[+-]?(\d+\.?\d*|\.\d+)$/.test(String(v ?? '').trim()) ? Number(v) : NaN);
   const lat = read(q.get('lat')), lon = read(q.get('lon'));
   return Math.abs(lat) <= 90 && Math.abs(lon) <= 180 ? [lat.toFixed(4), lon.toFixed(4)] : { reason: 'lat and lon are required (decimal degrees)' };   // 4 decimals is about 11 m
+}
+// A coarse grid read at the centre of its square (satellite rain 0.1 degree, water storage 0.5 degree): floor(v / step) * step + step / 2, never rounded, which could move the pin into the next square.
+// A pin on the last line of the grid (latitude 90, longitude 180) belongs to the last square, not to one beyond it.
+const centre = (value, step, max) => (Math.floor(Math.min(Number(value), max - 1e-9) / step + 1e-9) * step + step / 2).toFixed(4);
+// The greenness lookup: LAT LON [FIRST LAST], the window as YYYYMMDD; the lookup itself checks the window (in order, at most 800 days).
+function windowArgs(q) {
+  const at = pointArgs(q); if (!Array.isArray(at)) return at;
+  const first = String(q.get('first') ?? '').trim(), last = String(q.get('last') ?? '').trim();
+  if (!first && !last) return at;
+  return /^\d{8}$/.test(first) && /^\d{8}$/.test(last) ? [...at, first, last] : { reason: 'first and last must both be given as YYYYMMDD' };
+}
+// The crop-map lookup: LAT LON COUNTRY. Only Canada and the 48 lower US states have a crop map here; the country comes from the page (a code or the name it shows).
+const COUNTRY = { ca: 'CA', canada: 'CA', us: 'US', usa: 'US', 'united states': 'US', 'united states of america': 'US' };
+function countryArgs(q) {
+  const at = pointArgs(q); if (!Array.isArray(at)) return at;
+  if (Math.abs(Number(at[0])) > 84) return { reason: 'lat must be -84..84 and lon -180..180' };
+  const said = String(q.get('country') ?? '').trim().toLowerCase(), code = Object.hasOwn(COUNTRY, said) ? COUNTRY[said] : said.toUpperCase();
+  if (!said) return { reason: 'The country of the field is needed to read the crop map (country=CA or US)' };
+  return [...at, /^[A-Z]{2}$/.test(code) ? code : 'ZZ'];   // another country (ZZ: a code no country has): the lookup says plainly that its maps cover Canada and the US only
 }
 // The height lookup: LAT LON W D NX NY [SOURCE]. A box of 20 m to 8 km a side with 2 to 257 points a side.
 const DEM_SOURCES = ['hrdem', 'hrdem2', 'usgs3dep', 'usgs13', 'mrdem', 'ahn', 'ea', 'ign-es', 'ign-fr', 'glo30', 'nasadem'];
@@ -180,7 +199,8 @@ async function lookup(req, res, id, row, url) {
   if (!Array.isArray(args)) throw new Fail(400, args.reason);
   if (!fs.existsSync(PY)) throw new Fail(500, 'Python environment not found (.venv)');
   if (row.snap) args = args.map(v => snap(v, row.snap));
-  const spot = row.point && row.snap ? { lat: Number(args[0]), lon: Number(args[1]) } : null;   // the place really read: the answer says it
+  if (row.centre) args = args.map((v, i) => centre(v, row.centre, i === 0 ? 90 : 180));
+  const spot = row.point && (row.snap || row.centre) ? { lat: Number(args[0]), lon: Number(args[1]) } : null;   // the place really read: the answer says it
   const send = (answer, cached, at) => json(req, res, 200, { ...answer, ...(spot && answer.ok ? { spot } : {}), cached, fetched: new Date(at).toISOString() });
   const file = cacheFile(id, args), finalFile = cacheFile(id, args, true), now = Date.now(), hit = readKept(file, now) || readKept(finalFile, now);
   if (hit) return send(hit.answer, true, hit.stored);

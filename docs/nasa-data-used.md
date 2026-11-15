@@ -6,8 +6,6 @@ Every figure in Crophalo that comes from outside carries a small "i" button. It 
 
 ## The NASA data, and what Crophalo does with it
 
-On screen today: NASA POWER (the report, the Weather and Calendar tabs) and NASA SMAP (the regional reading on the Weather tab). The Satellites tab, which is to show the GPM IMERG daily rain, GRACE, ECOSTRESS and HLS sections below, is not built yet.
-
 ### NASA POWER (Prediction Of Worldwide Energy Resources)
 
 - **What it is.** Daily weather for the area around a place, since 2001: air temperature, rain, soil wetness at root depth and the water the land loses to the air. POWER joins satellite observations with NASA's weather models. One square of its grid is about 50 km wide, so a single field can differ from it.
@@ -68,6 +66,8 @@ These are not NASA's. They are listed because the contest asks for every source 
 | FAOSTAT | What crops each country grows | Food and Agriculture Organization of the United Nations |
 | MapSPAM 2020 | Where crops are grown near the field | International Food Policy Research Institute |
 | Esri World Imagery | The satellite photograph under the map | Esri and its imagery partners |
+| Esri light grey map | The plain light map where the detailed one cannot load or near the poles | Esri and its partners |
+| OpenFreeMap, with OpenMapTiles and OpenStreetMap data | The Light map and the names of countries, regions and places over the satellite photo (never the name of any water) | OpenFreeMap, OpenMapTiles and OpenStreetMap contributors |
 | OpenStreetMap, through Nominatim | Looking up a place name | OpenStreetMap contributors |
 | Leaflet, MapLibre GL JS, three.js | The map and the 3D view | Their open-source authors |
 | axe-core | Checking the pages for accessibility (tests only; it is not part of the app) | Deque Systems |

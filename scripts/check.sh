@@ -13,9 +13,9 @@
 set -e
 cd "$(dirname "$0")/.."
 
-OFFLINE="test.mjs test_server.mjs test_portable.mjs test_crops.mjs test_places.mjs test_state.mjs test_wizard.mjs test_weather.mjs test_climate.mjs test_season.mjs test_engine.mjs test_cropsnear.mjs test_report.mjs test_weather_tab.mjs test_calendar.mjs test_sources.mjs test_geo.mjs test_spot.mjs test_region.mjs test_live_smaproot.mjs test_smap_route.mjs test_sun.mjs test_shade.mjs test_farm3d.mjs test_live_dem.mjs test_server_dem.mjs test_sim.mjs test_soil.mjs test_remind.mjs test_sharetext.mjs test_sharefiles.mjs test_statement.mjs"   # seconds each, no internet needed
+OFFLINE="test.mjs test_server.mjs test_portable.mjs test_crops.mjs test_places.mjs test_state.mjs test_wizard.mjs test_weather.mjs test_climate.mjs test_season.mjs test_engine.mjs test_cropsnear.mjs test_report.mjs test_weather_tab.mjs test_calendar.mjs test_sources.mjs test_geo.mjs test_spot.mjs test_region.mjs test_live_smaproot.mjs test_smap_route.mjs test_sun.mjs test_shade.mjs test_farm3d.mjs test_live_dem.mjs test_server_dem.mjs test_sim.mjs test_soil.mjs test_remind.mjs test_sharetext.mjs test_sharefiles.mjs test_statement.mjs test_pages.mjs test_satellites.mjs test_satellites2.mjs test_field_tab.mjs test_land3d.mjs test_live_imergrain.mjs test_live_gracecell.mjs test_live_ecopass.mjs test_live_hlsndvi.mjs"   # seconds each, no internet needed
 NETWORK="test_fallback.mjs"   # needs the internet once: it asks the back-up weather service for 16 far places and keeps the answers in scripts/_cache/ (NET=1 runs it)
-BROWSER="e2e.mjs e2e_flow.mjs e2e_map.mjs e2e_farm.mjs e2e_farm3d.mjs"   # one at a time: together they share the processor and fail for no reason
+BROWSER="e2e.mjs e2e_flow.mjs e2e_pages.mjs e2e_sat2.mjs e2e_map.mjs e2e_farm.mjs e2e_farm3d.mjs"   # one at a time: together they share the processor and fail for no reason
 
 # ---- the real port: where this folder last ran (runtime/last-port), else the starter's own 5173
 REAL_PORT=$(cat runtime/last-port 2>/dev/null | tr -cd '0-9')

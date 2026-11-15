@@ -219,7 +219,7 @@ await group('data and install files', async () => {
   const r = regions[0] || {};
   same('its country is Canada and it has a name', [typeof r.name === 'string' && r.name.length > 3, r.country], [true, 'Canada']);
   check('its place is a real pair of numbers inside Ontario', Number.isFinite(r.lat) && Number.isFinite(r.lon) && r.lat > 41.6 && r.lat < 56.9 && r.lon > -95.2 && r.lon < -74.3, `lat ${r.lat}, lon ${r.lon}`);
-  none('it carries only the fields the app knows', Object.keys(r).filter(k => !['id', 'name', 'country', 'lat', 'lon', 'rotation', 'defaults', 'aliases', 'blurb'].includes(k)));
+  none('it carries only the fields the app knows', Object.keys(r).filter(k => !['id', 'name', 'country', 'lat', 'lon', 'rotation', 'defaults', 'aliases', 'blurb', 'try'].includes(k)));
   // Its ready answers: rain only, and a soil that is said to be assumed, never one that looks measured (the report then says it is less sure).
   same('its ready answers are rain-fed and an assumed soil', r.defaults, { irrigation: 'none', soil: 'assumed' });
   check('its other names are short words a farmer may search for', Array.isArray(r.aliases) && r.aliases.every(a => typeof a === 'string' && a.length >= 2 && a.length <= 40), r.aliases);

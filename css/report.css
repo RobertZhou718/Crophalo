@@ -93,3 +93,11 @@
 @media (max-width: 520px) { .rv-bars li { grid-template-columns: minmax(0, 1fr); } .rv-bar-ends { grid-column: 1; } }
 .srcpop-note a { display: inline-flex; align-items: center; min-height: var(--touch); }
 .srcpop-note p { margin-top: 0; }
+.btn.chosen { background: var(--accent-soft); color: var(--accent-text); box-shadow: inset 0 0 0 2px var(--accent); }   /* the plan chosen to try: a ring and tint, so the one blue button stays Add to My Farm */
+.rv-worth { margin-top: var(--space-16); } .rv-worth h3 { font-size: var(--fs-headline); }
+.rv-worth-list { margin: var(--space-8) 0 0; padding: 0; list-style: none; display: grid; gap: var(--space-8); }
+.rv-worth-list .btn { margin-top: var(--space-8); }
+
+/* the rhythm of a report section: the heading, a line under it, then the blocks with room between them */
+.rv-sec > h2 + p, .rv-sec > h2 + .lead { margin-top: var(--space-8); }
+.rv-sec > .lead + .grid, .rv-sec > p + .btnrow, .rv-sec > p + .grid { margin-top: var(--space-16); }

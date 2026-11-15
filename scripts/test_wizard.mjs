@@ -2,7 +2,7 @@
 // RULE: never loosen a check to make it pass; fix the project. No page and no internet are needed. Run: node scripts/test_wizard.mjs
 import { STEPS, WATER, FEEL, COLOUR, MATTERS, TILLAGE, HABITS, PARCEL_FOR } from '../js/words.js';
 import { newState, PRIORITY_SETS, TEXTURES, ORGANIC } from '../js/state.js';
-import { hasRotation, hasSoil, stepsFor, needFor, canGo, rotationSlots, readyAnswers, isReady } from '../js/steps.js';
+import { hasPlace, hasRotation, hasSoil, stepsFor, needFor, canGo, rotationSlots, readyAnswers, isReady } from '../js/steps.js';
 
 let passed = 0, failed = 0;
 const brief = v => { const s = JSON.stringify(v); return s == null ? String(v) : s.length > 300 ? s.slice(0, 300) + '…' : s; };
@@ -12,7 +12,10 @@ const same = (name, got, want) => check(name, JSON.stringify(got) === JSON.strin
 const s = newState();
 same('four steps, in order', STEPS.map(x => x.id), ['field', 'crops', 'soil', 'matters']);
 check('every step has a bar label, a heading and a Listen text', STEPS.every(x => x.bar && x.heading && x.listen.startsWith('Step ')));
-check('the first step blocks only until the field has a position', !canGo('field', s) && canGo('field', { ...s, loc: { lat: 43.1, lon: -80.7 } }) && needFor('field', { ...s, loc: { lat: '43', lon: 1 } }) === 'Tap the map or draw your field to go on.');
+check('the first step blocks only until the field has a position', !canGo('field', s) && canGo('field', { ...s, loc: { lat: 43.1, lon: -80.7 } }));
+const NEED_PLACE = 'Tap the map or draw your field to go on.';
+check('step one blocks with no position', needFor('field', { ...s, loc: null }) === NEED_PLACE && needFor('field', { ...s, loc: {} }) === NEED_PLACE && !hasPlace({ loc: { lat: '43', lon: 1 } }) && needFor('field', { ...s, loc: { lat: '43', lon: 1 } }) === NEED_PLACE);
+check('step one opens with a real position', needFor('field', { ...s, loc: { lat: 43.1, lon: -80.7 } }) === '' && hasPlace({ loc: { lat: 0, lon: 0 } }) && !hasPlace(null) && !hasPlace({ loc: { lat: NaN, lon: 1 } }));
 check('step two blocks until a rotation is chosen', !canGo('crops', s) && needFor('crops', s) === 'Tap what you grow to go on.');
 s.rotation.preset = 'corn-soy'; check('a ready rotation lets step two go on', canGo('crops', s));
 s.rotation.preset = 'custom'; check('building your own with no year does not', !hasRotation(s));

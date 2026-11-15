@@ -4,12 +4,13 @@
 import { applySettings } from './settings.js';
 import { own } from './words.js';
 import { initHome } from './home.js';
-import { initWelcome } from './welcome.js';
+import { initWelcome, openWelcome } from './welcome.js';
 import { toast } from './toast.js';
 import { initWizard, setPlace } from './wizard.js';
 import { initReport, openReport, showReport } from './report.js';
 import { renderInfo } from './pages.js';
 import { initMapX } from './mapx.js';   // the setup map
+import { adminHTML, loadSources } from './admin-view.js';
 
 const $ = (sel, root = document) => root.querySelector(sel), $$ = (sel, root = document) => [...root.querySelectorAll(sel)];
 
@@ -42,6 +43,7 @@ export function show(view, fromPop = false, page = '') {
   setMenu(false);
   if (view === 'report') showReport();   // a report in hand stays; else it is built from the setup answers, or the way back is offered
   if (view === 'farm') openFarm();   // the board loads the first time it opens
+  if (view === 'admin') openAdmin();   // read-only and open to everyone: no password
   if (first || !changed) return;   // a page that has only just opened keeps focus at the top, so the skip link comes first
   scrollTo(0, 0); focusHeading();
 }
@@ -95,6 +97,23 @@ const loadFarm = () => import('./farm.js').then(async farm => {
 function openFarm() {
   loadFarm().then(farm => farm.mountFarm($('#view-farm'))).catch(() => { $('#view-farm').innerHTML = '<div class="wrap"><div class="sec"><h1>My farm</h1><p>My farm could not load. Check the internet connection, then reload the page.</p></div></div>'; });
 }
+
+// ---- Admin: the live data services, read from the server each time it opens. Nothing on it changes anything.
+let adminRun = 0;
+function openAdmin() {
+  const body = $('#adminBody') ?? $('#view-admin .sec').appendChild(Object.assign(document.createElement('div'), { id: 'adminBody' }));
+  const mine = ++adminRun;
+  body.innerHTML = adminHTML(undefined).replace(/^<h2>Admin<\/h2>/, '');
+  loadSources().then(rows => { if (mine === adminRun) body.innerHTML = adminHTML(rows).replace(/^<h2>Admin<\/h2>/, ''); });
+}
+
+// ---- what other parts of the page ask for by event: the welcome sheet again (Settings), and every timer stopped (after reminders are deleted)
+document.addEventListener('crophalo:welcome', () => openWelcome());
+document.addEventListener('crophalo:stop-timers', () => {
+  clearTimeout(focusTimer);
+  import('./remind.js').then(remind => remind.forgetMemory?.()).catch(() => { /* reminders not loaded: nothing runs */ });
+  try { globalThis.speechSynthesis?.cancel(); } catch { /* nothing is being read aloud */ }
+});
 
 // ---- the place the farmer chose on the home: the setup wizard takes it from here
 function openSetup(spot) {

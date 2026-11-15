@@ -1,15 +1,12 @@
-// Crophalo's flow suite: the welcome, the home and the setup steps driven in a real browser the way a farmer would, on the throwaway copy that
-// scripts/e2e_lib.mjs makes and serves (its own port, its own empty profile, every outside service cut off).
-// Groups (E2E_ONLY=fit,axe picks some): welcome, home, wizard, picker, fit, motion, axe.
-// RULE: never loosen a check to make it pass without a written farming reason beside it. A failure means a farmer would meet a control that is
-/*
- * too small, a page that scrolls sideways, something that moves when asked to be still, or a step that cannot be passed: fix the page, not the test.
- * Run: node scripts/e2e_flow.mjs
- */
+// Crophalo's flow suite: the welcome, the home, the setup steps and the report driven in a real browser the way a farmer would, on the throwaway copy that scripts/e2e_lib.mjs
+// makes and serves (its own port, its own empty profile, every outside service cut off). Groups (E2E_ONLY=fit,axe picks some): welcome, home, wizard, picker, fit, motion,
+// noplace, report, weather, calendar, satellites, field, axe. RULE: never loosen a check to make it pass without a written farming reason beside it. A failure means a farmer would
+// meet a control that is too small, a page that scrolls sideways, something that moves when asked to be still, or a step that cannot be passed: fix the page. Run: node scripts/e2e_flow.mjs
 import fs from 'node:fs';
 import path from 'node:path';
 import { openRun } from './e2e_lib.mjs';
 import { PRESETS } from '../js/crops.js';
+const YR = 2026;   // the year of the hand-made soil-moisture reading's day
 
 const run = await openRun('e2e_flow');
 const { ROOT, js, page, until, seen, tap, tapAt, press, size, go, check, same, group, finish, sleep, send } = run;
@@ -18,7 +15,8 @@ const WIDTHS = [320, 375, 390, 768, 1280], WELCOME = JSON.stringify({ v: '2026-1
 const accepted = () => js(`localStorage.setItem('crophalo.welcome.v1', ${JSON.stringify(WELCOME)})`);
 const view = () => js(`[...document.querySelectorAll('.view')].filter(v => !v.hidden).map(v => v.id.replace('view-', '')).join()`);
 const setting = changes => js(`import('/js/settings.js').then(m => { m.saveSettings(${JSON.stringify(changes)}); })`);
-const fresh = async (width = 1280) => { await size(width); await go('/'); await accepted(); await go('/'); await until(`document.querySelectorAll('#homeRegions .place-card').length > 0`); };
+const quietApi = () => js(`window.fetch = (f => async (url, ...rest) => /\\/api\\/(smaproot|cropsnear|imergrain|gracecell|ecopass|hlsndvi|sources|dem)/.test(url) ? ({ json: async () => ({ ok: false }) }) : f(url, ...rest))(window.fetch.bind(window))`);   // the server's own routes are not in this copy: the cards must say so, not log 404s
+const fresh = async (width = 1280) => { await size(width); await go('/'); await accepted(); await go('/'); await until(`document.querySelectorAll('#homeRegions .place-card').length > 0`); await quietApi(); };
 const stepTitle = () => js(`document.querySelector('#wHeading')?.textContent`);
 const wideBy = () => js(`document.documentElement.scrollWidth - document.documentElement.clientWidth`);
 // controls on a phone that are smaller than 44 px (the stretched link of a card counts as the whole card)
@@ -75,16 +73,21 @@ await group('home', async () => {
 await group('wizard', async () => {
   await fresh();
   await tap('#homeRegions .cover');
-  check('wizard: a demo card opens the setup with its ready answers on offer', await seen(`!document.querySelector('#view-setup').hidden && !!document.querySelector('#wRoad')`));
-  const taps = 2;
-  await tap('#wRoad');
-  check(`wizard: the short road reaches the report in ${taps} taps`, await seen(`!document.querySelector('#view-report').hidden`));
+  check('wizard: a demo card opens the setup with no shortcut box: the real four steps, and the only demo marker is the chip by the place', await seen(`!document.querySelector('#view-setup').hidden && !document.querySelector('#wRoad, .road') && document.querySelectorAll('.panel-place .chip').length === 1`));
+  check('wizard: the demo\'s answers are already chosen, so each step can be passed with Next', await js(`!document.querySelector('#wNext').disabled`));
+  // the jury path: home -> Oxford -> Next x3 -> See my field report -> report, timed
+  const t0 = Date.now();
+  for (let i = 0; i < 3; i++) { await tap('#wNext'); await sleep(120); }
+  same('wizard: the fourth step offers the normal "See my field report"', await js(`[document.querySelector('#wHeading').textContent, document.querySelector('#wNext').textContent]`), ['What do you want most?', 'See my field report']);
+  await tap('#wNext');
+  check('wizard: the demo reaches the report in four taps after the card', await seen(`!document.querySelector('#view-report').hidden`));
+  check('wizard: the jury path (card, three Next, See my field report) takes under 6 s of the person\'s own pace here', Date.now() - t0 < 6000, `${Date.now() - t0} ms`);
   await js(`history.back()`); await until(`!document.querySelector('#view-setup').hidden`);
   // a place with no demo: the steps block until answered
   await fresh();
   await js(`import('/js/wizard.js').then(m => m.setPlace({ lat: 42.03, lon: -93.62, name: 'Test field' })); import('/js/app.js').then(m => m.show('setup'))`);
   await until(`!document.querySelector('#view-setup').hidden`);
-  check('wizard: with no demo there is no short road', await js(`!document.querySelector('#wRoad')`));
+  check('wizard: with no demo there is no demo chip', await js(`!document.querySelector('.panel-place .chip')`));
   same('wizard: step 3 and 4 cannot be reached from step 1', await js(`[...document.querySelectorAll('.wstep')].map(b => b.disabled)`), [false, false, true, true]);
   await tap('#wNext');
   same('wizard: step 2 has its heading and Next is off', await js(`[document.querySelector('#wHeading').textContent, document.querySelector('#wNext').disabled]`), ['What do you grow?', true]);
@@ -150,19 +153,16 @@ await group('fit', async () => {
 });
 
 await group('motion', async () => {
-  const cx = () => js(`+document.querySelector('.lens-ring').getAttribute('cx')`);
-  await fresh(); await setting({ motion: 'device' }); await go('/');
-  const first = await cx(); await sleep(1200); const mid = await cx(); await sleep(1500); const later = await cx();
-  check('motion: on load the lens sweeps over the fields by itself', first !== mid && mid !== later, [first, mid, later].join(' → '));
-  await sleep(3500); const rest1 = await cx(); await sleep(1000); const rest2 = await cx();
-  check('motion: after 4.5 seconds it stops and rests', Math.abs(rest1 - rest2) < 0.6, `${rest1} then ${rest2}`);
-  check('motion: the dashed ring is turning slowly', await js(`getComputedStyle(document.querySelector('.lens-turn')).animationName === 'lensturn' && getComputedStyle(document.querySelector('.lens-turn')).animationDuration === '14s'`));
-  await setting({ motion: 'reduce' }); await go('/'); await sleep(600);
-  const s1 = await cx(); await sleep(1500); const s2 = await cx();
-  same('motion: with Always still the lens does not sweep', s2, s1);
-  check('motion: with Always still the dashed ring does not turn', await js(`parseFloat(getComputedStyle(document.querySelector('.lens-turn')).animationDuration) < 0.01`));
-  await tapAt(300, 400).catch(() => {});
-  check('motion: with nothing running at all on the home', await js(`document.getAnimations().every(a => a.playState !== 'running' || a.effect?.getComputedTiming().iterations === Infinity ? true : false)`));
+  await fresh(); await setting({ motion: 'reduce' }); await go('/'); await sleep(600);
+  check('motion: the home has no lens picture any more', await js(`!document.querySelector('#lens, .lens')`));
+  check('motion: with Always still nothing is running on the home', await js(`document.getAnimations().every(a => a.playState !== 'running' || a.effect?.getComputedTiming().iterations === 0)`));
+});
+
+await group('noplace', async () => {
+  await fresh(); await js(`window.__asked = 0; window.fetch = async () => { window.__asked++; return { json: async () => ({ ok: false }) }; }`);
+  await js(`import('/js/state.js').then(async st => { const m = await import('/js/report.js'); const a = await import('/js/app.js'); a.show('report'); m.openReport({ ...st.newState(), loc: null }); })`); await sleep(400);
+  check('noplace: no position says "Choose your field first." and asks no service', await js(`document.querySelector('#reportTitle')?.textContent === 'Choose your field first.' && window.__asked === 0`));
+  check('noplace: only Back, as the main button; no Try again', await js(`!document.querySelector('[data-act=retry]') && document.querySelector('[data-act=change]').classList.contains('primary')`));
 });
 
 const FIXTURE = `(() => { const s = (year, crop, sow, harvest, after, window = null) => ({ year, crop, sow, harvest, after, residueUntil: null, window });
@@ -177,12 +177,14 @@ const SYNTH = `(async () => { const d = await import('/js/data.js'), wd = await 
   const series = d.buildSeries(answer, loc), today = Date.now(), days = Array.from({ length: 46 }, (_, i) => new Date(today + (i - 30) * 864e5).toISOString().slice(0, 10));
   const fc = { utc_offset_seconds: 0, timezone: 'UTC', elevation: 300, daily: { time: days, temperature_2m_max: days.map((_, i) => 12 + (i % 5)), temperature_2m_min: days.map((_, i) => i % 7 === 3 ? -1 : 4), precipitation_sum: days.map((_, i) => i % 4 === 0 ? 6 : 0), precipitation_probability_max: days.map(() => 20), wind_speed_10m_max: days.map(() => 12), wind_direction_10m_dominant: days.map(() => 200), weather_code: days.map(() => 1), sunrise: days.map(d => d + 'T07:00'), sunset: days.map(d => d + 'T17:00'), et0_fao_evapotranspiration: days.map(() => 1) } };
   return wd.buildWeather({ series, climate: cl.computeClimate(series, loc.lat), forecast: fc, loc }); })()`;
-const showReport = async (withWeather = false) => { await js(`import('/js/state.js').then(async st => { const m = await import('/js/report.js'); const a = await import('/js/app.js'); a.show('report'); const state = { ...st.newState(), loc: { lat: ${REGION.lat}, lon: ${REGION.lon}, label: ${JSON.stringify(REGION.name)}, cc: 'CA' }, name: ${JSON.stringify(REGION.name)}, soil: { mode: 'assumed', texture: null, om: null, omPct: null }, farm: { ...st.newState().farm, irrigation: 'none' }, rotation: { preset: 'corn-soy-wheat', custom: [], garden: null, second: {} } }; await m.renderResult(state, ${FIXTURE}, ${withWeather ? `{ weather: await ${SYNTH} }` : '{}'}); })`); await until(`!!document.querySelector('#answer')`); await sleep(220); };   // the app moves the keyboard to the new heading 80 ms after a screen opens: let that settle before a key test
+const IMERG_JS = `(async () => { const sd = await import('/js/satellites-data.js'), t0 = Date.UTC(2026, 9, 15), pat = [0.17, 5.28, 0, 0, 1.2, 12.4, 0.3, 0, 0, 7.1]; const days = Array.from({ length: 30 }, (_, i) => [new Date(t0 + i * 864e5).toISOString().slice(0, 10), i === 5 ? null : pat[i % 10], i === 5 ? null : i >= 28 ? 'early' : 'late']); return sd.cleanRain({ ok: true, cell: { width_km: 8.1, height_km: 11.1 }, days }); })()`;
+const DEM_JS = `({ ok: true, words: 'a stand-in height map, one every 2.0 m. Bare ground: trees and buildings are not in it.', name: 'a stand-in height map', srcKey: 'dem', height: 312, slope: 3.1, downhill: 200, cells: 400, tooSmall: false, band: '2 to 6%', resolution: 2 })`;
+const showReport = async (withWeather = false, loaded = false) => { await js(`import('/js/state.js').then(async st => { const m = await import('/js/report.js'); const a = await import('/js/app.js'); a.show('report'); const state = { ...st.newState(), loc: { lat: ${REGION.lat}, lon: ${REGION.lon}, label: ${JSON.stringify(REGION.name)}, cc: 'CA' }, name: ${JSON.stringify(REGION.name)}, soil: { mode: 'assumed', texture: null, om: null, omPct: null }, farm: { ...st.newState().farm, irrigation: 'none' }, rotation: { preset: 'corn-soy-wheat', custom: [], garden: null, second: {} } }; await m.renderResult(state, ${FIXTURE}, { ${withWeather ? `weather: await ${SYNTH},` : ''} ${loaded ? `imerg: await ${IMERG_JS}, dem: ${DEM_JS}, reading: { label: 'Moisture around the roots', value: 0.31, date: '${YR}-11-12', km: 9, lat: ${REGION.lat}, lon: ${REGION.lon}, source: 'smap' }` : ''} }); })`); await until(`!!document.querySelector('#answer')`); await sleep(220); };   // the app moves the keyboard to the new heading 80 ms after a screen opens: let that settle before a key test
 
 await group('report', async () => {
   await fresh();
-  await tap('#homeRegions .cover'); await tap('#wRoad');
-  check('report: the short road opens the loading screen, then (offline here) says plainly that the weather could not be read, with Try again and Back', await seen(`!document.querySelector('#view-report').hidden && /couldn.t get weather data/.test(document.querySelector('#reportRoot').textContent) && !!document.querySelector('[data-act=retry]') && !!document.querySelector('[data-act=change]')`, 20000));
+  await tap('#homeRegions .cover'); for (let i = 0; i < 4; i++) { await tap('#wNext'); await sleep(120); }
+  check('report: the demo path opens the loading screen, then (offline here) says plainly that the weather could not be read, with Try again and Back', await seen(`!document.querySelector('#view-report').hidden && /couldn.t get weather data/.test(document.querySelector('#reportRoot').textContent) && !!document.querySelector('[data-act=retry]') && !!document.querySelector('[data-act=change]')`, 20000));
   await tap('[data-act=change]');
   check('report: Change answers goes back to the setup', await seen(`!document.querySelector('#view-setup').hidden`));
   await js(`history.back()`); await sleep(300);
@@ -198,9 +200,9 @@ await group('report', async () => {
   await press('ArrowLeft'); same('report: ArrowLeft wraps to the last', await js(`document.activeElement.id`), 'tab-notes');
   await press('Home'); same('report: Home goes to the first', await js(`document.activeElement.id`), 'tab-overview');
   await tap('#tab-weather');
-  await tap('#tab-field');
-  check('report: a later tab says plainly it is not built and what it will hold', await js(`/Not built yet/.test(document.querySelector('#panel-field').textContent) && /outline, slope and soil/.test(document.querySelector('#panel-field').textContent)`));
-  same('report: the priorities panel is hidden where there is nothing to fine-tune (Field)', await js(`!!document.querySelector('.rv-prio')`), false);
+  await tap('#tab-notes');
+  check('report: a later tab says plainly it is not built and what it will hold', await js(`/Not built yet/.test(document.querySelector('#panel-notes').textContent) && /your reminders/i.test(document.querySelector('#panel-notes').textContent)`));
+  same('report: the priorities panel is hidden where there is nothing to fine-tune (Notes)', await js(`!!document.querySelector('.rv-prio')`), false);
   await tap('#tab-overview');
   check('report: Next: Options is at the foot and moves to the tab', await js(`!!document.querySelector('[data-tab=options][data-focus]')`));
   await tap('[data-tab=options][data-focus]');
@@ -223,6 +225,17 @@ await group('report', async () => {
   check('report: Add to My Farm lands in My Farm at once, on the field it added', await seen(`!document.querySelector('#view-farm').hidden && document.querySelector('#view-report').hidden && JSON.parse(localStorage.getItem('crophalo.farms.v1') || '{}').farms?.some(f => f.fields?.length === 1)`, 8000));
   await js('history.back()'); await until(`!document.querySelector('#view-report').hidden`);
   same('report: it is the one primary action on the screen', await js(`document.querySelectorAll('#view-report .btn.primary').length`), 1);
+  // the plan that goes to My Farm: the one the farmer chose to try, else the suggestion
+  await js(`import('/js/report.js').then(m => m.initReport({ farm: async () => ({ addFromReport: p => { window.__payload = p; return { farmId: 'f1', fieldId: 'x' }; } }), farmOpened: () => {} }))`);   // a stand-in My Farm that keeps the report on screen, so the plan it was handed can be read
+  await tap('#tab-options'); await js(`document.querySelector('[data-plan=other]').click()`);
+  check('report: a plan other than today has a "Try this plan" button in its detail', await seen(`!!document.querySelector('#sdetail [data-act=try]') && /Try this plan/.test(document.querySelector('#sdetail [data-act=try]').textContent)`));
+  await tap('#sdetail [data-act=try]');
+  check('report: choosing it says so on its button and its card, and the blue Add to My Farm stays the only primary button', await seen(`/Chosen to try/.test(document.querySelector('#sdetail').textContent) && /Chosen to try/.test(document.querySelector('[data-plan=other]').textContent) && document.querySelectorAll('#view-report .btn.primary').length === 1`));
+  await tap('#rbFarm');
+  check('report: Add to My Farm carries the plan the farmer CHOSE as the proposed plan, with today as the current one', await seen(`window.__payload && window.__payload.proposed.id === 'other' && window.__payload.proposed.kind === 'proposed' && window.__payload.current.id === 'now' && window.__payload.current.kind === 'current'`));
+  await js(`window.__payload = null`); await tap('#sdetail [data-act=untry]');
+  await tap('#rbFarm');
+  check('report: with nothing chosen it carries the engine\'s suggestion', await seen(`window.__payload && window.__payload.proposed.id === 'wheat'`));
 });
 
 await group('data page', async () => {
@@ -265,6 +278,39 @@ await group('calendar', async () => {
   check('calendar: screen readers get tables for the climate rows and the two plans', await js(`document.querySelectorAll('#panel-calendar table.sr').length === 3`));
 });
 
+await group('satellites', async () => {
+  await fresh(); await showReport(true, true);
+  await tap('#tab-satellites');
+  check('satellites: the tab opens with the rain card, its NASA "i" and its total', await seen(`/Satellite rain, the last 30 days/.test(document.querySelector('#panel-satellites').textContent) && !!document.querySelector('[data-card=imerg] .srci.nasa') && /mm of rain over the 29 days read, of the last 30/.test(document.querySelector('#panel-satellites').textContent)`));
+  check('satellites: a day not read is a gap, shown and said, never counted as dry', await js(`document.querySelectorAll('.sr-gap').length === 1 && /1 day could not be read\\. They are shown as gaps, never as dry days/.test(document.querySelector('[data-card=imerg]').textContent) && document.querySelectorAll('.sr-bar').length === 29`));
+  check('satellites: the newest two days are drawn as first estimates and named so', await js(`document.querySelectorAll('.sr-bar.early').length === 2 && /2 days are first estimates/.test(document.querySelector('[data-card=imerg]').textContent)`));
+  check('satellites: the square is said to be a square, not a gauge', await js(`/One value for a square about 8 by 11 km, not a gauge in your field/.test(document.querySelector('[data-card=imerg]').textContent)`));
+  check('satellites: the numbers fold lists every day and is reachable by keyboard', await js(`(() => { const d = document.querySelector('[data-card=imerg] details'); d.open = true; return document.querySelectorAll('[data-card=imerg] tbody tr').length === 30 && document.querySelector('[data-card=imerg] .tbl').tabIndex === 0; })()`));
+  check('satellites: the soil moisture card shows the regional value, and GRACE-FO says "Not read yet"', await js(`/31% water by volume/.test(document.querySelector('[data-card=smap]').textContent) && /Not read yet/.test(document.querySelector('[data-card=grace]').textContent)`));
+  same('satellites: seven cards, every one with an "i"', await js(`[document.querySelectorAll('.sat-card').length, [...document.querySelectorAll('.sat-card')].every(c => c.querySelector('.srci'))]`), [7, true]);
+  check('satellites: the priorities panel is not shown here', await js(`!document.querySelector('.rv-prio')`));
+  await js(`document.querySelector('[data-card=imerg] .srci').focus()`); await press('Enter');
+  check('satellites: the rain "i" opens by keyboard and names NASA GPM', await seen(`!document.querySelector('#srcPop').hidden && /GPM/.test(document.querySelector('#srcPop').textContent)`)); await press('Escape');
+  // the first opening asks the server; a stand-in answers
+  await fresh(); await js(`window.fetch = async url => ({ json: async () => /imergrain/.test(url) ? { ok: false, reason: 'NASA did not let this login read the rain files.' } : { ok: false } })`);
+  await showReport(true); await js(`document.querySelector('#tab-satellites').click()`);
+  check('satellites: opened for the first time it says it is reading, then shows the refusal and its reason, with no number', await seen(`/NASA did not let this login read the rain files/.test(document.querySelector('[data-card=imerg]').textContent) && !document.querySelector('.sr-chart')`));
+});
+
+await group('field', async () => {
+  await fresh(); await showReport(true, true);
+  await tap('#tab-field');
+  check('field: the tab opens with "Your land", the outline and five tiles', await seen(`/Your land/.test(document.querySelector('#panel-field').textContent) && !!document.querySelector('.land-fig svg.outline') && document.querySelectorAll('.land-tile').length === 5`));
+  check('field: the outline is labelled estimated, in words and by a dashed line', await js(`/Estimated: a 10 ha square round your pin/.test(document.querySelector('.land-fig').textContent) && document.querySelector('.outline').classList.contains('is-estimated') && getComputedStyle(document.querySelector('.outline-shape')).strokeDasharray !== 'none'`));
+  check('field: slope and height come from the lookup with its source named', await js(`/Gently sloping \\(3\\.1%\\)/.test(document.querySelector('[data-land=slope]').textContent) && /downhill towards the south/.test(document.querySelector('[data-land=slope]').textContent) && /a stand-in height map/.test(document.querySelector('[data-land=slope]').textContent) && /312 m/.test(document.querySelector('[data-land=height]').textContent)`));
+  check('field: the soil says it is assumed and nothing was measured', await js(`/Average soil \\(assumed\\)/.test(document.querySelector('[data-land=soil]').textContent) && /Nothing was measured/.test(document.querySelector('[data-land=soil]').textContent)`));
+  check('field: the size of the estimate says it is a stand-in', await js(`/10 ha \\(estimated\\)/.test(document.querySelector('[data-land=size]').textContent) && /stand-in, not a measurement/.test(document.querySelector('[data-land=size]').textContent)`));
+  check('field: the slope, height and soil tiles each have an "i"', await js(`['slope', 'height', 'soil'].every(id => document.querySelector('[data-land=' + id + '] .srci'))`));
+  await fresh(); await js(`window.fetch = async () => ({ json: async () => ({ ok: false, reason: 'No height map covers this spot.' }) })`);
+  await showReport(true); await js(`document.querySelector('#tab-field').click()`);
+  check('field: when the height lookup refuses, slope and height say "Not read yet" with the reason', await seen(`/No height map covers this spot/.test(document.querySelector('[data-land=height]').textContent) && /Not read yet/.test(document.querySelector('[data-land=slope]').textContent)`));
+});
+
 await group('report fit', async () => {
   await fresh(375); await showReport();
   check('fit: the "i" is a 24 px mark with a 44 px place to tap around it', await js(`[...document.querySelectorAll('#view-report .srci')].every(b => { const a = getComputedStyle(b, '::after'); return parseFloat(a.width) >= 44 && parseFloat(a.height) >= 44; })`));
@@ -282,6 +328,9 @@ await group('report fit', async () => {
     await js(`document.querySelector('#tab-calendar').click()`); await sleep(200);
     same(`fit: Calendar does not scroll sideways ${where}`, await wideBy() <= 0, true);
     if (width <= 600) same(`fit: every control on Calendar is 44 px or more ${where}`, await smallOnes(), []);
+    await showReport(true, true);
+    await js(`window.fetch = (f => async (url, ...rest) => /\\/api\\/(gracecell|ecopass|imergrain|hlsndvi|cropsnear)/.test(url) ? ({ json: async () => ({ ok: false }) }) : f(url, ...rest))(window.fetch.bind(window))`);   // the server's own routes answer nothing here: the cards must say so, not log 404s
+    for (const tabId of ['satellites', 'field']) { await js(`document.querySelector('#tab-${tabId}').click()`); await sleep(200); same(`fit: ${tabId} does not scroll sideways ${where}`, await wideBy() <= 0, true); if (width <= 600) same(`fit: every control on ${tabId} is 44 px or more ${where}`, await smallOnes(), []); }
   }
 });
 
@@ -308,6 +357,8 @@ await group('axe', async () => {
     await showReport(true); await js(`document.querySelector('#tab-weather').click()`); await sleep(300); await scan(`report Weather at ${width} px`);
     await js(`document.querySelector('[data-zoom=rainyear]').click()`); await sleep(300); await scan(`the chart opened large at ${width} px`); await press('Escape');
     await js(`document.querySelector('#tab-calendar').click()`); await sleep(300); await scan(`report Calendar at ${width} px`);
+    await js(`window.fetch = (f => async (url, ...rest) => /\\/api\\/(gracecell|ecopass|imergrain|hlsndvi|cropsnear)/.test(url) ? ({ json: async () => ({ ok: false }) }) : f(url, ...rest))(window.fetch.bind(window))`);   // the server's own routes answer nothing here: the cards must say so, not log 404s
+    await showReport(true, true); for (const tabId of ['satellites', 'field']) { await js(`document.querySelector('#tab-${tabId}').click()`); await sleep(300); await scan(`report ${tabId} at ${width} px`); }
   }
 });
 
