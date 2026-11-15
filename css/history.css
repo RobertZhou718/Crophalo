@@ -1,0 +1,26 @@
+/* Crophalo's land history page: cards in one steady column, strips with a pattern for each kind (never colour alone), 44 px More buttons, and a paper for printing. Only the tokens of css/app.css. */
+.hist { display: grid; gap: var(--space-16); max-width: 760px; margin: 0 auto; padding: var(--space-16) var(--gutter) var(--space-48); }
+.hist-head { display: grid; gap: var(--space-8); }
+.hcard { display: grid; gap: var(--space-12); }
+.hcard h2 { font-size: var(--fs-title2); }
+.h-line { display: grid; gap: var(--space-8); padding-bottom: var(--space-12); border-bottom: .5px solid var(--sep2); }
+.h-line:last-child { border-bottom: 0; padding-bottom: 0; }
+.h-strip { display: block; width: 100%; height: auto; max-width: 100%; }
+.h-cell { stroke: var(--ink2); stroke-width: 1; fill: none; }
+.h-cell.marked { stroke: var(--ink); fill: var(--card); }
+.h-cell.none { stroke-dasharray: 2 2; stroke: var(--ink3); }
+.h-pat { stroke: var(--ink); stroke-width: 1; fill: none; } .h-pat-fill { fill: var(--ink); }
+.btn.more { min-height: var(--touch); justify-self: start; }
+.h-more { display: grid; gap: var(--space-4); }
+.h-list, .h-check { margin: 0; padding-left: var(--space-16); display: grid; gap: var(--space-8); }
+.h-check { list-style: none; padding-left: 0; } .h-check li::before { content: "☐ "; }
+.hist-end { padding-top: var(--space-8); }
+#printRoot { display: none; }
+@media print {
+  body.printing-history > *:not(#printRoot) { display: none !important; }
+  body.printing-history #printRoot { display: block; color: #000; background: #fff; font: 12pt/1.4 serif; padding: 12mm; }
+  #printRoot table { width: 100%; border-collapse: collapse; margin: 6pt 0; } #printRoot th, #printRoot td { border: .5pt solid #444; padding: 3pt 5pt; text-align: left; }
+  #printRoot h1 { font-size: 18pt; margin: 0 0 6pt; } #printRoot h2 { font-size: 13pt; margin: 12pt 0 4pt; } #printRoot ul { list-style: none; padding: 0; }
+}
+.h-cell.close { stroke: var(--ink); stroke-dasharray: none; fill: var(--card); }
+.h-legend { margin-top: var(--space-4); }

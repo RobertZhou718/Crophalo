@@ -14,13 +14,13 @@ const hit = (a, b) => a.left < b.left + b.w && a.left + a.w > b.left && a.top < 
 
 // Where a new card goes: beside the pin on the side with most room, covering neither the pin nor anything in "avoid" ({ left, top, w, h } boxes).
 // On a map under 520 px wide the card lies along the bottom instead. Returns { left, top, bottom: boolean }.
-export function placeCard({ anchor, size, box, avoid = [] }) {
-  if (box.w < NARROW_BELOW) return { left: MARGIN, top: Math.max(TOP, box.h - size.h - MARGIN), bottom: true };
+export function placeCard({ anchor, size, box, avoid = [], top = TOP }) {
+  if (box.w < NARROW_BELOW) return { left: MARGIN, top: Math.max(top, box.h - size.h - MARGIN), bottom: true };
   const ax = anchor?.x ?? box.w / 2, ay = anchor?.y ?? box.h / 2, pin = { left: ax - 22, top: ay - 44, w: 44, h: 52 };
   const tries = [
     { left: ax + 30, top: ay - size.h / 2 }, { left: ax - 30 - size.w, top: ay - size.h / 2 },   // right of the pin, then left
     { left: ax - size.w / 2, top: ay + 16 }, { left: ax - size.w / 2, top: ay - 60 - size.h },    // below, then above
-  ].map(p => clampCard(p, size, box, MARGIN, TOP, STACK_ROOM)).map(p => ({ ...p, w: size.w, h: size.h }));
+  ].map(p => clampCard(p, size, box, MARGIN, top, STACK_ROOM)).map(p => ({ ...p, w: size.w, h: size.h }));
   const clear = tries.find(t => !hit(t, pin) && !avoid.some(a => hit(t, a)));
   const best = clear || tries.find(t => !hit(t, pin)) || tries[0];
   return { left: best.left, top: best.top, bottom: false };

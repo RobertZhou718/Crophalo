@@ -55,6 +55,17 @@ Every figure in Crophalo that comes from outside carries a small "i" button. It 
 - **Credit.** DOI 10.5067/HLS/HLSS30.002 and 10.5067/HLS/HLSL30.002.
 - **More.** https://lpdaac.usgs.gov/products/hlss30v002/
 
+### NASA GIBS satellite images (the Layers on the setup map)
+- **What Crophalo does.** Draws NASA's daily pictures of plant greenness (MODIS), soil moisture (SMAP), rain rate (GPM IMERG) and land temperature (MODIS) over the map, each with its date, its colour bar and a sentence where NASA has no image.
+- **Credit.** We acknowledge the use of imagery provided by services from NASA's Global Imagery Browse Services (GIBS), part of NASA's Earth Science Data and Information System (ESDIS).
+- **More.** https://nasa-gibs.github.io/gibs-api-docs/
+
+### NASA FIRMS fires and hot spots (Fires and hot spots in the Layers on the setup map)
+- **What Crophalo does.** Draws the spots the VIIRS satellites on NOAA-20 and NOAA-21 saw hotter than their surroundings in the last 24 hours, within about 250 km of the map centre, with each spot's time, power and confidence. It says plainly that a fire under cloud or between passes is not seen, and that no spot does not mean no fire.
+- **Version in use.** VIIRS 375 m active fire detections, near real time (checked 14 November 2026), from NASA's Land, Atmosphere Near real-time Capability for EOS (LANCE).
+- **Credit.** We acknowledge the use of data and/or imagery from NASA's Fire Information for Resource Management System (FIRMS) (https://earthdata.nasa.gov/firms), part of NASA's Earth Science Data and Information System (ESDIS).
+- **More.** https://firms.modaps.eosdis.nasa.gov/
+
 ## Other data and tools Crophalo uses
 
 These are not NASA's. They are listed because the contest asks for every source and tool to be named.

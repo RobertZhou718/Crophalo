@@ -463,7 +463,7 @@ await group('the source notes', async () => {
   same('the fields of a note', SOURCE_FIELDS, ['org', 'name', 'nasa', 'who', 'what', 'talk', 'url']);
   none('every note has every field and no other: who runs it, a plain line, how to explain it, the link, NASA or not', all.filter(([, note]) => ser(Object.keys(note)) !== ser(SOURCE_FIELDS) || typeof note.nasa !== 'boolean').map(([key]) => key));
   none('every text is there, with real words in it (a body\'s short name such as FAO may have three letters)', texts.filter(([at, text]) => typeof text !== 'string' || text.trim().length < (at.endsWith('.org') ? 3 : 4) || text !== text.trim()).map(([at]) => at));
-  same('NASA\'s own sources are marked as NASA\'s, the others are not', all.filter(([, note]) => note.nasa).map(([key]) => key), ['power', 'gpm', 'merra2', 'smap', 'gibs']);
+  same('NASA\'s own sources are marked as NASA\'s, the others are not', all.filter(([, note]) => note.nasa).map(([key]) => key), ['power', 'gpm', 'merra2', 'smap', 'gibs', 'firms']);   // FIRMS fire hot spots are NASA's too (LANCE)
   none('the tag says NASA exactly when the source is NASA\'s, and names the other body when it is not', all.filter(([, note]) => (note.org === 'NASA') !== note.nasa || !note.org).map(([key]) => key));
   none('NASA is said once in a name, never twice', all.filter(([, note]) => (note.name.match(/NASA/g) || []).length > 1).map(([key]) => key));
   const notNasa = /\bnot\s+(from\s+)?nasa\b|\bnon-?nasa\b/i;

@@ -30,6 +30,9 @@ const LEGEND = [
 const legendFor = cover => cover?.kind === 'standing' || cover?.kind === 'young' ? 'standing' : cover?.kind || null;
 
 // what the view was given, on the stage itself: the field, the plan, the date and the ground state, for the page and for the checks
+// The engine's own sentence about the ground is added only when it says something the state's words do not: not when it starts with the same words
+const norm = t => String(t || '').toLowerCase().replace(/[^a-z0-9 ]+/g, ' ').replace(/\s+/g, ' ').trim();
+const showNote = sc => { const n = norm(sc.words.note), c = norm(sc.words.cover); if (!n) return false; const head = c.split(' ').slice(0, 3).join(' '); return !(n === c || n.startsWith(head) || c.startsWith(n)); };
 const stamp = sc => { const e = sc.echo || {}, g = e.ground; return `data-field="${esc(e.fieldId ?? '')}" data-plan="${esc(e.planKind ?? '')}" data-date="${esc(e.date ?? '')}" data-ground="${esc(g?.state ?? 'none')}" data-crop="${esc(g?.crop ?? '')}" data-stage="${esc(g?.stage ?? '')}" data-label="${esc(g?.label ?? '')}"`; };
 function markup(sc, ids) {
   const act = legendFor(sc.cover);
@@ -49,7 +52,7 @@ function markup(sc, ids) {
     <p class="f3d-keys" id="${ids}-keys">Arrow keys move the view around the field. Plus and minus zoom. 0 goes back to the first view.</p>
     <ul class="f3d-legend" aria-label="What the shapes mean">${LEGEND.map(l => `<li class="${l.id === act ? 'is-on' : ''}"${l.id === act ? ' aria-current="true"' : ''}><svg viewBox="0 0 24 24" width="24" height="24" aria-hidden="true">${l.mark}</svg><span>${l.name}</span></li>`).join('')}</ul>
     <div class="f3d-words" aria-live="polite">
-      <p class="f3d-cover">${esc(sc.words.cover)}${sc.words.note ? ' ' + esc(sc.words.note) : ''}</p>
+      <p class="f3d-cover">${esc(sc.words.cover)}${showNote(sc) ? ' ' + esc(sc.words.note) : ''}</p>
       <p>${esc(sc.words.outline)}</p>
       <p class="f3d-heights">${esc(sc.words.heights)}</p>
       <p>${esc(sc.words.sun)}</p>

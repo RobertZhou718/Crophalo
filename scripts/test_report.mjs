@@ -192,6 +192,14 @@ check('a note from outside is plain text on the Data page', !/<img src=x/.test(d
   check('two asks for one place start the lookups once', log.filter(k => k === 'power').length === 1 && log.filter(k => k === 'forecast').length === 1 && a.ok && b.ok, log.join());
   const late = []; const third = await spotFor(where, env, (...e) => late.push(e)); check('a report opened after the lookups finished is told every row at once and asks nothing', late.length >= 1 && late.some(e => e[0] === 'power' && e[1] === 'ok') && log.length === 2, `${late.length} rows, ${log.join()}`);
   const own = log.length; await prefetchPlace(where, env); check('a prefetch for a place already asked asks nothing more for the weather', log.length === own, `${log.length} vs ${own}`);
+  { // the early lookups never ask the crop map without the field's country: the refusal would be kept, and the report would lose what is grown nearby
+    const asked = [], was = globalThis.fetch; globalThis.fetch = async url => { asked.push(String(url)); return { ok: true, json: async () => ({ ok: false, reason: 'not in this test' }) }; };
+    forgetAll(); prefetchPlace({ lat: 45.5, lon: -75.5 }, { fetch: mk({}) }); await new Promise(r => setTimeout(r, 30));
+    check('a bare map position starts the regional lookups early, but not the crop map, which needs the country', asked.some(u => u.startsWith('/api/smaproot')) && !asked.some(u => u.startsWith('/api/cropsnear')), asked.join(' '));
+    forgetAll(); asked.length = 0; prefetchPlace({ lat: 45.5, lon: -75.5, cc: 'CA' }, { fetch: mk({}) }); await new Promise(r => setTimeout(r, 30));
+    check('with the country known the crop map is asked early too, with the country', asked.some(u => /^\/api\/cropsnear\?.*country=CA/.test(u)), asked.join(' '));
+    globalThis.fetch = was; forgetAll(); forgetSpots();
+  }
   forgetSpots(); const bog = [], failEnv = { fetch: async () => { bog.push(1); throw new Error('down'); } }; await spotFor(where, failEnv).catch(() => {}); await spotFor(where, failEnv).catch(() => {});
   check('a failed lookup is not remembered: the next ask tries again', bog.length >= 2, String(bog.length));
   // the memory itself

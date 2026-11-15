@@ -1,7 +1,8 @@
-// Crophalo's weather for the spot card: today and the next three days at one place, from Open-Meteo's forecast, kept ten minutes for each square kilometre.
-// Pure: forecastUrl(), parseForecast(), conditionWords(), fieldwork(). getForecast() asks the network once and keeps the answer in memory only.
-// Checked by scripts/test_spot.mjs (the address, a full answer, a missing reading that stays unknown, every word of the fieldwork rule, the ten-minute keeping).
+// Crophalo's weather for the spot card: today and the next three days at one place. It reads the same Open-Meteo answer as the report and My farm (js/data.js), cut to today and three days, so a place is asked for ONCE.
+// Pure: cutForecast(), parseForecast(), conditionWords(), fieldwork(). getForecast() asks through data.js's kept, shared request (and keeps the cut answer ten minutes in memory).
+// Checked by scripts/test_spot.mjs (the cut, a full answer, a missing reading that stays unknown, every word of the fieldwork rule, one request for a place shared by two askers).
 // ONE FUNCTION so the build's own weather module can take its place: getForecast(lat, lon) gives { ok: true, ...forecast } or { ok: false, reason }.
+import { cleanPlace, forecastUrl as sharedUrl, cachedJSON, KEEP, LIMIT } from './data.js';
 
 const KEPT_MS = 10 * 60e3, WAIT_MS = 12e3;
 const WORDS = {   // the WMO weather codes Open-Meteo uses, in a farmer's words
@@ -13,14 +14,17 @@ const WORDS = {   // the WMO weather codes Open-Meteo uses, in a farmer's words
 };
 export const conditionWords = code => (Object.hasOwn(WORDS, code) ? WORDS[code] : '');
 
-// The address for a spot. Positions are rounded to 2 decimals (about 1 km): the same square asks only once, and the farmer's exact field is never sent.
-export const squareKey = (lat, lon) => `${lat.toFixed(2)},${lon.toFixed(2)}`;
-export function forecastUrl(lat, lon) {
-  const q = [['latitude', lat.toFixed(2)], ['longitude', lon.toFixed(2)],
-    ['current', 'temperature_2m,apparent_temperature,weather_code,wind_speed_10m'],
-    ['daily', 'weather_code,temperature_2m_max,temperature_2m_min,precipitation_probability_max,precipitation_sum'],
-    ['timezone', 'auto'], ['forecast_days', '4']];
-  return 'https://api.open-meteo.com/v1/forecast?' + q.map(([k, v]) => `${k}=${encodeURIComponent(v).replace(/%2C/g, ',')}`).join('&');
+// The shared answer (30 days back, 16 days ahead, hour by hour) cut to the card's four days: today at the field, by the field's own clock, and the next three. null when today is not in it.
+const isoOf = ms => new Date(ms).toISOString().slice(0, 10);
+export function cutForecast(raw, now = Date.now()) {
+  const offset = raw?.utc_offset_seconds, days = raw?.daily?.time;
+  if (!raw || typeof raw !== 'object' || !Number.isFinite(offset) || !Array.isArray(days)) return null;
+  const today = isoOf(now + offset * 1000), start = days.findIndex(d => String(d) >= today);
+  if (start < 0) return null;
+  const daily = {};
+  for (const [key, list] of Object.entries(raw.daily)) if (Array.isArray(list)) daily[key] = list.slice(start, start + 4);
+  const { hourly, ...rest } = raw;   // the card has no use for the hours
+  return { ...rest, daily };
 }
 
 // A reading that is a real number, else null: a reading nobody took is unknown, never zero.
@@ -53,17 +57,18 @@ export function fieldwork(day, wind) {
 export const dayName = iso => { const [y, m, d] = iso.split('-').map(Number); return ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'][new Date(Date.UTC(y, m - 1, d)).getUTCDay()]; };
 export const degrees = v => (v == null ? 'not available' : `${Math.round(v)}°`);
 
-const memory = new Map();   // square → { at, forecast }; in memory only, gone when the tab closes
-export async function getForecast(lat, lon, { ask = fetch, now = Date.now } = {}) {
-  const key = squareKey(lat, lon), had = memory.get(key);
+const memory = new Map();   // the shared address → { at, forecast }; in memory only, gone when the tab closes
+export async function getForecast(lat, lon, { ask = globalThis.fetch, now = Date.now, caches } = {}) {
+  const place = cleanPlace(lat, lon);
+  if (place.reason) return { ok: false, reason: place.reason };
+  const key = sharedUrl(place), had = memory.get(key);
   if (had && now() - had.at < KEPT_MS) return { ok: true, ...had.forecast };
   try {
-    const answer = await ask(forecastUrl(lat, lon), { signal: AbortSignal.timeout(WAIT_MS), headers: { accept: 'application/json' } });
-    if (!answer.ok) return { ok: false, reason: 'The weather service answered with an error.' };
-    const forecast = parseForecast(await answer.json());
+    const got = await cachedJSON(key, { keep: KEEP.forecast, limit: LIMIT.forecast ?? WAIT_MS }, { fetch: ask, now, ...(caches ? { caches } : {}) });   // the report and My farm ask for this very address: one request
+    const forecast = parseForecast(cutForecast(got.json, now()));
     if (!forecast) return { ok: false, reason: 'The weather service sent an answer Crophalo could not read.' };
     memory.set(key, { at: now(), forecast });
     return { ok: true, ...forecast };
-  } catch { return { ok: false, reason: 'The weather service did not answer.' }; }
+  } catch (e) { return { ok: false, reason: e instanceof SyntaxError ? 'The weather service sent an answer Crophalo could not read.' : e?.status ? 'The weather service answered with an error.' : 'The weather service did not answer.' }; }
 }
 export const forgetForecasts = () => memory.clear();

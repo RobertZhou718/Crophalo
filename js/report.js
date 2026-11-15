@@ -199,7 +199,7 @@ function bind() {
     clearTimeout(cur.rerun); cur.rerun = setTimeout(async () => { await work(); const f = document.activeElement, id = f?.dataset?.prio ?? f?.dataset?.sc; const main = $('.rv-main'); if (main) main.innerHTML = panelHTML(); void id; }, 120);   // the options re-rank a moment after the slider stops, in place
   });
 }
-// seam: { change(state), home(), farmOpened(result), engine: () => import('./engine.js'), farm: () => import('./farm.js') } (the last two are given by the page start once those files exist)
+// seam: { change(state), home(), farmOpened(result), engine: the engine's worker client (engine-client.js engineLoader) or () => import('./engine.js'), farm: () => import('./farm.js') } (the last two are given by the page start once those files exist)
 // The map says a place was chosen ('crophalo:prefetch', detail { lat, lon, outline? }): the lookups the report will want start now, once the place has settled for 600 ms (a dragged pin starts nothing).
 let prefetchTimer = 0, prefetchBound = false;
 export const PREFETCH_MS = 600;

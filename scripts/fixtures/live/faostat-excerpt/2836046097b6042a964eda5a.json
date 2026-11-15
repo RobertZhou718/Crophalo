@@ -1,0 +1,18 @@
+{
+ "method": "HEAD",
+ "url": "https://bulks-faostat.fao.org/production/Production_Crops_Livestock_E_All_Data.zip",
+ "recorded": "2026-11-14T23:26:36Z",
+ "hand_made": false,
+ "replies": [
+  {
+   "status": 200,
+   "headers": {
+    "content-type": "application/x-zip-compressed",
+    "content-length": "885209",
+    "last-modified": "Wed, 31 Dec 2025 11:33:25 GMT"
+   }
+  }
+ ],
+ "excerpt": true,
+ "note": "FAO's own rows for the areas with M49 codes 124, 792, 231, 158, 159, 1, 21, 58, cut unchanged from the file FAO served on 2026-11-14 (25138572 bytes); content-length below is the excerpt's"
+}

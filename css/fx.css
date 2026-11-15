@@ -1,0 +1,119 @@
+/* Crophalo's small motions: the satellite-scan loader, rolling numbers, sections easing in, the tab glass and page turn, view transitions, the reading rail,
+   "Watch the year", and the small states (saved, copied, added to your farm, the undo toast). Light mode, the one blue, every colour and size from css/app.css.
+   The rules, pinned by scripts/test_fx.mjs and scripts/e2e_fx.mjs: fades, colour and smooth slides only; the one curve never passes its end; nothing scales past full size;
+   text keeps full contrast; everything above 5 s can be stopped; everything is off under html[data-motion=reduce] and the device's reduce motion. */
+
+:root { --fx-scan: 7s; --fx-year: 9s; --fx-curtain: 820ms; }   /* the three long times; every colour, curve, size and short time is a token of css/app.css */
+
+/* ---- the satellite-scan loader */
+.fx-scan { display: grid; gap: var(--space-8); }
+.fx-scan-art { display: block; width: 100%; height: auto; border-radius: var(--r2); }
+.fx-ground { fill: var(--cell); }
+.fx-parcel { fill: var(--soil); stroke: var(--sep2); stroke-width: .5; transition: fill 900ms var(--ease); }
+.fx-parcel.is-read { fill: var(--c-g); }
+.fx-sat { transform: translate(150px, 40px); }   /* parked mid-picture: where it rests when still, paused or finished */
+.fx-sat-body { fill: var(--shade); } .fx-sat-wing { fill: var(--accent); } .fx-sat-line { stroke: var(--accent); stroke-width: .6; }
+.fx-scan.is-done .fx-sat { visibility: hidden; }
+@keyframes fx-pass { from { transform: translate(10px, 58px); } to { transform: translate(290px, 22px); } }   /* left to right, on a track tilted a little */
+.fx-scan:not(.is-done) .fx-sat { animation: fx-pass var(--fx-scan) linear infinite; animation-delay: var(--fx-delay, 0s); }
+.fx-scan.is-paused .fx-sat { animation-play-state: paused; }
+.fx-progress { height: var(--space-8); border-radius: var(--r-tag); background: var(--fill); overflow: hidden; }
+.fx-progress i { display: block; height: 100%; background: var(--accent); transform-origin: left center; transform: scaleX(0); transition: transform var(--t-base) var(--ease); }
+.fx-scan-words { color: var(--ink2); font-size: var(--fs-small); }
+.fx-quiet, .fx-toast-undo { min-height: var(--touch); min-width: var(--touch); padding: 0 var(--space-12); border: 0; border-radius: var(--r3); background: transparent; color: var(--link); font: inherit; font-size: var(--fs-btn); font-weight: var(--fw-medium); cursor: pointer;
+  justify-self: start; transition: background-color var(--t-fast) var(--ease), filter var(--t-press) linear; }
+.fx-quiet { margin-inline-start: calc(var(--space-12) * -1); }   /* a words-only button: its words line up with the text above, its 44 px target reaches past them */
+.fx-quiet:hover { background: var(--fill2); }
+.fx-quiet:active, .fx-toast-undo:active { filter: brightness(.94); }
+.fx-quiet:focus-visible, .fx-toast-undo:focus-visible, .fx-tabs [role=tab]:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; animation: fx-focus var(--t-slow) var(--ease) 1; }
+@keyframes fx-focus { from { box-shadow: 0 0 0 0 var(--focus-soft); } to { box-shadow: 0 0 0 7px transparent; } }
+
+/* ---- numbers that roll: the words are the real number from the first moment; this only hides the helper copy */
+.fx-sr { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
+
+/* ---- sections easing in: a cover the colour of the page slides off downward; the words are under it, never faded */
+.fx-pending { position: relative; overflow: clip; }
+.fx-pending::after { content: ""; position: absolute; inset: 0; z-index: 1; background: var(--bg); border-top: 2px solid var(--accent); }
+.fx-pending.fx-in::after { transform: translateY(101%); transition: transform var(--fx-curtain) var(--ease) var(--fx-step, 0ms); }
+
+/* ---- the tab bar: the glass under the chosen tab slides to the next one; the label only changes colour */
+.fx-tabs { position: relative; }
+.fx-glass { position: absolute; left: 0; top: var(--space-4); bottom: var(--space-4); z-index: 0; border-radius: var(--r-chip); background: var(--accent-soft); pointer-events: none; }
+.fx-tabs [role=tab] { position: relative; z-index: 1; transition: color var(--t-label) var(--ease), background-color var(--t-fast) var(--ease), filter var(--t-press) linear; }
+.fx-tabs [role=tab][aria-selected=true] { color: var(--accent-text); }
+.fx-tabs [role=tab]:active { filter: brightness(.94); }
+
+/* ---- a view arriving where the browser has no view transitions: a short fade and a rise */
+@keyframes fx-arrive { from { opacity: 0; transform: translateY(12px); } 35% { opacity: 1; } to { opacity: 1; transform: none; } }
+.fx-arrive { animation: fx-arrive var(--t-base) var(--ease) both; }
+@keyframes fx-vt-in { from { opacity: 0; transform: translateY(28px); } 35% { opacity: 1; } to { opacity: 1; transform: none; } }
+@keyframes fx-vt-in-back { from { opacity: 0; transform: translateY(-28px); } 35% { opacity: 1; } to { opacity: 1; transform: none; } }
+@keyframes fx-vt-out { from { opacity: 1; } to { opacity: 0; } }
+@media (prefers-reduced-motion: no-preference) {
+  html:not([data-motion=reduce])::view-transition-old(root) { animation: fx-vt-out var(--t-fast) var(--ease) both; }
+  html:not([data-motion=reduce])::view-transition-new(root) { animation: fx-vt-in var(--t-base) var(--ease) both; }
+  html:not([data-motion=reduce])[data-fx-dir=back]::view-transition-new(root) { animation-name: fx-vt-in-back; }
+}
+
+/* ---- the reading rail: a 3 px bar at the top, as long as the part read */
+.fx-rail { position: fixed; top: 0; left: 0; right: 0; height: 3px; z-index: var(--z-rail); opacity: 0; pointer-events: none; transition: opacity .3s var(--ease); }
+.fx-rail.is-on { opacity: 1; }
+.fx-rail i { display: block; height: 100%; background: linear-gradient(90deg, var(--good), var(--link)); transform-origin: left center; transform: scaleX(0); }
+
+/* ---- Watch the year: months passed are tinted, the current one underlined; nothing is dimmed, so every word keeps its contrast */
+.fx-passed { background: var(--accent-soft); transition: background-color var(--t-base) var(--ease); }
+.fx-now { box-shadow: inset 0 -3px 0 var(--accent); }
+
+/* ---- the small states */
+.fx-saved { color: var(--accent-text); transition: color var(--t-fast) var(--ease), background-color var(--t-fast) var(--ease); }
+.fx-tick { vertical-align: middle; margin-right: var(--space-4); }
+.fx-tick path { fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; stroke-dasharray: 16; stroke-dashoffset: 0; }
+@keyframes fx-draw { from { stroke-dashoffset: 16; } to { stroke-dashoffset: 0; } }
+.fx-copied .fx-tick path, .fx-added .fx-tick path { animation: fx-draw 450ms var(--ease) both; }
+.fx-copied { color: var(--good); }
+.fx-added { color: var(--good); outline: 2px solid transparent; outline-offset: 2px; animation: fx-flash 1s var(--ease) 1; }
+@keyframes fx-flash { from { outline-color: var(--good); } to { outline-color: transparent; } }
+
+/* ---- the undo toast: it fades in over 150 ms and slides up; a second message flashes softly and does not bump */
+.fx-toasts { position: fixed; left: 50%; bottom: var(--space-24); transform: translateX(-50%); z-index: var(--z-toast); display: grid; gap: var(--space-8); width: min(92vw, var(--sheet-w)); pointer-events: none; }
+.fx-toast { pointer-events: auto; display: flex; align-items: center; justify-content: space-between; gap: var(--space-12); padding: var(--space-8) var(--space-16); min-height: var(--touch); border-radius: var(--r1);
+  background: var(--toast); color: var(--accent-ink); font-size: var(--fs-row); box-shadow: var(--shadow-lg);
+  opacity: 0; transform: translateY(12px); transition: opacity var(--t-fast) var(--ease), transform var(--t-base) var(--ease); }
+.fx-toast.is-in { opacity: 1; transform: none; }
+.fx-toast-undo { color: var(--accent-ink); text-decoration: underline; justify-self: end; }
+@keyframes fx-glow { from { box-shadow: 0 0 0 4px var(--focus-soft); } to { box-shadow: 0 0 0 0 transparent; } }
+.fx-toast.fx-flash { animation: fx-glow var(--t-slow) var(--ease) 1; }
+
+@media print { .fx-rail, .fx-toasts, .fx-glass { display: none !important; } .fx-pending::after { display: none; } }
+@media (forced-colors: active) { .fx-parcel.is-read { forced-color-adjust: none; } .fx-progress i, .fx-glass { background: Highlight; } }
+
+/* ---- less: Settings > Motion > Less (html[data-motion=less]). Only fades and colour changes of 160 ms are left, with the press, hover and focus states: no scan, sweep, slide, draw or loop.
+   Every animation stops; of the transitions only these colour and opacity properties stay, short; the new view and the view transition fade in place. */
+@keyframes fx-fade-in { from { opacity: 0; } to { opacity: 1; } }
+html[data-motion=less] [class*="fx-"], html[data-motion=less] [class*="fx-"] *, html[data-motion=less] [class*="fx-"]::before, html[data-motion=less] [class*="fx-"]::after, html[data-motion=less] #fx-rail, html[data-motion=less] #fx-toasts, html[data-motion=less] #fx-toasts * {
+  animation: none !important; transition-property: opacity, color, background-color, border-color, fill, stroke, outline-color !important; transition-duration: var(--t-fast) !important; transition-delay: 0s !important; transition-timing-function: linear !important; }
+html[data-motion=less] .fx-arrive { animation: fx-fade-in var(--t-fast) linear both !important; }
+html[data-motion=less]::view-transition-group(*) { animation: none !important; }
+html[data-motion=less]::view-transition-old(root) { animation: none !important; }
+html[data-motion=less]::view-transition-new(root) { animation: fx-fade-in var(--t-fast) linear both !important; }
+html[data-motion=less] .fx-pending::after { display: none; }
+html[data-motion=less] .fx-toast { transform: none; }
+html[data-motion=less] .fx-sat { transform: translate(150px, 40px); }
+html[data-motion=less] .fx-progress i { transition: none !important; }
+
+/* ---- still: the farmer's own choice and the device's, each written out. Nothing waits to appear, nothing moves, rest states are the finished ones. */
+html[data-motion=reduce] [class*="fx-"], html[data-motion=reduce] [class*="fx-"]::before, html[data-motion=reduce] [class*="fx-"]::after,
+html[data-motion=reduce] #fx-rail, html[data-motion=reduce] #fx-toasts, html[data-motion=reduce] #fx-toasts * { animation: none !important; transition: none !important; }
+html[data-motion=reduce]::view-transition-group(*), html[data-motion=reduce]::view-transition-old(*), html[data-motion=reduce]::view-transition-new(*) { animation: none !important; }
+html[data-motion=reduce] .fx-pending::after { display: none; }
+html[data-motion=reduce] .fx-toast { opacity: 1; transform: none; }
+@media (prefers-reduced-motion: reduce) {
+  [class*="fx-"], [class*="fx-"]::before, [class*="fx-"]::after, #fx-rail, #fx-toasts, #fx-toasts * { animation: none !important; transition: none !important; }
+  ::view-transition-group(*), ::view-transition-old(*), ::view-transition-new(*) { animation: none !important; }
+  .fx-pending::after { display: none; }
+  .fx-toast { opacity: 1; transform: none; }
+}
+
+/* ---- where the wired motions sit in the report */
+.fx-scan-host { margin: var(--space-12) 0; max-width: 360px; }
+.fx-halo-host { margin: var(--space-8) 0; }

@@ -1,0 +1,2513 @@
+{
+ "made_by": "node scripts/record_live_crops-prices.mjs prices",
+ "recorded": "2026-11-14T19:41:47.992Z",
+ "lookup": "prices",
+ "args": [],
+ "requests": 2,
+ "seconds": 12.96,
+ "peak_mb": 48.9,
+ "asked": 2,
+ "exit_code": 0,
+ "answer": {
+  "ok": true,
+  "source": "World Bank Commodity Price Data (The Pink Sheet), monthly prices in nominal US dollars, updated 2026-11-03",
+  "data_date": "2026-10",
+  "data_date_note": "The newest month in the sheet is 2026-10. Each series says its own newest month; a series marked stale ended earlier",
+  "units": "US dollars of the month (not corrected for inflation); each series names its unit: $/mt is per tonne, $/kg is per kg",
+  "url": "https://thedocs.worldbank.org/en/doc/74e8be41ceb20fa0da750cda2f6b9e4e-0050012026/related/CMO-Historical-Data-Monthly.xlsx",
+  "updated": "2026-10",
+  "published": "2026-11-03",
+  "series": {
+   "corn": {
+    "name": "Maize",
+    "unit": "$/mt",
+    "unit_words": "US$ per tonne",
+    "latest": {
+     "month": "2026-10",
+     "value": 226.5
+    },
+    "year_ago": {
+     "month": "2025-10",
+     "value": 198.1
+    },
+    "change_pct": 14.3,
+    "last24": [
+     {
+      "month": "2024-11",
+      "value": 201.3
+     },
+     {
+      "month": "2024-12",
+      "value": 202.6
+     },
+     {
+      "month": "2025-01",
+      "value": 214.4
+     },
+     {
+      "month": "2025-02",
+      "value": 220.9
+     },
+     {
+      "month": "2025-03",
+      "value": 207.4
+     },
+     {
+      "month": "2025-04",
+      "value": 215
+     },
+     {
+      "month": "2025-05",
+      "value": 203.9
+     },
+     {
+      "month": "2025-06",
+      "value": 196.1
+     },
+     {
+      "month": "2025-07",
+      "value": 192
+     },
+     {
+      "month": "2025-08",
+      "value": 185.5
+     },
+     {
+      "month": "2025-09",
+      "value": 197.4
+     },
+     {
+      "month": "2025-10",
+      "value": 198.1
+     },
+     {
+      "month": "2025-11",
+      "value": 202
+     },
+     {
+      "month": "2025-12",
+      "value": 205.7
+     },
+     {
+      "month": "2026-01",
+      "value": 204.5
+     },
+     {
+      "month": "2026-02",
+      "value": 209.6
+     },
+     {
+      "month": "2026-03",
+      "value": 212.7
+     },
+     {
+      "month": "2026-04",
+      "value": 214
+     },
+     {
+      "month": "2026-05",
+      "value": 216.2
+     },
+     {
+      "month": "2026-06",
+      "value": 197.1
+     },
+     {
+      "month": "2026-07",
+      "value": 213.4
+     },
+     {
+      "month": "2026-08",
+      "value": 224
+     },
+     {
+      "month": "2026-09",
+      "value": 239.6
+     },
+     {
+      "month": "2026-10",
+      "value": 226.5
+     }
+    ]
+   },
+   "wheat": {
+    "name": "Wheat, US HRW",
+    "unit": "$/mt",
+    "unit_words": "US$ per tonne",
+    "latest": {
+     "month": "2026-10",
+     "value": 317
+    },
+    "year_ago": {
+     "month": "2025-10",
+     "value": 230.8
+    },
+    "change_pct": 37.3,
+    "last24": [
+     {
+      "month": "2024-11",
+      "value": 253.8
+     },
+     {
+      "month": "2024-12",
+      "value": 252.2
+     },
+     {
+      "month": "2025-01",
+      "value": 254.1
+     },
+     {
+      "month": "2025-02",
+      "value": 264.6
+     },
+     {
+      "month": "2025-03",
+      "value": 255.4
+     },
+     {
+      "month": "2025-04",
+      "value": 249.6
+     },
+     {
+      "month": "2025-05",
+      "value": 237
+     },
+     {
+      "month": "2025-06",
+      "value": 240.1
+     },
+     {
+      "month": "2025-07",
+      "value": 235
+     },
+     {
+      "month": "2025-08",
+      "value": 231.1
+     },
+     {
+      "month": "2025-09",
+      "value": 233.8
+     },
+     {
+      "month": "2025-10",
+      "value": 230.8
+     },
+     {
+      "month": "2025-11",
+      "value": 245.9
+     },
+     {
+      "month": "2025-12",
+      "value": 242.8
+     },
+     {
+      "month": "2026-01",
+      "value": 249.9
+     },
+     {
+      "month": "2026-02",
+      "value": 257.6
+     },
+     {
+      "month": "2026-03",
+      "value": 276
+     },
+     {
+      "month": "2026-04",
+      "value": 282
+     },
+     {
+      "month": "2026-05",
+      "value": 303
+     },
+     {
+      "month": "2026-06",
+      "value": 286
+     },
+     {
+      "month": "2026-07",
+      "value": 310
+     },
+     {
+      "month": "2026-08",
+      "value": 330
+     },
+     {
+      "month": "2026-09",
+      "value": 347
+     },
+     {
+      "month": "2026-10",
+      "value": 317
+     }
+    ]
+   },
+   "soy": {
+    "name": "Soybeans",
+    "unit": "$/mt",
+    "unit_words": "US$ per tonne",
+    "latest": {
+     "month": "2026-10",
+     "value": 515
+    },
+    "year_ago": {
+     "month": "2025-10",
+     "value": 404
+    },
+    "change_pct": 27.5,
+    "last24": [
+     {
+      "month": "2024-11",
+      "value": 436
+     },
+     {
+      "month": "2024-12",
+      "value": 409
+     },
+     {
+      "month": "2025-01",
+      "value": 411
+     },
+     {
+      "month": "2025-02",
+      "value": 412
+     },
+     {
+      "month": "2025-03",
+      "value": 401
+     },
+     {
+      "month": "2025-04",
+      "value": 408
+     },
+     {
+      "month": "2025-05",
+      "value": 414
+     },
+     {
+      "month": "2025-06",
+      "value": 416
+     },
+     {
+      "month": "2025-07",
+      "value": 410
+     },
+     {
+      "month": "2025-08",
+      "value": 407
+     },
+     {
+      "month": "2025-09",
+      "value": 404
+     },
+     {
+      "month": "2025-10",
+      "value": 404
+     },
+     {
+      "month": "2025-11",
+      "value": 446
+     },
+     {
+      "month": "2025-12",
+      "value": 440
+     },
+     {
+      "month": "2026-01",
+      "value": 425
+     },
+     {
+      "month": "2026-02",
+      "value": 459
+     },
+     {
+      "month": "2026-03",
+      "value": 473
+     },
+     {
+      "month": "2026-04",
+      "value": 463
+     },
+     {
+      "month": "2026-05",
+      "value": 473
+     },
+     {
+      "month": "2026-06",
+      "value": 464
+     },
+     {
+      "month": "2026-07",
+      "value": 478
+     },
+     {
+      "month": "2026-08",
+      "value": 482
+     },
+     {
+      "month": "2026-09",
+      "value": 524
+     },
+     {
+      "month": "2026-10",
+      "value": 515
+     }
+    ]
+   },
+   "barley": {
+    "name": "Barley",
+    "unit": "$/mt",
+    "unit_words": "US$ per tonne",
+    "latest": {
+     "month": "2020-08",
+     "value": 80.4
+    },
+    "year_ago": {
+     "month": "2019-08",
+     "value": 135
+    },
+    "change_pct": -40.4,
+    "last24": [
+     {
+      "month": "2018-09",
+      "value": 119.4
+     },
+     {
+      "month": "2018-10",
+      "value": 119.4
+     },
+     {
+      "month": "2018-11",
+      "value": 119.4
+     },
+     {
+      "month": "2018-12",
+      "value": 119.4
+     },
+     {
+      "month": "2019-01",
+      "value": 119.4
+     },
+     {
+      "month": "2019-02",
+      "value": 119.4
+     },
+     {
+      "month": "2019-03",
+      "value": 119.4
+     },
+     {
+      "month": "2019-04",
+      "value": 136.4
+     },
+     {
+      "month": "2019-05",
+      "value": 149.3
+     },
+     {
+      "month": "2019-06",
+      "value": 149.3
+     },
+     {
+      "month": "2019-07",
+      "value": 149.3
+     },
+     {
+      "month": "2019-08",
+      "value": 135
+     },
+     {
+      "month": "2019-09",
+      "value": 114.8
+     },
+     {
+      "month": "2019-10",
+      "value": 114.8
+     },
+     {
+      "month": "2019-11",
+      "value": 114.8
+     },
+     {
+      "month": "2019-12",
+      "value": 114.8
+     },
+     {
+      "month": "2020-01",
+      "value": 114.8
+     },
+     {
+      "month": "2020-02",
+      "value": 114.8
+     },
+     {
+      "month": "2020-03",
+      "value": 114.8
+     },
+     {
+      "month": "2020-04",
+      "value": 114.8
+     },
+     {
+      "month": "2020-05",
+      "value": 80.4
+     },
+     {
+      "month": "2020-06",
+      "value": 80.4
+     },
+     {
+      "month": "2020-07",
+      "value": 80.4
+     },
+     {
+      "month": "2020-08",
+      "value": 80.4
+     }
+    ],
+    "stale": true,
+    "stale_note": "The World Bank stopped updating this series after 2020-08"
+   },
+   "sorghum": {
+    "name": "Sorghum",
+    "unit": "$/mt",
+    "unit_words": "US$ per tonne",
+    "latest": {
+     "month": "2020-08",
+     "value": 189.5
+    },
+    "year_ago": {
+     "month": "2019-08",
+     "value": 147.9
+    },
+    "change_pct": 28.1,
+    "last24": [
+     {
+      "month": "2018-09",
+      "value": 163.6
+     },
+     {
+      "month": "2018-10",
+      "value": 159
+     },
+     {
+      "month": "2018-11",
+      "value": 157.5
+     },
+     {
+      "month": "2018-12",
+      "value": 163.8
+     },
+     {
+      "month": "2019-01",
+      "value": 162.9
+     },
+     {
+      "month": "2019-02",
+      "value": 170.4
+     },
+     {
+      "month": "2019-03",
+      "value": 169.3
+     },
+     {
+      "month": "2019-04",
+      "value": 165.5
+     },
+     {
+      "month": "2019-05",
+      "value": 165.5
+     },
+     {
+      "month": "2019-06",
+      "value": 157.7
+     },
+     {
+      "month": "2019-07",
+      "value": 159.5
+     },
+     {
+      "month": "2019-08",
+      "value": 147.9
+     },
+     {
+      "month": "2019-09",
+      "value": 149.7
+     },
+     {
+      "month": "2019-10",
+      "value": 163.8
+     },
+     {
+      "month": "2019-11",
+      "value": 161.9
+     },
+     {
+      "month": "2019-12",
+      "value": 163.9
+     },
+     {
+      "month": "2020-01",
+      "value": 166.2
+     },
+     {
+      "month": "2020-02",
+      "value": 164.1
+     },
+     {
+      "month": "2020-03",
+      "value": 164.4
+     },
+     {
+      "month": "2020-04",
+      "value": 166.7
+     },
+     {
+      "month": "2020-05",
+      "value": 175.9
+     },
+     {
+      "month": "2020-06",
+      "value": 170.9
+     },
+     {
+      "month": "2020-07",
+      "value": 174.9
+     },
+     {
+      "month": "2020-08",
+      "value": 189.5
+     }
+    ],
+    "stale": true,
+    "stale_note": "The World Bank stopped updating this series after 2020-08"
+   },
+   "cotton": {
+    "name": "Cotton, A Index",
+    "unit": "$/kg",
+    "unit_words": "US$ per kg",
+    "latest": {
+     "month": "2026-10",
+     "value": 2
+    },
+    "year_ago": {
+     "month": "2025-10",
+     "value": 1.68
+    },
+    "change_pct": 19,
+    "last24": [
+     {
+      "month": "2024-11",
+      "value": 1.8
+     },
+     {
+      "month": "2024-12",
+      "value": 1.76
+     },
+     {
+      "month": "2025-01",
+      "value": 1.72
+     },
+     {
+      "month": "2025-02",
+      "value": 1.72
+     },
+     {
+      "month": "2025-03",
+      "value": 1.71
+     },
+     {
+      "month": "2025-04",
+      "value": 1.73
+     },
+     {
+      "month": "2025-05",
+      "value": 1.72
+     },
+     {
+      "month": "2025-06",
+      "value": 1.73
+     },
+     {
+      "month": "2025-07",
+      "value": 1.74
+     },
+     {
+      "month": "2025-08",
+      "value": 1.73
+     },
+     {
+      "month": "2025-09",
+      "value": 1.72
+     },
+     {
+      "month": "2025-10",
+      "value": 1.68
+     },
+     {
+      "month": "2025-11",
+      "value": 1.66
+     },
+     {
+      "month": "2025-12",
+      "value": 1.63
+     },
+     {
+      "month": "2026-01",
+      "value": 1.64
+     },
+     {
+      "month": "2026-02",
+      "value": 1.63
+     },
+     {
+      "month": "2026-03",
+      "value": 1.7
+     },
+     {
+      "month": "2026-04",
+      "value": 1.9
+     },
+     {
+      "month": "2026-05",
+      "value": 2.03
+     },
+     {
+      "month": "2026-06",
+      "value": 1.9
+     },
+     {
+      "month": "2026-07",
+      "value": 1.96
+     },
+     {
+      "month": "2026-08",
+      "value": 2.11
+     },
+     {
+      "month": "2026-09",
+      "value": 2.1
+     },
+     {
+      "month": "2026-10",
+      "value": 2
+     }
+    ]
+   },
+   "canola": {
+    "name": "Rapeseed oil",
+    "unit": "$/mt",
+    "unit_words": "US$ per tonne",
+    "latest": {
+     "month": "2026-10",
+     "value": 1405
+    },
+    "year_ago": {
+     "month": "2025-10",
+     "value": 1264
+    },
+    "change_pct": 11.2,
+    "last24": [
+     {
+      "month": "2024-11",
+      "value": 1243
+     },
+     {
+      "month": "2024-12",
+      "value": 1181
+     },
+     {
+      "month": "2025-01",
+      "value": 1149
+     },
+     {
+      "month": "2025-02",
+      "value": 1159
+     },
+     {
+      "month": "2025-03",
+      "value": 1193
+     },
+     {
+      "month": "2025-04",
+      "value": 1256
+     },
+     {
+      "month": "2025-05",
+      "value": 1241
+     },
+     {
+      "month": "2025-06",
+      "value": 1252
+     },
+     {
+      "month": "2025-07",
+      "value": 1202
+     },
+     {
+      "month": "2025-08",
+      "value": 1213
+     },
+     {
+      "month": "2025-09",
+      "value": 1268
+     },
+     {
+      "month": "2025-10",
+      "value": 1264
+     },
+     {
+      "month": "2025-11",
+      "value": 1259
+     },
+     {
+      "month": "2025-12",
+      "value": 1258
+     },
+     {
+      "month": "2026-01",
+      "value": 1223
+     },
+     {
+      "month": "2026-02",
+      "value": 1275
+     },
+     {
+      "month": "2026-03",
+      "value": 1304
+     },
+     {
+      "month": "2026-04",
+      "value": 1345
+     },
+     {
+      "month": "2026-05",
+      "value": 1488
+     },
+     {
+      "month": "2026-06",
+      "value": 1522
+     },
+     {
+      "month": "2026-07",
+      "value": 1488
+     },
+     {
+      "month": "2026-08",
+      "value": 1474
+     },
+     {
+      "month": "2026-09",
+      "value": 1442
+     },
+     {
+      "month": "2026-10",
+      "value": 1405
+     }
+    ],
+    "proxy": true,
+    "proxy_note": "This is the price of rapeseed oil, shown as a guide: the Pink Sheet has no price for the crop itself"
+   },
+   "sunflower": {
+    "name": "Sunflower oil",
+    "unit": "$/mt",
+    "unit_words": "US$ per tonne",
+    "latest": {
+     "month": "2026-10",
+     "value": 1413
+    },
+    "year_ago": {
+     "month": "2025-10",
+     "value": 1363
+    },
+    "change_pct": 3.7,
+    "last24": [
+     {
+      "month": "2024-11",
+      "value": 1267
+     },
+     {
+      "month": "2024-12",
+      "value": 1223
+     },
+     {
+      "month": "2025-01",
+      "value": 1207
+     },
+     {
+      "month": "2025-02",
+      "value": 1220
+     },
+     {
+      "month": "2025-03",
+      "value": 1233
+     },
+     {
+      "month": "2025-04",
+      "value": 1225
+     },
+     {
+      "month": "2025-05",
+      "value": 1208
+     },
+     {
+      "month": "2025-06",
+      "value": 1196
+     },
+     {
+      "month": "2025-07",
+      "value": 1214
+     },
+     {
+      "month": "2025-08",
+      "value": 1274
+     },
+     {
+      "month": "2025-09",
+      "value": 1312
+     },
+     {
+      "month": "2025-10",
+      "value": 1363
+     },
+     {
+      "month": "2025-11",
+      "value": 1360
+     },
+     {
+      "month": "2025-12",
+      "value": 1352
+     },
+     {
+      "month": "2026-01",
+      "value": 1441
+     },
+     {
+      "month": "2026-02",
+      "value": 1445
+     },
+     {
+      "month": "2026-03",
+      "value": 1465
+     },
+     {
+      "month": "2026-04",
+      "value": 1485
+     },
+     {
+      "month": "2026-05",
+      "value": 1503
+     },
+     {
+      "month": "2026-06",
+      "value": 1508
+     },
+     {
+      "month": "2026-07",
+      "value": 1497
+     },
+     {
+      "month": "2026-08",
+      "value": 1484
+     },
+     {
+      "month": "2026-09",
+      "value": 1393
+     },
+     {
+      "month": "2026-10",
+      "value": 1413
+     }
+    ],
+    "proxy": true,
+    "proxy_note": "This is the price of sunflower oil, shown as a guide: the Pink Sheet has no price for the crop itself"
+   },
+   "tea": {
+    "name": "Tea, avg 3 auctions",
+    "unit": "$/kg",
+    "unit_words": "US$ per kg",
+    "latest": {
+     "month": "2026-10",
+     "value": 2.88
+    },
+    "year_ago": {
+     "month": "2025-10",
+     "value": 3.01
+    },
+    "change_pct": -4.3,
+    "last24": [
+     {
+      "month": "2024-11",
+      "value": 3.09
+     },
+     {
+      "month": "2024-12",
+      "value": 2.96
+     },
+     {
+      "month": "2025-01",
+      "value": 2.78
+     },
+     {
+      "month": "2025-02",
+      "value": 2.69
+     },
+     {
+      "month": "2025-03",
+      "value": 2.69
+     },
+     {
+      "month": "2025-04",
+      "value": 2.91
+     },
+     {
+      "month": "2025-05",
+      "value": 3.02
+     },
+     {
+      "month": "2025-06",
+      "value": 2.99
+     },
+     {
+      "month": "2025-07",
+      "value": 3.02
+     },
+     {
+      "month": "2025-08",
+      "value": 3.04
+     },
+     {
+      "month": "2025-09",
+      "value": 2.94
+     },
+     {
+      "month": "2025-10",
+      "value": 3.01
+     },
+     {
+      "month": "2025-11",
+      "value": 2.99
+     },
+     {
+      "month": "2025-12",
+      "value": 2.88
+     },
+     {
+      "month": "2026-01",
+      "value": 2.73
+     },
+     {
+      "month": "2026-02",
+      "value": 2.7
+     },
+     {
+      "month": "2026-03",
+      "value": 2.69
+     },
+     {
+      "month": "2026-04",
+      "value": 2.83
+     },
+     {
+      "month": "2026-05",
+      "value": 3
+     },
+     {
+      "month": "2026-06",
+      "value": 2.97
+     },
+     {
+      "month": "2026-07",
+      "value": 2.98
+     },
+     {
+      "month": "2026-08",
+      "value": 2.91
+     },
+     {
+      "month": "2026-09",
+      "value": 2.86
+     },
+     {
+      "month": "2026-10",
+      "value": 2.88
+     }
+    ]
+   },
+   "rice": {
+    "name": "Rice, Thai 5%",
+    "unit": "$/mt",
+    "unit_words": "US$ per tonne",
+    "latest": {
+     "month": "2026-10",
+     "value": 489
+    },
+    "year_ago": {
+     "month": "2025-10",
+     "value": 356
+    },
+    "change_pct": 37.4,
+    "last24": [
+     {
+      "month": "2024-11",
+      "value": 511
+     },
+     {
+      "month": "2024-12",
+      "value": 527
+     },
+     {
+      "month": "2025-01",
+      "value": 478
+     },
+     {
+      "month": "2025-02",
+      "value": 437
+     },
+     {
+      "month": "2025-03",
+      "value": 425
+     },
+     {
+      "month": "2025-04",
+      "value": 415
+     },
+     {
+      "month": "2025-05",
+      "value": 431
+     },
+     {
+      "month": "2025-06",
+      "value": 419
+     },
+     {
+      "month": "2025-07",
+      "value": 392
+     },
+     {
+      "month": "2025-08",
+      "value": 375
+     },
+     {
+      "month": "2025-09",
+      "value": 374
+     },
+     {
+      "month": "2025-10",
+      "value": 356
+     },
+     {
+      "month": "2025-11",
+      "value": 368
+     },
+     {
+      "month": "2025-12",
+      "value": 424
+     },
+     {
+      "month": "2026-01",
+      "value": 408
+     },
+     {
+      "month": "2026-02",
+      "value": 409
+     },
+     {
+      "month": "2026-03",
+      "value": 381
+     },
+     {
+      "month": "2026-04",
+      "value": 403
+     },
+     {
+      "month": "2026-05",
+      "value": 440
+     },
+     {
+      "month": "2026-06",
+      "value": 494
+     },
+     {
+      "month": "2026-07",
+      "value": 467
+     },
+     {
+      "month": "2026-08",
+      "value": 471
+     },
+     {
+      "month": "2026-09",
+      "value": 482
+     },
+     {
+      "month": "2026-10",
+      "value": 489
+     }
+    ]
+   },
+   "groundnut": {
+    "name": "Groundnuts",
+    "unit": "$/mt",
+    "unit_words": "US$ per tonne",
+    "latest": {
+     "month": "2026-10",
+     "value": 1600
+    },
+    "year_ago": {
+     "month": "2025-10",
+     "value": 1200
+    },
+    "change_pct": 33.3,
+    "last24": [
+     {
+      "month": "2024-11",
+      "value": 1700
+     },
+     {
+      "month": "2024-12",
+      "value": 1700
+     },
+     {
+      "month": "2025-01",
+      "value": 1688
+     },
+     {
+      "month": "2025-02",
+      "value": 1650
+     },
+     {
+      "month": "2025-03",
+      "value": 1550
+     },
+     {
+      "month": "2025-04",
+      "value": 1375
+     },
+     {
+      "month": "2025-05",
+      "value": 1313
+     },
+     {
+      "month": "2025-06",
+      "value": 1300
+     },
+     {
+      "month": "2025-07",
+      "value": 1250
+     },
+     {
+      "month": "2025-08",
+      "value": 1250
+     },
+     {
+      "month": "2025-09",
+      "value": 1235
+     },
+     {
+      "month": "2025-10",
+      "value": 1200
+     },
+     {
+      "month": "2025-11",
+      "value": 1200
+     },
+     {
+      "month": "2025-12",
+      "value": 1200
+     },
+     {
+      "month": "2026-01",
+      "value": 1206
+     },
+     {
+      "month": "2026-02",
+      "value": 1238
+     },
+     {
+      "month": "2026-03",
+      "value": 1250
+     },
+     {
+      "month": "2026-04",
+      "value": 1250
+     },
+     {
+      "month": "2026-05",
+      "value": 1250
+     },
+     {
+      "month": "2026-06",
+      "value": 1250
+     },
+     {
+      "month": "2026-07",
+      "value": 1250
+     },
+     {
+      "month": "2026-08",
+      "value": 1500
+     },
+     {
+      "month": "2026-09",
+      "value": 1563
+     },
+     {
+      "month": "2026-10",
+      "value": 1600
+     }
+    ]
+   },
+   "tobacco": {
+    "name": "Tobacco, US import u.v.",
+    "unit": "$/mt",
+    "unit_words": "US$ per tonne",
+    "latest": {
+     "month": "2026-07",
+     "value": 6775
+    },
+    "year_ago": {
+     "month": "2025-07",
+     "value": 7025
+    },
+    "change_pct": -3.6,
+    "last24": [
+     {
+      "month": "2024-08",
+      "value": 5999
+     },
+     {
+      "month": "2024-09",
+      "value": 6079
+     },
+     {
+      "month": "2024-10",
+      "value": 6166
+     },
+     {
+      "month": "2024-11",
+      "value": 6339
+     },
+     {
+      "month": "2024-12",
+      "value": 6458
+     },
+     {
+      "month": "2025-01",
+      "value": 6519
+     },
+     {
+      "month": "2025-02",
+      "value": 6736
+     },
+     {
+      "month": "2025-03",
+      "value": 6813
+     },
+     {
+      "month": "2025-04",
+      "value": 6871
+     },
+     {
+      "month": "2025-05",
+      "value": 6924
+     },
+     {
+      "month": "2025-06",
+      "value": 6987
+     },
+     {
+      "month": "2025-07",
+      "value": 7025
+     },
+     {
+      "month": "2025-08",
+      "value": 7054
+     },
+     {
+      "month": "2025-09",
+      "value": 6949
+     },
+     {
+      "month": "2025-10",
+      "value": 6930
+     },
+     {
+      "month": "2025-11",
+      "value": 6839
+     },
+     {
+      "month": "2025-12",
+      "value": 6924
+     },
+     {
+      "month": "2026-01",
+      "value": 6955
+     },
+     {
+      "month": "2026-02",
+      "value": 6783
+     },
+     {
+      "month": "2026-03",
+      "value": 6770
+     },
+     {
+      "month": "2026-04",
+      "value": 6800
+     },
+     {
+      "month": "2026-05",
+      "value": 6754
+     },
+     {
+      "month": "2026-06",
+      "value": 6723
+     },
+     {
+      "month": "2026-07",
+      "value": 6775
+     }
+    ]
+   },
+   "coffee": {
+    "name": "Coffee, Arabica",
+    "unit": "$/kg",
+    "unit_words": "US$ per kg",
+    "latest": {
+     "month": "2026-10",
+     "value": 7.4
+    },
+    "year_ago": {
+     "month": "2025-10",
+     "value": 8.9
+    },
+    "change_pct": -16.9,
+    "last24": [
+     {
+      "month": "2024-11",
+      "value": 6.72
+     },
+     {
+      "month": "2024-12",
+      "value": 7.57
+     },
+     {
+      "month": "2025-01",
+      "value": 7.81
+     },
+     {
+      "month": "2025-02",
+      "value": 9.05
+     },
+     {
+      "month": "2025-03",
+      "value": 8.92
+     },
+     {
+      "month": "2025-04",
+      "value": 8.64
+     },
+     {
+      "month": "2025-05",
+      "value": 8.77
+     },
+     {
+      "month": "2025-06",
+      "value": 8.01
+     },
+     {
+      "month": "2025-07",
+      "value": 7.18
+     },
+     {
+      "month": "2025-08",
+      "value": 8.08
+     },
+     {
+      "month": "2025-09",
+      "value": 8.83
+     },
+     {
+      "month": "2025-10",
+      "value": 8.9
+     },
+     {
+      "month": "2025-11",
+      "value": 9.05
+     },
+     {
+      "month": "2025-12",
+      "value": 8.4
+     },
+     {
+      "month": "2026-01",
+      "value": 8.02
+     },
+     {
+      "month": "2026-02",
+      "value": 7.08
+     },
+     {
+      "month": "2026-03",
+      "value": 7.37
+     },
+     {
+      "month": "2026-04",
+      "value": 7.3
+     },
+     {
+      "month": "2026-05",
+      "value": 6.95
+     },
+     {
+      "month": "2026-06",
+      "value": 6.79
+     },
+     {
+      "month": "2026-07",
+      "value": 7.91
+     },
+     {
+      "month": "2026-08",
+      "value": 7.97
+     },
+     {
+      "month": "2026-09",
+      "value": 7.26
+     },
+     {
+      "month": "2026-10",
+      "value": 7.4
+     }
+    ]
+   },
+   "robusta": {
+    "name": "Coffee, Robusta",
+    "unit": "$/kg",
+    "unit_words": "US$ per kg",
+    "latest": {
+     "month": "2026-10",
+     "value": 3.63
+    },
+    "year_ago": {
+     "month": "2025-10",
+     "value": 4.74
+    },
+    "change_pct": -23.4,
+    "last24": [
+     {
+      "month": "2024-11",
+      "value": 4.98
+     },
+     {
+      "month": "2024-12",
+      "value": 5.22
+     },
+     {
+      "month": "2025-01",
+      "value": 5.41
+     },
+     {
+      "month": "2025-02",
+      "value": 5.81
+     },
+     {
+      "month": "2025-03",
+      "value": 5.69
+     },
+     {
+      "month": "2025-04",
+      "value": 5.43
+     },
+     {
+      "month": "2025-05",
+      "value": 5.24
+     },
+     {
+      "month": "2025-06",
+      "value": 4.33
+     },
+     {
+      "month": "2025-07",
+      "value": 3.69
+     },
+     {
+      "month": "2025-08",
+      "value": 4.39
+     },
+     {
+      "month": "2025-09",
+      "value": 4.66
+     },
+     {
+      "month": "2025-10",
+      "value": 4.74
+     },
+     {
+      "month": "2025-11",
+      "value": 4.74
+     },
+     {
+      "month": "2025-12",
+      "value": 4.2
+     },
+     {
+      "month": "2026-01",
+      "value": 4.24
+     },
+     {
+      "month": "2026-02",
+      "value": 3.96
+     },
+     {
+      "month": "2026-03",
+      "value": 3.9
+     },
+     {
+      "month": "2026-04",
+      "value": 3.63
+     },
+     {
+      "month": "2026-05",
+      "value": 3.67
+     },
+     {
+      "month": "2026-06",
+      "value": 3.73
+     },
+     {
+      "month": "2026-07",
+      "value": 4.07
+     },
+     {
+      "month": "2026-08",
+      "value": 3.98
+     },
+     {
+      "month": "2026-09",
+      "value": 3.69
+     },
+     {
+      "month": "2026-10",
+      "value": 3.63
+     }
+    ]
+   },
+   "cocoa": {
+    "name": "Cocoa",
+    "unit": "$/kg",
+    "unit_words": "US$ per kg",
+    "latest": {
+     "month": "2026-10",
+     "value": 5.75
+    },
+    "year_ago": {
+     "month": "2025-10",
+     "value": 5.95
+    },
+    "change_pct": -3.4,
+    "last24": [
+     {
+      "month": "2024-11",
+      "value": 7.89
+     },
+     {
+      "month": "2024-12",
+      "value": 10.32
+     },
+     {
+      "month": "2025-01",
+      "value": 10.75
+     },
+     {
+      "month": "2025-02",
+      "value": 9.86
+     },
+     {
+      "month": "2025-03",
+      "value": 8.08
+     },
+     {
+      "month": "2025-04",
+      "value": 8.15
+     },
+     {
+      "month": "2025-05",
+      "value": 8.99
+     },
+     {
+      "month": "2025-06",
+      "value": 8.4
+     },
+     {
+      "month": "2025-07",
+      "value": 7.37
+     },
+     {
+      "month": "2025-08",
+      "value": 7.6
+     },
+     {
+      "month": "2025-09",
+      "value": 7.03
+     },
+     {
+      "month": "2025-10",
+      "value": 5.95
+     },
+     {
+      "month": "2025-11",
+      "value": 5.61
+     },
+     {
+      "month": "2025-12",
+      "value": 5.78
+     },
+     {
+      "month": "2026-01",
+      "value": 4.97
+     },
+     {
+      "month": "2026-02",
+      "value": 3.59
+     },
+     {
+      "month": "2026-03",
+      "value": 3.24
+     },
+     {
+      "month": "2026-04",
+      "value": 3.4
+     },
+     {
+      "month": "2026-05",
+      "value": 4.16
+     },
+     {
+      "month": "2026-06",
+      "value": 4.4
+     },
+     {
+      "month": "2026-07",
+      "value": 5.61
+     },
+     {
+      "month": "2026-08",
+      "value": 5.95
+     },
+     {
+      "month": "2026-09",
+      "value": 5.92
+     },
+     {
+      "month": "2026-10",
+      "value": 5.75
+     }
+    ]
+   },
+   "rubber": {
+    "name": "Rubber, TSR20",
+    "unit": "$/kg",
+    "unit_words": "US$ per kg",
+    "latest": {
+     "month": "2026-10",
+     "value": 2.55
+    },
+    "year_ago": {
+     "month": "2025-10",
+     "value": 1.71
+    },
+    "change_pct": 49.1,
+    "last24": [
+     {
+      "month": "2024-11",
+      "value": 1.93
+     },
+     {
+      "month": "2024-12",
+      "value": 1.99
+     },
+     {
+      "month": "2025-01",
+      "value": 1.93
+     },
+     {
+      "month": "2025-02",
+      "value": 2.01
+     },
+     {
+      "month": "2025-03",
+      "value": 1.98
+     },
+     {
+      "month": "2025-04",
+      "value": 1.71
+     },
+     {
+      "month": "2025-05",
+      "value": 1.7
+     },
+     {
+      "month": "2025-06",
+      "value": 1.61
+     },
+     {
+      "month": "2025-07",
+      "value": 1.68
+     },
+     {
+      "month": "2025-08",
+      "value": 1.71
+     },
+     {
+      "month": "2025-09",
+      "value": 1.74
+     },
+     {
+      "month": "2025-10",
+      "value": 1.71
+     },
+     {
+      "month": "2025-11",
+      "value": 1.71
+     },
+     {
+      "month": "2025-12",
+      "value": 1.74
+     },
+     {
+      "month": "2026-01",
+      "value": 1.84
+     },
+     {
+      "month": "2026-02",
+      "value": 1.93
+     },
+     {
+      "month": "2026-03",
+      "value": 1.95
+     },
+     {
+      "month": "2026-04",
+      "value": 2.06
+     },
+     {
+      "month": "2026-05",
+      "value": 2.21
+     },
+     {
+      "month": "2026-06",
+      "value": 2.25
+     },
+     {
+      "month": "2026-07",
+      "value": 2.14
+     },
+     {
+      "month": "2026-08",
+      "value": 2.24
+     },
+     {
+      "month": "2026-09",
+      "value": 2.41
+     },
+     {
+      "month": "2026-10",
+      "value": 2.55
+     }
+    ]
+   },
+   "banana": {
+    "name": "Banana, US",
+    "unit": "$/kg",
+    "unit_words": "US$ per kg",
+    "latest": {
+     "month": "2026-10",
+     "value": 1.18
+    },
+    "year_ago": {
+     "month": "2025-10",
+     "value": 1.13
+    },
+    "change_pct": 4.4,
+    "last24": [
+     {
+      "month": "2024-11",
+      "value": 0.91
+     },
+     {
+      "month": "2024-12",
+      "value": 0.83
+     },
+     {
+      "month": "2025-01",
+      "value": 1.11
+     },
+     {
+      "month": "2025-02",
+      "value": 1.25
+     },
+     {
+      "month": "2025-03",
+      "value": 1.18
+     },
+     {
+      "month": "2025-04",
+      "value": 1.1
+     },
+     {
+      "month": "2025-05",
+      "value": 1.09
+     },
+     {
+      "month": "2025-06",
+      "value": 0.92
+     },
+     {
+      "month": "2025-07",
+      "value": 1.01
+     },
+     {
+      "month": "2025-08",
+      "value": 1.02
+     },
+     {
+      "month": "2025-09",
+      "value": 1.02
+     },
+     {
+      "month": "2025-10",
+      "value": 1.13
+     },
+     {
+      "month": "2025-11",
+      "value": 1.16
+     },
+     {
+      "month": "2025-12",
+      "value": 1.16
+     },
+     {
+      "month": "2026-01",
+      "value": 1.2
+     },
+     {
+      "month": "2026-02",
+      "value": 1.21
+     },
+     {
+      "month": "2026-03",
+      "value": 1.21
+     },
+     {
+      "month": "2026-04",
+      "value": 1.15
+     },
+     {
+      "month": "2026-05",
+      "value": 1.12
+     },
+     {
+      "month": "2026-06",
+      "value": 1.18
+     },
+     {
+      "month": "2026-07",
+      "value": 1.17
+     },
+     {
+      "month": "2026-08",
+      "value": 1.1
+     },
+     {
+      "month": "2026-09",
+      "value": 1.12
+     },
+     {
+      "month": "2026-10",
+      "value": 1.18
+     }
+    ]
+   },
+   "citrus": {
+    "name": "Orange",
+    "unit": "$/kg",
+    "unit_words": "US$ per kg",
+    "latest": {
+     "month": "2026-10",
+     "value": 0.75
+    },
+    "year_ago": {
+     "month": "2025-10",
+     "value": 1.05
+    },
+    "change_pct": -28.6,
+    "last24": [
+     {
+      "month": "2024-11",
+      "value": 2.57
+     },
+     {
+      "month": "2024-12",
+      "value": 2.7
+     },
+     {
+      "month": "2025-01",
+      "value": 2.57
+     },
+     {
+      "month": "2025-02",
+      "value": 1.91
+     },
+     {
+      "month": "2025-03",
+      "value": 1.44
+     },
+     {
+      "month": "2025-04",
+      "value": 1.41
+     },
+     {
+      "month": "2025-05",
+      "value": 1.38
+     },
+     {
+      "month": "2025-06",
+      "value": 1.36
+     },
+     {
+      "month": "2025-07",
+      "value": 1.52
+     },
+     {
+      "month": "2025-08",
+      "value": 1.28
+     },
+     {
+      "month": "2025-09",
+      "value": 1.29
+     },
+     {
+      "month": "2025-10",
+      "value": 1.05
+     },
+     {
+      "month": "2025-11",
+      "value": 0.86
+     },
+     {
+      "month": "2025-12",
+      "value": 0.92
+     },
+     {
+      "month": "2026-01",
+      "value": 1.11
+     },
+     {
+      "month": "2026-02",
+      "value": 0.94
+     },
+     {
+      "month": "2026-03",
+      "value": 0.97
+     },
+     {
+      "month": "2026-04",
+      "value": 0.95
+     },
+     {
+      "month": "2026-05",
+      "value": 0.92
+     },
+     {
+      "month": "2026-06",
+      "value": 0.82
+     },
+     {
+      "month": "2026-07",
+      "value": 0.78
+     },
+     {
+      "month": "2026-08",
+      "value": 0.77
+     },
+     {
+      "month": "2026-09",
+      "value": 0.79
+     },
+     {
+      "month": "2026-10",
+      "value": 0.75
+     }
+    ]
+   },
+   "oilpalm": {
+    "name": "Palm oil",
+    "unit": "$/mt",
+    "unit_words": "US$ per tonne",
+    "latest": {
+     "month": "2026-10",
+     "value": 1120
+    },
+    "year_ago": {
+     "month": "2025-10",
+     "value": 1038
+    },
+    "change_pct": 7.9,
+    "last24": [
+     {
+      "month": "2024-11",
+      "value": 1169
+     },
+     {
+      "month": "2024-12",
+      "value": 1190
+     },
+     {
+      "month": "2025-01",
+      "value": 1070
+     },
+     {
+      "month": "2025-02",
+      "value": 1067
+     },
+     {
+      "month": "2025-03",
+      "value": 1068
+     },
+     {
+      "month": "2025-04",
+      "value": 994
+     },
+     {
+      "month": "2025-05",
+      "value": 908
+     },
+     {
+      "month": "2025-06",
+      "value": 935
+     },
+     {
+      "month": "2025-07",
+      "value": 976
+     },
+     {
+      "month": "2025-08",
+      "value": 1026
+     },
+     {
+      "month": "2025-09",
+      "value": 1037
+     },
+     {
+      "month": "2025-10",
+      "value": 1038
+     },
+     {
+      "month": "2025-11",
+      "value": 983
+     },
+     {
+      "month": "2025-12",
+      "value": 980
+     },
+     {
+      "month": "2026-01",
+      "value": 1013
+     },
+     {
+      "month": "2026-02",
+      "value": 1064
+     },
+     {
+      "month": "2026-03",
+      "value": 1167
+     },
+     {
+      "month": "2026-04",
+      "value": 1181
+     },
+     {
+      "month": "2026-05",
+      "value": 1168
+     },
+     {
+      "month": "2026-06",
+      "value": 1142
+     },
+     {
+      "month": "2026-07",
+      "value": 1133
+     },
+     {
+      "month": "2026-08",
+      "value": 1132
+     },
+     {
+      "month": "2026-09",
+      "value": 1180
+     },
+     {
+      "month": "2026-10",
+      "value": 1120
+     }
+    ],
+    "proxy": true,
+    "proxy_note": "This is the price of palm oil, shown as a guide: the Pink Sheet has no price for the crop itself"
+   },
+   "coconut": {
+    "name": "Coconut oil",
+    "unit": "$/mt",
+    "unit_words": "US$ per tonne",
+    "latest": {
+     "month": "2026-10",
+     "value": 2029
+    },
+    "year_ago": {
+     "month": "2025-10",
+     "value": 2547
+    },
+    "change_pct": -20.3,
+    "last24": [
+     {
+      "month": "2024-11",
+      "value": 1879
+     },
+     {
+      "month": "2024-12",
+      "value": 1973
+     },
+     {
+      "month": "2025-01",
+      "value": 1978
+     },
+     {
+      "month": "2025-02",
+      "value": 1990
+     },
+     {
+      "month": "2025-03",
+      "value": 2356
+     },
+     {
+      "month": "2025-04",
+      "value": 2483
+     },
+     {
+      "month": "2025-05",
+      "value": 2767
+     },
+     {
+      "month": "2025-06",
+      "value": 2699
+     },
+     {
+      "month": "2025-07",
+      "value": 2841
+     },
+     {
+      "month": "2025-08",
+      "value": 2742
+     },
+     {
+      "month": "2025-09",
+      "value": 2597
+     },
+     {
+      "month": "2025-10",
+      "value": 2547
+     },
+     {
+      "month": "2025-11",
+      "value": 2440
+     },
+     {
+      "month": "2025-12",
+      "value": 2323
+     },
+     {
+      "month": "2026-01",
+      "value": 2197
+     },
+     {
+      "month": "2026-02",
+      "value": 2259
+     },
+     {
+      "month": "2026-03",
+      "value": 2349
+     },
+     {
+      "month": "2026-04",
+      "value": 2332
+     },
+     {
+      "month": "2026-05",
+      "value": 2172
+     },
+     {
+      "month": "2026-06",
+      "value": 1979
+     },
+     {
+      "month": "2026-07",
+      "value": 1924
+     },
+     {
+      "month": "2026-08",
+      "value": 1981
+     },
+     {
+      "month": "2026-09",
+      "value": 2079
+     },
+     {
+      "month": "2026-10",
+      "value": 2029
+     }
+    ],
+    "proxy": true,
+    "proxy_note": "This is the price of coconut oil, shown as a guide: the Pink Sheet has no price for the crop itself"
+   },
+   "sugarcane": {
+    "name": "Sugar, world",
+    "unit": "$/kg",
+    "unit_words": "US$ per kg",
+    "latest": {
+     "month": "2026-10",
+     "value": 0.43
+    },
+    "year_ago": {
+     "month": "2025-10",
+     "value": 0.34
+    },
+    "change_pct": 26.5,
+    "last24": [
+     {
+      "month": "2024-11",
+      "value": 0.45
+     },
+     {
+      "month": "2024-12",
+      "value": 0.44
+     },
+     {
+      "month": "2025-01",
+      "value": 0.4
+     },
+     {
+      "month": "2025-02",
+      "value": 0.42
+     },
+     {
+      "month": "2025-03",
+      "value": 0.42
+     },
+     {
+      "month": "2025-04",
+      "value": 0.4
+     },
+     {
+      "month": "2025-05",
+      "value": 0.39
+     },
+     {
+      "month": "2025-06",
+      "value": 0.37
+     },
+     {
+      "month": "2025-07",
+      "value": 0.37
+     },
+     {
+      "month": "2025-08",
+      "value": 0.37
+     },
+     {
+      "month": "2025-09",
+      "value": 0.35
+     },
+     {
+      "month": "2025-10",
+      "value": 0.34
+     },
+     {
+      "month": "2025-11",
+      "value": 0.32
+     },
+     {
+      "month": "2025-12",
+      "value": 0.32
+     },
+     {
+      "month": "2026-01",
+      "value": 0.32
+     },
+     {
+      "month": "2026-02",
+      "value": 0.31
+     },
+     {
+      "month": "2026-03",
+      "value": 0.33
+     },
+     {
+      "month": "2026-04",
+      "value": 0.32
+     },
+     {
+      "month": "2026-05",
+      "value": 0.34
+     },
+     {
+      "month": "2026-06",
+      "value": 0.32
+     },
+     {
+      "month": "2026-07",
+      "value": 0.34
+     },
+     {
+      "month": "2026-08",
+      "value": 0.38
+     },
+     {
+      "month": "2026-09",
+      "value": 0.41
+     },
+     {
+      "month": "2026-10",
+      "value": 0.43
+     }
+    ],
+    "proxy": true,
+    "proxy_note": "This is the price of raw sugar, shown as a guide: the Pink Sheet has no price for the crop itself"
+   },
+   "sugarbeet": {
+    "name": "Sugar, world",
+    "unit": "$/kg",
+    "unit_words": "US$ per kg",
+    "latest": {
+     "month": "2026-10",
+     "value": 0.43
+    },
+    "year_ago": {
+     "month": "2025-10",
+     "value": 0.34
+    },
+    "change_pct": 26.5,
+    "last24": [
+     {
+      "month": "2024-11",
+      "value": 0.45
+     },
+     {
+      "month": "2024-12",
+      "value": 0.44
+     },
+     {
+      "month": "2025-01",
+      "value": 0.4
+     },
+     {
+      "month": "2025-02",
+      "value": 0.42
+     },
+     {
+      "month": "2025-03",
+      "value": 0.42
+     },
+     {
+      "month": "2025-04",
+      "value": 0.4
+     },
+     {
+      "month": "2025-05",
+      "value": 0.39
+     },
+     {
+      "month": "2025-06",
+      "value": 0.37
+     },
+     {
+      "month": "2025-07",
+      "value": 0.37
+     },
+     {
+      "month": "2025-08",
+      "value": 0.37
+     },
+     {
+      "month": "2025-09",
+      "value": 0.35
+     },
+     {
+      "month": "2025-10",
+      "value": 0.34
+     },
+     {
+      "month": "2025-11",
+      "value": 0.32
+     },
+     {
+      "month": "2025-12",
+      "value": 0.32
+     },
+     {
+      "month": "2026-01",
+      "value": 0.32
+     },
+     {
+      "month": "2026-02",
+      "value": 0.31
+     },
+     {
+      "month": "2026-03",
+      "value": 0.33
+     },
+     {
+      "month": "2026-04",
+      "value": 0.32
+     },
+     {
+      "month": "2026-05",
+      "value": 0.34
+     },
+     {
+      "month": "2026-06",
+      "value": 0.32
+     },
+     {
+      "month": "2026-07",
+      "value": 0.34
+     },
+     {
+      "month": "2026-08",
+      "value": 0.38
+     },
+     {
+      "month": "2026-09",
+      "value": 0.41
+     },
+     {
+      "month": "2026-10",
+      "value": 0.43
+     }
+    ],
+    "proxy": true,
+    "proxy_note": "This is the price of raw sugar, shown as a guide: the Pink Sheet has no price for the crop itself"
+   }
+  },
+  "no_series": [
+   "chickpea",
+   "lentil",
+   "pea",
+   "alfalfa",
+   "bean",
+   "potato",
+   "hazelnut"
+  ],
+  "checked": "2026-11-14T19:41:47Z"
+ }
+}

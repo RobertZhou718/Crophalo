@@ -11,6 +11,7 @@ import { initReport, openReport, showReport } from './report.js';
 import { renderInfo } from './pages.js';
 import { initMapX } from './mapx.js';   // the setup map
 import { adminHTML, loadSources } from './admin-view.js';
+import { initOffline } from './offline.js';   // the worker that keeps a copy for offline use, the offline bar, the install button
 
 const $ = (sel, root = document) => root.querySelector(sel), $$ = (sel, root = document) => [...root.querySelectorAll(sel)];
 
@@ -84,6 +85,9 @@ function initTopBar() {
 }
 // ── end ──
 
+// ---- the report engine on its worker (js/engine-client.js): the long work of a report runs off the page, which keeps answering taps; with no worker it runs here in pieces
+const engineClient = () => import('./engine-client.js').then(m => m.engineLoader());
+
 // ---- My Farm: loaded the first time it opens. The engine says what covers the ground on a date; the 3D look is loaded only when asked for.
 const loadFarm = () => import('./farm.js').then(async farm => {
   if (!loadFarm.wired) {
@@ -91,6 +95,7 @@ const loadFarm = () => import('./farm.js').then(async farm => {
     farm.setOpener(() => show('farm'));
     farm.setView3d((input, node, options) => import('./farm3d.js').then(m => m.view3d(input, node, options)));
     import('./engine.js').then(engine => farm.setGround(engine.groundOn)).catch(() => { /* the board says "not read yet" for the ground */ });
+    engineClient().then(client => farm.setEngineClient?.(client)).catch(() => { /* the chips run the engine on the page */ });
   }
   return farm;
 });
@@ -125,9 +130,10 @@ function openSetup(spot) {
 // ---- start
 applySettings();
 initTopBar();
-initReport({ change: () => show('setup'), home: () => show('home'), engine: () => import('./engine.js'), farm: loadFarm, farmOpened: () => show('farm') });
+initReport({ change: () => show('setup'), home: () => show('home'), engine: engineClient, farm: loadFarm, farmOpened: () => show('farm') });
 initWizard({ report: state => { show('report'); openReport(state); }, home: () => show('home') });
 initMapX();   // mounts in #setupMap whenever the wizard draws it
+initOffline();
 initHome({ place: openSetup, mapPick: () => openSetup(null), saved: () => show('report') });
 initWelcome();
 addEventListener('popstate', route);

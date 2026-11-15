@@ -79,7 +79,9 @@ export function prefetchPlace(loc, env = {}, outline = null) {
   const place = cleanPlace(loc?.lat, loc?.lon);
   if (place.reason) return false;
   spotFor(loc, env).catch(() => {});
-  for (const ask of [getSmap, getNearby, getImerg, getGrace, getEco, getHls]) ask(loc).catch(() => {});
+  // the crop-map lookup needs the field's country, which a bare map position does not carry: asked without it, the refusal would be kept and the report would lose what is grown nearby
+  const near = loc?.cc || String(loc?.label ?? '').includes(',') ? [getNearby] : [];
+  for (const ask of [getSmap, ...near, getImerg, getGrace, getEco, getHls]) ask(loc).catch(() => {});
   if (outline) getDem(loc, outline).catch(() => {});
   return true;
 }

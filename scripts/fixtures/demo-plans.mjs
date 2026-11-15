@@ -4,6 +4,7 @@
 import fs from 'node:fs';
 const REGIONS = JSON.parse(fs.readFileSync(new URL('../../data/regions.json', import.meta.url), 'utf8'));
 const R = ['oxford', 'woodstock', 'barrie'].map(id => REGIONS.find(r => r.id.includes(id))).find(Boolean) ?? REGIONS[0];
+export const PLACE_WORD = R.name.split(/[ ,]/)[0];   // the first word of the demo place, for a search
 export const PLACE = { lat: R.lat, lon: R.lon, label: `${R.name}, ${R.country}`, name: R.name, cc: R.country === 'Canada' ? 'CA' : '' };
 const S = (year, crop, sow, harvest, after = 'residue', residueUntil = null, window = null) => ({ year, crop, sow, harvest, after, residueUntil, window });
 export const CURRENT = { id: 'current', name: 'Current plan', kind: 'current', seasons: [S(2027, 'corn', '2027-05-05', '2027-10-20'), S(2028, 'soy', '2028-05-20', '2028-10-05', 'residue', '2029-04-30'), S(2029, 'corn', '2029-05-05', '2029-10-20')] };

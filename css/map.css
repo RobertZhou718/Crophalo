@@ -9,11 +9,11 @@ body.mapx-full .nav { display: none; }
 
 /* the tools, top left: glass over the photo; the word hides when the map is narrow, the icon never does */
 .mapx-top { position: absolute; left: var(--space-8); top: var(--space-8); z-index: 5; display: flex; flex-wrap: wrap; align-items: center; gap: var(--space-8); max-width: calc(100% - 72px); }
-.mapx-seg { background: var(--glass); -webkit-backdrop-filter: saturate(180%) blur(20px); backdrop-filter: saturate(180%) blur(20px); box-shadow: var(--shadow-map); }
-.mapx-seg button { display: inline-flex; align-items: center; justify-content: center; gap: 6px; min-width: var(--touch); min-height: var(--touch); }
-.mapx-seg button:disabled { opacity: .4; cursor: default; }
+.mapx-seg, .mapx-base { background: var(--glass); -webkit-backdrop-filter: saturate(180%) blur(20px); backdrop-filter: saturate(180%) blur(20px); box-shadow: var(--shadow-map); }
+.mapx-seg button, .mapx-base button { display: inline-flex; align-items: center; justify-content: center; gap: 6px; min-width: var(--touch); min-height: var(--touch); }
+.mapx-seg button:disabled, .mapx-base button:disabled { opacity: .4; cursor: default; }
 .mapx-seg .ic { width: 18px; height: 18px; }
-@container mapx (max-width: 640px) { .mapx-w { position: absolute !important; width: 1px; height: 1px; margin: -1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; } }
+@container mapx (max-width: 810px) { .mapx-w { position: absolute !important; width: 1px; height: 1px; margin: -1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; } }
 .mapx .mapbtn { position: relative; }
 
 /* the hint line, bottom left, above the scale */
@@ -58,7 +58,7 @@ body.kbd-mode .mapx:focus-within .mapx-cross { display: block; }
 .mapx .leaflet-control-scale-line { padding: 1px 6px; border: 0; border-radius: 4px; background: var(--glass); color: var(--ink); font-size: 10.5px; box-shadow: var(--shadow-map); }
 .mapx-credit { position: absolute; right: var(--space-8); bottom: 4px; z-index: 5; max-width: min(60%, 360px); margin: 0; padding: 1px 6px; border-radius: 4px; background: var(--glass); color: var(--ink2); font-size: 10.5px; line-height: 1.3; text-align: right; }
 @container mapx (max-width: 470px) { .mapx-credit { max-width: 55%; } }
-@media (prefers-reduced-transparency: reduce) { .mapx-seg, .mapx-hint, .mapx-stack { background: var(--card); -webkit-backdrop-filter: none; backdrop-filter: none; } }
+@media (prefers-reduced-transparency: reduce) { .mapx-seg, .mapx-base, .mapx-hint, .mapx-stack { background: var(--card); -webkit-backdrop-filter: none; backdrop-filter: none; } }
 
 /* a short map (the strip above the questions on a phone): only zoom stays, the rest of the stack and the hint step aside; the farmer widens the map to use them */
 @container mapx (max-height: 330px) {
@@ -67,6 +67,7 @@ body.kbd-mode .mapx:focus-within .mapx-cross { display: block; }
   .mapx-top { top: var(--space-4); }
   .mapx-credit { display: none; }
 }
+@container mapx (max-height: 330px) and (min-height: 1px) { .mapx-seg button, .mapx-base button { min-height: 36px; } }
 
 /* the spot card: white, 340 px, over the map; along the bottom of a narrow map, where the stack and the hint step aside */
 .spot { position: absolute; z-index: 8; display: flex; flex-direction: column; width: 340px; max-width: calc(100% - 16px); max-height: calc(100% - 64px); border-radius: var(--r1); background: var(--card); box-shadow: var(--shadow-lg); overflow: hidden; outline: none; }
@@ -100,3 +101,97 @@ body.kbd-mode .mapx:focus-within .mapx-cross { display: block; }
 .srcnote { display: grid; gap: 4px; padding: var(--space-8) var(--space-12); border-radius: var(--r3); background: var(--card2); box-shadow: inset 0 0 0 .5px var(--sep); font-size: var(--fs-caption); }
 .srcnote[hidden] { display: none; }
 @container mapx (max-width: 519px) { .mapx.spot-open .mapx-stack, .mapx.spot-open .mapx-hint { display: none !important; } }
+
+/* the base switch (Satellite / Light) beside the tools, and the one sentence that says why the names or the detailed light map are missing */
+.mapx-base button { padding-inline: var(--space-12); }
+.mapx-basenote { position: absolute; left: var(--space-8); top: calc(var(--space-8) + var(--touch) + var(--space-8)); z-index: 4; max-width: min(420px, calc(100% - 88px)); margin: 0; padding: var(--space-8) var(--space-12); border-radius: 12px; background: var(--glass); box-shadow: var(--shadow-map); font-size: var(--fs-small); line-height: 1.35; }
+.mapx-basenote[hidden] { display: none; }
+
+/* the buttons at the top right (Places, Layers) and the glass card each opens under them */
+.mapx-right { position: absolute; right: calc(var(--space-8) + var(--touch) + var(--space-8)); top: var(--space-8); z-index: 5; display: flex; gap: var(--space-8); }
+.mapx-pbtn { display: inline-flex; align-items: center; gap: 6px; min-height: var(--touch); }
+.mapx-pbtn .ic, .mapx-search .ic { width: 18px; height: 18px; }
+.mapx-pbtn[aria-expanded="true"] { background: var(--accent); color: #fff; }
+.mapx-panelhost { position: absolute; right: calc(var(--space-8) + var(--touch) + var(--space-8)); top: var(--mapx-bars, 64px); z-index: 6; width: 316px; max-width: calc(100% - var(--touch) - 3 * var(--space-8)); max-height: calc(100% - var(--mapx-bars, 64px) - 96px); display: flex; }
+.mapx-panelhost:empty { display: none; }
+.mapx-panel { flex: 1 1 auto; min-width: 0; overflow-y: auto; border-radius: 14px; background: var(--glass); -webkit-backdrop-filter: saturate(180%) blur(20px); backdrop-filter: saturate(180%) blur(20px); box-shadow: var(--shadow-map); padding: var(--space-12); }
+.mapx-phead { display: flex; align-items: center; justify-content: space-between; gap: var(--space-8); }
+.mapx-phead h3 { margin: 0; font-size: var(--fs-headline); }
+.mapx-pclose { width: var(--touch); height: var(--touch); display: inline-grid; place-items: center; border: 0; border-radius: 50%; background: transparent; color: inherit; cursor: pointer; }
+.mapx-pclose .ic { width: 20px; height: 20px; }
+.mapx-pclose:focus-visible, .mapx-pbtn:focus-visible, .mapx-row:focus-visible, .mapx-mic:focus-visible { outline: 3px solid var(--sel); outline-offset: -3px; }
+.mapx-search { display: flex; align-items: center; gap: var(--space-8); margin-block: var(--space-8); }
+.mapx-search input { flex: 1 1 auto; min-width: 0; min-height: var(--touch); padding: 0 var(--space-12); border: 1px solid var(--line, #c9ccd2); border-radius: 12px; background: var(--card, #fff); color: inherit; font: inherit; }
+.mapx-mic { width: var(--touch); height: var(--touch); display: inline-grid; place-items: center; border: 0; border-radius: 50%; background: transparent; color: inherit; cursor: pointer; }
+.mapx-mic.hearing { background: var(--accent); color: #fff; }
+.mapx-res { margin: 0; }
+.mapx-res p { margin: var(--space-4) 0; }
+.mapx-sub { margin: var(--space-12) 0 var(--space-4); font-size: var(--fs-small); font-weight: 600; color: var(--ink-2, inherit); }
+.mapx-rows { list-style: none; margin: 0; padding: 0; display: grid; gap: var(--space-4); }
+.mapx-row { display: grid; width: 100%; min-height: var(--touch); padding: var(--space-8) var(--space-12); text-align: left; border: 1px solid transparent; border-radius: 10px; background: var(--card, #fff); color: inherit; font: inherit; cursor: pointer; overflow-wrap: anywhere; }
+.mapx-row:hover:not(:disabled) { border-color: var(--accent); }
+.mapx-row:disabled { opacity: .55; cursor: default; }
+.mapx-row span { font-size: var(--fs-small); color: var(--ink-2, inherit); }
+@container mapx (max-width: 810px) { .mapx-pbtn .mapx-w { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; } .mapx-pbtn { min-width: var(--touch); justify-content: center; } }
+@container mapx (max-width: 470px) { .mapx-right { top: calc(var(--space-8) + var(--touch) + var(--space-8)); } }
+
+/* Layers: the rows in the panel, and a legend card for each layer that is on, stacked at the bottom left above the hint */
+.mapx-pbtn.has-on { background: var(--accent); color: #fff; }
+.mapx-lbase { margin: 0 0 var(--space-8); font-size: var(--fs-small); }
+.mapx-lbase:empty { display: none; }
+.mapx-lset { margin: var(--space-12) 0 0; padding: 0; border: 0; }
+.mapx-lset legend { padding: 0; font-size: var(--fs-small); font-weight: 600; margin-bottom: var(--space-4); }
+.mapx-lrow { display: flex; align-items: flex-start; gap: var(--space-8); min-height: var(--touch); padding: var(--space-8) var(--space-12); border-radius: 10px; background: var(--card, #fff); cursor: pointer; }
+.mapx-lrow.on { background: var(--accent-soft); }
+.mapx-lrow.off { opacity: .6; cursor: default; }
+.mapx-lrow input { margin-top: 3px; width: 20px; height: 20px; accent-color: var(--accent); }
+.mapx-lrow b { display: block; }
+.mapx-lrow:focus-within { outline: 3px solid var(--sel); outline-offset: -3px; }
+.mapx-legends { position: absolute; left: var(--space-8); bottom: 96px; z-index: 5; width: 288px; max-width: calc(100% - 2 * var(--space-8) - var(--touch) - var(--space-8)); max-height: calc(100% - 160px); overflow-y: auto; display: grid; gap: var(--space-8); }
+.mapx-legends[hidden] { display: none; }
+.mapx-legend { padding: var(--space-12); border-radius: 14px; background: var(--glass); -webkit-backdrop-filter: saturate(180%) blur(20px); backdrop-filter: saturate(180%) blur(20px); box-shadow: var(--shadow-map); font-size: var(--fs-small); }
+.mapx-legend header { display: flex; justify-content: space-between; align-items: flex-start; gap: var(--space-8); }
+.mapx-lx { width: var(--touch); height: var(--touch); margin: -10px -10px 0 0; display: inline-grid; place-items: center; border: 0; border-radius: 50%; background: transparent; color: inherit; cursor: pointer; }
+.mapx-lx .ic { width: 18px; height: 18px; }
+.mapx-lx:focus-visible, .mapx-legend button:focus-visible, .mapx-legend input:focus-visible { outline: 3px solid var(--sel); outline-offset: 1px; }
+.mapx-bar { height: 12px; margin-top: var(--space-8); border-radius: 6px; box-shadow: inset 0 0 0 1px rgba(0,0,0,.18); }
+.mapx-ends { display: flex; justify-content: space-between; gap: var(--space-8); margin-top: 2px; font-size: var(--fs-micro); }
+.mapx-date { display: flex; flex-wrap: wrap; align-items: center; gap: var(--space-4); margin-top: var(--space-8); }
+.mapx-date input[type=date] { flex: 1 1 8.5em; min-width: 0; min-height: 36px; padding: 0 var(--space-8); border: 1px solid var(--line, #c9ccd2); border-radius: 8px; background: var(--card, #fff); color: inherit; font: inherit; }
+.mapx-date .btn { min-height: 36px; }
+.mapx-op { display: flex; align-items: center; gap: var(--space-8); margin-top: var(--space-8); }
+.mapx-op input { flex: 1 1 auto; min-width: 0; }
+.mapx-op output { min-width: 3.2em; text-align: right; }
+.mapx-lnote, .mapx-imageday { margin: var(--space-4) 0 0; }
+.mapx-lnote:empty { display: none; }
+@container mapx (max-width: 520px) { .mapx.spot-open .mapx-lcol { display: none; } }
+
+/* one height for the buttons of the top bars, and a left column that keeps the sentence under the bar clear of the legends */
+.mapx-top .mapbtn, .mapx-pbtn { min-height: 48px; }
+.mapx-lx { flex: none; }
+.mapx-panel .btn.sm, .mapx-legend .btn.sm { min-height: 36px; }
+.mapx-lcol { position: absolute; left: var(--space-8); top: var(--mapx-bars, 64px); bottom: 96px; z-index: 5; width: min(420px, calc(100% - 2 * var(--space-8) - var(--touch) - var(--space-8))); display: flex; flex-direction: column; justify-content: flex-end; gap: var(--space-8); pointer-events: none; }
+.mapx-lcol > * { pointer-events: auto; }
+.mapx-lcol .mapx-basenote { position: static; max-width: none; flex: none; }
+.mapx-lcol .mapx-legends { position: static; width: min(288px, 100%); max-width: 100%; max-height: none; min-height: 0; flex: 0 1 auto; }
+
+.mapx-base button { min-height: var(--touch); }
+/* a map squeezed to a strip (the setup collapses it on a phone once the field is chosen): only the tools and the view buttons stay, the rest comes back with the height */
+@container mapx (max-height: 259px) { .mapx-right, .mapx-base, .mapx-lcol, .mapx-panelhost, #mapxAbout { display: none; } }
+
+/* Motion: Full is the page as drawn. "Less" (html[data-motion=less]) stops the marching lines, the spinning and the sliding in, and keeps fades of 200 ms or less; "Still" (data-motion=reduce) stops everything. */
+@keyframes mapx-fade { from { opacity: 0; } to { opacity: 1; } }
+html[data-motion=less] .mapx-ants { animation: none; }   /* a plain dashed line */
+html[data-motion=less] .mapx-pin svg { animation: mapx-fade .16s linear both; }
+html[data-motion=less] .spot.spot-in { animation: mapx-fade .16s linear both; }
+html[data-motion=less] .mapx-stack button[aria-busy=true] .ic { animation: none; }
+html[data-motion=reduce] .mapx-pin svg, html[data-motion=reduce] .spot.spot-in, html[data-motion=reduce] .mapx-stack button[aria-busy=true] .ic { animation: none; }
+
+.mapx-dots { list-style: none; margin: var(--space-8) 0; padding: 0; display: grid; gap: var(--space-4); font-size: var(--fs-small); }
+.mapx-dots li { display: flex; align-items: center; gap: var(--space-8); }
+.mapx-dots i { flex: none; width: 12px; height: 12px; border-radius: 50%; border: 1px solid #fff; box-shadow: 0 0 0 1px rgba(0,0,0,.25); }
+.mapx-credit a, .mapx-osm a, .spot-credit a { color: inherit; text-decoration: underline; text-underline-offset: 2px; }
+.mapx-credit { pointer-events: auto; }
+/* Reselect stands apart from the map's white controls: the one accent colour with white words, so "start the outline again" is easy to find over the photo */
+#mapxReselect { background: var(--accent); color: var(--accent-ink); box-shadow: var(--shadow-map); }
+#mapxReselect:hover { background: var(--accent-text); }

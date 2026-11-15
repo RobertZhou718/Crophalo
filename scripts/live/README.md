@@ -126,6 +126,8 @@ change it: then the lookup fails.
   `common.py` also stars out the login and the token in anything Python writes to the log or the answer, as a second line
   of defence; the first is not to write them.
 - A request that is sent on to another host loses its login header.
+- The server may instead hand in a bearer token it asked NASA for once an hour, as `EARTHDATA_TOKEN` in the lookup's environment: `common.earthdata_token()` uses it (20 or more plain token characters; anything else is ignored) and asks NASA for none. It is starred out like the login.
+- A lookup that follows NASA's archive to its short-lived file address (ecopass) sends the login to the archive only, never to the address it is sent on.
 - NASA's catalogue (CMR) is open: `common.cmr_granules` and `common.cmr_collections` send no login.
 
 ### How a test replaces the network
@@ -460,13 +462,13 @@ one thing changed by hand, in a temp folder.
 
 **Partial answers.** Yes: `incomplete` and `read_errors` say which passes were not read.
 
-**Time limit.** 150 s on the server. Live, Oxford: 48 to 65 s (about 50 small reads; the service allows two at a time). The lookup stops looking at older passes 25 s before its limit and says so.
+**Time limit.** 150 s on the server. Live, Oxford: 50 to 55 s cold (the newest 24 passes are looked at until 4 are clear), about 3 s when the passes were read before. The cloud mask is read first (it also says when the pixel was not seen), and the archive's short-lived file address is asked for ahead of the read, so the archive's slow step and the content network's quick reads overlap (12 files in 9.7 s against 13.5 s). The lookup stops looking at older passes 25 s before its limit and says so.
 
 **Memory.** Limit 300 MB. Measured live: peak 104 MB (rasterio and numpy loaded; one pixel per read).
 
-**Kept.** Suggested: 6 hours for a whole answer (a new pass lands every day or two); a final failure an hour.
+**Kept.** Suggested: 6 hours for a whole answer (a new pass lands every day or two); a final failure an hour. The lookup itself keeps what each pass held at the field's pixel (a pass never changes): a few bytes a pass under `FW_CACHE/ecopass`, so a later run reads only the passes that are new (live, Oxford: 3 requests, 2.7 s).
 
-**Source and manners.** NASA CMR (open) for the granules over the point; NASA's token service; then range reads of ONE pixel of the `LST`, `cloud`, `QC`, `water` and `LST_err` layers of each pass (cheap exits first: a pass the field is not in costs one read). Rules: cloud mask 0 only; the quality code's two lowest bits `00` (best quality; "nominal" can mean possible cloud contamination, so it is not used); water mask 0; value 200 to 360 K. Cite ECO_L2T_LSTE, NASA LP DAAC.
+**Source and manners.** NASA CMR (open) for the granules over the point; NASA's token service (or the token the server hands in as `EARTHDATA_TOKEN`: see section 1); then range reads of ONE pixel of the `LST`, `cloud`, `QC`, `water` and `LST_err` layers of each pass (cheap exits first: a pass the field is not in costs one read). Rules: cloud mask 0 only; the quality code's two lowest bits `00` (best quality; "nominal" can mean possible cloud contamination, so it is not used); water mask 0; value 200 to 360 K. Cite ECO_L2T_LSTE, NASA LP DAAC.
 
 **Checked by.** `scripts/test_live_ecopass.mjs` (offline: small GeoTIFFs built the real way by rasterio, whose neighbours of the field's pixel are deliberately wrong), `scripts/live_check_ecopass.mjs` (by hand, live).
 
@@ -474,7 +476,68 @@ one thing changed by hand, in a temp folder.
 
 ## faostat
 
-*To be written.*
+**What it is.** What each country grows, its national yield of each crop (tonnes from a hectare) and the price farmers there are paid (US$ a tonne), from FAOSTAT, the statistics of the Food and Agriculture Organization of the United Nations. It reads FAO's two bulk files, "Production: Crops and livestock products" and "Producer Prices". The answer is the same for everybody (all countries at once). No NASA login.
+
+**Request.** `GET /api/faostat` (no query fields). The script receives no arguments: `faostat.py`.
+
+**Example request.** `GET /api/faostat`
+
+**Good answer** (the live answer of 2026-11-14, shortened to one country):
+
+    {"ok":true,"source":"FAOSTAT (Production: Crops and livestock products; Producer Prices), FAO of the United Nations",
+     "data_date":"2022/2024","data_date_note":"Areas and yields are for the years 2022 to 2024. Each price is for the year written beside it (2020 to 2024). FAO published the production file on 2025-12-31 and the price file on 2026-10-09",
+     "units":{"area":"ha, mean of the years 2022 to 2024 that FAO reports","yield":"tonnes per hectare, with the years it is from","price":"US$ per tonne at the farm gate, with its year"},
+     "latestYear":2024,"years":[2022,2023,2024],"updated":"2025-12-31T11:33:25Z","rebuilt":true,
+     "countries":{"CA":{"name":"Canada","area":{"wheat":10490700,"canola":8766267,"corn":1470700},
+       "yield":{"corn":[10.27,"2022-2024"],"soy":[3.16,"2022-2024"],"wheat":[3.31,"2022-2024"]},"price":{"corn":[212,2024]}}},"checked":"2026-11-14T23:26:40Z"}
+
+| Field | Type, unit | Meaning |
+|---|---|---|
+| `source`, `url`, `updated` | text, text, UTC time | the production file, and when FAO last changed it (its `Last-Modified`) |
+| `data_date` | text, "first/last" year | the years the areas and yields are for: the three newest years FAO has filled |
+| `data_date_note` | text | the same in a sentence, with the days FAO published each file |
+| `units` | object of text | the unit of `area`, `yield` and `price` |
+| `latestYear`, `years` | number, list | the newest year with area figures, and the three years counted |
+| `prices` | object | the price file's own `source`, `url`, `updated`, `unit` and `years` (the last five years) |
+| `yields` | object | what a yield is: production divided by area harvested, same crop item, same years |
+| `flags_note` | text | every figure is FAO's own; a value FAO marks missing is left out; what `not_official` means |
+| `countries.<ISO2>.name` | text | the country as Crophalo writes it (Türkiye, never the other spelling) |
+| `countries.<ISO2>.area.<crop>` | number, ha | the mean harvested area of the crop over the three years (a crop under 1 ha is left out) |
+| `countries.<ISO2>.yield.<crop>` | `[t/ha, "years"]` | the national yield, and the years it is from; only where the crop has at least 1,000 ha a year; a year in which one crop item has only the tonnes or only the area is not used |
+| `countries.<ISO2>.price.<crop>` | `[US$ a tonne, year]` | the newest annual farm-gate price of the last five years; items of one crop are weighted by their tonnes |
+| `countries.<ISO2>.not_official` | list of crop names, only when present | crops whose figures rest on a value FAO marks as estimated, imputed, from another organisation or a break in the series |
+| `items_not_found` | list, only when present | crops whose FAO item was renamed or dropped: they have no figure |
+| `rebuilt` | true or false | whether FAO had changed a file since the last run (the figures were read again) or not |
+| `stale`, `note` | true, text; only when present | the kept files are answered from because FAO could not be asked, or its newer files could not be read |
+| `checked` | UTC time | when FAO was asked |
+
+A crop FAO has no figure for is **absent**, never 0. Regional totals ("World", "Northern America") and countries that no longer exist have no two-letter code and are not in the answer.
+
+**Failure answers.**
+
+| Answer | When | Final |
+|---|---|---|
+| `{"ok":false,"reason":"FAOSTAT did not answer; try again in a minute"}` | FAO could not be asked and no earlier files are kept | no |
+| `{"ok":false,"reason":"FAOSTAT asked us to slow down; try again in a few minutes"}` | FAO answered 429 or "busy" | no |
+| `{"ok":false,"reason":"FAOSTAT's files could not be read just now; try again in a minute"}` | a file arrived cut short or broken, and nothing earlier is kept | no |
+| `{"ok":false,"reason":"FAOSTAT changed the layout of its files, and Crophalo has not been checked against it yet"}` | a column or the data file is not where it was | no |
+| `{"ok":false,"reason":"FAOSTAT is already being read for another visitor; try again in a minute"}` | another run holds the lock on the kept files | no |
+| `{"ok":false,"reason":"This lookup takes no arguments"}` | an argument was given | no |
+
+**Partial answers.** `stale: true` with a `note` ("FAOSTAT could not be asked whether anything is newer just now", or "FAOSTAT has newer files, but they could not be read just now") when the answer is made from the files kept from an earlier run. The server keeps such an answer for one hour only.
+
+**Time limit.** The server's 420 s. The lookup stops asking the network in time to read the kept files and answer; one HEAD request may take 40 s; a download is given what is left.
+
+**Memory.** The limit is 300 MB. Measured on the live run of 2026-11-14 (Mac, Python 3.12, counted by the system): peak **151 MB** with both files downloaded and read (4 requests), **137 MB** reading the kept files (2 requests). The production file is 25 MB packed and 93 MB unpacked: it is **never held in memory**. The zip is read one megabyte at a time and one line at a time; only the wanted rows are parsed and only the three newest years of each are kept.
+
+**Kept.** The server keeps a whole answer for 24 hours. The lookup itself keeps FAO's **two zip files as FAO sent them**, about 33 MB, under `FW_CACHE/faostat/` (with `meta.json`: the `Last-Modified` of each), written whole or not at all, and a lock file. It asks FAO with `HEAD` for each file's `Last-Modified` and downloads a file again **only when FAO changed it**; it replaces the kept file only after the new one was read to the end. On a host with no lasting disk the first call after each start downloads the files again (about 5 s on a fast line).
+
+**Snapped.** Nothing: the answer is for all countries.
+
+**Source and manners.** `https://bulks-faostat.fao.org/production/Production_Crops_Livestock_E_All_Data.zip` and `…/Prices_E_All_Data.zip`. Two HEAD requests when nothing changed; two more downloads when something did. FAO's files change about once or twice a year.
+
+**Checked by.** `scripts/test_live_crops.mjs` (offline), on FAO's own rows for Canada, Türkiye, Ethiopia and Taiwan cut unchanged from the files of 2026-11-14 (`scripts/fixtures/live/faostat-excerpt/`, 1 MB): the first run, a second run that sends only the two HEAD questions, a changed date that downloads one file, FAO unreachable with and without kept files, and a broken zip. The live answer is in `scripts/fixtures/live/faostat-live/recording.json`. By hand: `node scripts/check_live_money.mjs faostat`.
+**Checked against the live service**, 2026-11-14: both files answered HEAD with `Last-Modified` (production 31 Dec 2025, 25.1 MB; prices 9 Oct 2026, 8.4 MB); Canada corn 10.27 t/ha, soybeans 3.16, wheat 3.31 (2022-2024); 198 countries read; first run 4.5 s and 151 MB, a run on the kept files 11.9 s and 137 MB.
 
 ## gedi
 
@@ -521,13 +584,50 @@ one thing changed by hand, in a temp folder.
 
 **Memory.** Limit 300 MB. Measured live: peak 110 MB (h5py and numpy loaded; the cell's chunks are decompressed one at a time). The file is never loaded: 21 requests of 256 KB, 5.4 MB of a 44 MB file. The old design that needed 2 GB read the whole file.
 
-**Kept.** Suggested: a whole answer for 7 days (a new month arrives about once a month); a failure for an hour.
+**Kept.** Suggested: a whole answer for 7 days (a new month arrives about once a month); a failure for an hour. The lookup keeps the file's name a day under `FW_CACHE/gracecell` (the catalogue is then not asked; if the kept file is gone it is asked again).
 
 **Source and manners.** NASA CMR (open) names the one file; NASA's token service; then Range requests to NASA PO.DAAC's archive for ONLY the pieces that hold the cell (h5py opens a block-reading stand-in for the file), never more than 80 requests or 24 MB. NASA's OPeNDAP service does not serve this collection, so the range read is the one-cell method. Cite the DOI 10.5067/TEMSC-3JC634.
 
 **Checked by.** `scripts/test_live_gracecell.mjs` (offline: a small file built the real way by h5py and served in the same pieces), `scripts/live_check_gracecell.mjs` (by hand, live).
 
 **Checked against the live service.** Oxford, 2026-11-14: 294 months from 2002-04 to 2026-09, 259 with a value and 35 empty; every month compared with a full read of the file (netCDF4) with no difference; trend 0.17 cm a year over 24.4 years.
+
+## firms
+
+**What it is.** The fires and hot spots NASA's VIIRS satellites (NOAA-20 and NOAA-21; Suomi NPP no longer sends data) saw in the last 24 hours within about 250 km of the field, for the Layers panel's "Fires and hot spots". Each point is one 375 m spot hotter than its surroundings. No login and no key: NASA FIRMS publishes its 24-hour files openly. It is NOT a fire forecast, and no point does not mean no fire: the satellites pass about twice a day each, cannot see under cloud or very small fires, and a factory, flare or sunlit rock can show as a spot.
+
+**Request.** `GET /api/firms?lat=43.13&lon=-80.75` (optional third value: the half width in degrees, 0.1 to 5, default 2.5); the server may snap the place to 0.1 degrees (a box of 5 degrees does not need more) and runs `firms.py LAT LON [HALF]`.
+
+**Good answer** (real numbers, Oxford County, 2026-11-15; `points` is shortened):
+
+    {"ok":true,"source":"NASA FIRMS (Fire Information for Resource Management System): VIIRS 375 m active fire detections from NOAA-20 and NOAA-21, near-real-time",
+     "data_date":"YYYY-MM-DD","units":"Each point is one 375 m spot ...","window_hours":24,"box":{"n":45.63,"s":40.63,"e":-77.324,"w":-84.176},"count":30,"shown":30,"by_confidence":{"high":0,"nominal":30,"low":0},
+     "points":[{"lat":43.2905,"lon":-79.9857,"time":"YYYY-MM-DDTHH:MMZ","frp":1.7,"confidence":"nominal","satellite":"NOAA-21","night":true}, "..."],
+     "satellites":["NOAA-20","NOAA-21"],"newest":"YYYY-MM-DDTHH:MMZ","coverage":"...","note":"..."}
+
+| Field | Meaning |
+|---|---|
+| `points` | the nearest 600 spots inside the box, nearest first: place, time in UTC, `frp` (fire radiative power in megawatts, null when the file gave none), `confidence` (low, nominal, high), the satellite and whether the pass was at night |
+| `count`, `shown`, `by_confidence` | all the spots in the box, how many are given, and the counts by confidence |
+| `newest` | the newest detection in the files (the answer's own age) |
+| `coverage` | the plain words about what the satellites cannot see; always present, and the screen shows it |
+| `incomplete` | present when one satellite's file did not come: it names it, and its spots are missing |
+
+**Failure answers.** The common two for bad arguments (the half width must be 0.1..5); `NASA FIRMS's files of fires seen in the last 24 hours could not be read just now; try again in a few minutes` (both files failed, not final).
+
+**Partial answers.** One file missing: `incomplete` names the satellite. No spot at all is a good answer with `count` 0 and the same `coverage` words.
+
+**Time limit.** 150 s on the server. Live, Oxford: 4 s with two downloads of about 7 MB (no keeping), under 1 s from the kept files.
+
+**Memory.** Limit 300 MB. Measured live: peak 35 MB (the files are read a line at a time).
+
+**Kept.** Suggested: 3 hours for a whole answer (the files are renewed every few hours). The lookup keeps the two files 90 minutes under `FW_CACHE/firms`: they are the source files, not answers, and a second field costs no request.
+
+**Source and manners.** `https://firms.modaps.eosdis.nasa.gov/data/active_fire/{noaa-20,noaa-21}-viirs-c2/csv/J{1,2}_VIIRS_C2_Global_24h.csv`, one request each at most every 90 minutes. NASA GIBS's own fire tiles for the web map grid answered 404 for every tile on the day it was checked, so the layer is drawn from these files instead. Credit: NASA FIRMS, LANCE; "We acknowledge the use of data and/or imagery from NASA's Fire Information for Resource Management System (FIRMS), part of NASA's Earth Science Data and Information System (ESDIS)."
+
+**Checked by.** `scripts/test_live_firms.mjs` (offline: the two files made by hand in their real format; inside and outside the box, the date line, both files down, one down, odd files and lines, 700 spots, kept files, arguments), `scripts/live_check_firms.mjs` (by hand, live).
+
+**Checked against the live service.** Oxford, 2026-11-15: both files read, 30 spots within 250 km, all of nominal confidence (the nearest cluster is industrial, at Hamilton and Cleveland, which is why the coverage words say a factory can show as a spot), newest detection under 24 hours old.
 
 ## hls
 
@@ -634,7 +734,44 @@ one thing changed by hand, in a temp folder.
 
 ## ndvihist
 
-*To be written.*
+**What it is.** How green the land round the field looked at its greenest in every season since 2001, for the "What satellites saw" part of the Land history page: NASA's MODIS Terra 16-day greenness (NDVI, 250 m; the MOD13Q1 product), the median of a patch of 9 by 9 dots (about 2 km) round the point, one value for each season (its greenest composite). It is the greenness of the land round the field, not of the field. No login: NASA GIBS serves the record openly.
+
+**Request.** `GET /api/ndvihist?lat=43.13&lon=-80.75`; the server may snap the place to 0.002 degrees (a patch of 2 km does not need more) and runs `ndvihist.py LAT LON`.
+
+**Method.** One request lists the days NASA has an image for (DescribeDomains). For every composite of every season's window, ONE request fetches the 256 px map tile that holds the point: a palette picture whose entries are NASA's own greenness scale (colormap `MODIS_L3_NDVI`, entry k = the step k of 142; entry 0 = no data), decoded locally. The patch's dots that have a value are taken (at least 20 of 81, else the composite has no reading); their median is the composite's greenness. A season counts with at least 3 composites; the answer with at least 10 seasons. Seasons are April to September in the north, October to March in the south (named by the year they end), and in the tropics 64 days either side of the greenest composite of the last full year. The season not over is never counted: the last is the last full year. Newest seasons are read first, so a short time costs the oldest.
+
+**Good answer** (real numbers, Oxford County, 2026-11-15; `seasons` is shortened):
+
+    {"ok":true,"source":"NASA MODIS Terra Vegetation Indices, 16-day, 250 m (MOD13Q1), shown through NASA's Global Imagery Browse Services","data_date":"2001/2025",
+     "units":"NDVI (greenness) of the land round the field, ...","pixel_m":250,"patch_km":2,"window":"April to September",
+     "seasons":[{"year":2001,"peak":0.566,"peak_date":"YYYY-MM-DD","n":12,"of":12,"partial":false,"valid_pixels":81}, "..."],"seasons_read":25,"years_without":[],"partial_years":[],
+     "early":{"from":2001,"to":2010,"mean":0.6,"n":10},"recent":{"from":2018,"to":2025,"mean":0.59,"n":8},"change":{"kind":"steady","difference":-0.005,"needed":0.04},
+     "browner_years":[],"sentence":"Peak greenness has been steady since 2001.","advice":null,"note":"..."}
+
+| Field | Meaning |
+|---|---|
+| `seasons` | oldest first. `peak` is the greenest composite's median (to 3 decimals; a step of NASA's scale is 0.005 to 0.01 wide), `peak_date` its day, `n` composites read of `of` in the window, `partial` true when fewer than 7 in 10 were read, `valid_pixels` the dots of the patch that had a value in the peak composite |
+| `years_without` | seasons with fewer than 3 readings (cloud, snow, no data): named, never a 0, never a made-up peak |
+| `early`, `recent`, `change` | the mean peak of 2001 to 2010 and of the last 8 seasons (each needs 5 seasons), and the change: `greener` or `browner` only when the difference is at least 0.04 and at least twice the seasons' own spread, else `steady` |
+| `browner_years` | seasons whose peak is at least 0.08 and 1.5 spreads below the mean of all seasons (partial ones are not named) |
+| `sentence`, `advice` | the note's sentences, made only from these numbers: "The land here is greener at its peak since 2018 than in 2001\u20132010 (about 0.78 now, 0.71 then)." with the advice "This often means fields nearby started to be watered or changed crop: ask the seller." (greener only); "browner" without advice; or "Peak greenness has been steady since 2001" with "; browner seasons: 2012." when there are some. `sentence` is null when fewer than 5 early or 5 recent seasons exist |
+| `incomplete` | readings that could not be made in time or just now, and the seasons without greenness |
+
+**Failure answers.** The common two for bad arguments (`lat must be -85..85`); `NASA's image server did not list the days of its greenness record just now; try again later` (not final); `NASA's greenness record could not be read just now; try again in a minute` (every tile failed); `NASA's greenness record had greenness for only N seasons here (it takes 10 to say anything)`; `NASA's record has no greenness images for this place in the seasons asked for`.
+
+**Partial answers.** Yes: `incomplete`, `years_without`, `partial_years`.
+
+**Time limit.** 150 s on the server. Live, Oxford: 79 s for 301 requests (the service gets one request every quarter of a second, two at a time); a shorter time costs the oldest seasons, said in `incomplete`.
+
+**Memory.** Limit 300 MB. Measured live: peak 52 MB.
+
+**Kept.** Suggested: 30 days for a whole answer (a season's peak does not change; the newest season is added each year); an answer with `incomplete` an hour.
+
+**Source and manners.** NASA GIBS (open): DescribeDomains once, then the tiles of one layer, `MODIS_Terra_L3_NDVI_16Day`, one request per composite, never more than two at a time. The old plan read NASA's ORNL DAAC subset service (50 s a request, 503 when checked); the same product through GIBS answers in a quarter of a second a tile. A tile's colours are NASA's scale, so the value has the scale's own step: the median of nine rounded steps.
+
+**Checked by.** `scripts/test_live_ndvihist.mjs` (offline: the list of days and palette tiles made by hand in the real formats; a greener, a steady, a browner land; gaps, partial seasons, empty patches, too few seasons; the service failing; the south and the tropics; arguments), `scripts/live_check_ndvihist.mjs` (by hand, live).
+
+**Checked against the live service.** Oxford, 2026-11-15: 25 seasons from 2001 to 2025, peaks between 0.56 and 0.64 (the patch holds the edge of Woodstock; the farmland of the tile has a median of 0.83), steady since 2001; one composite compared with the 8-day layer of the same day: 0.57 and 0.55.
 
 ## osm
 
@@ -642,7 +779,67 @@ one thing changed by hand, in a temp folder.
 
 ## prices
 
-*To be written.*
+**What it is.** The world market price of crops, month by month, in US dollars, from the World Bank's "Pink Sheet" (the monthly commodity price file): maize, wheat, soybeans, barley, sorghum, cotton, rice, oils and the other crops the sheet lists. It is a **world** price, not what a farmer is paid at home. No NASA login.
+
+**Request.** `GET /api/prices` (no query fields). The script receives no arguments: `prices.py`.
+
+**Example request.** `GET /api/prices`
+
+**Good answer** (the live answer of 2026-11-14; one series shown in full, 24 months shortened):
+
+    {"ok":true,"source":"World Bank Commodity Price Data (The Pink Sheet), monthly prices in nominal US dollars, updated 2026-11-03",
+     "data_date":"2026-10","data_date_note":"The newest month in the sheet is 2026-10. Each series says its own newest month; a series marked stale ended earlier",
+     "units":"US dollars of the month (not corrected for inflation); each series names its unit: $/mt is per tonne, $/kg is per kg",
+     "url":"https://thedocs.worldbank.org/en/doc/…/related/CMO-Historical-Data-Monthly.xlsx","updated":"2026-10","published":"2026-11-03",
+     "series":{"corn":{"name":"Maize","unit":"$/mt","unit_words":"US$ per tonne","latest":{"month":"2026-10","value":226.5},
+       "year_ago":{"month":"2025-10","value":198.1},"change_pct":14.3,"last24":[{"month":"2024-11","value":201.3},…]}},
+     "no_series":["chickpea","lentil","pea","alfalfa","bean","potato","hazelnut"],"checked":"2026-11-14T19:41:47Z"}
+
+| Field | Type, unit | Meaning |
+|---|---|---|
+| `source` | text | the file's name and the day the World Bank says it was updated |
+| `data_date` | text, "YYYY-MM" | the newest month in the sheet. Each series says its own newest month. |
+| `url`, `published` | text, date | the file that was read (found on the World Bank's commodity-markets page each time) and the day the sheet says it was updated |
+| `units` | text | prices are nominal US dollars of the month, not corrected for inflation |
+| `series.<crop>.name` | text | the sheet's own column title ("Maize", "Wheat, US HRW", "Soybeans") |
+| `series.<crop>.unit`, `.unit_words` | text | `$/mt` (US$ a tonne) or `$/kg`: the only units checked; a column in another unit or with none is not shown |
+| `series.<crop>.latest` | `{month, value}` | the newest month **with a price** and its price, 2 decimals |
+| `series.<crop>.year_ago`, `.change_pct` | `{month, value}` or null; % | the same month a year earlier and the change, only when that month has a price |
+| `series.<crop>.last24` | list of 24 `{month, value}` | two years, oldest first; a month without a price is `null` and is never 0 |
+| `series.<crop>.proxy`, `.proxy_note` | true, text; only when present | the sheet has no price for the crop itself: this is a product made from it (canola: rapeseed oil; sugar cane and beet: raw sugar). It is a guide and **must not be shown as the crop's price**. |
+| `series.<crop>.stale`, `.stale_note` | true, text; only when present | the series ended more than three months before the sheet's newest month: an old price must not look current |
+| `no_series` | list of crop names | crops the sheet has no price for, or whose column has no figure: never estimated |
+| `unit_not_read` | list, only when present | columns whose unit was not one of the two checked |
+| `checked` | UTC time | when the World Bank was asked |
+
+**Failure answers.**
+
+| Answer | When | Final |
+|---|---|---|
+| `{"ok":false,"reason":"The World Bank's commodity-markets page did not answer; try again in a minute"}` | the page could not be read | no |
+| `{"ok":false,"reason":"The World Bank asked us to slow down; try again in a few minutes"}` | the page or the file answered 429 or "busy" | no |
+| `{"ok":false,"reason":"The monthly price file (Pink Sheet) was not found on the World Bank's commodity-markets page"}` | the page has no link to the file, or the link leads to another host (it is never followed) | no |
+| `{"ok":false,"reason":"The World Bank's monthly price file (Pink Sheet) could not be downloaded; try again in a minute"}` | the file did not arrive | no |
+| `{"ok":false,"reason":"The World Bank's monthly price file (Pink Sheet) did not arrive as an Excel file; try again in a minute"}` | what arrived is not a workbook | no |
+| `{"ok":false,"reason":"The Pink Sheet has no 'Monthly Prices' sheet any more, and Crophalo has not been checked against the new layout"}` | the sheet was renamed or removed | no |
+| `{"ok":false,"reason":"The Pink Sheet's layout changed (no row of titles with 'Maize'), and Crophalo has not been checked against it"}` | the titles are not where they were | no |
+| `{"ok":false,"reason":"The Pink Sheet has no monthly rows; try again in a minute"}` and `…months are out of order…` | the rows are missing or not in date order | no |
+| `{"ok":false,"reason":"None of the crop prices were found in the Pink Sheet, and Crophalo has not been checked against its new layout"}` | no crop column had a price in a checked unit | no |
+
+**Partial answers.** None: a series that is stale, a proxy or missing says so inside the answer and is never filled.
+
+**Time limit.** The server's 300 s. One request is given 40 s (the page) or 90 s (the file).
+
+**Memory.** The limit is 300 MB. Measured on the live runs of 2026-11-14 (Mac, Python 3.12, counted by the system): peak **49 MB** (recorded 48.9 MB; replayed tests 46 to 47 MB). The 0.6 MB workbook is opened **read-only** with openpyxl, one row at a time.
+
+**Kept.** The server keeps a whole answer for 24 hours (the sheet is updated once a month). The lookup keeps nothing on disk.
+
+**Snapped.** Nothing: one answer for everybody.
+
+**Source and manners.** `https://www.worldbank.org/en/research/commodity-markets` (to find today's link to the Excel file), then `thedocs.worldbank.org/…/CMO-Historical-Data-Monthly.xlsx`: 2 requests. The file's host is verified against the project's own list of certificate authorities (`certifi`) on top of the computer's: nothing is switched off, and a wrong certificate still fails.
+
+**Checked by.** `scripts/test_live_crops.mjs` (offline), on the page and file recorded on 2026-11-14 (`scripts/fixtures/live/prices-live/`) and on five small hand-made workbooks for what the real file does not show (a stale series, a missing price shown as `null`, a price in `$/kg`, a column with no unit or in bushels, proxies, the wrong sheet, no titles, no months). By hand: `node scripts/check_live_money.mjs prices`.
+**Checked against the live service**, 2026-11-14: the page linked the sheet updated 2026-11-03; maize 2026-10 US$226.5 a tonne (+14.3% on a year), soybeans US$515, US hard red winter wheat US$317; 4.3 s and 49 MB.
 
 ## smap
 

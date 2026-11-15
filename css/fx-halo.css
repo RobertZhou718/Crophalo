@@ -1,0 +1,53 @@
+/* Crophalo's halo family: the rotation halo, the answer card assembling, option cards unfolding and reordering, and the marching ants of a finished outline.
+   Light mode, the one blue, every colour, curve, size and short time from css/app.css. Held to the rules of css/fx.css: fades, colour and smooth slides only;
+   nothing past full size; text at full contrast; still under html[data-motion=reduce] and the device's reduce motion, with every rest state the finished one. */
+
+/* ---- the rotation halo: arcs drawn by their dash, a plain ring behind them, a picture on each year */
+.fx-halo { display: inline-block; line-height: 0; }
+.fx-halo-art { display: block; max-width: 100%; height: auto; overflow: visible; }
+.fx-halo-track { stroke: var(--fill); }
+.fx-arc { stroke-linecap: round; }
+.fx-arc.crop { stroke: var(--c-g); }
+.fx-arc.cover { stroke: var(--c-et); }
+.fx-arc.second { stroke: var(--accent); }
+.fx-pic-disc { fill: var(--card); stroke: var(--sep); stroke-width: 1; }
+.fx-pic-disc.plain { fill: var(--soil); }
+.fx-year { fill: var(--ink2); font: var(--fw-semi) var(--fs-micro)/1 var(--font); letter-spacing: var(--ls-body); }
+.fx-halo.is-compact .fx-arc { stroke-linecap: butt; }
+
+/* ---- the answer card: each step opens by a wipe (the words are clipped, never partly transparent), the dial grows up to its share */
+.fx-wait { clip-path: inset(0 100% 0 0); }
+.fx-wait.fx-open { clip-path: inset(0 0 0 0); transition: clip-path 520ms var(--ease) var(--fx-step, 0ms); }
+.fx-dial { display: block; }
+.fx-dial-track { fill: none; stroke: var(--fill); }
+.fx-dial-arc { fill: none; stroke: var(--good); stroke-linecap: round; stroke-dasharray: calc(var(--share, 0) * 100) 100; }
+.fx-wait .fx-dial-arc { stroke-dasharray: 0 100; }
+.fx-wait.fx-open .fx-dial-arc { stroke-dasharray: calc(var(--share, 0) * 100) 100; transition: stroke-dasharray 640ms var(--ease); }
+
+/* ---- marching ants: three passes of a dashed outline, then it rests */
+.fx-ants { stroke-dasharray: 6 4; animation: fx-march 900ms linear 3; }
+@keyframes fx-march { from { stroke-dashoffset: 0; } to { stroke-dashoffset: -10; } }
+
+/* ---- reordered and unfolding cards carry their own animation from script (translate, clip and a short rise); nothing here moves a card by itself */
+[data-flip] { will-change: auto; }
+
+@media print { .fx-halo-art { overflow: hidden; } }
+@media (forced-colors: active) { .fx-arc.crop, .fx-arc.cover, .fx-arc.second { stroke: Highlight; } .fx-pic-disc { stroke: CanvasText; } .fx-year { fill: CanvasText; } }
+
+/* ---- less: the arcs are drawn complete, the steps are open, the ants rest, the dial shows its share; nothing moves. */
+html[data-motion=less] .fx-wait { clip-path: none; }
+html[data-motion=less] .fx-wait .fx-dial-arc { stroke-dasharray: calc(var(--share, 0) * 100) 100; }
+html[data-motion=less] .fx-ants { animation: none !important; stroke-dasharray: none; }
+html[data-motion=less] [class*="fx-"] .fx-arc, html[data-motion=less] [class*="fx-"] .fx-dial-arc { transition: none !important; }
+
+/* ---- still: the farmer's own choice and the device's, each written out. The arcs are drawn complete, the steps are open, nothing waits to appear. */
+html[data-motion=reduce] .fx-wait { clip-path: none; }
+html[data-motion=reduce] .fx-wait .fx-dial-arc { stroke-dasharray: calc(var(--share, 0) * 100) 100; }
+html[data-motion=reduce] .fx-ants { animation: none !important; stroke-dasharray: none; }
+html[data-motion=reduce] [class*="fx-"], html[data-motion=reduce] [class*="fx-"]::before, html[data-motion=reduce] [class*="fx-"]::after { animation: none !important; transition: none !important; }
+@media (prefers-reduced-motion: reduce) {
+  .fx-wait { clip-path: none; }
+  .fx-wait .fx-dial-arc { stroke-dasharray: calc(var(--share, 0) * 100) 100; }
+  .fx-ants { animation: none !important; stroke-dasharray: none; }
+  [class*="fx-"], [class*="fx-"]::before, [class*="fx-"]::after { animation: none !important; transition: none !important; }
+}

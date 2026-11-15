@@ -4,12 +4,14 @@
 # From:    NASA JPL GRACE and GRACE-FO Mascon, RL06.3Mv04 with the Coastal Resolution Improvement filter, from NASA's Physical Oceanography DAAC (PO.DAAC), DOI 10.5067/TEMSC-3JC634.
 # Returns: {"ok": true, "source", "data_date", "units", "cell", "area_km", "months": [[YYYY-MM, cm | null, uncertainty_cm | null]], "months_read", "gaps", "gap_spans", "newest_month", "newest_date", "value_cm", "uncertainty_cm",
 #          "trend_cm_per_year" | null, "trend_from", "trend_to", "trend_years", "merged_months", "note"} or {"ok": false, "reason"}. A month with no solution is null, NEVER filled and never 0. The contract: README.md, section "gracecell".
-# Keeps:   nothing. The server keeps answers; this lookup keeps no file.
+# Keeps:   the name of the file, a day (a few bytes under FW_CACHE/gracecell). The server keeps the answers.
 # Checked by: scripts/test_live_gracecell.mjs (offline: the catalogue, the token and a small file built the real way, served in pieces) and scripts/live_check_gracecell.mjs (by hand, live).
 import common   # first, always
 import datetime
 import io
+import json
 import math
+import time
 import h5py
 import numpy as np
 from common import Fail, SourceDown
@@ -22,6 +24,7 @@ MOST_BYTES = 24 << 20         # never anywhere near the whole 46 MB file
 CELL_DEG = 0.5
 MIN_TREND_YEARS = 5.0         # a trend is only given when the months read span at least five years
 MIN_TREND_MONTHS = 60         # and there are at least five years' worth of months to fit
+KEEP_NAME_S = 24 * 3600       # the catalogue's answer (the file's name) is kept a day: the file is replaced once a month
 EPOCH = datetime.date(2002, 1, 1)
 AREA_KM = 300                 # a JPL mascon is a 3 degree equal-area cap; the 0.5 degree grid only samples it
 SOURCE = "NASA GRACE and GRACE-FO, JPL mascon solution RL06.3Mv04 (Coastal Resolution Improvement filter), from NASA's Physical Oceanography DAAC"
@@ -99,8 +102,16 @@ class Pieces(io.RawIOBase):
         return done
 
 
-def newest_file():
-    """(address, name) of the one mascon file in the catalogue (the newest if there were ever two)."""
+def newest_file(fresh=False):
+    """(address, name, from_memory) of the one mascon file. The catalogue's answer is kept a day under FW_CACHE (the file is replaced once a month), and asked again when the kept file is gone."""
+    kept = common.cache_dir("gracecell") / "newest.json"
+    if not fresh:
+        try:
+            got = json.loads(kept.read_text(encoding="utf-8"))
+            if time.time() - float(got["at"]) < KEEP_NAME_S and str(got["url"]).startswith("https://archive.podaac.earthdata.nasa.gov/"):
+                return got["url"], str(got["name"]), True
+        except (OSError, ValueError, KeyError, TypeError):
+            pass
     found = []
     for g in common.cmr_granules([("short_name", SHORT), ("sort_key", "-start_date")], limit=5, page_size=5):
         link = next((l["href"] for l in g.get("links", []) if str(l.get("rel", "")).endswith("data#") and str(l.get("href", "")).startswith("https://archive.podaac.earthdata.nasa.gov/") and str(l["href"]).endswith(".nc")), None)
@@ -109,7 +120,11 @@ def newest_file():
     if not found:
         raise Fail("NASA's catalogue lists no GRACE-FO groundwater file just now; try again later")
     found.sort()
-    return found[-1][1], found[-1][2]
+    try:
+        common.atomic_write(kept, json.dumps({"at": time.time(), "url": found[-1][1], "name": found[-1][2]}).encode("utf-8"))
+    except OSError:
+        pass
+    return found[-1][1], found[-1][2], False
 
 
 def day_of(days):
@@ -183,10 +198,16 @@ def read_cell(url, headers, row, col, cell_lat, cell_lon):
 def main(args):
     lat, lon = common.latlon(args)
     row, col, cell_lat, cell_lon = cell_of(lat, lon)
-    url, name = newest_file()
+    url, name, kept = newest_file()
     headers = common.bearer()
     try:
-        days, values, errors, land, pieces = read_cell(url, headers, row, col, cell_lat, cell_lon)
+        try:
+            days, values, errors, land, pieces = read_cell(url, headers, row, col, cell_lat, cell_lon)
+        except SourceDown as e:
+            if not (kept and e.status in (404, 410)):
+                raise
+            url, name, kept = newest_file(fresh=True)   # the kept file is gone (a new month's file replaced it): ask the catalogue again
+            days, values, errors, land, pieces = read_cell(url, headers, row, col, cell_lat, cell_lon)
     except SourceDown as e:
         if e.status in (401, 403):
             raise Fail(NO_RIGHTS) from None

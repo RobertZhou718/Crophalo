@@ -513,19 +513,24 @@ function surenessOf(best, base, ctx, C) {
 }
 
 // ---- everything for one field
-function evaluateAll(ctx, C) {
-  const options = generate(ctx, C).map(o => { const ev = evaluate(o, C, ctx), chk = check(o, C, ctx, ev); return { o, ev, chk, score: ev.score, flag: chk.flag }; });
+// The engine's long calls are written as steps: a call that does its work in several pieces yields between them, so a caller that must not block (a page without a worker)
+// can run one piece, let the screen breathe, and run the next. optionsFor and analyse are the same calls run to the end at once: the answers are the same, to the byte.
+const drain = gen => { let r = gen.next(); while (!r.done) r = gen.next(); return r.value; };
+function* evaluateAllSteps(ctx, C) {
+  const options = [];
+  for (const o of generate(ctx, C)) { const ev = evaluate(o, C, ctx), chk = check(o, C, ctx, ev); options.push({ o, ev, chk, score: ev.score, flag: chk.flag }); yield 'option'; }
   const base = options[0], rest = options.slice(1);
   const rank = (a, b) => (a.flag === 'fails') - (b.flag === 'fails') || (a.flag === 'borderline') - (b.flag === 'borderline') || b.score - a.score;
   rest.sort(rank);
   return { base, rest };
 }
-export function analyse(state, climate, spot = {}, opts = {}) {
+function* analyseSteps(state, climate, spot = {}, opts = {}) {
   const ctx = contextOf(state, climate, spot, opts);
-  const { base, rest } = evaluateAll(ctx, climate);
+  const { base, rest } = yield* evaluateAllSteps(ctx, climate);
   const best = rest[0] ?? null;
   return { ctx, base, others: rest, best, gain: best ? best.score - base.score : 0, endorsed: endorses(best, base) };
 }
+export function analyse(state, climate, spot = {}, opts = {}) { return drain(analyseSteps(state, climate, spot, opts)); }
 
 function toPlan(x, kind, C, ctx, base, baseEv, year0, count) {
   year0 = Math.max(year0, firstYear(x.o, x.ev.lay, ctx) ?? year0);   // a plan never starts with a sowing that is already past
@@ -540,7 +545,7 @@ function toPlan(x, kind, C, ctx, base, baseEv, year0, count) {
   };
 }
 
-export function optionsFor(state, climate, spot = {}, opts = {}) {
+export function* optionsForSteps(state, climate, spot = {}, opts = {}) {
   const C = climate && typeof climate === 'object' && climate.monthly ? climate : null;
   const ctx0 = contextOf(state, C, spot, opts);
   if (!ctx0.slots.length) return { current: null, recommended: null, others: [], reason: 'Tell us what you grow now, and the field report compares other ideas with it.', evidence: [], gaps: ['No crops were given for this field.'], risks: [], sureness: null, sureWhy: [], endorsed: false, gain: null };
@@ -549,10 +554,11 @@ export function optionsFor(state, climate, spot = {}, opts = {}) {
     const scores = Object.fromEntries(DIMS.map(d => [d.id, null]));
     return { current: { id: 'current', name: nameOf({ slots: shortestCycle(ctx0.slots), covers: [], kind: 'existing' }), kind: 'current', seasons, score: null, scores, parts: { ...scores }, why: 'This is what you grow now; it is not scored until the field\'s weather is read.', whyLines: [] }, recommended: null, others: [], reason: 'The field\'s NASA weather has not been read yet, so nothing is compared.', evidence: [], gaps: ['No weather has been read for this field yet, so no sowing dates, scores or checks can be worked out.'], risks: [], sureness: null, sureWhy: [], endorsed: false, gain: null };
   }
-  const a = analyse(state, C, spot, opts), ctx = a.ctx;
+  const a = yield* analyseSteps(state, C, spot, opts), ctx = a.ctx;
   const year0 = firstYear(a.base.o, a.base.ev.lay, ctx) ?? (C.y1 + 2);
   const current = toPlan(a.base, 'current', C, ctx, null, null, year0, Math.max(3, a.base.o.slots.length));
-  const others = a.others.map(x => toPlan(x, 'proposed', C, ctx, a.base, a.base.ev, year0, Math.max(3, x.o.slots.length)));
+  const others = [];
+  for (const x of a.others) { others.push(toPlan(x, 'proposed', C, ctx, a.base, a.base.ev, year0, Math.max(3, x.o.slots.length))); yield 'plan'; }
   const recommended = a.endorsed ? others[0] : current;
   const sure = surenessOf(a.best, a.base, ctx, C);
   const pick = a.endorsed ? a.best : null;
@@ -573,6 +579,8 @@ export function optionsFor(state, climate, spot = {}, opts = {}) {
     sureness: sure.level, sureWhy: sure.why, endorsed: a.endorsed, gain: a.best ? a.best.score - a.base.score : null, foot: SEASON_FOOT,
   };
 }
+
+export function optionsFor(state, climate, spot = {}, opts = {}) { return drain(optionsForSteps(state, climate, spot, opts)); }
 
 // ---- what covers the ground on a date
 const STAGE_WORDS = ['sown', 'coming up', 'growing leaves', 'flowering and filling', 'ripening', 'ready to harvest'];

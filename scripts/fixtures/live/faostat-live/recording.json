@@ -1,0 +1,1480 @@
+{
+ "made_by": "node scripts/record_live_crops-prices.mjs faostat",
+ "recorded": "2026-11-14T23:26:40.062Z",
+ "lookup": "faostat",
+ "args": [],
+ "requests": 2,
+ "seconds": 4.46,
+ "peak_mb": 150.8,
+ "asked": 4,
+ "exit_code": 0,
+ "answer": {
+  "ok": true,
+  "source": "FAOSTAT (Production: Crops and livestock products; Producer Prices), FAO of the United Nations",
+  "data_date": "2022/2024",
+  "data_date_note": "Areas and yields are for the years 2022 to 2024. Each price is for the year written beside it (2020 to 2024). FAO published the production file on 2025-12-31 and the price file on 2026-10-09",
+  "units": {
+   "area": "ha, mean of the years 2022 to 2024 that FAO reports",
+   "yield": "tonnes per hectare, with the years it is from",
+   "price": "US$ per tonne at the farm gate, with its year"
+  },
+  "url": "https://bulks-faostat.fao.org/production/Production_Crops_Livestock_E_All_Data.zip",
+  "updated": "2025-12-31T11:33:25Z",
+  "latestYear": 2024,
+  "years": [
+   2022,
+   2023,
+   2024
+  ],
+  "prices": {
+   "source": "FAOSTAT Producer Prices (US$ per tonne, annual), FAO of the United Nations",
+   "url": "https://bulks-faostat.fao.org/production/Prices_E_All_Data.zip",
+   "updated": "2026-10-09T16:06:27Z",
+   "unit": "US$ per tonne, the latest annual value of the last five years",
+   "years": [
+    2020,
+    2021,
+    2022,
+    2023,
+    2024
+   ]
+  },
+  "yields": {
+   "source": "FAOSTAT Production (production divided by area harvested, same crop item, same years)",
+   "unit": "tonnes per hectare, over the years written beside each yield; only where at least 1,000 ha a year"
+  },
+  "flags_note": "Every figure is FAO's own. A value FAO marks as missing is left out. Crops under not_official rest on a figure FAO marks as estimated, imputed, from another organisation or a break in its series",
+  "countries": {
+   "CA": {
+    "name": "Canada",
+    "area": {
+     "wheat": 10490700,
+     "canola": 8766267,
+     "barley": 2577500,
+     "soy": 2222933,
+     "lentil": 1622733,
+     "corn": 1470700,
+     "pea": 1276100,
+     "oats": 1073600,
+     "flax": 250600,
+     "mustardseed": 237300,
+     "potato": 154841,
+     "chickpea": 138733,
+     "bean": 135300,
+     "rye": 128233,
+     "blueberry": 44844,
+     "sunflower": 33700,
+     "triticale": 26733,
+     "hemp": 21800,
+     "sweetcorn": 16375,
+     "sugarbeet": 16233,
+     "apple": 16162,
+     "buckwheat": 13008,
+     "grape": 10759,
+     "tobacco": 9797,
+     "carrot": 8221,
+     "greenbean": 7709,
+     "pumpkin": 7476,
+     "tomato": 6225,
+     "cabbage": 6198,
+     "onion": 5995,
+     "stonefruit": 5519,
+     "cauliflower": 5376,
+     "lettuce": 3499,
+     "strawberry": 2753,
+     "asparagus": 2470,
+     "cucumber": 2344,
+     "pepper": 2305,
+     "raspberry": 1380,
+     "garlic": 910,
+     "watermelon": 879,
+     "spinach": 700,
+     "melon": 432,
+     "kiwi": 4
+    },
+    "yield": {
+     "corn": [
+      10.27,
+      "2022-2024"
+     ],
+     "wheat": [
+      3.31,
+      "2022-2024"
+     ],
+     "barley": [
+      3.5,
+      "2022-2024"
+     ],
+     "oats": [
+      3.49,
+      "2022-2024"
+     ],
+     "rye": [
+      3.38,
+      "2022-2024"
+     ],
+     "buckwheat": [
+      1.02,
+      "2022-2024"
+     ],
+     "triticale": [
+      2.56,
+      "2022-2024"
+     ],
+     "soy": [
+      3.16,
+      "2022-2024"
+     ],
+     "chickpea": [
+      1.42,
+      "2022-2024"
+     ],
+     "lentil": [
+      1.35,
+      "2022-2024"
+     ],
+     "pea": [
+      2.36,
+      "2022-2024"
+     ],
+     "bean": [
+      2.65,
+      "2022-2024"
+     ],
+     "sunflower": [
+      2.25,
+      "2022-2024"
+     ],
+     "canola": [
+      2.19,
+      "2022-2024"
+     ],
+     "flax": [
+      1.34,
+      "2022-2024"
+     ],
+     "mustardseed": [
+      0.74,
+      "2022-2024"
+     ],
+     "potato": [
+      41.37,
+      "2022-2024"
+     ],
+     "sugarbeet": [
+      80,
+      "2022-2024"
+     ],
+     "tomato": [
+      86.96,
+      "2022-2024"
+     ],
+     "onion": [
+      47.96,
+      "2022-2024"
+     ],
+     "cabbage": [
+      28.03,
+      "2022-2024"
+     ],
+     "pepper": [
+      28.2,
+      "2022-2024"
+     ],
+     "tobacco": [
+      2.84,
+      "2022-2024"
+     ],
+     "carrot": [
+      42.2,
+      "2022-2024"
+     ],
+     "lettuce": [
+      22.2,
+      "2022-2024"
+     ],
+     "cucumber": [
+      26.32,
+      "2022-2024"
+     ],
+     "pumpkin": [
+      17.66,
+      "2022-2024"
+     ],
+     "sweetcorn": [
+      11.91,
+      "2022-2024"
+     ],
+     "greenbean": [
+      6.66,
+      "2022-2024"
+     ],
+     "cauliflower": [
+      12.06,
+      "2022-2024"
+     ],
+     "asparagus": [
+      4.33,
+      "2022-2024"
+     ],
+     "grape": [
+      8.35,
+      "2022-2024"
+     ],
+     "apple": [
+      23.81,
+      "2022-2024"
+     ],
+     "stonefruit": [
+      8.8,
+      "2022-2024"
+     ],
+     "strawberry": [
+      8.88,
+      "2022-2024"
+     ],
+     "blueberry": [
+      3.78,
+      "2022-2024"
+     ],
+     "raspberry": [
+      4.93,
+      "2022-2024"
+     ]
+    },
+    "price": {
+     "corn": [
+      167,
+      2024
+     ],
+     "wheat": [
+      228,
+      2024
+     ],
+     "barley": [
+      202,
+      2024
+     ],
+     "oats": [
+      222,
+      2024
+     ],
+     "rye": [
+      183,
+      2024
+     ],
+     "soy": [
+      390,
+      2024
+     ],
+     "chickpea": [
+      738,
+      2024
+     ],
+     "lentil": [
+      598,
+      2024
+     ],
+     "pea": [
+      312,
+      2024
+     ],
+     "bean": [
+      875,
+      2024
+     ],
+     "sunflower": [
+      450,
+      2024
+     ],
+     "canola": [
+      460,
+      2024
+     ],
+     "flax": [
+      466,
+      2024
+     ],
+     "mustardseed": [
+      1093,
+      2024
+     ],
+     "potato": [
+      316,
+      2024
+     ],
+     "tomato": [
+      218,
+      2024
+     ],
+     "onion": [
+      437,
+      2024
+     ],
+     "cabbage": [
+      587,
+      2024
+     ],
+     "watermelon": [
+      516,
+      2024
+     ],
+     "pepper": [
+      1189,
+      2024
+     ],
+     "tobacco": [
+      4623,
+      2024
+     ],
+     "carrot": [
+      345,
+      2024
+     ],
+     "garlic": [
+      8790,
+      2024
+     ],
+     "lettuce": [
+      1009,
+      2024
+     ],
+     "cucumber": [
+      583,
+      2024
+     ],
+     "pumpkin": [
+      425,
+      2024
+     ],
+     "sweetcorn": [
+      348,
+      2024
+     ],
+     "spinach": [
+      2036,
+      2024
+     ],
+     "greenbean": [
+      721,
+      2024
+     ],
+     "melon": [
+      516,
+      2024
+     ],
+     "cauliflower": [
+      1110,
+      2024
+     ],
+     "asparagus": [
+      3665,
+      2024
+     ],
+     "grape": [
+      1409,
+      2024
+     ],
+     "apple": [
+      611,
+      2024
+     ],
+     "stonefruit": [
+      2133,
+      2024
+     ],
+     "strawberry": [
+      4929,
+      2024
+     ],
+     "blueberry": [
+      1162,
+      2024
+     ],
+     "raspberry": [
+      3948,
+      2024
+     ]
+    },
+    "not_official": [
+     "buckwheat",
+     "kiwi",
+     "spinach",
+     "tobacco"
+    ]
+   },
+   "TR": {
+    "name": "Türkiye",
+    "area": {
+     "wheat": 6786515,
+     "barley": 3220116,
+     "sunflower": 967776,
+     "olive": 905835,
+     "corn": 886298,
+     "hazelnut": 746855,
+     "cotton": 505863,
+     "chickpea": 458227,
+     "pistachio": 437933,
+     "grape": 378223,
+     "sugarbeet": 327920,
+     "stonefruit": 322344,
+     "lentil": 302567,
+     "apple": 190796,
+     "citrus": 181227,
+     "walnut": 172860,
+     "tomato": 169122,
+     "potato": 161922,
+     "oats": 139350,
+     "rice": 120512,
+     "triticale": 105417,
+     "rye": 95708,
+     "bean": 92449,
+     "pumpkin": 89727,
+     "tobacco": 82552,
+     "tea": 79779,
+     "pepper": 79376,
+     "almond": 69823,
+     "watermelon": 65453,
+     "onion": 61262,
+     "melon": 58006,
+     "fig": 57812,
+     "groundnut": 49784,
+     "greenbean": 44527,
+     "soy": 38135,
+     "cucumber": 34512,
+     "fruit_nec": 33107,
+     "canola": 30929,
+     "safflower": 27925,
+     "sesame": 22237,
+     "cabbage": 21901,
+     "lettuce": 21685,
+     "strawberry": 21302,
+     "eggplant": 16470,
+     "spinach": 15447,
+     "cauliflower": 14528,
+     "carrot": 14093,
+     "chestnut": 13980,
+     "banana": 13577,
+     "avocado": 4730,
+     "okra": 4405,
+     "kiwi": 4237,
+     "faba": 2487,
+     "garlic": 2353,
+     "vanilla": 1976,
+     "pea": 1251,
+     "nuts_nec": 1172,
+     "millet": 1124,
+     "hemp": 437,
+     "asparagus": 226,
+     "flax": 55,
+     "sorghum": 8
+    },
+    "yield": {
+     "corn": [
+      9.63,
+      "2022-2024"
+     ],
+     "wheat": [
+      3.07,
+      "2022-2024"
+     ],
+     "barley": [
+      2.67,
+      "2022-2024"
+     ],
+     "oats": [
+      2.79,
+      "2022-2024"
+     ],
+     "rye": [
+      2.91,
+      "2022-2024"
+     ],
+     "rice": [
+      7.94,
+      "2022-2024"
+     ],
+     "millet": [
+      3.57,
+      "2022-2024"
+     ],
+     "triticale": [
+      3.26,
+      "2022-2024"
+     ],
+     "soy": [
+      4.13,
+      "2022-2024"
+     ],
+     "chickpea": [
+      1.26,
+      "2022-2024"
+     ],
+     "lentil": [
+      1.46,
+      "2022-2024"
+     ],
+     "pea": [
+      3.08,
+      "2022-2024"
+     ],
+     "bean": [
+      2.84,
+      "2022-2024"
+     ],
+     "faba": [
+      2.64,
+      "2022-2024"
+     ],
+     "groundnut": [
+      4.14,
+      "2022-2024"
+     ],
+     "sunflower": [
+      2.39,
+      "2022-2024"
+     ],
+     "canola": [
+      3.57,
+      "2022-2024"
+     ],
+     "sesame": [
+      0.72,
+      "2022-2024"
+     ],
+     "safflower": [
+      1.17,
+      "2022-2024"
+     ],
+     "cotton": [
+      4.67,
+      "2022-2024"
+     ],
+     "potato": [
+      36.64,
+      "2022-2024"
+     ],
+     "sugarbeet": [
+      68.62,
+      "2022-2024"
+     ],
+     "tomato": [
+      80.65,
+      "2022-2024"
+     ],
+     "onion": [
+      41.25,
+      "2022-2024"
+     ],
+     "cabbage": [
+      43.61,
+      "2022-2024"
+     ],
+     "watermelon": [
+      49.61,
+      "2022-2024"
+     ],
+     "pepper": [
+      40.01,
+      "2022-2024"
+     ],
+     "tobacco": [
+      1.14,
+      "2022-2024"
+     ],
+     "carrot": [
+      58.34,
+      "2022-2024"
+     ],
+     "garlic": [
+      21.6,
+      "2022-2024"
+     ],
+     "lettuce": [
+      26.79,
+      "2022-2024"
+     ],
+     "cucumber": [
+      53.63,
+      "2022-2024"
+     ],
+     "eggplant": [
+      49.1,
+      "2022-2024"
+     ],
+     "okra": [
+      6.64,
+      "2022-2024"
+     ],
+     "pumpkin": [
+      8.22,
+      "2022-2024"
+     ],
+     "spinach": [
+      15.1,
+      "2022-2024"
+     ],
+     "greenbean": [
+      13.07,
+      "2022-2024"
+     ],
+     "melon": [
+      25.68,
+      "2022-2024"
+     ],
+     "cauliflower": [
+      25.41,
+      "2022-2024"
+     ],
+     "tea": [
+      16.88,
+      "2022-2024"
+     ],
+     "hazelnut": [
+      0.95,
+      "2022-2024"
+     ],
+     "banana": [
+      68.8,
+      "2022-2024"
+     ],
+     "citrus": [
+      33.22,
+      "2022-2024"
+     ],
+     "olive": [
+      3.03,
+      "2022-2024"
+     ],
+     "grape": [
+      9.72,
+      "2022-2024"
+     ],
+     "apple": [
+      27.18,
+      "2022-2024"
+     ],
+     "stonefruit": [
+      10.22,
+      "2022-2024"
+     ],
+     "almond": [
+      2.67,
+      "2022-2024"
+     ],
+     "walnut": [
+      2.16,
+      "2022-2024"
+     ],
+     "pistachio": [
+      0.61,
+      "2022-2024"
+     ],
+     "avocado": [
+      10.09,
+      "2022-2024"
+     ],
+     "strawberry": [
+      31.47,
+      "2022-2024"
+     ],
+     "kiwi": [
+      22.25,
+      "2022-2024"
+     ],
+     "fig": [
+      6.23,
+      "2022-2024"
+     ],
+     "chestnut": [
+      5.38,
+      "2022-2024"
+     ],
+     "vanilla": [
+      0.2,
+      "2022-2024"
+     ]
+    },
+    "price": {
+     "corn": [
+      228,
+      2024
+     ],
+     "wheat": [
+      280,
+      2024
+     ],
+     "barley": [
+      223,
+      2024
+     ],
+     "oats": [
+      207,
+      2024
+     ],
+     "rye": [
+      207,
+      2024
+     ],
+     "rice": [
+      753,
+      2024
+     ],
+     "millet": [
+      485,
+      2024
+     ],
+     "triticale": [
+      219,
+      2024
+     ],
+     "soy": [
+      495,
+      2024
+     ],
+     "chickpea": [
+      1023,
+      2024
+     ],
+     "lentil": [
+      587,
+      2024
+     ],
+     "pea": [
+      1070,
+      2024
+     ],
+     "bean": [
+      1294,
+      2024
+     ],
+     "faba": [
+      1562,
+      2024
+     ],
+     "groundnut": [
+      1409,
+      2024
+     ],
+     "sunflower": [
+      648,
+      2024
+     ],
+     "canola": [
+      480,
+      2024
+     ],
+     "sesame": [
+      3291,
+      2024
+     ],
+     "safflower": [
+      335,
+      2024
+     ],
+     "potato": [
+      281,
+      2024
+     ],
+     "sugarbeet": [
+      58,
+      2024
+     ],
+     "tomato": [
+      395,
+      2024
+     ],
+     "onion": [
+      252,
+      2024
+     ],
+     "cabbage": [
+      320,
+      2024
+     ],
+     "watermelon": [
+      187,
+      2024
+     ],
+     "pepper": [
+      648,
+      2024
+     ],
+     "tobacco": [
+      3244,
+      2024
+     ],
+     "carrot": [
+      271,
+      2024
+     ],
+     "garlic": [
+      2315,
+      2024
+     ],
+     "lettuce": [
+      641,
+      2024
+     ],
+     "cucumber": [
+      563,
+      2024
+     ],
+     "eggplant": [
+      503,
+      2024
+     ],
+     "okra": [
+      2759,
+      2024
+     ],
+     "pumpkin": [
+      762,
+      2024
+     ],
+     "spinach": [
+      670,
+      2024
+     ],
+     "greenbean": [
+      1184,
+      2024
+     ],
+     "melon": [
+      290,
+      2024
+     ],
+     "cauliflower": [
+      726,
+      2024
+     ],
+     "asparagus": [
+      5286,
+      2024
+     ],
+     "tea": [
+      518,
+      2024
+     ],
+     "hazelnut": [
+      3440,
+      2024
+     ],
+     "banana": [
+      888,
+      2024
+     ],
+     "citrus": [
+      308,
+      2024
+     ],
+     "olive": [
+      1596,
+      2024
+     ],
+     "grape": [
+      953,
+      2024
+     ],
+     "apple": [
+      588,
+      2024
+     ],
+     "stonefruit": [
+      982,
+      2024
+     ],
+     "almond": [
+      3074,
+      2024
+     ],
+     "walnut": [
+      3789,
+      2024
+     ],
+     "pistachio": [
+      8130,
+      2024
+     ],
+     "datepalm": [
+      717,
+      2024
+     ],
+     "avocado": [
+      2850,
+      2024
+     ],
+     "strawberry": [
+      1460,
+      2024
+     ],
+     "kiwi": [
+      1390,
+      2024
+     ],
+     "fig": [
+      1908,
+      2024
+     ],
+     "chestnut": [
+      4392,
+      2024
+     ]
+    },
+    "not_official": [
+     "banana",
+     "hemp",
+     "nuts_nec",
+     "vanilla"
+    ]
+   },
+   "ET": {
+    "name": "Ethiopia",
+    "area": {
+     "corn": 3390901,
+     "cereals_nec": 3170878,
+     "wheat": 2128962,
+     "sorghum": 1549081,
+     "barley": 1048264,
+     "coffee": 833661,
+     "sesame": 557878,
+     "faba": 507502,
+     "bean": 447430,
+     "millet": 424791,
+     "potato": 320144,
+     "pea": 234259,
+     "chickpea": 212023,
+     "pepper": 186729,
+     "cabbage": 126769,
+     "rice": 94356,
+     "soy": 90268,
+     "banana": 89685,
+     "groundnut": 87539,
+     "cotton": 82035,
+     "lentil": 80675,
+     "flax": 70719,
+     "taro": 62179,
+     "nuts_nec": 55127,
+     "sweetpotato": 48318,
+     "onion": 38091,
+     "garlic": 37176,
+     "hops": 34075,
+     "oats": 31898,
+     "avocado": 28932,
+     "mango": 24991,
+     "sugarcane": 22674,
+     "fruit_nec": 14715,
+     "tomato": 13449,
+     "canola": 12678,
+     "citrus": 10565,
+     "safflower": 7274,
+     "blackpepper": 7262,
+     "tea": 7156,
+     "carrot": 6794,
+     "tropfruit_nec": 6397,
+     "papaya": 6342,
+     "sunflower": 5397,
+     "yam": 5284,
+     "mustardseed": 4416,
+     "tobacco": 3230,
+     "grape": 2426,
+     "greenbean": 1721,
+     "pineapple": 1169,
+     "lettuce": 939,
+     "sisal": 870,
+     "cardamom": 408,
+     "cucumber": 78,
+     "stonefruit": 27
+    },
+    "yield": {
+     "corn": [
+      3.45,
+      "2022-2024"
+     ],
+     "wheat": [
+      2.9,
+      "2022-2024"
+     ],
+     "barley": [
+      2.27,
+      "2022-2024"
+     ],
+     "sorghum": [
+      2.58,
+      "2022-2024"
+     ],
+     "oats": [
+      1.8,
+      "2022-2024"
+     ],
+     "rice": [
+      3.01,
+      "2022-2024"
+     ],
+     "millet": [
+      2.49,
+      "2022-2024"
+     ],
+     "soy": [
+      2.52,
+      "2022-2024"
+     ],
+     "chickpea": [
+      2.07,
+      "2022-2024"
+     ],
+     "lentil": [
+      1.27,
+      "2022-2024"
+     ],
+     "pea": [
+      1.72,
+      "2022-2024"
+     ],
+     "bean": [
+      1.48,
+      "2022-2024"
+     ],
+     "faba": [
+      2.24,
+      "2022-2024"
+     ],
+     "groundnut": [
+      1.45,
+      "2022-2024"
+     ],
+     "sunflower": [
+      1.11,
+      "2022-2024"
+     ],
+     "canola": [
+      1.63,
+      "2022-2024"
+     ],
+     "sesame": [
+      0.73,
+      "2022-2024"
+     ],
+     "safflower": [
+      1.2,
+      "2022-2024"
+     ],
+     "flax": [
+      0.98,
+      "2022-2024"
+     ],
+     "mustardseed": [
+      0.62,
+      "2022-2024"
+     ],
+     "cotton": [
+      2.13,
+      "2022-2024"
+     ],
+     "potato": [
+      12.81,
+      "2022-2024"
+     ],
+     "sweetpotato": [
+      25.65,
+      "2022-2024"
+     ],
+     "yam": [
+      8.13,
+      "2022-2024"
+     ],
+     "taro": [
+      25.08,
+      "2022-2024"
+     ],
+     "sugarcane": [
+      42.59,
+      "2022-2024"
+     ],
+     "tomato": [
+      7.74,
+      "2022-2024"
+     ],
+     "onion": [
+      8.01,
+      "2022-2024"
+     ],
+     "cabbage": [
+      10,
+      "2022-2024"
+     ],
+     "pepper": [
+      2.14,
+      "2022-2024"
+     ],
+     "tobacco": [
+      0.67,
+      "2022-2024"
+     ],
+     "carrot": [
+      3.79,
+      "2022-2024"
+     ],
+     "garlic": [
+      5.97,
+      "2022-2024"
+     ],
+     "greenbean": [
+      4.05,
+      "2022-2024"
+     ],
+     "tea": [
+      10.76,
+      "2022-2024"
+     ],
+     "coffee": [
+      0.67,
+      "2022-2024"
+     ],
+     "banana": [
+      13.61,
+      "2022-2024"
+     ],
+     "citrus": [
+      6.64,
+      "2022-2024"
+     ],
+     "grape": [
+      1.99,
+      "2022-2024"
+     ],
+     "mango": [
+      5.54,
+      "2022-2024"
+     ],
+     "avocado": [
+      7,
+      "2022-2024"
+     ],
+     "pineapple": [
+      1.68,
+      "2022-2024"
+     ],
+     "blackpepper": [
+      0.63,
+      "2022-2024"
+     ],
+     "hops": [
+      1.2,
+      "2022-2024"
+     ],
+     "papaya": [
+      11.8,
+      "2022-2024"
+     ]
+    },
+    "not_official": [
+     "avocado",
+     "banana",
+     "barley",
+     "bean",
+     "blackpepper",
+     "cabbage",
+     "canola",
+     "cardamom",
+     "carrot",
+     "cereals_nec",
+     "chickpea",
+     "citrus",
+     "coffee",
+     "corn",
+     "cotton",
+     "cucumber",
+     "faba",
+     "flax",
+     "fruit_nec",
+     "garlic",
+     "grape",
+     "greenbean",
+     "groundnut",
+     "hops",
+     "lentil",
+     "lettuce",
+     "mango",
+     "millet",
+     "mustardseed",
+     "nuts_nec",
+     "oats",
+     "onion",
+     "papaya",
+     "pea",
+     "pepper",
+     "pineapple",
+     "potato",
+     "rice",
+     "safflower",
+     "sesame",
+     "sisal",
+     "sorghum",
+     "soy",
+     "stonefruit",
+     "sugarcane",
+     "sunflower",
+     "sweetpotato",
+     "taro",
+     "tea",
+     "tobacco",
+     "tomato",
+     "tropfruit_nec",
+     "wheat",
+     "yam"
+    ]
+   },
+   "TW": {
+    "name": "China, Taiwan Province of",
+    "area": {
+     "rice": 237038,
+     "corn": 36277,
+     "tropfruit_nec": 36261,
+     "citrus": 19239,
+     "groundnut": 18224,
+     "cabbage": 16220,
+     "mango": 16197,
+     "banana": 14839,
+     "tea": 12515,
+     "fruit_nec": 9976,
+     "sweetpotato": 8831,
+     "sugarcane": 7243,
+     "pineapple": 7197,
+     "watermelon": 6940,
+     "stonefruit": 6223,
+     "garlic": 5602,
+     "bean": 5456,
+     "apple": 5209,
+     "melon": 3901,
+     "soy": 3799,
+     "tomato": 3728,
+     "cauliflower": 2995,
+     "greenbean": 2783,
+     "potato": 2729,
+     "papaya": 2561,
+     "pepper": 2508,
+     "taro": 2348,
+     "grape": 2296,
+     "sorghum": 2290,
+     "pumpkin": 2268,
+     "wheat": 2000,
+     "cucumber": 1825,
+     "coconut": 1801,
+     "sesame": 1754,
+     "carrot": 1672,
+     "eggplant": 1284,
+     "onion": 1201,
+     "coffee": 1148,
+     "tobacco": 629,
+     "strawberry": 571,
+     "asparagus": 553,
+     "millet": 317,
+     "olive": 315,
+     "cassava": 309,
+     "cereals_nec": 202,
+     "canola": 7,
+     "sisal": 2
+    },
+    "yield": {
+     "corn": [
+      6.16,
+      "2022-2024"
+     ],
+     "wheat": [
+      2.5,
+      "2022-2024"
+     ],
+     "sorghum": [
+      1.31,
+      "2022-2024"
+     ],
+     "rice": [
+      6.58,
+      "2022-2024"
+     ],
+     "soy": [
+      1.44,
+      "2022-2024"
+     ],
+     "bean": [
+      1.82,
+      "2022-2024"
+     ],
+     "groundnut": [
+      2.42,
+      "2022-2024"
+     ],
+     "sesame": [
+      0.88,
+      "2022-2024"
+     ],
+     "potato": [
+      22.7,
+      "2022-2024"
+     ],
+     "sweetpotato": [
+      23.97,
+      "2022-2024"
+     ],
+     "taro": [
+      16.55,
+      "2022-2024"
+     ],
+     "sugarcane": [
+      69.02,
+      "2022-2024"
+     ],
+     "tomato": [
+      23.47,
+      "2022-2024"
+     ],
+     "onion": [
+      47.18,
+      "2022-2024"
+     ],
+     "cabbage": [
+      37.79,
+      "2022-2024"
+     ],
+     "watermelon": [
+      19.06,
+      "2022-2024"
+     ],
+     "pepper": [
+      10.46,
+      "2022-2024"
+     ],
+     "carrot": [
+      48.12,
+      "2022-2024"
+     ],
+     "garlic": [
+      9.78,
+      "2022-2024"
+     ],
+     "cucumber": [
+      25.22,
+      "2022-2024"
+     ],
+     "eggplant": [
+      25.84,
+      "2022-2024"
+     ],
+     "pumpkin": [
+      20.02,
+      "2022-2024"
+     ],
+     "greenbean": [
+      7.96,
+      "2022-2024"
+     ],
+     "melon": [
+      12.82,
+      "2022-2024"
+     ],
+     "cauliflower": [
+      22.42,
+      "2022-2024"
+     ],
+     "tea": [
+      2.93,
+      "2022-2024"
+     ],
+     "coffee": [
+      0.84,
+      "2022-2024"
+     ],
+     "banana": [
+      23.05,
+      "2022-2024"
+     ],
+     "citrus": [
+      20.29,
+      "2022-2024"
+     ],
+     "grape": [
+      28.37,
+      "2022-2024"
+     ],
+     "apple": [
+      18.74,
+      "2022-2024"
+     ],
+     "stonefruit": [
+      6.57,
+      "2022-2024"
+     ],
+     "coconut": [
+      9.16,
+      "2022-2024"
+     ],
+     "mango": [
+      9.53,
+      "2022-2024"
+     ],
+     "pineapple": [
+      52.65,
+      "2022-2024"
+     ],
+     "papaya": [
+      48.49,
+      "2022-2024"
+     ]
+    },
+    "not_official": [
+     "apple",
+     "asparagus",
+     "banana",
+     "bean",
+     "cabbage",
+     "canola",
+     "carrot",
+     "cassava",
+     "cauliflower",
+     "cereals_nec",
+     "citrus",
+     "coconut",
+     "coffee",
+     "corn",
+     "cucumber",
+     "eggplant",
+     "fruit_nec",
+     "garlic",
+     "grape",
+     "greenbean",
+     "groundnut",
+     "mango",
+     "melon",
+     "millet",
+     "olive",
+     "onion",
+     "papaya",
+     "pepper",
+     "pineapple",
+     "potato",
+     "pumpkin",
+     "rice",
+     "sesame",
+     "sisal",
+     "sorghum",
+     "soy",
+     "stonefruit",
+     "strawberry",
+     "sugarcane",
+     "sweetpotato",
+     "taro",
+     "tea",
+     "tobacco",
+     "tomato",
+     "tropfruit_nec",
+     "watermelon",
+     "wheat"
+    ]
+   }
+  },
+  "rebuilt": true,
+  "checked": "2026-11-14T23:26:40Z",
+  "countries_in_all": 198
+ }
+}

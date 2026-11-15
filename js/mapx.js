@@ -4,12 +4,14 @@
 // Checked by scripts/e2e_map.mjs (tools by mouse and by key, the outline, the view stack, the Escape order, fit at five widths, axe).
 import { areaHa, boxCorners, cleanRing, outlineProblem, areaWords, pinWords, wrapLon, selfCrosses } from './geo.js';
 import { toast } from './toast.js';
-import { motionOff } from './motion.js';
+import { motionOff, motionQuiet } from './motion.js';
 import { openSpot, closeSpot, refreshSpot, spotOpen, keepInside } from './spotcard.js';
+import { initBase } from './mapbase.js';
+import { initPanels } from './mappanels.js';
+import { placesPanel } from './mapplaces.js';
+import { initLayers } from './maplayers.js';
 
 const L = window.L;
-const SAT = 'https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}';
-const SAT_CREDIT = 'Imagery: Esri, Vantor, Earthstar Geographics, and the GIS User Community';
 const WORLD = { center: [20, 10], zoom: 2 };
 const SAY = {
   help: 'Arrow keys move the map; plus and minus zoom. While you use the keyboard, a cross marks the centre of the map, and the buttons above the map put your pin or your field\'s corners there; on those buttons the arrow keys move the map too.',
@@ -41,10 +43,12 @@ const icon = {   // one outline family, 24 grid, 1.7 stroke (the same drawings a
 const svg = (name, extra = '') => `<svg class="ic" aria-hidden="true" viewBox="0 0 24 24"${extra}>${icon[name]}</svg>`;
 
 // What the map keeps while the wizard redraws its shell around it: the place, the outline, the tool.
-const keep = { pin: null, ring: null, used: false, mode: 'pin', pick: false, units: 'metric' };
-let map = null, host = null, ui = null, layers = null, draft = null, tapSwallow = 0, moveTimer = 0, lastSpot = '';
+const keep = { pin: null, ring: null, used: false, mode: 'pin', pick: false, units: 'metric', zoom: null };
+let gibsCtl = null, panels = null, baseCtl = null, map = null, host = null, ui = null, layers = null, draft = null, tapSwallow = 0, moveTimer = 0, lastSpot = '';
 
 const bus = (name, detail) => document.dispatchEvent(new CustomEvent(name, { detail }));
+// The report's data is fetched while the farmer is still choosing: the page is told the place (and the outline, when there is one) the moment either is settled. The listener debounces.
+const prefetch = (lat, lon, ring) => bus('crophalo:prefetch', { lat, lon, ...(ring ? { outline: ring, ring } : {}) });   // outline is what the report reads; ring is the same corners under the older name
 let lastSaid = '';
 const say = words => { lastSaid = words; if (ui) ui.live.textContent = words; };   // the wizard redraws the shell on a new place: the last words are put back
 
@@ -59,9 +63,15 @@ function shell(root) {
         <button type="button" data-tool="rect" aria-pressed="false" title="Rectangle">${svg('rect')}<span class="mapx-w">Rectangle</span></button>
         <button type="button" data-tool="poly" aria-pressed="false" title="Polygon">${svg('poly')}<span class="mapx-w">Polygon</span></button>
       </div>
+      <div class="seg mapx-base" role="group" aria-label="Map base">
+        <button type="button" data-base="sat" aria-pressed="true">Satellite</button>
+        <button type="button" data-base="light" aria-pressed="false">Light</button>
+      </div>
       <button type="button" class="mapbtn" id="mapxReselect" hidden>${svg('undo')}Reselect</button>
       <button type="button" class="mapbtn" id="mapxAbout" aria-haspopup="dialog">About this spot</button>
     </div>
+    <div class="mapx-right" id="mapxRight"></div><div class="mapx-panelhost" id="mapxPanels"></div>
+    <div class="mapx-lcol"><p class="mapx-basenote" id="mapxBaseNote" role="status" hidden></p><div class="mapx-legends" id="mapxLegends" hidden></div></div>
     <div class="mapx-hint" id="mapxHint"><p id="mapxHintText"></p><div class="mapx-hint-btns" id="mapxHintBtns"></div></div>
     <div class="mapx-stack" role="group" aria-label="Map view">
       <button type="button" data-view="in" aria-label="Zoom in" title="Zoom in">${svg('plus')}</button>
@@ -73,7 +83,7 @@ function shell(root) {
     <div class="mapx-cross" aria-hidden="true"></div>
     <p class="mapx-credit" id="mapxCredit"></p></div>`;
   const q = s => root.querySelector(s);
-  return { box: q('#mapx'), canvas: q('#mapxCanvas'), live: q('#mapxLive'), about: q('#mapxAbout'), hint: q('#mapxHintText'), hintBtns: q('#mapxHintBtns'), reselect: q('#mapxReselect'), credit: q('#mapxCredit'), stack: q('.mapx-stack'), tools: q('.mapx-seg') };
+  return { box: q('#mapx'), canvas: q('#mapxCanvas'), live: q('#mapxLive'), about: q('#mapxAbout'), hint: q('#mapxHintText'), hintBtns: q('#mapxHintBtns'), reselect: q('#mapxReselect'), credit: q('#mapxCredit'), stack: q('.mapx-stack'), tools: q('[aria-label="Map tool"]'), base: q('.mapx-base'), baseNote: q('#mapxBaseNote'), right: q('#mapxRight'), panelHost: q('#mapxPanels'), legends: q('#mapxLegends') };
 }
 
 // ---- the pin: a 30 by 38 teardrop with a person in it, inside a 44 by 44 tap area
@@ -208,15 +218,26 @@ function finish(ring) {
   // A drawn field is a place: with no pin yet, or a pin outside the outline, the pin moves to the outline's centre, so the setup and the
   // report always have a position, and the weather starts loading the moment the outline is finished.
   const bounds = L.latLngBounds(ring), mid = bounds.getCenter();
-  if (!keep.pin || !bounds.contains([keep.pin.lat, keep.pin.lon])) movePin(mid.lat, mid.lng, true);
+  const moved = !keep.pin || !bounds.contains([keep.pin.lat, keep.pin.lon]) ? movePin(mid.lat, mid.lng, true) : null;
+  if (keep.pin) prefetch(keep.pin.lat, keep.pin.lon, ring);
+  if (keep.pin) import('./weather.js').then(w => w.getForecast(keep.pin.lat, keep.pin.lon)).catch(() => {});   // the forecast is asked for now, kept in memory, and the Weather tab finds it there
   say(`Outline finished, ${areaWords(areaHa(ring), keep.units)}`);
   openCard('area');   // the outline is only used for the report when the farmer says so
+  // a new place makes the setup draw its map column again, which closes the card: it is opened once more when the place is in
+  moved?.then(() => { if (keep.ring && !spotOpen()) openCard('area'); });
 }
-const cardContext = () => ({ box: ui.box, say, units: () => keep.units, pin: () => keep.pin, ring: () => keep.ring,
+const cardContext = () => ({ box: ui.box, top: () => barsBottom(), say, units: () => keep.units, pin: () => keep.pin, ring: () => keep.ring,
   anchor: () => (keep.pin && map ? map.latLngToContainerPoint([keep.pin.lat, keep.pin.lon]) : null),
-  avoid: () => { if (!keep.ring || !map) return []; const b = L.latLngBounds(keep.ring), n = map.latLngToContainerPoint(b.getNorthWest()), z = map.latLngToContainerPoint(b.getSouthEast()); return [{ left: n.x, top: n.y, w: z.x - n.x, h: z.y - n.y }]; },
+  avoid: () => { const lg = gibsCtl?.legendRect?.(), box = ui.box.getBoundingClientRect(), legend = lg ? [{ left: lg.left - box.left, top: lg.top - box.top, w: lg.width, h: lg.height }] : []; if (!keep.ring || !map) return legend; const b = L.latLngBounds(keep.ring), n = map.latLngToContainerPoint(b.getNorthWest()), z = map.latLngToContainerPoint(b.getSouthEast()); return [{ left: n.x, top: n.y, w: z.x - n.x, h: z.y - n.y }, ...legend]; },
   areaInfo: () => (keep.ring ? { ha: areaHa(keep.ring), corners: keep.ring.length, used: keep.used } : null), use: useOutline, clear: reselect });
-function openCard(tab) { openSpot(cardContext(), tab, ui.about); }
+// How far down the bars at the top of the map reach (they wrap on a narrow map): everything else on the map starts below them. Kept in --mapx-bars for the style sheet.
+function barsBottom() {
+  const box = ui.box.getBoundingClientRect();
+  const low = [...ui.box.querySelectorAll('.mapx-top, .mapx-right')].filter(e => e.offsetParent !== null && e.getBoundingClientRect().height > 0).reduce((m, e) => Math.max(m, e.getBoundingClientRect().bottom - box.top), 0);
+  return Math.max(56, Math.ceil(low) + 8);
+}
+function measureBars() { if (ui?.box) ui.box.style.setProperty('--mapx-bars', `${barsBottom()}px`); }
+function openCard(tab) { panels?.close(false); openSpot(cardContext(), tab, ui.about); }
 function useOutline() {
   if (!keep.ring) return;
   keep.used = true;
@@ -224,6 +245,7 @@ function useOutline() {
   toast(`Using your field outline (${areaWords(ha, keep.units)}) for the report`);
   say(`Using your field outline, ${areaWords(ha, keep.units)}`);
   bus('crophalo:area', { pts: keep.ring, ha });
+  if (keep.pin) prefetch(keep.pin.lat, keep.pin.lon, keep.ring);
   refreshSpot();
 }
 function showOutline() {
@@ -265,6 +287,7 @@ function arrowsOnHint(event) {   // on the "at centre" buttons the arrow keys mo
 }
 // Escape, in order: the last corner, the whole drawing, back to Pin, out of full screen.
 function escape(event) {
+  if (panels?.isOpen()) { event.preventDefault(); panels.close(true); return; }
   if (spotOpen()) { event.preventDefault(); closeSpot(); return; }
   if (draft?.pts?.length > 1) { event.preventDefault(); return undoCorner(); }
   if (draft) { event.preventDefault(); cancelDraft(); say('Drawing cleared. Escape again stops drawing.'); return; }
@@ -274,8 +297,8 @@ function escape(event) {
 
 // ---- the view stack
 function fit() {
-  if (keep.ring) return map.fitBounds(L.latLngBounds(keep.ring), { padding: [48, 48], animate: !motionOff() });
-  if (keep.pin) return map.setView([keep.pin.lat, keep.pin.lon], 14, { animate: !motionOff() });
+  if (keep.ring) return map.fitBounds(L.latLngBounds(keep.ring), { padding: [48, 48], animate: !motionQuiet() });
+  if (keep.pin) return map.setView([keep.pin.lat, keep.pin.lon], 14, { animate: !motionQuiet() });
   toast(SAY.dropFirst); say(SAY.dropFirst);
 }
 function fullscreen(on) {
@@ -288,13 +311,27 @@ function locate(button) {
   if (!navigator.geolocation) { toast(SAY.noLocate); say(SAY.noLocate); return; }
   button.setAttribute('aria-busy', 'true');
   navigator.geolocation.getCurrentPosition(
-    at => { button.removeAttribute('aria-busy'); map.setView([at.coords.latitude, at.coords.longitude], 14, { animate: !motionOff() }); movePin(at.coords.latitude, at.coords.longitude, true); },
+    at => { button.removeAttribute('aria-busy'); map.setView([at.coords.latitude, at.coords.longitude], 14, { animate: !motionQuiet() }); movePin(at.coords.latitude, at.coords.longitude, true); },
     error => { button.removeAttribute('aria-busy'); const words = error.code === 1 ? SAY.locateOff : SAY.locateFailed; toast(words); say(words); },
     { enableHighAccuracy: true, timeout: LOCATE_MS, maximumAge: 60e3 });
 }
 function onStack(event) {
   const b = event.target.closest('[data-view]'); if (!b) return;
-  ({ in: () => map.zoomIn(), out: () => map.zoomOut(), field: fit, here: () => locate(b), full: () => fullscreen(!ui.box.classList.contains('full')) })[b.dataset.view]();
+  ({ in: () => map.zoomIn(1, { animate: !motionQuiet() }), out: () => map.zoomOut(1, { animate: !motionQuiet() }), field: fit, here: () => locate(b), full: () => fullscreen(!ui.box.classList.contains('full')) })[b.dataset.view]();
+}
+
+// ---- what the Places panel asks of the map
+function goTo(spot) {
+  panels?.close(true);
+  keep.pin = { ...(keep.pin || {}), name: spot.name || '', country: spot.country || '' };
+  map.setView([spot.lat, spot.lon], 13, { animate: !motionQuiet() });
+  movePin(spot.lat, spot.lon, true);
+}
+function showOnMap(kind) {
+  if (kind === 'pin' && keep.pin) map.setView([keep.pin.lat, keep.pin.lon], Math.max(map.getZoom(), 14), { animate: !motionQuiet() });
+  else if (kind === 'area' && keep.ring) map.fitBounds(L.latLngBounds(keep.ring), { padding: [48, 48], animate: !motionQuiet() });
+  else return;
+  panels?.close(true);
 }
 
 // ---- the place from the wizard
@@ -308,19 +345,24 @@ function onPlace(event) {
   const same = keep.pin && keep.pin.lat === place.lat && keep.pin.lon === place.lon;
   keep.pin = { lat: place.lat, lon: place.lon, name: place.name || '', country: place.country || '' };
   lastSpot = `${place.lat},${place.lon}`;
+  prefetch(place.lat, place.lon, keep.ring);
   if (!same) { keep.ring = null; showOutline(); map.setView([place.lat, place.lon], 14, { animate: false }); }
   drawPin(); hint();
 }
 
 // ---- mounting
 function mount(root) {
-  if (map) { closeSpot(false); map.remove(); map = null; }
+  if (map) { closeSpot(false); gibsCtl?.dispose(); gibsCtl = null; panels?.dispose(); panels = null; baseCtl?.dispose(); baseCtl = null; map.remove(); map = null; }
   host = root; ui = shell(root); layers = {};
   map = L.map(ui.canvas, { zoomControl: false, attributionControl: false, zoomSnap: 1, worldCopyJump: true, keyboard: false, maxBoundsViscosity: 0, minZoom: 2, maxZoom: 19 });
-  L.tileLayer(SAT, { maxNativeZoom: 18, maxZoom: 19, attribution: SAT_CREDIT, crossOrigin: true }).addTo(map);
-  ui.credit.textContent = SAT_CREDIT;
-  const start = keep.pin ? { c: [keep.pin.lat, keep.pin.lon], z: 14 } : { c: WORLD.center, z: WORLD.zoom };
+  const start = keep.pin ? { c: [keep.pin.lat, keep.pin.lon], z: keep.zoom ?? 14 } : { c: WORLD.center, z: WORLD.zoom };   // the zoom the farmer chose survives the wizard redrawing the map
   map.setView(start.c, start.z, { animate: false });
+  map.on('zoomend', () => { keep.zoom = map.getZoom(); });
+  baseCtl = initBase(map, { segment: ui.base, credit: ui.credit, note: ui.baseNote }, { say });
+  panels = initPanels({ box: ui.box, right: ui.right, host: ui.panelHost }, { say, swallow: () => { tapSwallow = Date.now(); }, beforeOpen: () => closeSpot(false) });
+  panels.add(placesPanel({ pin: () => keep.pin, areaHa: () => (keep.ring ? areaHa(keep.ring) : null), areaWords: () => (keep.ring ? areaWords(areaHa(keep.ring), keep.units) : ''), goTo, show: showOnMap }));
+  gibsCtl = initLayers({ right: ui.right, legends: ui.legends }, { map: () => map, say, toast, groundIsVector: () => baseCtl?.state().ground === 'gl' });
+  panels.add(gibsCtl.def); gibsCtl.restore();
   const scale = L.control['scale']({   // the distance bar (not a CSS scale): written this way so the calm-motion rule does not mistake it for one
      position: 'bottomleft', maxWidth: 110, imperial: keep.units === 'us', metric: keep.units !== 'us' }).addTo(map);
   ui.box.append(scale.getContainer());   // the scale lives beside the map, not inside its oversized canvas, so the canvas holds no words to be cut off
@@ -329,6 +371,7 @@ function mount(root) {
   ui.reselect.addEventListener('click', reselect);
   ui.about.addEventListener('click', () => (spotOpen() ? closeSpot() : openCard('weather')));
   ui.canvas.addEventListener('pointerdown', onPointerDown);
+  ui.canvas.addEventListener('pointerdown', () => { map.options.inertia = !motionQuiet(); }, true);   // a pan stops where the hand stops under "Less" and "Still"
   ui.box.addEventListener('keydown', onKey);
   ui.box.addEventListener('pointerdown', () => { document.body.classList.remove('kbd-mode'); hint(); }, true);   // any pointer ends keyboard mode
   ui.box.addEventListener('focusin', event => { if (event.target === ui.box) { document.body.classList.add('kbd-mode'); hint(); } });
@@ -336,7 +379,9 @@ function mount(root) {
   map.on('click', onMapClick);
   ui.box.addEventListener('keydown', event => { if (event.target === ui.box && event.key.startsWith('Arrow')) { event.preventDefault(); const s = event.shiftKey ? PAN_BIG : PAN_STEP; map.panBy([event.key === 'ArrowLeft' ? -s : event.key === 'ArrowRight' ? s : 0, event.key === 'ArrowUp' ? -s : event.key === 'ArrowDown' ? s : 0], { animate: false }); } });
   drawPin(); showOutline(); setTool(keep.mode, true); ui.live.textContent = lastSaid;
-  new ResizeObserver(() => { map?.invalidateSize(); keepInside(); }).observe(ui.box);
+  const sized = new ResizeObserver(() => { map?.invalidateSize(); measureBars(); keepInside(); });
+  for (const e of [ui.box, ui.box.querySelector('.mapx-top'), ui.right]) sized.observe(e);
+  measureBars();
 }
 
 // Start watching: whenever the wizard draws a fresh #setupMap, the map is mounted in it. The wizard owns the shell; this owns what is inside.

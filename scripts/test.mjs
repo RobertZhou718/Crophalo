@@ -110,6 +110,11 @@ await group('the folder', async () => {
   // A dotted number such as 2026.10.23 is not read as a date: it is how some libraries number their versions, and a version keeps its own date.
   const DATA_DATES = {
     '2001-01-01': 'the first day of the NASA POWER daily weather record the app reads: a date of the data, not of the project',
+    '2025-12-31': 'the day FAO last published its crop production file: FAOSTAT\'s own date, which the money lookup reads from the service and says beside its figures',
+    '2026-10-09': 'the day FAO last published its farm-gate price file: FAOSTAT\'s own date, said beside the figures in the same way',
+    '2026-10-31': 'October 2026, the newest month of the World Bank\'s world crop prices and the month of FAO\'s price file (a month of the data, read as its last day)',
+    '2026-11-03': 'the day the World Bank last updated its Pink Sheet of world crop prices: the World Bank\'s own date, said beside each price',
+    '2025-08-31': 'August 2025, the last month the World Bank\'s Pink Sheet gave a barley price: the lookup marks that series stale and says the month',
   };
   const MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'], MONTH = '(Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec)[a-z]*\\.?';
   const iso = (y, m, d) => `${y}-${String(m).padStart(2, '0')}-${String(d).padStart(2, '0')}`, month = name => MONTHS.indexOf(name.slice(0, 3)) + 1;

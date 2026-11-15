@@ -31,13 +31,14 @@ export function openSpot(context, wanted = 'weather', from = null) {
   closeSpot(false);
   card = document.createElement('section');
   card.className = 'spot'; card.setAttribute('role', 'dialog'); card.tabIndex = -1; card.setAttribute('aria-labelledby', 'spotTitle');
+  card.style.opacity = '0';   // built now (its words are in the page), seen in the next frame once it has its place (see settle); opacity, not visibility, so its words still read as text
   ctx.box.append(card); ctx.box.classList.add('spot-open');
-  draw(); place(true);
-  card.focus({ preventScroll: true });
+  draw(); settle(true);
   ctx.say(`Weather card opened for ${title()}`.replace('Weather', tab === 'area' ? 'Area' : tab === 'sun' ? 'Sun' : 'Weather'));
 }
 export function closeSpot(refocus = true) {
   if (!card) return;
+  cancelAnimationFrame(raf); clearTimeout(timer); pendingFirst = false;
   card.remove(); card = null; ctx?.box.classList.remove('spot-open');
   if (refocus && opener?.isConnected) opener.focus();
 }
@@ -45,7 +46,7 @@ export function closeSpot(refocus = true) {
 export function refreshSpot() {
   if (!card) return;
   if (!tabsNow().includes(tab)) tab = 'weather';
-  draw(); place(false);
+  draw(); settle(false);
 }
 
 function draw() {
@@ -79,6 +80,22 @@ function pick(next, focus) {
 }
 
 // ---- placement and dragging
+// Asking the page for a size makes the browser lay the whole page out on the spot, in the middle of the tap that opened the card, after the outline, the pin and the setup have all changed it
+// (about 0.6 s on a slow phone: the whole wait between a finished rectangle and its first figure). So the card is built unseen with its words already in, and placed in the next frame, in one pass:
+// every read first, then every write. The figure is in the page at once; it is seen one frame later, in its place. A frame that never comes (a tab in the background) is covered by a short timer.
+let raf = 0, timer = 0, pendingFirst = false;
+function settle(first) {
+  pendingFirst ||= first;
+  cancelAnimationFrame(raf); clearTimeout(timer);
+  const run = () => {
+    cancelAnimationFrame(raf); clearTimeout(timer);
+    if (!card) return;
+    const opening = pendingFirst; pendingFirst = false;
+    place(opening);
+    if (card.style.opacity) { card.style.opacity = ''; if (opening) card.focus({ preventScroll: true }); }
+  };
+  raf = requestAnimationFrame(run); timer = setTimeout(run, 120);
+}
 const size = () => ({ w: card.offsetWidth, h: card.offsetHeight });
 const boxSize = () => ({ w: ctx.box.clientWidth, h: ctx.box.clientHeight });
 let spot = null;   // where the farmer left it, until the card closes
@@ -87,13 +104,13 @@ function place(first) {
   card.classList.toggle('bottom', narrow);
   if (narrow) { card.style.cssText = ''; card.style.left = `${MARGIN}px`; card.style.right = `${MARGIN}px`; card.style.bottom = '22px'; card.style.top = 'auto'; return; }
   card.style.right = 'auto'; card.style.bottom = 'auto'; card.style.width = `${WIDE}px`;
-  const p = spot ? clampCard(spot, size(), box, MARGIN, TOP, STACK_ROOM) : placeCard({ anchor: ctx.anchor(), size: { w: WIDE, h: s.h || 360 }, box, avoid: ctx.avoid() });
+  const top = ctx.top?.() ?? TOP, p = spot ? clampCard(spot, size(), box, MARGIN, top, STACK_ROOM) : placeCard({ anchor: ctx.anchor(), size: { w: WIDE, h: s.h || 360 }, box, avoid: ctx.avoid(), top });
   card.style.left = `${p.left}px`; card.style.top = `${p.top}px`;
   if (first && !motionOff()) card.classList.add('spot-in');
 }
 function moveBy(dx, dy) {
   if (card.classList.contains('bottom')) return;
-  const now = { left: card.offsetLeft + dx, top: card.offsetTop + dy }, p = clampCard(now, size(), boxSize(), MARGIN, TOP, STACK_ROOM);
+  const now = { left: card.offsetLeft + dx, top: card.offsetTop + dy }, p = clampCard(now, size(), boxSize(), MARGIN, ctx.top?.() ?? TOP, STACK_ROOM);
   spot = p; card.style.left = `${p.left}px`; card.style.top = `${p.top}px`;
 }
 function dragStart(event) {
@@ -102,7 +119,7 @@ function dragStart(event) {
   const el = event.currentTarget, from = { x: event.clientX, y: event.clientY, left: card.offsetLeft, top: card.offsetTop };
   el.setPointerCapture?.(event.pointerId);
   let frame = 0;
-  const move = e => { cancelAnimationFrame(frame); frame = requestAnimationFrame(() => { const p = clampCard({ left: from.left + e.clientX - from.x, top: from.top + e.clientY - from.y }, size(), boxSize(), MARGIN, TOP, STACK_ROOM); spot = p; card.style.left = `${p.left}px`; card.style.top = `${p.top}px`; }); };   // one move per frame
+  const move = e => { cancelAnimationFrame(frame); frame = requestAnimationFrame(() => { const p = clampCard({ left: from.left + e.clientX - from.x, top: from.top + e.clientY - from.y }, size(), boxSize(), MARGIN, ctx.top?.() ?? TOP, STACK_ROOM); spot = p; card.style.left = `${p.left}px`; card.style.top = `${p.top}px`; }); };   // one move per frame
   const up = () => { el.removeEventListener('pointermove', move); el.removeEventListener('pointerup', up); el.removeEventListener('pointercancel', up); };
   el.addEventListener('pointermove', move); el.addEventListener('pointerup', up); el.addEventListener('pointercancel', up);
 }
@@ -130,6 +147,7 @@ async function fillWeather(panel) {
     <p><button type="button" class="listen" id="spotListen" hidden><svg class="ic" aria-hidden="true"><use href="#i-speaker"/></svg><span class="t">Listen</span></button></p>
     <p>Today high ${esc(degrees(t.hi))}, low ${esc(degrees(t.lo))}${rain}${mm} ${srcButton('forecast', got.updated ? `Updated at ${got.updated}, local time at the field. The forecast for the 1 km square around your pin.` : 'The forecast for the 1 km square around your pin.')}</p>
     ${got.updated ? `<p class="cap">Updated at ${esc(got.updated)}, local time at the field.</p>` : ''}
+    <p class="cap spot-credit"><a href="https://open-meteo.com/" target="_blank" rel="noopener noreferrer">Weather data by Open-Meteo.com</a></p>
     <p class="spot-calm ${calm.ok === true ? 'ok' : calm.ok === false ? 'no' : ''}">${esc(calm.words)}</p>
     <ul class="spot-days">${got.days.slice(1).map(d => `<li><b>${esc(dayName(d.date))}</b> <span>${esc(conditionWords(d.code))}</span> <span>${esc(degrees(d.hi))} / ${esc(degrees(d.lo))}</span></li>`).join('')}</ul>
     <dl class="spot-rows"><div><dt>Height</dt><dd>${got.elevation == null ? 'not available' : `${Math.round(got.elevation)} m (weather model)`}</dd></div><div><dt>Spot</dt><dd>${esc(pinWords(pin.lat, pin.lon).replace('Pin at ', ''))}</dd></div></dl>`;

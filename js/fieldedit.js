@@ -175,3 +175,73 @@ export function saveTable(env) {
   const { farm } = env.get(), rows = S.fieldRows(farm).map(r => ({ name: r.name, ha: r.ha, crop: r.crop ? env.cropName(r.crop) : '', water: r.water || '', fit: r.fit.state === 'scored' ? r.fit.words : r.fit.words, hurt: '', reminders: 0 }));
   if (download(IO.fileNames(farm).csv, IO.writeCSV(rows), 'text/csv')) env.toast('Fields table saved as a spreadsheet (CSV).'); else env.toast('This browser could not save the file.');
 }
+
+// ---- adding a field: draw it, or a square of a chosen size; the same checks as moving corners, then the Plant sheet opens
+export const SQUARES = Object.freeze({
+  metric: [['Garden bed, 0.06 ha', 0.06], ['1 ha', 1], ['5 ha', 5], ['10 ha', 10], ['25 ha', 25], ['50 ha', 50]],
+  us: [['Garden bed, 0.15 acre', 0.15 / 2.471054], ['1 acre', 1 / 2.471054], ['2.5 acres', 2.5 / 2.471054], ['10 acres', 10 / 2.471054], ['40 acres', 40 / 2.471054], ['80 acres', 80 / 2.471054], ['160 acres', 160 / 2.471054]],
+});
+// A square goes at the map's centre when that is within 10 km of the pin, else around the pin.
+export const squareCentre = (farm, centre) => S.distanceM([farm.pin.lat, farm.pin.lon], centre) / 1000 <= S.LIMITS.nearKm ? centre : [farm.pin.lat, farm.pin.lon];
+export function renderAdd(env) {
+  const { farm } = env.get(), full = farm.fields.length >= S.LIMITS.fields, p = env.panel, sizes = SQUARES[env.units?.() === 'us' ? 'us' : 'metric'];
+  p.innerHTML = `<div class="fw-panel-head"><div><h2 id="fwPanelTitle" tabindex="-1">Add a field</h2><p class="fw-sub">${full ? 'A farm holds up to 40 fields.' : `${esc(farm.name)} holds up to 40 fields.`}</p></div><button type="button" class="btn lg" id="fwClose">Close</button></div>
+  <div class="fw-addlist"><button type="button" class="btn lg" data-add="draw" ${full ? 'disabled' : ''}>Draw its shape<small>Tap each corner, then Finish</small></button>
+  <button type="button" class="btn lg" data-add="file" ${full ? 'disabled' : ''}>Bring in a map file<small>A .geojson or .kml file, read on this device and sent nowhere</small></button></div>
+  <h3>Square around the cross</h3><p class="fw-muted">The square goes at the middle of the map, where the cross shows when you use the keyboard.</p>
+  <div class="fw-sizes">${sizes.map(([label, ha]) => `<button type="button" class="btn lg" data-ha="${ha}" ${full ? 'disabled' : ''}>${esc(label)}</button>`).join('')}</div>`;
+  p.querySelector('#fwClose').onclick = () => env.closePanel();
+  p.querySelector('[data-add=draw]').onclick = () => env.startDraw();
+  p.querySelector('[data-add=file]').onclick = () => env.chooseFile();
+  for (const b of p.querySelectorAll('[data-ha]')) b.onclick = () => addSquare(env, +b.dataset.ha);
+  p.querySelector('#fwPanelTitle').focus();
+}
+function addSquare(env, ha) {
+  const { farm } = env.get(), c = squareCentre(farm, [env.map.getCenter().lat, env.map.getCenter().lng]);
+  proposeField(env, S.squareAround(c[0], c[1], ha));
+}
+// The checks in the order the farmer meets them: the outline itself, too far, an overlap (asks first), then it joins the farm and the Plant sheet opens.
+export function proposeField(env, ring) {
+  const { farm } = env.get(), chk = S.checkNewOutline(farm, ring, { units: env.units?.() || 'metric' });
+  if (!chk.ok) { env.toast(chk.refused || chk.reason); return false; }
+  const join = () => {
+    const res = S.addField(env.get().store, farm.id, { ring });
+    if (res.refused) { env.toast(res.refused); return; }
+    env.closePanel(true); env.commit(res.store, `${res.field.name} added, ${areaWords(res.field.area)}`);
+    env.say(`${res.field.name} added, ${areaWords(res.field.area)}.${chk.note ? ' ' + chk.note : ''}`); env.afterAdd(res.field.id);
+  };
+  if (!chk.overlap) { join(); return true; }
+  const p = env.panel; env.openPanel('confirm');
+  p.innerHTML = `<div class="fw-panel-head"><h2 id="fwPanelTitle" tabindex="-1">This overlaps another field</h2></div><p>${esc(chk.overlap.words)}</p><div class="fw-actions"><button type="button" class="btn lg primary" data-keep>Keep both</button><button type="button" class="btn lg" data-cancel>Cancel</button></div>`;
+  p.querySelector('#fwPanelTitle').focus();
+  p.querySelector('[data-keep]').onclick = join; p.querySelector('[data-cancel]').onclick = () => env.closePanel();
+  return true;
+}
+export function startDraw(env) {
+  const L = env.L, pts = [];
+  const line = L.polyline([], { color: NAVY, weight: 3, dashArray: '6 6', interactive: false }).addTo(env.layer), shape = L.polygon([], { color: NAVY, weight: 3, fillOpacity: .12, interactive: false }).addTo(env.layer), dots = L.layerGroup().addTo(env.layer);
+  const leave = () => { hideBar(env); env.finish(); };
+  const refresh = () => {
+    dots.clearLayers(); for (const p of pts) L.circleMarker(p, { radius: 7, color: '#fff', weight: 2, fillColor: NAVY, fillOpacity: 1, interactive: false }).addTo(dots);
+    line.setLatLngs(pts); shape.setLatLngs(pts.length >= 3 ? pts : []);
+    const n = pts.length;
+    env.bar.innerHTML = `<p class="fw-editline" role="status">${n ? `${n} corner${n === 1 ? '' : 's'}` : 'Tap each corner of your field'}</p><div class="fw-editbtns">${btn('centre', 'Corner at centre')}${btn('undo', 'Undo')}${btn('finish', 'Finish', 'btn lg primary')}${btn('cancel', 'Cancel drawing')}</div>`;
+    env.bar.querySelector('[data-bar=finish]').disabled = n < 3; env.bar.querySelector('[data-bar=undo]').disabled = !n;
+  };
+  const add = ll => { if (pts.length >= S.LIMITS.corners[1]) return env.toast('Up to 100 corners.'); pts.push([S.round5(ll.lat), S.round5(ll.lng)]); refresh(); env.say(`Corner ${pts.length} added`); };
+  const finish = () => {
+    if (pts.length < 3) return env.toast('It needs at least 3 corners.');
+    const issue = S.outlineIssue(pts, env.units?.() || 'metric');
+    if (issue) return env.toast(issue);   // a refused outline stays on the map to be fixed with Undo
+    if (proposeField(env, pts.map(p => [...p]))) { hideBar(env); env.finish(); }
+  };
+  env.bar.onclick = e => { const b = e.target.closest('[data-bar]'); if (!b) return; ({ centre: () => add(env.map.getCenter()), undo: () => { pts.pop(); refresh(); }, finish, cancel: leave })[b.dataset.bar]?.(); };
+  env._tap = e => add(e.latlng); env.map.on('click', env._tap);
+  env._key = e => {
+    if (e.key === 'Escape') { e.preventDefault(); e.stopPropagation(); if (pts.length) { pts.pop(); refresh(); env.say(`Last corner removed. ${pts.length} left.`); } else { leave(); env.say('Drawing stopped.'); } }
+    else if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'z' && pts.length) { e.preventDefault(); pts.pop(); refresh(); }
+  };
+  document.addEventListener('keydown', env._key, true);
+  env.bar.hidden = false; env.bar.setAttribute('aria-label', 'Draw a field'); refresh();
+  env.say('Drawing a field. Tap each corner, then Finish. With the keyboard: move the map with the arrow keys, then Corner at centre.');
+}

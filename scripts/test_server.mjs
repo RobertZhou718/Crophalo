@@ -250,8 +250,10 @@ async function statusRoutes(A) {
   same('health: the saved-fields copy is off until its route exists', h.userdata, false);
   check('health: uptime in whole seconds', Number.isInteger(h.uptime_s) && h.uptime_s >= 0, show(h.uptime_s));
   const ROWS = [['smaproot', 'NASA SMAP root-zone soil moisture', 6], ['dem', 'Land heights (the finest free height map)', 720], ['imergrain', 'NASA GPM IMERG satellite rain, last 30 days', 6], ['gracecell', 'NASA GRACE-FO regional water storage', 168],
-    ['ecopass', 'NASA ECOSTRESS ground temperature passes', 6], ['hlsndvi', 'NASA HLS greenness (Landsat and Sentinel-2)', 24], ['cropsnear', 'Crops grown nearby (AAFC and USDA crop maps)', 720]];   // id, name, hours a whole answer is kept
-  same('health: the seven lookups the server has, each with how long a whole answer is kept, never run yet', h.live, Object.fromEntries(ROWS.map(([id, , hours]) => [id, { last_ok: null, error: null, ttl_hours: hours }])));
+    ['ecopass', 'NASA ECOSTRESS ground temperature passes', 6], ['hlsndvi', 'NASA HLS greenness (Landsat and Sentinel-2)', 24], ['cropsnear', 'Crops grown nearby (AAFC and USDA crop maps)', 720],
+    ['prices', 'World crop prices (World Bank Pink Sheet)', 24], ['faostat', 'National crop yields and farm-gate prices (FAOSTAT)', 24],
+    ['ndvihist', 'NASA MODIS greenness since 2001, each season at its greenest', 720], ['firms', 'NASA FIRMS fires and hot spots, last 24 hours', 3]];   // id, name, hours a whole answer is kept
+  same('health: the eleven lookups the server has, each with how long a whole answer is kept, never run yet', h.live, Object.fromEntries(ROWS.map(([id, , hours]) => [id, { last_ok: null, error: null, ttl_hours: hours }])));
   check('health never holds the login itself', !health.text.includes(USER) && !health.text.includes(WORD));
   const named = await askJson(p, '/api/health', { headers: { host: 'uptime-checker.example', origin: 'https://uptime-checker.example' } });
   same('health answers for any Host name', [named.status, named.json?.ok], [200, true]);

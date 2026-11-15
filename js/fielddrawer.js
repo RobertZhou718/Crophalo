@@ -100,7 +100,7 @@ export function planFromDraft(draft, year) {
 export const dayMonthToMD = (day, month) => Number.isInteger(+day) && +day >= 1 && +day <= 31 && +month >= 1 && +month <= 12 ? `${String(month).padStart(2, '0')}-${String(day).padStart(2, '0')}` : '';
 
 // ---- the page part: one drawer, rendered into the node given
-const st = { tab: 'check', sheet: '', draft: null, step: 0 };   // the last tab is kept for the visit, not across a reload
+const st = { tab: 'check', sheet: '', draft: null, step: 0, copy: new Set() };   // the last tab is kept for the visit, not across a reload
 export const drawerState = st;
 function model(env) {
   const { farm, field } = env.get(), today = env.today(), plan = S.planOf(farm, field.id), crop = S.thisSeasonCrop(farm, field, { year: plan?.start || undefined });
@@ -121,7 +121,7 @@ function tabBody(tab, m, env) {
   if (tab === 'check') {
     const sc = m.score;
     const parts = sc.parts ? `<ul class="fw-bars">${Object.entries({ water: 'Water fit', soil: 'Soil health', income: 'Income', safety: 'Weather safety' }).map(([k, l]) => `<li>${l}: ${Number.isFinite(sc.parts[k]) ? `${Math.round(sc.parts[k])} out of 100` : 'not read yet'}</li>`).join('')}</ul>` : '<p class="fw-muted">How the score is made: not read yet.</p>';
-    return ans + todoHTML(tab, m) + `<p>${btn('plant', m.crop || f.kind === 'garden' ? 'Change crop…' : 'Plant…')}</p><details class="fw-fold"><summary>How the score is made</summary>${parts}</details>
+    return ans + todoHTML(tab, m) + `<div class="fw-btnrow">${btn('plant', m.crop || f.kind === 'garden' ? 'Change crop…' : 'Plant…')}${S.planOf(m.farm, f.id) && m.farm.fields.some(o => o.id !== f.id && o.kind === 'rot') ? btn('copy', 'Copy this plan to other fields') : ''}</div><details class="fw-fold"><summary>How the score is made</summary>${parts}</details>
       <details class="fw-fold"><summary>Bare soil</summary><p>${sc.bareMonths != null ? `Bare about ${sc.bareMonths} months a year (lower is better).` : 'Not read yet.'}</p></details>
       <details class="fw-fold"><summary>Crop sales</summary><p>${sc.sales && Number.isFinite(sc.sales.perYear) ? `About ${Math.round(sc.sales.perYear).toLocaleString('en-CA')} a year before costs. An estimate from typical figures, not a promise.` : 'Not worked out: a yield or a price is missing.'}</p></details>`;
   }
@@ -129,7 +129,7 @@ function tabBody(tab, m, env) {
     const soil = f.soil ? `${cap(f.soil.texture)} soil, ${f.soil.om} organic matter${f.soil.assumed ? '. Assumed until a real soil answers.' : f.soil.source ? `. Source: ${esc(f.soil.source)}.` : ''}` : 'Not known yet.';
     const land = f.terrain ? `About ${f.terrain.slope.toFixed(1)}%, ${slopeWords(f.terrain.slope)}.${f.terrain.hMin != null ? ` Height ${Math.round(f.terrain.hMin)} to ${Math.round(f.terrain.hMax)} m.` : ''}` : f.marks?.slope != null ? `${f.marks.slope.toFixed(1)}%, from you.` : 'Not read yet. It is read by itself when you are online.';
     return ans + todoHTML(tab, m) + `<h3>The land</h3><dl class="fw-dl"><dt>Size</dt><dd>${areaWords(f.area)}${f.estimated ? ' (estimated outline)' : ''}</dd><dt>Slope</dt><dd>${esc(land)}</dd></dl>
-      <h3>Soil</h3><p>${esc(soil)}</p>${btn('soil', f.soil ? 'Change the soil' : 'Choose the soil')} ${btn('land', 'Slope you measured')}
+      <h3>Soil</h3><p>${esc(soil)}</p><div class="fw-btnrow">${btn('soil', f.soil ? 'Change the soil' : 'Choose the soil')}${btn('land', 'Slope you measured')}</div>
       <details class="fw-fold"><summary>Sun and shade</summary><p>Not read yet.</p></details>
       <details class="fw-fold"><summary>Same for the whole farm</summary><p>Soil moisture, groundwater and the crops grown nearby: not read yet.</p></details>`;
   }
@@ -145,6 +145,7 @@ export function renderDrawer(env) {
   if (!field) { node.innerHTML = ''; return; }
   if (st.sheet === 'plant') return renderPlant(env);
   if (st.sheet === 'soil') return renderSoil(env);
+  if (st.sheet === 'copy') return renderCopy(env);
   if (st.sheet === 'land') return renderLand(env);
   const m = model(env), now = fieldNow(m);
   node.innerHTML = `<div class="fw-panel-head"><div><h2 id="fwPanelTitle" tabindex="-1">${esc(field.name)}</h2><p class="fw-sub">${esc(summaryLine(m))}</p></div><button type="button" class="btn lg" id="fwClose" aria-label="Close field details">Close</button></div>
@@ -172,6 +173,7 @@ function act(env, m, id) {
   if (id === 'plant') { st.sheet = 'plant'; st.step = 0; st.draft = { crop: '', sowing: '', water: S.planOf(farm, field.id)?.water || farm.practice.irrigation, cover: '', tree: '' }; renderDrawer(env); node(env).focus(); }
   else if (id === 'soil') {   // an assumed soil is not the farmer's choice, so nothing starts ticked
     st.sheet = 'soil'; const own = field.soil && !field.soil.assumed ? field.soil : null; st.draft = { texture: own?.texture || '', om: own && typeof own.om === 'string' ? own.om : '' }; renderDrawer(env); node(env).focus(); }
+  else if (id === 'copy') { st.sheet = 'copy'; st.copy = new Set(); renderDrawer(env); node(env).focus(); }
   else if (id === 'land') { st.sheet = 'land'; renderDrawer(env); node(env).focus(); }
   else if (id === 'forecast') { st.tab = 'weather'; renderDrawer(env); env.node.querySelector('#fwtab-weather')?.focus(); }
   else if (id === 'remind') { const s = nextSowing(field, m.today, env.cropName); if (s && env.reminders?.add) addReminder(env, { title: `Sow ${env.cropName(s.crop).toLowerCase()}`, when: s.date, kind: 'sow' }); else { st.tab = 'remind'; renderDrawer(env); } }
@@ -210,7 +212,7 @@ function renderPlant(env) {
   const ok = !!d.crop;
   env.node.innerHTML = `<div class="fw-panel-head"><div><h2 id="fwPanelTitle" tabindex="-1">Plant · ${esc(field.name)}</h2><p class="fw-sub">Step ${st.step + 1} of 4: ${STEPS[st.step]} · ${areaWords(field.area)}</p></div></div>
   <div class="fw-stepbar" role="group" aria-label="Steps">${stepBtns}</div><div class="fw-sheetbody">${body}</div><p class="fw-err" id="fwPlantErr" role="alert"></p>
-  <div class="fw-actions">${st.step < 3 ? btn('next', 'Next') : ''}${btn('save', ok ? 'Save the plan' : 'Choose a crop first', ok ? 'btn lg primary' : 'btn lg')}<button type="button" class="btn lg" data-act="back">Back</button></div>`;
+  <div class="fw-actions"><button type="button" class="btn lg" data-act="back">Back</button>${st.step < 3 ? btn('next', 'Next') : ''}${btn('save', ok ? 'Save the plan' : 'Choose a crop first', ok ? 'btn lg primary' : 'btn lg')}</div>`;
   const q = s => env.node.querySelector(s);
   for (const r of env.node.querySelectorAll('input[name=crop]')) r.onchange = () => { d.crop = r.value; renderPlant(env); env.node.querySelector(`input[name=crop][value="${CSS.escape(d.crop)}"]`)?.focus(); };
   q('#fwCrop')?.addEventListener('change', e => { d.crop = e.target.value; renderPlant(env); q('#fwCrop')?.focus(); });
@@ -265,4 +267,30 @@ function renderLand(env) {
   env.node.querySelector('[data-act=clear]')?.addEventListener('click', () => { const res = S.setMarks(env.get().store, farm.id, field.id, null); env.commit(res.store, 'Your land marks were cleared. The height map is used again.'); leave(env, '[data-act=land]'); });
   env.node.querySelector('[data-act=back]').onclick = () => leave(env, '[data-act=land]');
 }
+// ---- Copy this rotation to the fields ticked (their plans are replaced; one Undo)
+function renderCopy(env) {
+  const { farm, field } = env.get(), plan = S.planOf(farm, field.id), others = S.naturalSort(farm.fields.filter(o => o.id !== field.id && o.kind === 'rot')), none = others.filter(o => !S.planOf(farm, o.id));
+  const crops = (plan?.seasons || []).map(x => env.cropName(x.crop).toLowerCase()).join(' → ');
+  env.node.innerHTML = `<div class="fw-panel-head"><h2 id="fwPanelTitle" tabindex="-1">Copy to other fields</h2></div>
+  <p>Copy this rotation (${esc(crops)}) to the fields you tick. Their plans are replaced. You can undo it.</p>
+  <div class="fw-chips" role="group" aria-label="Pick fields"><button type="button" class="fw-chipb" data-pick="all">All fields</button><button type="button" class="fw-chipb" data-pick="bare">Fields without a plan (${none.length})</button><button type="button" class="fw-chipb" data-pick="none">None</button></div>
+  <p class="fw-answer" id="fwCopyLine" role="status"></p>
+  <ul class="fw-list">${others.map(o => `<li><label class="fw-tick"><input type="checkbox" data-copy="${esc(o.id)}" ${st.copy.has(o.id) ? 'checked' : ''}><span><b>${esc(o.name)}</b><br><small>${areaWords(o.area)}${S.planOf(farm, o.id) ? '' : ' · no plan yet'}</small></span></label></li>`).join('')}</ul>
+  <p class="fw-err" id="fwCopyErr" role="alert"></p><div class="fw-actions"><button type="button" class="btn lg primary" data-act="docopy">Copy</button><button type="button" class="btn lg" data-act="back">Back</button></div>`;
+  const line = () => { const n = st.copy.size; env.node.querySelector('#fwCopyLine').textContent = n ? `${n} field${n === 1 ? '' : 's'} ticked` : 'No field ticked'; };
+  const sync = () => { for (const c of env.node.querySelectorAll('[data-copy]')) c.checked = st.copy.has(c.dataset.copy); line(); };
+  for (const c of env.node.querySelectorAll('[data-copy]')) c.onchange = () => { c.checked ? st.copy.add(c.dataset.copy) : st.copy.delete(c.dataset.copy); line(); };
+  env.node.querySelector('[data-pick=all]').onclick = () => { st.copy = new Set(others.map(o => o.id)); sync(); };
+  env.node.querySelector('[data-pick=bare]').onclick = () => { st.copy = new Set(none.map(o => o.id)); sync(); };
+  env.node.querySelector('[data-pick=none]').onclick = () => { st.copy = new Set(); sync(); };
+  env.node.querySelector('[data-act=back]').onclick = () => leave(env, '[data-act=copy]');
+  env.node.querySelector('[data-act=docopy]').onclick = () => {
+    const res = S.copyPlan(env.get().store, farm.id, field.id, [...st.copy]);
+    if (res.refused) { env.node.querySelector('#fwCopyErr').textContent = res.refused; return; }
+    env.commit(res.store, `Copied to ${res.count} field${res.count === 1 ? '' : 's'}`); leave(env, '[data-act=copy]');
+  };
+  line();
+}
+// A new field arrives with its Plant sheet open.
+export function startPlant(env) { const { farm } = env.get(); st.sheet = 'plant'; st.step = 0; st.draft = { crop: '', sowing: '', water: farm.practice.irrigation, cover: '', tree: '' }; renderDrawer(env); node(env)?.focus(); }
 export const resetDrawer = () => { st.sheet = ''; st.draft = null; st.step = 0; };

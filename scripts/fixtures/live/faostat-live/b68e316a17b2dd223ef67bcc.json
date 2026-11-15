@@ -1,0 +1,16 @@
+{
+ "method": "HEAD",
+ "url": "https://bulks-faostat.fao.org/production/Prices_E_All_Data.zip",
+ "recorded": "2026-11-14T23:26:36Z",
+ "hand_made": false,
+ "replies": [
+  {
+   "status": 200,
+   "headers": {
+    "content-type": "application/x-zip-compressed",
+    "content-length": "8440591",
+    "last-modified": "Fri, 09 Oct 2026 16:06:27 GMT"
+   }
+  }
+ ]
+}

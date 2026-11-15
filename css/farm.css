@@ -82,7 +82,7 @@
   .fw-date { flex: 1 1 100%; }
 }
 @media (prefers-reduced-motion: reduce), (hover: none) and (max-width: 0px) { .fw * { transition: none !important; animation: none !important; } }
-html[data-motion=reduce] .fw * { transition: none !important; animation: none !important; }
+html[data-motion=reduce] .fw, html[data-motion=reduce] .fw * { transition: none !important; animation: none !important; }
 /* the field drawer */
 .fw-sub { margin: 2px 0 0; font-size: var(--fs-small); color: var(--ink2); }
 .fw-now { display: grid; gap: 6px; margin: var(--space-8) 0; padding: var(--space-12); border-radius: var(--r1); background: var(--accent-soft); font-size: var(--fs-small); }
@@ -123,3 +123,133 @@ html[data-motion=reduce] .fw * { transition: none !important; animation: none !i
 .fw-handle i { width: 18px; height: 18px; border-radius: 50%; background: #fff; border: 3px solid var(--shade); box-shadow: 0 1px 3px rgba(0,0,0,.4); }
 .fw-handle.is-chosen i { width: 24px; height: 24px; background: var(--accent); border-color: #fff; }
 .fw-tick { display: flex; align-items: center; gap: 10px; min-height: var(--touch); width: 100%; } .fw-tick input { width: 22px; height: 22px; flex: none; }
+/* a panel never covers the picture on a wide screen: the map and the 3D view make room for it; on a phone the sheet can be lowered */
+@media (min-width: 701px) { .fw-stage.has-panel .fw-map, .fw-stage.has-panel .fw-3d { right: min(420px, 100%); } .fw-stage.panel-wide.has-panel .fw-map, .fw-stage.panel-wide.has-panel .fw-3d { right: min(640px, 100%); } .fw-panel.wide { width: min(640px, 100%); } }
+.fw-lower { display: none; }
+@media (max-width: 700px) { .fw-lower { display: inline-flex; } .fw-panel.is-low > :not(.fw-panel-head) { display: none; } .fw-panel.is-low { max-height: none; padding-bottom: var(--space-8); } }
+.fw-chips { display: flex; flex-wrap: wrap; gap: 6px; margin: var(--space-8) 0; }
+.fw-chipb { min-width: var(--touch); min-height: var(--touch); padding: 0 14px; border: 0; border-radius: var(--r-chip); background: var(--fill); font: inherit; font-size: var(--fs-small); color: var(--ink); cursor: pointer; } .fw-chipb[aria-pressed=true] { background: var(--accent); color: var(--accent-ink); }
+.fw-tablewrap { overflow-x: auto; margin: var(--space-8) 0; } .fw-table { width: 100%; border-collapse: collapse; font-size: var(--fs-small); }
+.fw-table th, .fw-table td { padding: 6px 8px; text-align: left; vertical-align: middle; border-bottom: .5px solid var(--sep); } .fw-table tfoot th, .fw-table tfoot td { font-weight: var(--fw-semi); }
+.fw-sortb { min-width: var(--touch); min-height: var(--touch); padding: 0 6px; border: 0; background: none; font: inherit; font-weight: var(--fw-semi); color: var(--ink); cursor: pointer; }
+.fw-small { font-size: var(--fs-small); }
+.fw-addlist { display: grid; gap: 8px; } .fw-addlist .btn { flex-direction: column; align-items: flex-start; height: auto; padding: 10px 14px; text-align: left; } .fw-addlist small { font-weight: var(--fw-regular); color: var(--ink2); }
+.fw-sizes { display: flex; flex-wrap: wrap; gap: 8px; }
+/* the farm chip and the My farms list */
+.fw-farmchip { flex: 0 1 auto; max-width: 100%; justify-content: flex-start; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.fw-farmchip[hidden] { display: none; }
+.fw-row { width: 100%; height: auto; justify-content: space-between; padding: 8px 14px; text-align: left; }
+.fw-row small { color: var(--ink2); font-weight: var(--fw-regular); }
+.fw-row[aria-current=true] { box-shadow: 0 0 0 2px var(--accent); }
+.fw-tickmark { color: var(--accent-text); font-size: 1.3em; }
+.fw-farms li { display: block; padding: 0; background: none; }
+/* the chips: one slim row; on a phone it slides sideways inside itself and the page never does */
+.fw-chiprow { display: flex; gap: 8px; margin-top: var(--space-8); padding-bottom: 2px; overflow-x: auto; scrollbar-width: none; overscroll-behavior-x: contain; }
+.fw-chiprow[hidden] { display: none; }
+.fw-valchip { flex: none; display: grid; align-content: center; min-width: 44px; min-height: var(--touch); padding: 4px 12px; border: 0; border-radius: var(--r-chip); background: var(--card); box-shadow: var(--shadow-ctl); font: inherit; color: var(--ink); text-align: left; cursor: pointer; line-height: 1.15; }
+.fw-valchip small { font-size: var(--fs-micro); color: var(--ink2); } .fw-valchip b { font-size: var(--fs-small); font-weight: var(--fw-semi); }
+.fw-valchip[data-state=unread] b { font-weight: var(--fw-medium); color: var(--ink2); }
+.fw-valchip[aria-expanded=true], .fw-valchip:focus-visible { box-shadow: 0 0 0 2px var(--accent); }
+.fw-srcline { display: flex; align-items: center; gap: 8px; color: var(--ink2); font-size: var(--fs-small); }
+/* fit at the narrow widths and the largest text: room between neighbours, menus that stay on the screen */
+.fw-btnrow { display: flex; flex-wrap: wrap; gap: 8px; margin: var(--space-8) 0; }
+.fw-menu { display: grid; gap: 2px; max-width: calc(100vw - 2 * var(--space-12)); }
+.fw-fold select, .fw-fold label, .fw-fold .btn { margin-block: 4px; }
+.fw-sheetbody > *, .fw-form > * { min-width: 0; }
+/* the time bar at the board's foot: the season arrows, the month slider */
+.fw-strip { position: absolute; z-index: 1000; left: var(--space-12); right: var(--space-12); bottom: var(--space-12); display: grid; gap: 6px; padding: 8px 12px; border-radius: var(--r1); background: var(--bar-glass); box-shadow: var(--shadow-lg); }
+.fw-strip[hidden] { display: none; }
+.fw-season { display: flex; align-items: center; justify-content: space-between; gap: 8px; } .fw-season b { font-size: var(--fs-small); text-align: center; flex: 1 1 auto; }
+.fw-month { display: flex; align-items: center; gap: 8px; min-width: 0; } .fw-month input[type=range] { flex: 1 1 80px; min-width: 0; height: var(--touch); accent-color: var(--accent); }
+.fw-month output { flex: none; min-width: 7.5em; font-size: var(--fs-small); font-weight: var(--fw-semi); text-align: right; }
+.fw-stage.has-strip .leaflet-bottom { bottom: 112px; }
+.fw.has-strip .fw-toast { bottom: 124px; }
+.fw-plate-state { color: var(--accent-text); font-weight: var(--fw-medium); }
+@media (min-width: 701px) { .fw-stage.has-panel .fw-strip { right: calc(min(420px, 100%) + var(--space-12)); } .fw-stage.panel-wide.has-panel .fw-strip { right: calc(min(640px, 100%) + var(--space-12)); } .fw-strip { grid-template-columns: auto 1fr; align-items: center; } }
+.fw-plate small { display: block; }
+@media (max-width: 700px) { .fw-month { flex-wrap: wrap; } .fw-month output { order: 3; flex: 1 0 100%; text-align: center; min-width: 0; } .fw-season b { min-width: 0; overflow-wrap: anywhere; } .fw-season .btn { padding-inline: 10px; } }
+.fw-strip > *, .fw-season > *, .fw-month > * { min-width: 0; }
+
+/* ---- the look pass: one rhythm of space, one toolbar height, a sheet that really sits on top, a bar that does not eat the map ---- */
+.fw-hud { padding: var(--space-12) var(--gutter) var(--space-12); }
+.fw-finding { margin: var(--space-8) 0 0; }
+.fw-chiprow { margin-top: var(--space-12); align-items: stretch; padding-bottom: 0; }
+.fw-valchip { align-content: start; }
+.fw-bar { padding: var(--space-8) var(--gutter); gap: var(--space-8); }
+.fw-seg { padding: 2px; } .fw-segb { border-radius: calc(var(--r-seg) - 2px); }
+.fw-tool { min-height: 48px; }
+.fw-stage { z-index: 1; }
+.fw-bar { z-index: 5; }
+.fw-fold { margin: 2px 0; border-top: .5px solid var(--sep2); } .fw-fold:last-of-type { border-bottom: .5px solid var(--sep2); }
+.fw-fold summary { min-height: var(--touch); }
+.fw-panel h3 { margin: var(--space-16) 0 var(--space-4); }
+.fw-panel p { margin: 0 0 var(--space-8); }
+.fw-panel .fw-sub { margin: 2px 0 0; }
+.fw-err:empty { display: none; }
+.fw-err { min-height: 0; margin: 0; }
+.fw-form { gap: var(--space-8); margin-bottom: var(--space-8); }
+.fw-radios { margin: var(--space-12) 0 0; gap: 2px; }
+.fw-panel .btn { margin: 0; } .fw-panel .fw-muted + .btn, .fw-panel p + .btn { margin-top: var(--space-4); }
+.fw-actions { margin-top: var(--space-16); }
+.fw-answer { margin: var(--space-12) 0 var(--space-8); }
+.fw-now { margin: var(--space-12) 0; }
+.fw-tabs { margin: var(--space-12) 0; }
+.fw-stepbar { margin-bottom: var(--space-12); }
+/* the compare days stand in a list, each with its name and its date, so a long name never breaks inside a word */
+.fw-stepper { display: grid; grid-template-columns: 1fr 1fr; grid-template-areas: "prev next" "steps steps"; gap: 6px; }
+.fw-stepper #fwPrev { grid-area: prev; } .fw-stepper #fwNext { grid-area: next; } .fw-stepper .fw-steps { grid-area: steps; grid-template-columns: 1fr; }
+.fw-step { grid-template-columns: 1fr auto; align-items: center; text-align: left; padding: 6px 12px; column-gap: 12px; }
+.fw-step span { overflow-wrap: normal; }
+/* the time bar: the season and the month in the middle, the arrows at the sides, one row on a wide screen */
+.fw-strip { gap: var(--space-8); padding: var(--space-8) var(--space-12); }
+.fw-season { display: grid; grid-template-columns: 96px 1fr 96px; align-items: center; gap: 8px; }
+.fw-when { display: grid; justify-items: center; line-height: 1.2; min-width: 0; } .fw-when b { font-size: var(--fs-small); } .fw-when output { min-width: 0; text-align: center; font-size: var(--fs-small); color: var(--ink2); font-weight: var(--fw-regular); }
+.fw-month { display: grid; grid-template-columns: auto 1fr auto; align-items: center; gap: 8px; }
+.fw-month output { display: none; }
+.fw-season .btn { padding-inline: 8px; }
+@media (min-width: 701px) { .fw-strip { grid-template-columns: 340px 1fr; gap: var(--space-16); } }
+.fw-handle:focus-visible { border-radius: 50%; }
+@media (max-width: 700px) {
+  .fw-hud { padding: var(--space-8) var(--space-12); }
+  .fw-row { gap: var(--space-8); }
+  .fw-farmchip { flex: 0 1 38%; } .fw-pick { flex: 1 1 0; min-width: 120px; }
+  .fw-date { flex: 0 0 auto; } .fw-compare { flex: 1 1 140px; }
+  .fw-finding { font-size: var(--fs-small); margin-top: var(--space-4); }
+  .fw-chiprow { margin-top: var(--space-8); -webkit-mask-image: linear-gradient(90deg, #000 calc(100% - 24px), transparent); mask-image: linear-gradient(90deg, #000 calc(100% - 24px), transparent); padding-right: 24px; }
+  .fw-bar { padding: var(--space-4) var(--space-12); }
+  .fw-stage.has-panel { z-index: 20; }
+  .fw-strip { left: var(--space-8); right: var(--space-8); bottom: var(--space-8); padding: var(--space-4) var(--space-8); gap: 2px; }
+  .fw-season { grid-template-columns: 84px 1fr 84px; } .fw-season .btn, .fw-month .btn { min-height: 40px; height: 44px; }
+  .fw-stage.has-strip .leaflet-bottom { bottom: 104px; }
+  .fw .fw-toast { bottom: 112px; }
+  .fw-table, .fw-table tbody, .fw-table tfoot, .fw-table tr { display: block; }
+  .fw-table thead { display: none; }
+  .fw-table tr { display: grid; grid-template-columns: 1fr 1fr; gap: 2px 12px; margin: 0 0 var(--space-8); padding: var(--space-8) var(--space-12); border-radius: var(--r1); background: var(--card2); box-shadow: var(--shadow); }
+  .fw-table th[scope=row] { grid-column: 1 / -1; display: block; padding: 0; border: 0; background: none; font-size: var(--fs-row); }
+  .fw-table td { display: block; padding: 0; border: 0; } .fw-table td[data-label]::before { content: attr(data-label); display: block; font-size: var(--fs-micro); color: var(--ink2); }
+  .fw-table td:last-child { grid-column: 1 / -1; margin-top: var(--space-4); }
+  .fw-table tfoot td { grid-column: 1 / -1; }
+  .fw-tablewrap { overflow: visible; }
+}
+.fw-compare { white-space: nowrap; padding-inline: 14px; }
+.fw-actions .btn { flex: 0 1 auto; }
+@media (max-width: 700px) { .fw-actions .btn { flex: 1 1 auto; } }
+
+.fw-sortby { display: none; }
+@media (max-width: 700px) { .fw-sortby { display: grid; gap: 4px; margin: var(--space-8) 0; } }
+/* Land history: a page over the board, with its own way back */
+.fw-history { position: absolute; z-index: 1150; inset: 0; overflow: auto; background: var(--bg); }
+.fw-history[hidden] { display: none; }
+.fw-history-bar { position: sticky; top: 0; z-index: 2; padding: var(--space-8) var(--gutter); background: var(--bar-glass); border-bottom: .5px solid var(--sep2); }
+.fw-history-body { padding: var(--space-16) var(--gutter) var(--space-32); max-width: var(--info-w); margin: 0 auto; }
+@media (max-width: 700px) { .fw-history-bar { padding-inline: var(--space-12); } .fw-history-body { padding-inline: var(--space-12); } }
+/* Observed beside Planned */
+.fw-date { flex-wrap: wrap; row-gap: 4px; }
+.fw-obs { background: var(--fill); color: var(--ink2); } .fw-obs[data-state=ok] { background: var(--good-soft); color: var(--good); }
+.fw-observed { margin-top: var(--space-8); }
+@media (max-width: 700px) { .fw-date { flex: 1 1 0; min-width: 0; } .fw-compare { flex: 0 0 auto; } .fw-label { max-width: 100%; overflow-wrap: anywhere; } }
+@media (max-width: 700px) { .fw-compare { white-space: normal; padding: 6px 10px; line-height: 1.15; } .fw-date time { min-width: 0; overflow-wrap: anywhere; } .fw-date { gap: 4px 8px; } }
+@media (max-width: 700px) { .fw .fw-compare.btn { white-space: normal; overflow-wrap: anywhere; text-align: center; max-width: 100%; } }
+/* Settings > Motion: Less and Still take the sliding away from the board and its map; nothing here animates by itself in any case */
+html[data-motion=less] .fw, html[data-motion=less] .fw *, html[data-motion=less] .fw *::before, html[data-motion=less] .fw *::after { transition-duration: 0s !important; transition-delay: 0s !important; animation: none !important; scroll-behavior: auto !important; }
+html[data-motion=reduce] .fw .leaflet-container *, html[data-motion=less] .fw .leaflet-container * { transition: none !important; }

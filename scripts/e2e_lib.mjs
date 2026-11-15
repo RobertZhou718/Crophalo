@@ -97,7 +97,7 @@ function pageKit() {
   };
   T.tiny = b => b.w <= 2 && b.h <= 2;   // the 1 px box of words kept for screen readers only, at any text size
   T.widest = vw => {   // what sticks out of the screen: nothing may, except inside a box that scrolls on its own. vw is the width of the device: on a phone the window itself grows with a page that is too wide
-    const out = [], scrolls = el => { for (let n = el.parentElement; n; n = n.parentElement) { const o = getComputedStyle(n).overflowX; if (/auto|scroll/.test(o) && n !== document.documentElement && n !== document.body) return true; if (/hidden|clip/.test(o) && n !== document.documentElement && n !== document.body) { const c = n.getBoundingClientRect(); if (c.left >= -.5 && c.right <= vw + .5) return true; } } return false; };   // a box that clips its inside, and itself sits on the screen, shows nothing beyond it
+    const out = [], scrolls = el => { for (let n = el.parentElement; n; n = n.parentElement) { if (n === document.documentElement || n === document.body) continue; const o = getComputedStyle(n).overflowX; if (/auto|scroll/.test(o)) return true; if (/hidden|clip/.test(o)) { const r = n.getBoundingClientRect(); if (r.left >= -.5 && r.right <= vw + .5) return true; } } return false; };   // a box that clips what overflows it, and is itself on the screen, hides it as well as one that scrolls (the map's canvas is drawn a little wider than the map)
     for (const el of document.body.querySelectorAll('*')) {
       if (!T.shown(el)) continue;
       const b = T.box(el); if (T.tiny(b)) continue;
@@ -142,7 +142,7 @@ function connect(address) {
 
 // ---- one run: openRun(name) gives the helpers, or stops here with one plain line
 export async function openRun(name) {
-  const env = process.env, say = line => console.log(line);
+  const env = process.env, liveHost = url => { try { return (env.E2E_LIVE_HOSTS || '').split(',').map(h => h.trim()).filter(Boolean).includes(new URL(url).host); } catch { return false; } }, say = line => console.log(line);
   const refuse = line => { say(line); process.exit(1); };
   if (env.E2E_URL || env.E2E_TARGET) refuse('Refused: browser tests cannot be pointed at a running Crophalo (E2E_URL, E2E_TARGET). They only ever drive their own throwaway copy.');
   if (portRefusal(env.E2E_PORT)) refuse(portRefusal(env.E2E_PORT));
@@ -167,7 +167,8 @@ export async function openRun(name) {
     if (over) return; over = true;
     clearTimeout(watchdog);
     cdp?.close();
-    for (const child of [chrome, server]) if (child?.pid && child.exitCode == null) { try { process.kill(child.pid); } catch { /* it had already stopped */ } }
+    // a browser still running here is stopped at once: SIGKILL runs nothing more inside it, so it can never trip over its removed profile and crash (a crash puts a report dialog on the owner's screen)
+    for (const child of [chrome, server]) if (child?.pid && child.exitCode == null && !child.signalCode) { try { process.kill(child.pid, child === chrome ? 'SIGKILL' : 'SIGTERM'); } catch { /* it had already stopped */ } }
     if (env.E2E_KEEP === '1') say(`${name}: the throwaway copy is kept in ${TMP}`);
     else try { fs.rmSync(TMP, { recursive: true, force: true, maxRetries: 10, retryDelay: 200 }); } catch { /* the browser still held a file: the system clears its temp folder */ }
   };
@@ -218,7 +219,7 @@ export async function openRun(name) {
     else if (method === 'Log.entryAdded' && p.entry?.level === 'error' && !noise(p.entry.text || '')) errors.push(`browser error: ${p.entry.text} ${p.entry.url || ''}`.trim().slice(0, 240));
     else if (method === 'Network.requestWillBeSent' && p.request?.url?.startsWith(BASE)) asked.push(p.request.url.slice(BASE.length));
     else if (method === 'Fetch.requestPaused') {
-      const url = p.request.url, own = url.startsWith(BASE + '/') || url === BASE;
+      const url = p.request.url, own = url.startsWith(BASE + '/') || url === BASE || liveHost(url);   // liveHost: only the hosts a by-hand check names in E2E_LIVE_HOSTS; none in the automatic suites
       if (own) return void send('Fetch.continueRequest', { requestId: p.requestId }).catch(() => {});
       let where = url; try { const u = new URL(url); where = u.host + u.pathname; } catch { /* listed as it came */ }   // never the query: it can hold a field's position
       cutOff.push({ where, kind: p.resourceType });
@@ -322,7 +323,9 @@ export async function openRun(name) {
     const hosts = [...new Set(cutOff.map(c => `${c.where.split('/')[0]} (${c.kind})`))];
     if (hosts.length) say(`${name}: ${cutOff.length} outside request(s) were cut off, as meant: ${hosts.join(', ')}`);
     await cdp.send('Browser.close').catch(() => {});
-    await sleep(200);
+    // wait until the browser has really stopped before its profile is removed (a busy computer can take seconds); only then is anything deleted
+    const stopped = ms => new Promise(done => { if (!chrome?.pid || chrome.exitCode != null || chrome.signalCode) return done(true); const t = setTimeout(() => done(false), ms); chrome.once('exit', () => { clearTimeout(t); done(true); }); });
+    if (!(await stopped(15e3))) { try { process.kill(chrome.pid, 'SIGKILL'); } catch { /* it had just stopped */ } await stopped(5e3); }
     stopAll();
     say(`${passed} passed, ${failed} failed`);
     process.exit(failed ? 1 : 0);

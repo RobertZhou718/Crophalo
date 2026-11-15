@@ -1,0 +1,54 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><link rel="icon" href="data:,"><title>Engine worker · test page</title>
+<link rel="stylesheet" href="../css/app.css">
+<style>main>h1{margin:0 0 var(--space-16)} main{max-width:var(--wrap);margin:0 auto;padding:var(--space-16) var(--gutter)} .line{display:flex;flex-wrap:wrap;gap:var(--space-12);align-items:center} #tapBtn{min-width:var(--touch);min-height:var(--touch)} #meter{height:var(--space-8);background:var(--fill);border-radius:var(--r-tag);overflow:hidden;margin:var(--space-12) 0} #meter i{display:block;height:100%;width:30%;background:var(--accent);animation:go 1.2s linear infinite} @keyframes go{from{transform:translateX(-100%)}to{transform:translateX(340%)}}</style></head>
+<body><main>
+<h1>Engine worker</h1>
+<p id="status" role="status">Ready.</p>
+<div id="meter" aria-hidden="true"><i></i></div>
+<p class="line"><button type="button" class="btn lg" id="tapBtn">Tap me</button><span id="tapOut" aria-live="polite"></span></p>
+</main>
+<script type="module">
+import { createEngineClient } from '../js/engine-client.js';
+import { buildSeries, fitHeight } from '../js/data.js';
+import { computeClimate } from '../js/climate.js';
+import * as N from '../js/nearby.js';
+const json = async f => (await fetch('engine/' + f)).json();
+const [answer, height, near] = await Promise.all([json('power_oxford.json'), json('height_oxford.json'), json('oxford_cropsnear.json')]);
+const TODAY = '2026-11-14';
+const S0 = buildSeries(answer, { lat: 43.13, lon: -80.75 }), field = height?.results?.[0]?.elevation ?? NaN, S = fitHeight(S0, field);
+const C = computeClimate(S, S.lat, { today: TODAY, cold: null });
+const state = { rotation: { preset: 'corn-soy', custom: [], garden: null, second: {} }, farm: { irrigation: 'none', tillage: 'reduced', livestock: false, coverOK: true, labor: false }, soil: { mode: 'assumed', texture: null, om: null, omPct: null }, soilTest: null, avoid: [], prio: [3, 3, 3, 3, 3] };
+const spot = { lat: 43.13, lon: -80.75, country: 'CA', elev: field, ...N.spotFields(near) };
+const args = () => structuredClone([state, C, spot, { today: TODAY }]);
+// measuring: long tasks, the longest gap of a 5 ms heartbeat, and a tap's time from arrival to the next paint
+const M = { long: [], beat: 0, tap: null };
+let obs = null; try { obs = new PerformanceObserver(list => { for (const e of list.getEntries()) M.long.push(e.duration); }); obs.observe({ type: 'longtask' }); } catch { /* no long-task support */ }
+let last = performance.now(); setInterval(() => { const n = performance.now(); M.beat = Math.max(M.beat, n - last); last = n; }, 5);
+document.getElementById('tapBtn').addEventListener('pointerdown', e => { const down = e.timeStamp; requestAnimationFrame(() => { M.tap = performance.now() - down; document.getElementById('tapOut').textContent = 'Tapped.'; }); });
+const clients = {};
+async function runOnce(mode) {
+  M.long = []; M.beat = 0; M.tap = null; last = performance.now();
+  const t0 = performance.now(); let result, mainBlocked = null;
+  if (mode === 'direct') { const E = await import('../js/engine.js'); await new Promise(r => setTimeout(r, 0)); result = E.optionsFor(...args()); }
+  else { const c = clients[mode] ||= createEngineClient(mode === 'fallback' ? { forceFallback: true } : {}); result = await c.optionsFor(...args()); clients[mode].lastMode = c.mode(); }
+  return { ms: performance.now() - t0, hash: JSON.stringify(result).length, text: JSON.stringify(result) };
+}
+window.warm = async mode => { const r = await runOnce(mode); return { ms: Math.round(r.ms), mode: clients[mode]?.mode?.() ?? 'main' }; };   // a first call loads the code; the measured one comes after it
+window.collect = () => { obs?.takeRecords?.().forEach(e => M.long.push(e.duration)); return { long: M.long.slice(), longTotal: Math.round(M.long.reduce((a, b) => a + b, 0)), longMax: Math.round(Math.max(0, ...M.long)), beatMax: Math.round(M.beat), tap: M.tap == null ? null : Math.round(M.tap) }; };
+window.tapNow = () => M.tap;
+// order 9: the 916 KB POWER answer, as it arrives (text), worked into the record and climate on the page or on the worker
+let powerText = null; const powerPlace = { lat: 43.13, lon: -80.75 };
+window.warmPower = async mode => { powerText ||= await (await fetch('engine/power_oxford.json')).text(); const r = await runPower(mode); return { mode: clients[mode]?.mode?.() ?? 'main', ok: r.ok }; };
+async function runPower(mode) {
+  if (mode === 'direct') { const { climateFromPower } = await import('../js/power-climate.js'); await new Promise(r => setTimeout(r, 0)); return climateFromPower(powerText, powerPlace); }
+  const c = clients[mode] ||= createEngineClient(mode === 'fallback' ? { forceFallback: true } : {});
+  return c.climateFromPower(powerText, powerPlace);
+}
+window.startPower = mode => { window.__done = null; window.__out = null; M.long = []; M.beat = 0; M.tap = null; last = performance.now(); const t0 = performance.now(); runPower(mode).then(r => { window.__res = r; window.__out = { ms: Math.round(performance.now() - t0), mode: clients[mode]?.mode?.() ?? 'main' }; window.__done = true; }); return 1; };   // the answer is written out only after the measuring, so the measuring does not include it
+window.powerResultText = () => JSON.stringify(window.__res);
+window.referencePower = async () => { const { climateFromPower } = await import('../js/power-climate.js'); return JSON.stringify(climateFromPower(powerText, powerPlace)); };
+window.start = mode => { window.__done = null; window.__out = null; runOnce(mode).then(r => { window.__out = { ms: Math.round(r.ms), hash: r.hash, mode: clients[mode]?.mode?.() ?? 'main', text: r.text }; window.__done = true; }); return 1; };
+window.reference = async () => { const E = await import('../js/engine.js'); return JSON.stringify(E.optionsFor(...args())); };
+window.ready = true;
+</script></body></html>

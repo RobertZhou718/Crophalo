@@ -171,10 +171,16 @@ export function cleanContractPlan(raw, cropOk = () => true) {
   const seasons = raw.seasons.slice(0, 6).map(x => {
     if (!x || typeof x !== 'object' || !ID_OK.test(x.crop || '') || !cropOk(x.crop) || !DAY_OK(x.sow) || !DAY_OK(x.harvest)) return null;
     const w = x.window && DAY_OK(x.window.earliest) && DAY_OK(x.window.latest) ? { earliest: x.window.earliest, latest: x.window.latest } : null;
-    return { year: Math.round(num(x.year, 2000, 2100, +x.sow.slice(0, 4))), crop: x.crop, sow: x.sow, harvest: x.harvest, after: pick(x.after, ['residue', 'cover', 'bare'], 'bare'), residueUntil: DAY_OK(x.residueUntil) ? x.residueUntil : null, window: w };
+    const day = v => DAY_OK(v) ? v : null, id = v => ID_OK.test(v || '') && cropOk(v) ? v : null, sec = x.second && typeof x.second === 'object' && id(x.second.crop) && DAY_OK(x.second.sow) && DAY_OK(x.second.harvest) ? { ok: x.second.ok === true, crop: x.second.crop, sow: x.second.sow, harvest: x.second.harvest } : null;
+    // what the crop engine knows about the ground goes with the season: the residue left, the stage lengths, the spring day a winter crop grows again, a cover crop, a second crop
+    return { year: Math.round(num(x.year, 2000, 2100, +x.sow.slice(0, 4))), crop: x.crop, sow: x.sow, harvest: x.harvest, after: pick(x.after, ['residue', 'cover', 'bare'], 'bare'), residueUntil: day(x.residueUntil), window: w,
+      residue: num(x.residue, 0, 1, null), stages: Array.isArray(x.stages) && x.stages.length === 4 && x.stages.every(v => Number.isFinite(v) && v >= 0 && v <= 400) ? x.stages.map(Number) : null, variety: pick(x.variety, ['s', 'm', 'l'], null),
+      wake: day(x.wake), cover: id(x.cover), coverFrom: day(x.coverFrom), coverUntil: day(x.coverUntil), second: sec, timing: text(x.timing, 240) };
   });
   if (!seasons.length || seasons.some(x => !x)) return null;
-  return { id: ID_OK.test(raw.id || '') ? raw.id : 'plan', name: text(raw.name, 60) || 'Plan', kind: raw.kind === 'proposed' ? 'proposed' : 'current', seasons };
+  const sc = raw.scores && typeof raw.scores === 'object' ? Object.fromEntries(['water', 'soil', 'erosion', 'income', 'weather'].map(k => [k, num(raw.scores[k], 0, 100, null)])) : null;
+  return { id: ID_OK.test(raw.id || '') ? raw.id : 'plan', name: text(raw.name, 60) || 'Plan', kind: raw.kind === 'proposed' ? 'proposed' : 'current', seasons,
+    score: num(raw.score, 0, 100, null), scores: sc, flag: pick(raw.flag, ['holds', 'borderline', 'fails'], null), fit: text(raw.fit, 40), why: text(raw.why, 400), bareMonths: num(raw.bareMonths, 0, 12, null) };
 }
 export function cleanReport(raw, cropOk = () => true) {
   if (!raw || typeof raw !== 'object') return null;
@@ -239,9 +245,11 @@ export function cleanStore(raw, cropOk = () => true) {
   if (typeof g === 'string') { try { g = JSON.parse(g); } catch { g = null; } }
   const farms = [], ids = new Set();
   if (g && typeof g === 'object') for (const f of (Array.isArray(g.farms) ? g.farms : []).slice(0, LIMITS.farms)) { const c = cleanFarm(f, cropOk); if (c && !ids.has(c.id)) { ids.add(c.id); farms.push(c); } }
-  return { v: 1, active: farms.some(f => f.id === g?.active) ? g.active : farms[0]?.id ?? '', farms };
+  const deleted = [];   // farms deleted lately, kept whole for 30 days (up to 5) so their fields can come back
+  if (g && typeof g === 'object') for (const d of (Array.isArray(g.deleted) ? g.deleted : []).slice(0, LIMITS.trash)) { const c = cleanFarm(d?.farm, cropOk); if (c && !ids.has(c.id) && !deleted.some(x => x.farm.id === c.id)) deleted.push({ farm: c, at: num(d.at, 0, 4e12, Date.now()) }); }
+  return { v: 1, active: farms.some(f => f.id === g?.active) ? g.active : farms[0]?.id ?? '', farms, deleted };
 }
-export const emptyStore = () => ({ v: 1, active: '', farms: [] });
+export const emptyStore = () => ({ v: 1, active: '', farms: [], deleted: [] });
 
 // Read and write through a storage object (the page's localStorage, or any stand-in with getItem and setItem).
 export function loadStore(storage, cropOk) {
@@ -579,8 +587,11 @@ export const squareAround = (lat, lon, ha) => {
 export function applyReport(store, { place, area, areaEstimated, current, proposed, date, outline } = {}, { now = Date.now(), random = Math.random, cropOk = () => true } = {}) {
   const lat = num(place?.lat, -90, 90), lon = num(place?.lon, -180, 180);
   if (lat == null || lon == null) return { refused: 'That field could not be added to My farm.' };
-  const drawn = outline ? cleanRing(outline) : null, ha = Number.isFinite(+area) && +area >= LIMITS.areaHa[0] && +area <= LIMITS.areaHa[1] ? +area : 10;
-  const ring = drawn || cleanRing(squareAround(lat, lon, ha)), estimated = !drawn || areaEstimated === true;
+  // the report sends the field as an object { pts, ha, slope | estimated }, or as a number of hectares with the outline beside it
+  const obj = area && typeof area === 'object' ? area : null, haIn = obj ? obj.ha : area, pts = outline ?? obj?.pts;
+  const drawn = pts ? cleanRing(pts) : null, ha = Number.isFinite(+haIn) && +haIn >= LIMITS.areaHa[0] && +haIn <= LIMITS.areaHa[1] ? +haIn : 10;
+  const ring = drawn || cleanRing(squareAround(lat, lon, ha)), estimated = !drawn || areaEstimated === true || obj?.estimated === true;
+  const slopeIn = Number.isFinite(+obj?.slope) ? +obj.slope : null;
   if (!ring) return { refused: 'That field could not be added to My farm.' };
   const key = fieldKey(interiorPoint(ring)), pinKey = fieldKey([lat, lon]);
   const report = cleanReport({ current, proposed, date, at: now }, cropOk);
@@ -604,8 +615,180 @@ export function applyReport(store, { place, area, areaEstimated, current, propos
   if (farm.fields.length >= LIMITS.fields) return { refused: 'A farm holds up to 40 fields.' };
   const added = addField(cur, farmId, { ring, name: text(place?.fieldName || '', LIMITS.nameField) || undefined, soil: { texture: 'loam', om: 'med', source: 'assumed until the soil lookup answers', assumed: true } }, { now, random });
   if (added.refused) return { refused: added.refused };
-  let st = mapFarm(added.store, farmId, f => touch({ ...f, fields: f.fields.map(x => x.id === added.field.id ? { ...x, estimated, report } : x) }, now));
+  let st = mapFarm(added.store, farmId, f => touch({ ...f, fields: f.fields.map(x => x.id === added.field.id ? { ...x, estimated, report, terrain: slopeIn != null && !estimated ? cleanTerrain({ v: 1, slope: slopeIn, source: 'your drawn field' }) : x.terrain } : x) }, now));
   const cp = report.current;   // the rotation the field runs now, so the Fields table and the score have a plan to read
   if (cp) { const rot = { start: cp.seasons[0].year, water: 'none', seasons: cp.seasons.map(x => ({ crop: x.crop })) }; st = setPlan(st, farmId, added.field.id, rot, { now, cropOk }).store ?? st; }
   return { store: { ...st, active: farmId }, farmId, fieldId: added.field.id, created: true };
+}
+
+// ---- the farm list and farm settings
+export const farmSummary = (farm, areaText = ha => `${ha} ha`) => `${farm.fields.length} field${farm.fields.length === 1 ? '' : 's'}${farm.fields.length ? `, ${areaText(Math.round(farm.fields.reduce((a, f) => a + f.area, 0) * 10) / 10)}` : ''}`;
+export const openFarm = (store, id) => store.farms.some(f => f.id === id) ? { store: { ...store, active: id } } : { refused: 'That farm could not be found.' };
+export function setFarmPractice(store, id, change, now = Date.now()) {
+  const keep = cleanFarm({ ...getFarm(store, id), practice: { ...getFarm(store, id)?.practice, ...change } });
+  return keep ? { store: mapFarm(store, id, f => touch({ ...f, practice: keep.practice }, now)) } : { refused: 'That farm could not be found.' };
+}
+// Moving the pin: the weather is asked again for the new place. Fields more than 50 km from it are counted so the farmer is told.
+export function moveFarmPin(store, id, lat, lon, label = '', now = Date.now()) {
+  const farm = getFarm(store, id), la = Number.isFinite(+lat) && Math.abs(+lat) <= 90 ? +lat : null, lo = Number.isFinite(+lon) && Math.abs(+lon) <= 180 ? +lon : null;
+  if (!farm) return { refused: 'That farm could not be found.' };
+  if (la == null || lo == null) return { refused: 'That place could not be read.' };
+  const far = farm.fields.filter(f => distanceM([la, lo], interiorPoint(f.ring)) / 1000 > LIMITS.farKm).length;
+  return { store: mapFarm(store, id, f => touch({ ...f, pin: { ...f.pin, lat: r(la, 4), lon: r(lo, 4), label: text(label, 200) || f.pin.label } }, now)), far, words: far ? `${far} field${far === 1 ? ' is' : 's are'} now more than 50 km from the pin. NASA weather squares are about 50 km wide.` : '' };
+}
+export const pruneDeletedFarms = (deleted, now = Date.now()) => deleted.filter(d => now - d.at <= LIMITS.trashDays * DAY_MS);
+// Delete a farm: it goes whole to Recently deleted (the last 5, 30 days), so its fields and plans can come back.
+export function deleteFarm(store, id, now = Date.now()) {
+  const farm = getFarm(store, id);
+  if (!farm) return { refused: 'That farm could not be found.' };
+  const farms = store.farms.filter(f => f.id !== id), deleted = [{ farm, at: now }, ...pruneDeletedFarms(store.deleted || [], now)].slice(0, LIMITS.trash);
+  return { store: { ...store, farms, deleted, active: store.active === id ? farms[0]?.id ?? '' : store.active }, farm };
+}
+export function restoreFarm(store, id, now = Date.now()) {
+  const item = (store.deleted || []).find(d => d.farm.id === id);
+  if (!item) return { refused: 'That farm could not be brought back.' };
+  if (store.farms.length >= LIMITS.farms) return { refused: 'You have the most farms Crophalo keeps (8).' };
+  const farm = store.farms.some(f => f.id === id) ? { ...item.farm, id: newId('f', store.farms.map(f => f.id), now) } : item.farm;
+  return { store: { ...store, farms: [...store.farms, touch(farm, now)], deleted: store.deleted.filter(d => d.farm.id !== id), active: farm.id }, farm };
+}
+
+// ---- the three days a judge steps through: the engine's own keyDates(current, proposed) when it is there, else only what the plans themselves hold (never an invented offset)
+const PLAN_HINTS = { harvest: 'The day the harvest is planned to finish.', establish: 'When the new crop has come up, from its own stage lengths.', spring: 'The day the crop grows again in spring, from its own record.' };
+export function planDates(f, { keyFn = null, cropName = id => id, addDays = (d, n) => new Date(Date.parse(d + 'T00:00:00Z') + n * 864e5).toISOString().slice(0, 10) } = {}) {
+  const r = f?.report, plan = r?.proposed || r?.current, seasons = plan?.seasons || [], one = id => cropName(id).replace(/beans$/i, 'bean');
+  if (!seasons.length) return [];
+  if (keyFn && r?.current && r?.proposed) {
+    try { const rows = keyFn(r.current, r.proposed); if (Array.isArray(rows) && rows.length) return rows.filter(x => x && DAY_OK(x.date)).map(x => ({ id: x.key, label: x.label, date: x.date, hint: PLAN_HINTS[x.key] || '' })); } catch { /* the plain days below */ }
+  }
+  if (seasons.length < 2) return [{ id: 'harvest', label: `${one(seasons[0].crop)} harvest`, date: seasons[0].harvest, hint: PLAN_HINTS.harvest }];
+  const prev = seasons[seasons.length - 2], last = seasons[seasons.length - 1], out = [{ id: 'harvest', label: `${one(prev.crop)} harvest`, date: prev.harvest, hint: PLAN_HINTS.harvest }];
+  if (last.stages) out.push({ id: 'establish', label: `${cropName(last.crop)} established`, date: addDays(last.sow, last.stages[0]), hint: PLAN_HINTS.establish });
+  if (last.wake) out.push({ id: 'spring', label: `${cropName(last.crop)} growing again in spring`, date: last.wake, hint: PLAN_HINTS.spring });
+  return out;
+}
+
+// ---- the time bar: the season, its twelve months in season order, and the one date the board shows (the 15th of the month chosen)
+const pad2 = n => String(n).padStart(2, '0');
+export function seasonOfDate(lat, iso) {   // the start year of the season a day is in (the calendar year in the north, July to June in the south)
+  const y = +iso.slice(0, 4), m = +iso.slice(5, 7);
+  return southOf(lat) ? (m >= 7 ? y : y - 1) : y;
+}
+export function monthIndexOf(lat, iso) { return seasonMonths(lat).indexOf(+iso.slice(5, 7) - 1); }   // 0..11 in season order
+export function monthDate(lat, seasonYear, idx) {   // the 15th of the idx-th month of a season
+  const i = Math.min(11, Math.max(0, Math.round(idx))), m0 = seasonMonths(lat)[i], y = seasonYear + (southOf(lat) && i >= 6 ? 1 : 0);
+  return `${y}-${pad2(m0 + 1)}-15`;
+}
+export function shiftSeason(iso, n) {   // the same month and day n seasons later (29 February becomes 28)
+  const y = +iso.slice(0, 4) + n, m = +iso.slice(5, 7), d = +iso.slice(8, 10), last = new Date(Date.UTC(y, m, 0)).getUTCDate();
+  return `${Math.min(2100, Math.max(2000, y))}-${pad2(m)}-${pad2(Math.min(d, last))}`;
+}
+export const monthWord = iso => `${MONTH_NAMES[+iso.slice(5, 7) - 1]} ${iso.slice(0, 4)}`;
+// What the plate under a field says about the month: "Growing (corn) in June". g is the engine's answer for the day; null when it has none.
+export function plateWord(g, cropName = id => id, month = '') {
+  if (!g || !g.state) return '';
+  const crop = g.crop ? ` (${String(cropName(g.crop)).toLowerCase()})` : '';
+  const word = g.state === 'crop' ? (g.stage === 0 || g.stage === 1 ? 'Sown' : g.stage === 5 ? 'Harvest' : 'Growing') : g.state === 'cover' ? 'Cover crop' : g.state === 'residue' ? 'Stubble' : 'Bare soil';
+  return `${word}${g.state === 'bare' ? '' : crop}${month ? ` in ${month}` : ''}`;
+}
+
+// ---- judging one crop's season on one year of recorded weather: Fine, Close call or Hurt (counts of real years, never a chance)
+// season { crop, sow, harvest, stages: [initial, development, mid, late] days } with the days of the year being judged; series the daily record of js/data.js
+// (days 'YYYYMMDD', T2M_MIN, T2M_MAX, rain, lastDate); crop the crop table's row (frost 0-1, heat °C, water mm, maxGs mm, fam, group);
+// ctx { irrigationMm, holdMm (water the soil holds), shiftC (a what-if), usual { ratio, hotDays } (the usual year here) }.
+// Every rule that needs a figure the record or the plan does not hold says so in `notes` and is not judged: nothing is guessed.
+const HEAVY_DAY_MM = 20;   // a day with this much rain or more is a heavy-rain day (the climate record's own line)
+const DAYN = iso => Date.UTC(+iso.slice(0, 4), +iso.slice(5, 7) - 1, +iso.slice(8, 10)) / 864e5;
+const ISO = n => new Date(n * 864e5).toISOString().slice(0, 10);
+export const VERDICT_WORDS = Object.freeze({ fine: 'Fine', close: 'Close call', hurt: 'Hurt', nodata: 'No data', growing: 'Still growing' });
+export function seasonInYear(season, year) {   // the same sowing and harvest days, moved to a weather year: a season is keyed by its HARVEST year ("2026-27" when it crosses New Year)
+  const sy = +season.sow.slice(0, 4), hy = +season.harvest.slice(0, 4);
+  return { ...season, sow: `${year - (hy - sy)}${season.sow.slice(4)}`, harvest: `${year}${season.harvest.slice(4)}` };
+}
+export const seasonLabel2 = (season, year) => { const s = seasonInYear(season, year); return s.sow.slice(0, 4) === s.harvest.slice(0, 4) ? String(year) : `${s.sow.slice(0, 4)}\u2013${s.harvest.slice(2, 4)}`; };
+export function judgeSeason(season, series, crop, ctx = {}) {
+  const none = (verdict, note) => ({ verdict, causes: [], notes: note ? [note] : [] });
+  if (!season || !DAY_OK(season.sow) || !DAY_OK(season.harvest) || !series || !Array.isArray(series.days) || !crop) return none('nodata', 'There is no plan or no weather to judge.');
+  const index = new Map(series.days.map((d, i) => [d, i])), key = n => ISO(n).replace(/-/g, ''), at = (arr, n) => { const i = index.get(key(n)); return i == null ? NaN : arr?.[i]; };
+  const sow = DAYN(season.sow), harvest = DAYN(season.harvest), real = [series.lastDate?.T2M_MAX, series.lastDate?.T2M_MIN].filter(Boolean).map(d => DAYN(`${d.slice(0, 4)}-${d.slice(4, 6)}-${d.slice(6, 8)}`));
+  if (!real.length || harvest > Math.min(...real)) return none('growing');
+  let missing = 0; const days = harvest - sow + 1;
+  for (let n = sow; n <= harvest; n++) if (!Number.isFinite(at(series.T2M_MIN, n)) || !Number.isFinite(at(series.T2M_MAX, n))) missing++;
+  if (days <= 0 || missing > 0.05 * days) return none('nodata', 'More than 5% of this season\'s days have no weather.');
+  const shift = Number.isFinite(ctx.shiftC) ? ctx.shiftC : 0, notes = [], low = n => at(series.T2M_MIN, n) + shift, high = n => at(series.T2M_MAX, n) + shift;
+  const raw = [], add = (severity, kind, n, text, value = null) => raw.push({ severity, kind, date: ISO(n), text, value });
+  const st = Array.isArray(season.stages) && season.stages.length === 4 && season.stages.every(Number.isFinite) ? season.stages : null;
+  if (!st) notes.push('The crop\'s stage lengths are not known, so the frost and heat rules that depend on a stage were not judged.');
+  const tender = crop.frost < 0.3, winter = crop.frost >= 0.7 && crop.group === 'grain';
+  let hotDays = null;
+  if (st) {
+    const young0 = sow + 6, young1 = sow + st[0] - 1, mid0 = sow + st[0] + st[1], mid1 = mid0 + st[2] - 1, late1 = Math.min(harvest, mid1 + st[3]);
+    if (tender) {
+      const onlyHard = crop.id === 'corn';   // corn's first 30 days: only a hard frost counts
+      for (let n = young0; n <= young1; n++) { const v = low(n); if (v <= -2) add('hit', 'frost-young', n, 'Frost on young plants', v); else if (v < 0 && !(onlyHard && n < sow + 30)) add('close', 'frost-young', n, 'Frost on young plants', v); }
+      for (let n = mid0; n <= mid1; n++) { const v = low(n); if (v < 0) add('hit', 'frost-flowering', n, 'Frost at flowering', v); }
+      for (let n = mid1 + 1; n <= late1; n++) { const v = low(n); if (v <= -2) add('hit', 'frost-ripening', n, 'Frost before ripe', v); else if (v < 0) add('close', 'frost-ripening', n, 'Frost before ripe', v); }
+    }
+    if (winter) {
+      for (let n = mid0 - 40; n <= mid0 - 10; n++) { const v = low(n); if (v <= -4) add('hit', 'frost-winter', n, 'A hard frost before flowering', v); }
+      for (let n = mid0; n <= mid1; n++) { const v = low(n); if (v <= -2) add('hit', 'frost-flowering', n, 'Frost at flowering', v); }
+    }
+    if (Number.isFinite(crop.heat) && crop.heat < 60) {
+      const line = crop.heat + 2; let hot = 0, first = null;
+      for (let n = mid0; n <= mid1; n++) if (high(n) >= line) { hot++; first ??= n; }
+      hotDays = hot;
+      const usual = Number.isFinite(ctx.usual?.hotDays) ? ctx.usual.hotDays : 0;
+      if (hot >= 3 && hot - usual >= 3) add('hit', 'heat-flowering', first, `Heat at flowering (${hot} days of ${line} °C or more)`);
+      if (!Number.isFinite(ctx.usual?.hotDays)) notes.push('The usual number of hot days here is not known, so heat is judged on its own.');
+    }
+  }
+  // water: 0.8 of the season's rain, the water the soil holds, any watering; against what the crop needs (a warmer what-if needs 4% more per degree)
+  let rain = 0; for (let n = sow; n <= harvest; n++) { const v = at(series.rain, n); if (Number.isFinite(v)) rain += v; }
+  const irr = Number.isFinite(ctx.irrigationMm) ? ctx.irrigationMm : 0, hold = Number.isFinite(ctx.holdMm) ? ctx.holdMm : 0, fallow = Number.isFinite(ctx.fallowBonusMm) ? Math.min(120, Math.max(0, ctx.fallowBonusMm)) : 0, need = crop.water * (1 + 0.04 * shift), ratio = (0.8 * rain + hold + irr + fallow) / need, hard = irr > 0 ? 0.45 : 0.6;
+  if (Number.isFinite(ratio)) {
+    if (ratio < hard) add('hit', 'dry', harvest, `A dry season (${Math.round(ratio * 100)}% of the water the crop needs)`);
+    else if (ratio < 0.75 && Number.isFinite(ctx.usual?.ratio) && ctx.usual.ratio - ratio >= 0.1) add('close', 'dry', harvest, `A dry season (${Math.round(ratio * 100)}% of the water the crop needs)`);
+  }
+  if (Number.isFinite(crop.maxGs) && rain > crop.maxGs) add('close', 'wet', harvest, `A very wet season (${Math.round(rain)} mm)`);
+  // one line per kind of trouble in a year: its worst night (or day), and how many nights it happened on
+  const causes = [];
+  for (const kind of [...new Set(raw.map(c => c.kind))]) {
+    const same = raw.filter(c => c.kind === kind), hits = same.filter(c => c.severity === 'hit'), pool = hits.length ? hits : same, first = pool[0];
+    if (first.value == null) { causes.push({ severity: first.severity, kind, date: first.date, text: first.text }); continue; }
+    const worst = pool.reduce((a, c) => (c.value < a.value ? c : a), first);
+    causes.push({ severity: hits.length ? 'hit' : 'close', kind, date: worst.date, text: `${first.text} (${worst.value.toFixed(1)} °C${same.length > 1 ? `, ${same.length} nights` : ''})`, nights: same.length });
+  }
+  // things that come in most years here are said once by the caller, not counted: the kinds it names are left out of the verdict and kept apart
+  const skip = new Set(Array.isArray(ctx.ignoreKinds) ? ctx.ignoreKinds : []), noted = causes.filter(c => skip.has(c.kind));
+  causes.splice(0, causes.length, ...causes.filter(c => !skip.has(c.kind)));
+  // notes that carry no verdict: heavy rain on bare ground after the harvest, and rain days that are only a first satellite estimate
+  let heavyBare = 0, firstEstimate = 0;
+  if (Number.isFinite(ctx.bareAfterDays) && ctx.bareAfterDays > 0) for (let n = harvest + 1; n <= harvest + ctx.bareAfterDays; n++) { const v = at(series.rain, n); if (Number.isFinite(v) && v >= HEAVY_DAY_MM) heavyBare++; }
+  if (Array.isArray(series.IMERG_FRESH)) for (let n = sow; n <= harvest; n++) { const v = at(series.IMERG_FRESH, n); if (v > 0) firstEstimate++; }
+  if (heavyBare) notes.push(`Heavy rain (${HEAVY_DAY_MM} mm or more) fell on bare ground on ${heavyBare} day${heavyBare === 1 ? '' : 's'} before the next sowing. It is not counted as hurt.`);
+  if (firstEstimate) notes.push(`${firstEstimate} rain day${firstEstimate === 1 ? ' is' : 's are'} still a first satellite estimate.`);
+  return { verdict: causes.some(c => c.severity === 'hit') ? 'hurt' : causes.length ? 'close' : 'fine', causes, noted, heavyBare, firstEstimate, notes, rain: Math.round(rain), ratio: Number.isFinite(ratio) ? Math.round(ratio * 100) / 100 : null, hotDays };
+}
+// The season on every weather year of the record; years the season could not be judged in say why. Returns [{ year, verdict, causes, notes }].
+export function judgeYears(season, series, crop, ctx = {}, years = []) {
+  return years.map(year => ({ year, ...judgeSeason(seasonInYear(season, year), series, crop, ctx) }));
+}
+// The counts of a list of verdicts: only years that could be judged count in the denominator, and none of them is a guess.
+export function countVerdicts(list) {
+  const c = { fine: 0, close: 0, hurt: 0, nodata: 0, growing: 0 };
+  for (const x of list) if (Object.hasOwn(c, x.verdict)) c[x.verdict]++;
+  return { ...c, judged: c.fine + c.close + c.hurt, years: list.length };
+}
+
+// One crop of a plan on every weather year, with the usual year here worked out from the record itself (the median water ratio and hot days at flowering over the years that could be
+// judged, with no what-if applied) and then used for the "10 points below the usual year" and "3 more hot days than usual" rules.
+const median = list => { const v = list.filter(Number.isFinite).sort((a, b) => a - b); return v.length ? (v.length % 2 ? v[(v.length - 1) / 2] : (v[v.length / 2 - 1] + v[v.length / 2]) / 2) : null; };
+export function judgeCrop(season, series, crop, ctx = {}, years = []) {
+  const base = judgeYears(season, series, crop, { ...ctx, shiftC: 0, usual: null, ignoreKinds: [] }, years), usual = { ratio: median(base.map(x => x.ratio)), hotDays: median(base.map(x => x.hotDays)) };
+  const withUsual = { ...ctx, usual: { ratio: usual.ratio ?? undefined, hotDays: usual.hotDays ?? undefined } }, first = judgeYears(season, series, crop, withUsual, years);
+  // a kind of trouble found in more than half of the years that could be judged is the normal climate of the place: said once, not counted year by year
+  const judged = first.filter(y => ['fine', 'close', 'hurt'].includes(y.verdict)), count = {};
+  for (const y of judged) for (const k of new Set([...y.causes, ...y.noted].map(c => c.kind))) count[k] = (count[k] || 0) + 1;
+  const chronic = Object.keys(count).filter(k => count[k] > judged.length / 2);
+  const list = chronic.length ? judgeYears(season, series, crop, { ...withUsual, ignoreKinds: chronic }, years) : first;
+  return { years: list, usual, chronic, counts: countVerdicts(list) };
 }

@@ -7,7 +7,7 @@ import { spawnSync } from 'node:child_process';
 import { check, same, group, finish, tempFolder, addAnswer, runLookup, contract, PYTHON, URS_TOKEN } from './live_testlib.mjs';
 
 const NOW = '2026-11-18T12:00:00Z', BLOCK = 1 << 18;
-const FILE = 'https://archive.podaac.earthdata.nasa.gov/podaac-ops-cumulus-protected/TELLUS_GRAC-GRFO_MASCON_CRI_GRID_RL06.3_V4/GRCTellus.JPL.test.nc';
+const fileOf = name => `https://archive.podaac.earthdata.nasa.gov/podaac-ops-cumulus-protected/TELLUS_GRAC-GRFO_MASCON_CRI_GRID_RL06.3_V4/GRCTellus.JPL.${name}.nc`, FILE = fileOf('test');
 const CMR = 'https://cmr.earthdata.nasa.gov/search/granules.json?short_name=TELLUS_GRAC-GRFO_MASCON_CRI_GRID_RL06.3_V4&sort_key=-start_date&page_size=5';
 const OXFORD = ['43.13', '-80.75'];
 const MAKER = `
@@ -34,8 +34,9 @@ function months(count, gaps = []) {
   }
   return out;
 }
-function build({ list = months(76, ['2002-06', '2002-07', '2003-06']), tweak = {}, spec = {}, cmr = 'ok', urs = { status: 200, body: { access_token: 'tok-hand-made-3' } }, blocks = {} } = {}) {
-  const dir = tempFolder('gracecell'), answers = path.join(dir, 'answers'), s = { time: list.map(e => daysOf(e.date)), values: list.map(e => (e.cm)), unc: list.map(() => 5.5), ...spec };
+function build({ list = months(76, ['2002-06', '2002-07', '2003-06']), tweak = {}, spec = {}, cmr = 'ok', urs = { status: 200, body: { access_token: 'tok-hand-made-3' } }, blocks = {}, name = 'test', into = null } = {}) {
+  const FILE = fileOf(name);
+  const dir = tempFolder('gracecell'), answers = into || path.join(dir, 'answers'), s = { time: list.map(e => daysOf(e.date)), values: list.map(e => (e.cm)), unc: list.map(() => 5.5), ...spec };
   for (const [k, v] of Object.entries(tweak)) s.values[k] = v;
   fs.writeFileSync(path.join(dir, 'make.py'), MAKER); fs.writeFileSync(path.join(dir, 'spec.json'), JSON.stringify(s));
   const made = spawnSync(PYTHON, ['-I', path.join(dir, 'make.py'), path.join(dir, 'spec.json'), path.join(dir, 'f.nc')], { encoding: 'utf8' });
@@ -116,6 +117,19 @@ await group('places and files it cannot answer', async () => {
   check('values in other units are refused', units.answer.ok === false && /no longer laid out/.test(units.answer.reason), units.answer);
   const nologin = await runLookup('gracecell', OXFORD, { replay: build().answers, now: NOW });
   check('with no login on the computer it says so', nologin.answer.ok === false && /No NASA Earthdata login/.test(nologin.answer.reason), nologin.answer);
+});
+
+await group('the name of the file is kept a day', async () => {
+  const cache = tempFolder('gracecache'), b = build(), first = await run(OXFORD, b, { cache }), second = await run(OXFORD, b, { cache });
+  contract('kept name', second);
+  same('the second run gives the same series without asking the catalogue again', [second.answer.ok, second.answer.months, second.answer.newest_month], [true, first.answer.months, first.answer.newest_month]);
+  check('it asked one request less: the catalogue was not asked', second.asked === first.asked - 1, [first.asked, second.asked]);
+  // a new month\'s file replaced the kept one: the kept address answers "gone", and the catalogue is asked again
+  const moved = build({ name: 'next', into: b.answers, blocks: {} });
+  const old = fileOf('test');
+  addAnswer(b.answers, { url: `${old}#0-${BLOCK - 1}`, status: 404, body: 'gone' });
+  const third = await run(OXFORD, b, { cache });
+  check('when the kept file is gone the catalogue is asked again and the new file is read', third.answer?.ok === true, third.answer);
 });
 
 await group('arguments', async () => {

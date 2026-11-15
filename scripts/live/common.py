@@ -665,6 +665,11 @@ def earthdata_token():
     """A bearer token for NASA's data hosts, asked once per lookup and held in memory only (never in a file, a log or an answer)."""
     if _state["token"]:
         return _state["token"]
+    given = os.environ.get("EARTHDATA_TOKEN", "").strip()   # the server asks NASA for a token once an hour and hands it to every lookup, so no lookup asks for its own
+    if re.fullmatch(r"[A-Za-z0-9._~+/=-]{20,}", given):
+        _secret(given)
+        _state["token"] = given
+        return given
     user, word = earthdata_login()
     basic = base64.b64encode(("%s:%s" % (user, word)).encode("utf-8")).decode("ascii")
     try:

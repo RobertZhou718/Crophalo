@@ -15,12 +15,12 @@ export function climateFor(series, climate, sc, lat) {
   if (!moved || !series) return climate;
   try { return computeClimate(applyScenario(series, sc), lat); } catch { return climate; }
 }
-export async function getOptions(state, climate, spot, load = null, opts = {}) {   // opts: { today } so the plans start after the day the report is made   // load: () => import('./engine.js'), handed in by the page start; with none, the answer is "not read yet"
+export async function getOptions(state, climate, spot, load = null, opts = {}) {   // opts: { today } so the plans start after the day the report is made   // load: the engine's worker client (engine-client.js engineLoader) or () => import('./engine.js'), handed in by the page start; with none, the answer is "not read yet"
   let engine = null;
   try { engine = load ? await load() : null; } catch { /* the file is not there yet */ }
   if (typeof engine?.optionsFor !== 'function') return { ok: false, reason: NOT_READ };
   try {
-    const result = await engine.optionsFor(state, climate, spot, opts);   // a plain answer from the engine module; a promise is waited for the same way
+    const result = await engine.optionsFor(state, climate, spot, opts);   // a promise when the engine is the worker client (engine-client.js engineLoader), a plain answer when it is the module itself
     if (!(result && result.recommended && result.current)) return { ok: false, reason: NOT_READ };
     const evidence = Array.isArray(result.evidence) ? result.evidence.map(e => ({ ...e, sources: (e.sources || []).map(key => SOURCE_ALIAS[key] || key) })) : result.evidence;
     return { ...result, evidence, ok: true };

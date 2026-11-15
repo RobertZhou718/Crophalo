@@ -1,0 +1,16 @@
+{
+ "method": "GET",
+ "url": "https://bulks-faostat.fao.org/production/Prices_E_All_Data.zip",
+ "recorded": "2026-11-14T23:26:36Z",
+ "hand_made": false,
+ "excerpt": true,
+ "note": "FAO's own rows for the areas with M49 codes 124, 792, 231, 158, 159, 1, 21, 58, cut unchanged from the file FAO served on 2026-11-14 (8440591 bytes); content-length below is the excerpt's",
+ "replies": [
+  {
+   "status": 200,
+   "headers": {
+    "content-length": "187394"
+   }
+  }
+ ]
+}

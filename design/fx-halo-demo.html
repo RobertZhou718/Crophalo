@@ -1,0 +1,56 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><link rel="icon" href="data:,"><title>Halo family · test page</title>
+<link rel="stylesheet" href="../css/app.css"><link rel="stylesheet" href="../css/fx.css"><link rel="stylesheet" href="../css/fx-halo.css">
+<style>main>h1{margin:0 0 var(--space-16)} main{max-width:var(--wrap);margin:0 auto;padding:var(--space-16) var(--gutter) var(--space-48)} section.card{margin:var(--space-24) 0;padding:var(--space-20)} .line{display:flex;flex-wrap:wrap;gap:var(--space-12);align-items:center;justify-content:flex-start}
+.opts{display:grid;gap:var(--space-8);margin-top:var(--space-12)} .opt{padding:var(--space-12) var(--space-16);border-radius:var(--r1);background:var(--card2);box-shadow:var(--shadow);text-align:left;border:0;font:inherit;min-height:var(--touch);cursor:pointer;color:var(--ink)}
+#detail{margin-top:var(--space-12);padding:var(--space-16);border-radius:var(--r1);background:var(--card2);box-shadow:var(--shadow)} .answer>*{margin:var(--space-8) 0} .big{font-size:var(--fs-title2);font-weight:var(--fw-bold)}</style></head>
+<body><main>
+<h1>Halo family</h1>
+<p class="line"><button type="button" class="btn lg" id="stillBtn" aria-pressed="false">Motion: on</button></p>
+
+<section class="card" id="haloCard"><h2>Rotation halo</h2>
+  <div class="line"><div id="halo"></div><div id="haloSmall"></div><p id="haloWords" aria-live="polite"></p></div>
+  <p class="line"><button type="button" class="btn lg" id="showCur" aria-pressed="false">Current plan</button><button type="button" class="btn lg" id="showProp" aria-pressed="true">Proposed plan</button></p></section>
+
+<section class="card" id="answerCard"><h2>Answer</h2>
+  <div class="answer" id="answer">
+    <p class="big" data-step="now" id="stepNow">Now: corn, soybeans, corn.</p>
+    <p data-step="try" id="stepTry">Try: corn, soybeans, then winter wheat.</p>
+    <p data-step="reason" id="stepReason">Winter wheat covers the soil through the fall rains.</p>
+    <div data-step="sureness" id="stepSure" class="line"><svg class="fx-dial" viewBox="0 0 44 44" width="44" height="44" aria-hidden="true"><circle class="fx-dial-track" cx="22" cy="22" r="17" stroke-width="5"/><circle class="fx-dial-arc" cx="22" cy="22" r="17" stroke-width="5" pathLength="100" transform="rotate(-90 22 22)"/></svg><span id="sureWords">Fairly sure</span></div>
+  </div>
+  <p class="line"><button type="button" class="btn lg" id="buildBtn">Build the answer</button><button type="button" class="btn lg" id="rerankBtn">Show again without assembly</button></p></section>
+
+<section class="card" id="optCard"><h2>Option cards</h2>
+  <div class="opts" id="opts"><button type="button" class="opt" data-flip="a">A · Winter wheat after soybeans</button><button type="button" class="opt" data-flip="b">B · Cover crop mix</button><button type="button" class="opt" data-flip="c">C · Keep corn, soybeans, corn</button><button type="button" class="opt" data-flip="d">D · Spring oats</button></div>
+  <p class="line"><button type="button" class="btn lg" id="reorderBtn">Priorities changed</button><button type="button" class="btn lg" id="addBtn">Add a card</button></p>
+  <div id="detail" hidden><p id="detailText"></p></div></section>
+
+<section class="card" id="antsCard"><h2>Finished outline</h2>
+  <svg viewBox="0 0 200 100" width="200" height="100" role="img" aria-label="A field outline"><path id="outline" d="M20 20 L180 28 L170 84 L30 78 Z" fill="none" stroke="currentColor" stroke-width="2"/></svg>
+  <p class="line"><button type="button" class="btn lg" id="antsBtn">Finish the outline</button></p></section>
+</main>
+<script type="module">
+import * as halo from '../js/fx-halo.js';
+const $ = s => document.querySelector(s);
+$('#stillBtn').addEventListener('click', e => { const off = document.documentElement.dataset.motion !== 'reduce'; if (off) document.documentElement.dataset.motion = 'reduce'; else delete document.documentElement.dataset.motion; e.currentTarget.setAttribute('aria-pressed', String(off)); e.currentTarget.textContent = off ? 'Motion: always still' : 'Motion: on'; });
+const S = (year, crop, after = 'residue', second) => ({ year, crop, after, ...(second ? { second } : {}) });
+const plans = { current: { name: 'Current plan', seasons: [S(2027, 'corn'), S(2028, 'soy'), S(2029, 'corn')] }, proposed: { name: 'Proposed plan', seasons: [S(2027, 'corn'), S(2028, 'soy', 'cover'), S(2029, 'wheat', 'residue', 'soy')] } };
+const NAMES = { corn: 'corn', soy: 'soybeans', wheat: 'winter wheat' };
+const PIC = { corn: '<path d="M0 6V-6M0 0L-4 -3M0 -2L4 -5" stroke="#2a8a44" stroke-width="1.6" fill="none"/>', soy: '<circle cx="-2" cy="1" r="2.5" fill="#2a8a44"/><circle cx="2.5" cy="-1" r="2.5" fill="#2a8a44"/>', wheat: '<path d="M0 6V-5M0 -2L-3 -4M0 0L3 -2M0 -5L-2 -7" stroke="#9a7d1a" stroke-width="1.5" fill="none"/>' };
+const opts = { plans, names: id => NAMES[id] || id, pictures: id => PIC[id] || null };
+window.halo = halo.rotationHalo($('#halo'), { ...opts, show: 'proposed', size: 112 });
+window.haloSmall = halo.rotationHalo($('#haloSmall'), { ...opts, show: 'proposed', size: 44 });
+const words = () => { $('#haloWords').textContent = halo.describeRotation(plans[window.halo.current], id => NAMES[id] || id); };
+words();
+for (const [id, which] of [['#showCur', 'current'], ['#showProp', 'proposed']]) $(id).addEventListener('click', () => { window.halo.show(which); window.haloSmall.show(which); $('#showCur').setAttribute('aria-pressed', String(which === 'current')); $('#showProp').setAttribute('aria-pressed', String(which === 'proposed')); words(); });
+let built = 0;
+$('#buildBtn').addEventListener('click', () => { const card = $('#answer'); const a = halo.answerAssembly(card, { fresh: true }); window.__a = a; a.setSureness(0.7); const t = (ms, k) => setTimeout(() => a.arrive(k), ms); t(0, 'now'); t(50, 'reason'); t(120, 'try'); t(300, 'sureness'); built++; });
+$('#rerankBtn').addEventListener('click', () => { const a = halo.answerAssembly($('#answer'), { fresh: false }); a.setSureness(0.7); for (const k of ['now', 'try', 'reason', 'sureness']) a.arrive(k); });
+let order = ['a', 'b', 'c', 'd'], n = 0;
+$('#reorderBtn').addEventListener('click', () => halo.flipReorder($('#opts'), () => { order = [order[2], order[0], order[3], order[1]]; for (const id of order) $('#opts').append($(`[data-flip="${id}"]`)); }));
+$('#addBtn').addEventListener('click', () => halo.flipReorder($('#opts'), () => { n++; const b = document.createElement('button'); b.type = 'button'; b.className = 'opt'; b.dataset.flip = 'n' + n; b.textContent = `New option ${n}`; $('#opts').prepend(b); order.unshift('n' + n); }));
+$('#opts').addEventListener('click', e => { const card = e.target.closest('.opt'); if (!card) return; $('#detail').hidden = false; $('#detailText').textContent = `Details for ${card.textContent}.`; halo.unfold(card, $('#detail')); });
+$('#antsBtn').addEventListener('click', () => halo.marchingAnts($('#outline')));
+window.ready = true;
+</script></body></html>

@@ -92,6 +92,21 @@ await group('a good answer for Oxford County', async () => {
   check('a whole answer carries no "incomplete" and no "why_none"', !('incomplete' in a) && !('why_none' in a) && a.read_errors === 0);
 });
 
+await group('what a pass held is kept, and a token from the server is used', async () => {
+  const list = [pass({ orbit: 47500, ago: 2 }), pass({ orbit: 47501, ago: 3, cloud: 1 }), pass({ orbit: 47502, ago: 4, lst: NaN }), pass({ orbit: 47503, ago: 5, qc: 2 })], cache = tempFolder('ecocache');
+  const answers = build({ v3: list }), first = await run(OXFORD, answers, { cache }), second = await run(OXFORD, answers, { cache });
+  contract('kept passes', second);
+  same('the first run reads every pass, the second reads only the catalogue and the token: the same answer', [first.answer.ok, second.answer.ok, second.answer.passes, second.answer.not_usable], [true, true, first.answer.passes, first.answer.not_usable]);
+  check('the second run asked far less: no layer of any pass was read again', second.asked <= 4 && first.asked > second.asked + 6, [first.asked, second.asked]);
+  const fresh = await run(OXFORD, answers, { cache: tempFolder('ecocache2') });
+  same('a run with nothing kept gives the same answer, so the keeping changes nothing but the time', [fresh.answer.passes, fresh.answer.not_usable], [first.answer.passes, first.answer.not_usable]);
+  const given = await runLookup('ecopass', OXFORD, { replay: answers, now: NOW, env: { EARTHDATA_TOKEN: 'tok-from-the-server-0123456789' } });
+  contract('token from the server', given, { secrets: ['tok-from-the-server-0123456789'] });
+  check('a token handed in by the server is used: no login on the computer, no token asked for', given.answer?.ok === true && given.asked === first.asked - 1, [given.asked, first.asked, given.answer]);
+  const short = await runLookup('ecopass', OXFORD, { replay: answers, now: NOW, env: { EARTHDATA_TOKEN: 'short' } });
+  check('a token that is not a token is ignored, and with no login the lookup says so', short.answer?.ok === false && /No NASA Earthdata login/.test(short.answer.reason), short.answer);
+});
+
 await group('no clear pass, no pass at all, and one pass that cannot be read', async () => {
   const none = await run(OXFORD, build({ v3: [pass({ orbit: 47400, cloud: 1 }), pass({ orbit: 47401, ago: 5, qc: 2 })] })), n = none.answer;
   contract('no clear pass', none);

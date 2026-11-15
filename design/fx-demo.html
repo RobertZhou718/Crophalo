@@ -1,0 +1,58 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><link rel="icon" href="data:,"><title>Small motions · test page</title>
+<link rel="stylesheet" href="../css/app.css"><link rel="stylesheet" href="../css/fx.css">
+<style>main>h1{margin:0 0 var(--space-16)} main{max-width:var(--wrap);margin:0 auto;padding:var(--space-16) var(--gutter) var(--space-48)} section.card{margin:var(--space-24) 0;padding:var(--space-20)} .demo-row{display:flex;flex-wrap:wrap;gap:var(--space-8);align-items:center}
+.months{display:grid;grid-template-columns:repeat(12,1fr);gap:var(--space-4)} .months div{padding:var(--space-8) 0;text-align:center;border-radius:var(--r3);background:var(--card2)} .spacer{height:140vh} @media (max-width:600px){.months{grid-template-columns:repeat(6,1fr)}}
+[role=tablist]{display:flex;gap:var(--space-4);overflow-x:auto;scrollbar-width:none} [role=tab]{min-height:var(--touch);padding:0 var(--space-16);border:0;background:transparent;font:inherit;color:var(--ink2);border-radius:var(--r-chip);cursor:pointer}
+</style></head>
+<body><main>
+<h1>Small motions</h1>
+<p class="demo-row"><button type="button" class="btn lg" id="stillBtn" aria-pressed="false">Motion: on</button><span id="liveWords" aria-live="polite"></span></p>
+
+<section class="card" id="scanCard"><h2>Satellite scan</h2><div id="scan"></div><p class="demo-row"><button type="button" class="btn lg" id="answerBtn">One more source answered</button></p></section>
+
+<section class="card" id="numCard"><h2>Numbers</h2><p>Rain: <strong data-roll id="n1">12,480 mm</strong> · Score <strong data-roll id="n2">86</strong> · Share <strong data-roll id="n3">7.5%</strong></p></section>
+
+<section class="card" id="tabCard"><h2>Tabs</h2>
+  <div role="tablist" id="tabs" aria-label="Report"><button role="tab" aria-selected="true" id="t0">Overview</button><button role="tab" aria-selected="false" id="t1">Weather</button><button role="tab" aria-selected="false" id="t2">Calendar</button><button role="tab" aria-selected="false" id="t3">Notes</button></div>
+  <div id="panel" role="tabpanel"><p id="panelText">Overview panel.</p></div></section>
+
+<section class="card" id="viewCard"><h2>Views</h2><p class="demo-row"><button type="button" class="btn lg" id="viewBtn">Switch view</button></p><div id="viewA"><p>View A: the first screen.</p></div><div id="viewB" hidden><p>View B: the second screen.</p></div></section>
+
+<section class="card" id="yearCard"><h2>Watch the year</h2><div class="months" id="months"></div><p class="demo-row"><button type="button" class="btn lg" id="yearBtn">Watch the year</button><span id="yearLive" aria-live="polite"></span></p></section>
+
+<section class="card" id="stateCard"><h2>Small states</h2><p class="demo-row">
+<button type="button" class="btn lg" id="saveBtn" aria-pressed="false">Save</button>
+<button type="button" class="btn lg" id="copyBtn">Copy link</button>
+<button type="button" class="btn lg" id="addBtn">Add to my farm</button>
+<button type="button" class="btn lg" id="toastBtn">Show undo toast</button></p></section>
+
+<div class="spacer"></div>
+<section class="card" data-reveal id="r1"><h2>Section one</h2><p>This section eases in when it reaches the screen.</p></section>
+<section class="card" data-reveal id="r2"><h2>Section two</h2><p>And this one, a step later.</p></section>
+<section class="card" data-reveal id="r3"><h2>Section three</h2><p>Each plays once.</p></section>
+<div class="spacer"></div>
+</main>
+<script type="module">
+import * as fx from '../js/fx.js';
+const $ = s => document.querySelector(s);
+const say = t => { $('#liveWords').textContent = t; };
+$('#stillBtn').addEventListener('click', e => { const off = document.documentElement.dataset.motion !== 'reduce'; if (off) document.documentElement.dataset.motion = 'reduce'; else delete document.documentElement.dataset.motion; e.currentTarget.setAttribute('aria-pressed', String(off)); e.currentTarget.textContent = off ? 'Motion: always still' : 'Motion: on'; });
+const scan = fx.scanLoader($('#scan'), { total: 6 }); let done = 0;
+$('#answerBtn').addEventListener('click', () => { done = Math.min(6, done + 1); scan.update(done, 6); });
+fx.rollNumbers(document);
+const panels = ['Overview panel.', 'Weather panel.', 'Calendar panel.', 'Notes panel.'];
+fx.tabGlass($('#tabs'), { onSelect: (i, dir) => { $('#panelText').textContent = panels[i]; fx.pageTurn($('#panel'), dir); } });
+let which = 'A';
+$('#viewBtn').addEventListener('click', () => fx.transitionView(() => { which = which === 'A' ? 'B' : 'A'; $('#viewA').hidden = which !== 'A'; $('#viewB').hidden = which !== 'B'; }, { node: $(which === 'A' ? '#viewB' : '#viewA') }));
+const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+for (const [i, m] of months.entries()) { const d = document.createElement('div'); d.textContent = m; d.title = `${m}: ${i > 4 && i < 9 ? 'hot days · corn' : 'cool days'}`; $('#months').append(d); }
+window.year = fx.watchYear({ columns: [...$('#months').children], button: $('#yearBtn'), live: $('#yearLive') });
+fx.readingRail();
+fx.reveal(document);
+$('#saveBtn').addEventListener('click', e => { const on = e.currentTarget.getAttribute('aria-pressed') !== 'true'; fx.markSaved(e.currentTarget, on, { say }); });
+$('#copyBtn').addEventListener('click', e => fx.copied(e.currentTarget, location.href, { say, writer: async () => {} }));
+$('#addBtn').addEventListener('click', e => fx.added(e.currentTarget, { say }));
+let n = 0; $('#toastBtn').addEventListener('click', () => { n++; fx.toast(n === 1 ? 'Field removed.' : `Field removed again (${n}).`, { undo: () => say('Undone.') }); });
+window.fx = fx; window.ready = true;
+</script></body></html>

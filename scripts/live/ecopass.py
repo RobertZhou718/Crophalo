@@ -5,12 +5,16 @@
 # Returns: {"ok": true, "source", "data_date", "units", "pixel_m", "window", "passes": [{"date", "utc", "solar_time", "day_night", "lst_c", "lst_k", "error_k", "orbit", "version", "granule"}],
 #          "clear_passes", "passes_checked", "not_usable": {"cloud", "quality", "water", "no_data"}, "read_errors", "newest_clear", "note", "incomplete"?} or {"ok": false, "reason"}. A pixel that is cloudy, of lower quality, water or not seen is NEVER a reading.
 #          The contract: README.md, section "ecopass".
-# Keeps:   nothing. The server keeps answers; this lookup keeps no file.
+# Keeps:   what each pass held at the field's pixel (a pass never changes), a few bytes a pass under FW_CACHE/ecopass, so the next run reads only the passes that are new. The server keeps the answers.
 # Checked by: scripts/test_live_ecopass.mjs (offline: the catalogue, the token and small GeoTIFFs built the real way) and scripts/live_check_ecopass.mjs (by hand, live).
 import common   # first, always
 import datetime
+import json
 import re
 import math
+import urllib.error
+import urllib.parse
+import urllib.request
 from common import Fail, SourceDown
 
 LIMIT_S = 150
@@ -27,6 +31,39 @@ SOURCE = "NASA ECOSTRESS tiled land surface temperature, 70 m (ECO_L2T_LSTE), fr
 UNITS = "Ground (surface skin) temperature seen from space for one 70 m pixel, in degrees Celsius (and kelvin), at the time of each pass; not the air temperature"
 NO_RIGHTS = "NASA did not let this computer's Earthdata login read the ECOSTRESS files: the login may still need to be approved for NASA LP DAAC"
 KEY = re.compile(r"_(\d{5})_(\d{3})_([0-9A-Z]{5})_")
+
+
+class _NoRedirect(urllib.request.HTTPRedirectHandler):
+    def redirect_request(self, *args, **kwargs):
+        return None
+
+
+_resolver = urllib.request.build_opener(_NoRedirect)
+
+
+def signed(url, headers):
+    """The address NASA's archive sends a file to: the archive answers a request for a file with a short-lived address on its content network, and asking for that address
+    first lets the archive's slow step (about a second a file) and the content network's quick reads run at the same time instead of one after the other. The login goes to the
+    archive only, never to the content network. Returns the file's own address when it is not sent on, or when the answer cannot be read; a refused login raises."""
+    if common.REPLAY:
+        return url
+    host = urllib.parse.urlsplit(url).netloc.lower()
+    req = urllib.request.Request(url, headers={**headers, "Range": "bytes=0-0", "User-Agent": common.USER_AGENT})
+    try:
+        with common._Gate(host):
+            common._count()
+            try:
+                with _resolver.open(req, timeout=30):
+                    return url
+            except urllib.error.HTTPError as e:
+                if e.code in (301, 302, 303, 307, 308):
+                    where = e.headers.get("Location", "")
+                    return where if where.startswith("https://") and urllib.parse.urlsplit(where).netloc.lower() != host else url
+                if e.code in (401, 403):
+                    raise common.SourceDown("HTTP %d from %s" % (e.code, host), "http", e.code) from None
+                return url
+    except (urllib.error.URLError, OSError, TimeoutError):
+        return url
 
 
 def passes_over(first, last, lat, lon):
@@ -51,35 +88,60 @@ def passes_over(first, last, lat, lon):
     return out
 
 
-def one(window, lat, lon, url, options):
+def one(headers, lat, lon, url, options):
     """The single pixel's value at the point, or None when the point is outside the file or the file has no value there."""
-    got = common.read_window(url, lat, lon, half=0, options=options)
+    where = signed(url, headers)
+    if where != url:   # a signed address carries its own permission: no login, and no list of file kinds (its query is part of the address)
+        options = {k: v for k, v in common.gdal_options().items() if k != "CPL_VSIL_CURL_ALLOWED_EXTENSIONS"}
+    got = common.read_window(where, lat, lon, half=0, options=options)
     if got is None:
         return None
     v = float(got["values"].ravel()[0])
     return None if v != v else v
 
 
+def kept_file(granule, lat, lon):
+    return common.cache_dir("ecopass") / ("%s_%.4f_%.4f.json" % (re.sub(r"[^A-Za-z0-9_.-]", "_", granule), lat, lon))
+
+
 def read_pass(job):
-    """One pass: {"status": "clear" | "cloud" | "quality" | "water" | "no_data", ...}. Raises SourceDown when NASA did not answer."""
-    lat, lon, key, version, granule, files, options = job
-    lst = one(None, lat, lon, files["LST"], options)
-    if lst is None:
-        return {"status": "no_data"}
-    cloud = one(None, lat, lon, files["cloud"], options)
+    """One pass: {"status": "clear" | "cloud" | "quality" | "water" | "no_data", ...}. Raises SourceDown when NASA did not answer.
+    A pass is read at the field's pixel only once: what it held is kept (a pass never changes), and the cloud mask is read first (it also says when the pixel was not seen)."""
+    lat, lon, key, version, granule, files, options, headers = job
+    name = str(granule.get("title", ""))
+    file = kept_file(name, lat, lon)
+    try:
+        kept = json.loads(file.read_text(encoding="utf-8"))
+        if kept.get("status") in ("clear", "cloud", "quality", "water", "no_data"):
+            return kept
+    except (OSError, ValueError):
+        pass
+    result = read_fresh(lat, lon, files, options, headers)
+    try:
+        common.atomic_write(file, json.dumps(result).encode("utf-8"))
+    except (OSError, ValueError):
+        pass   # a full or locked folder costs only the saving
+    return result
+
+
+def read_fresh(lat, lon, files, options, headers):
+    cloud = one(headers, lat, lon, files["cloud"], options)
     if cloud is None or cloud not in (0.0, 1.0):
         return {"status": "no_data"}   # 255 is the file's own "not known": nobody saw this pixel clear
     if cloud == 1.0:
         return {"status": "cloud"}
-    qc = one(None, lat, lon, files["QC"], options)
+    qc = one(headers, lat, lon, files["QC"], options)
     if qc is None or int(qc) & 3 != 0:   # only the best quality counts: "nominal" includes possible cloud contamination
         return {"status": "quality"}
-    water = one(None, lat, lon, files["water"], options)
+    lst = one(headers, lat, lon, files["LST"], options)
+    if lst is None:
+        return {"status": "no_data"}
+    water = one(headers, lat, lon, files["water"], options)
     if water is None or water != 0.0:
         return {"status": "water"}
     if not LST_LOW <= lst <= LST_HIGH:
         return {"status": "quality"}
-    err = one(None, lat, lon, files["LST_err"], options)
+    err = one(headers, lat, lon, files["LST_err"], options)
     return {"status": "clear", "lst": lst, "err": err if err is not None and 0 <= err < 50 else None}
 
 
@@ -91,6 +153,7 @@ def main(args):
     if not found:
         raise Fail("NASA's catalogue lists no ECOSTRESS pass over this place in the last %d days (ECOSTRESS flies between 52 N and 52 S and does not see every place every week)" % DAYS)
     options = common.earthdata_gdal()
+    headers = common.bearer()
     found = found[:MOST_CHECKED]
     results, clear, orbits, counts, errors, done_n, rushed = [], [], set(), {"cloud": 0, "quality": 0, "water": 0, "no_data": 0}, [], 0, False
     for at in range(0, len(found), BATCH):
@@ -100,8 +163,8 @@ def main(args):
             rushed = True
             break
         batch = found[at:at + BATCH]
-        jobs = [(lat, lon, key, version, g, files, options) for key, version, g, files in batch]
-        for (job, result, error) in common.each(jobs, read_pass, 3):
+        jobs = [(lat, lon, key, version, g, files, options, headers) for key, version, g, files in batch]
+        for (job, result, error) in common.each(jobs, read_pass, 4):
             done_n += 1
             if error is not None:
                 errors.append(error)

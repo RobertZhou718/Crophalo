@@ -1,0 +1,16 @@
+{
+ "method": "HEAD",
+ "url": "https://bulks-faostat.fao.org/production/Production_Crops_Livestock_E_All_Data.zip",
+ "recorded": "2026-11-14T23:26:36Z",
+ "hand_made": false,
+ "replies": [
+  {
+   "status": 200,
+   "headers": {
+    "content-type": "application/x-zip-compressed",
+    "content-length": "25138572",
+    "last-modified": "Wed, 31 Dec 2025 11:33:25 GMT"
+   }
+  }
+ ]
+}
