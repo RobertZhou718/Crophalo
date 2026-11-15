@@ -8,7 +8,7 @@
 # Returns: {"ok": true, "source", "source_id", "name", "native_m", "res_m", "kind", "credit", "licence", "data_date",
 #           "units", "grid", "cover", "filled", "tried", "h": base64 float32 [ny][nx], ...}  or  {"ok": false, "reason"}.
 #          The contract: README.md, section "dem".
-# Checked by: scripts/test_live_heights.mjs (offline). By hand, live: scripts/live_check_heights.mjs.
+# Checked by: scripts/test_live_dem.mjs (offline). Recorded by hand, live: scripts/record_live_heights.mjs.
 import common   # first, always: it takes stdout away from every library
 import base64
 import json

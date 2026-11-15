@@ -1,5 +1,5 @@
 // The shade's background worker: takes a job, answers it, never touches the page. Every message {id, op, ...} gets one answer {id, ok, result | error}.
-// Checked by scripts/test_shade.mjs (the jobs it runs) and scripts/e2e_farm3d.mjs (the worker in a real browser).
+// Checked by scripts/test_shade.mjs (the jobs it runs, and the shape of its answers). No browser suite runs it yet.
 import { runJob } from './shade.js';
 
 self.onmessage = event => {

@@ -11,7 +11,7 @@ import { fileURLToPath } from 'node:url';
 const HERE = path.dirname(fileURLToPath(import.meta.url));
 export const ROOT = path.resolve(process.env.CROPHALO_ROOT || path.join(HERE, '..'));   // CROPHALO_ROOT is for tests only: it points a suite at a copy with a deliberate mistake in it
 const CALL_MS = 30e3, RUN_MS = 600e3;   // a stuck browser can never hang the checks: 30 s for one call, 10 minutes for a run
-const STARTER_PORT = 5173;   // where the start script puts the owner's own copy when nothing else is written down
+const STARTER_PORT = 5173;   // the server's own fallback port (scripts/serve.mjs); the start script uses 5480 (scripts/run.sh)
 const FLAGS = ['--headless=new', '--remote-debugging-port=0', '--no-first-run', '--disable-background-networking', '--disable-sync', '--disable-extensions',
   '--disable-background-timer-throttling', '--disable-renderer-backgrounding', '--mute-audio', '--hide-scrollbars',
   '--use-mock-keychain', '--password-store=basic'];   // a test browser must never ask the computer's keychain for anything: no system dialog, nothing stored

@@ -1,9 +1,9 @@
-# heights.py: what the three height lookups (dem.py, horizon.py, canopy.py) share (written 2026-11-14). Not a lookup itself.
+# heights.py: the height helpers of the height lookup dem.py (written 2026-11-14). Not a lookup itself.
 # Reads:   pieces of height maps: a window of a remote GeoTIFF (range reads, never a whole file) or a small GeoTIFF a map
 #          service sent, and reads heights off them at the farm's own grid points.
 # From:    whichever open height map the lookup names; every request goes out through common.py's doors.
 # Returns: to its lookups only: Patch (a piece of a map with its place), the farm grid, heights at grid points.
-# Checked by: scripts/test_live_heights.mjs (node scripts/test_live_heights.mjs).
+# Checked by: scripts/test_live_dem.mjs, through dem.py (node scripts/test_live_dem.mjs).
 import common   # first, always: it takes stdout away from every library
 import json
 import threading

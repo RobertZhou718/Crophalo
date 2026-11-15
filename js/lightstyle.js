@@ -1,6 +1,6 @@
 // Crophalo's calm map style (MapLibre): the Light map and the place names drawn over the satellite photo, both from OpenFreeMap's vector tiles. Country, region, city, town and village names are on,
 // in English, and Türkiye by its own name; no name of any sea, ocean, lake, river, bay or gulf exists in the style at all, and no road, point-of-interest or park name either.
-// Pure: it only builds style objects. js/mapbase.js loads MapLibre and puts them on the map. Checked by scripts/test_lightstyle.mjs (every symbol layer, the colours, Türkiye) and scripts/live_check_basemap.mjs (a real browser).
+// Pure: it only builds style objects. js/mapbase.js loads MapLibre and puts them on the map. Checked by scripts/test_mapbase.mjs (every symbol layer, the colours, Türkiye) and scripts/live_check_basemap.mjs (a real browser).
 export const TILES = 'https://tiles.openfreemap.org/planet';
 export const GLYPHS = 'https://tiles.openfreemap.org/fonts/{fontstack}/{range}.pbf';
 export const CREDIT = 'OpenFreeMap © OpenMapTiles Data from OpenStreetMap';

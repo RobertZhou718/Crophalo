@@ -9,7 +9,7 @@
 #   - a shared lock (LOCK_SH) does NOTHING: Windows has no shared lock here. So a lookup may never remove a file
 #     that others may be reading on the strength of "nobody holds the shared lock": on Windows it cannot know;
 #   - with LOCK_NB a held lock raises BlockingIOError at once ("busy"); without it Windows waits about 10 s, then raises.
-# Checked by: scripts/test_live_common.mjs (the import, and the stand-in driven by a pretend msvcrt).
+# Checked by: scripts/test_live_crops.mjs, through faostat.py (the Mac side only; no suite drives the stand-in).
 # NOT checked on a real Windows computer.
 import os
 

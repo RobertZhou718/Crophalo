@@ -24,11 +24,12 @@ through the same four steps a farmer does, then opens the field report.
 - **From report to farm.** "Add to My Farm" opens the same field in My Farm: one date, one finding, Compare plans, and the
   same field and date in 3D, where plants and residue look different.
 - **Honest gaps.** Anything Crophalo has not read says "not read yet"; it never shows a sample number.
-- **Free and private.** No account and no sign-in; your fields are kept on your own computer. It runs from one folder on a Mac or a Windows PC.
+- **Free and private.** No account and no sign-in; your fields are kept on your own computer. It runs from one folder on a Mac; the Windows start is not yet tried on a Windows PC.
 
-**NASA data used.** NASA POWER daily weather (frost dates, heat units, rain timing; its rain from GPM IMERG or MERRA-2) and
-NASA SMAP Level-4 root-zone soil moisture. Credit and links: `docs/nasa-data-used.md`. Crophalo is not made, reviewed or
+**NASA data used.** NASA POWER daily weather (frost dates, heat units, rain timing; its rain from GPM IMERG or MERRA-2),
+NASA SMAP Level-4 root-zone soil moisture, GPM IMERG rain, GRACE-FO water storage, ECOSTRESS ground temperature, HLS
+greenness, GIBS map layers and FIRMS fires. Credit and links: `docs/nasa-data-used.md`. Crophalo is not made, reviewed or
 endorsed by NASA.
 
 **Built with.** Plain HTML, CSS and JavaScript with no build step, a small Node server, and Python lookups for the NASA
-services. Every part has its own suite, and `sh scripts/check.sh` runs them all.
+services. Most parts have their own suite, and `sh scripts/check.sh` runs them all.

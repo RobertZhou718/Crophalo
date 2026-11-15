@@ -5,7 +5,7 @@
 # Returns: through run(main): exactly ONE JSON object on stdout and exit code 0, whatever happens.
 #          Good:    {"ok": true, "source": ..., "data_date": ..., "units": ..., "checked": ..., the lookup's own keys}
 #          Failure: {"ok": false, "reason": "<plain words a farmer can read>"} plus "final": true when asking again cannot help.
-# Checked by: scripts/test_live_common.mjs (node scripts/test_live_common.mjs). The contract in words: scripts/live/README.md.
+# Checked by: the scripts/test_live_*.mjs suites, through the lookups built on it. The contract in words: scripts/live/README.md.
 #
 # RULE for every lookup: "import common" is its FIRST import. The lines just below take the real stdout away before any
 # library can print, so a stray print can never break the answer.

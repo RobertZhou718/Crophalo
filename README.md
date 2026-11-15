@@ -55,7 +55,7 @@ and why; the rest of the report still works.
 | NASA POWER | daily temperature, rain and ground wetness for the field since 2001 | Report (all scores, Weather, Calendar), My Farm chips, History |
 | NASA SMAP L4 (login) | root-zone soil moisture for the 9 km cell that holds the field | Report: Weather and Satellites & prices |
 | NASA GPM IMERG (login) | daily rain for the last 30 days | Report: Satellites & prices |
-| NASA GRACE / GRACE-FO (login) | change in water stored in the land, for a 0.5 degree cell | Report: Satellites & prices |
+| NASA GRACE / GRACE-FO (login) | change in water stored in the land, over a region about 300 km wide | Report: Satellites & prices |
 | NASA ECOSTRESS (login) | ground temperature passes, 70 m, last 60 days | Report: Satellites & prices |
 | NASA / USGS HLS (login) | greenness, one clear pass per 15 days, last 12 months | Report: Satellites & prices; My Farm "Observed" |
 | NASA GIBS | map pictures: MODIS greenness, SMAP soil moisture, IMERG rain rate, MODIS land temperature | Setup map: Layers |
@@ -63,7 +63,7 @@ and why; the rest of the report still works.
 | Height maps: NRCan, USGS 3DEP, PDOK, Environment Agency, IGN Spain, IGN France, Copernicus GLO-30 (from Amazon's open data), NASADEM (through Microsoft's Planetary Computer, with a short-lived public token) | the finest free height map at the place; no login, but the service receives the field's position | Report: Field (slope, height) |
 | Agriculture and Agri-Food Canada Annual Crop Inventory; USDA Cropland Data Layer | crops grown around the field (Canada and the US only) | Report: steers which plans are offered |
 | Open-Meteo | the forecast; the ERA5 record (Copernicus Climate Change Service, ECMWF) only when NASA POWER does not answer | Spot card, Weather tab, My Farm, the sky in the 3D view |
-| Esri World Imagery, OpenFreeMap, OpenStreetMap Nominatim | map photos, the light map and place names, place search | Home and maps |
+| Esri World Imagery and Light Gray Canvas, OpenFreeMap, OpenStreetMap Nominatim | map photos and the grey fallback map, the light map and place names, place search | Home and maps |
 | Frankfurter | currency rates (central-bank reference rates) | Settings |
 | Crop references: FAO-56, FAO ECOCROP, FAO Training Manual 3, FAO Papers 33 and 66, Purdue National Corn Handbook NCH-40, Luo 2011, the Ontario field-crop guide and soil-erosion page | crop stage lengths, warmth and water needs, crop ranges | Report: the evidence lines behind the scores; each one on the Data page |
 
@@ -71,7 +71,7 @@ Each figure read from an outside source has an "i" button: it names the source a
 size of its square (solid for NASA, outlined for others). Crophalo uses NASA data but is not made, reviewed or endorsed by NASA.
 
 The satellite figures are one value for a square, never a pattern inside the field: SMAP 9 km, GPM IMERG 0.1 degree,
-GRACE-FO 0.5 degree, ECOSTRESS 70 m, HLS 30 m. The weather record is one square about 50 km wide.
+GRACE-FO about 300 km, ECOSTRESS 70 m, HLS 30 m. The weather record is one square about 50 km wide.
 
 ## Start it
 
@@ -138,7 +138,7 @@ run by hand, never by `check.sh`.
 | `scripts/serve.mjs`, `push.mjs`, `drought.mjs`, `earthdata.mjs` | the server (no packages): the app's files, `/api/health`, `/api/ready`, `/api/sources`, the 11 lookups, `/api/push/*`, `/api/drought`; finding the NASA login |
 | `scripts/live/` | the Python lookups: `smaproot.py`, `imergrain.py`, `gracecell.py`, `ecopass.py`, `hlsndvi.py`, `dem.py`, `cropsnear.py`, `firms.py`, `prices.py`, `faostat.py`, `ndvihist.py`; helpers `common.py`, `dap4.py`, `heights.py`, `flock_compat.py`, `faostat_items.py`; code lists; `README.md` |
 | `scripts/run.sh`, `start-windows.ps1`, `preflight.mjs`, `portable.sh`, `pack-runtimes.sh`, `vendor.mjs`, `requirements.txt`, `WINDOWS-CHECKLIST.md` | the starters, the start check-up, the pinned Node and Python, the bundled libraries |
-| `scripts/check.sh`, `test*.mjs`, `e2e*.mjs`, `live_check_*.mjs`, `check_live_money.mjs`, `record_*.mjs`, shared test code (`e2e_lib.mjs`, `live_testlib.mjs` and others), `wordguard.mjs` | the suites, the one check, the recorders; `scripts/fixtures/` holds recorded answers of the outside services |
+| `scripts/check.sh`, `test*.mjs`, `e2e*.mjs`, `live_check_*.mjs`, `check_live_money.mjs`, `record_*.mjs`, shared test code (`e2e_lib.mjs`, `live_testlib.mjs` and others), `wordguard.mjs` | the suites, the one check, the recorders; `scripts/fixtures/` holds recorded answers of the outside services and four hand-made test helpers |
 | `vendor/`, `scripts/vendor-test/` | Leaflet, MapLibre and three.js, kept in the folder; axe-core for the suites only |
 | `docs/nasa-data-used.md`, `docs/data-sources/` | the NASA data and its credit; one file per data source on the challenge's list, with what we found when we tried it; most of these are not read by the app yet |
 | `Start Crophalo.command`, `.bat`, and the "(Add NASA login)" pair | the starters for Mac and Windows |

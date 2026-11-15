@@ -1,4 +1,4 @@
-// Crophalo's info pages: the Data page lists every source the app uses, built from the source table (never by hand), with the one line that says which NASA data
+// Crophalo's info pages: the Data page lists every source in the source table, built from that table (never by hand), with the one line that says which NASA data
 // Crophalo uses and that NASA does not stand behind it, and a link to the full credit. Privacy, Limitations and Settings are drawn by js/pages-info.js.
 // Pure: dataPageHTML(). renderInfo() writes the page asked for into the info view.
 // Checked by scripts/test_report.mjs (the NASA line, the link, one entry per source in the table, NASA first, plain-text escaping).
