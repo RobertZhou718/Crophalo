@@ -2,7 +2,8 @@
 // The markup is in js/pages-view.js; the rules are in privacy.js, backup.js, units.js, currency.js. Every storage access is in a try.
 // Checked by scripts/e2e_pages.mjs in a real browser.
 import { esc, own } from './words.js';
-import { privacyHTML, limitsHTML, settingsHTML, PAGE_LEADS, PRIVACY_TAB_IDS } from './pages-view.js';
+import { privacyHTML, limitsHTML, settingsHTML, PAGE_LEADS, PRIVACY_TAB_IDS, SETTINGS_TAB_IDS } from './pages-view.js';
+import { renderAdminPage } from './admin-view.js';
 import { storageCounts, makeArmer, eraseGroup, eraseEverything, ARM_MS } from './privacy.js';
 import { readSettings, saveSettings, SETTINGS_KEY } from './settings.js';
 import { readUnits, saveUnits, unitsFor, METRIC, IMPERIAL, DIMS, KEY as UNITS_KEY } from './units.js';
@@ -29,7 +30,7 @@ export function renderInfoPage(which, node = root()) {
   page = which; pageStyle('css/pages.css', node);
   if (which === 'limits') { node.innerHTML = `<p class="lead">${esc(PAGE_LEADS.limits)}</p>${limitsHTML()}`; countCards(node); return true; }
   if (which === 'privacy') { tab = tabFromAddress(PRIVACY_TAB_IDS); node.innerHTML = `<p class="lead">${esc(PAGE_LEADS.privacy)}</p>${privacyHTML(tab, storageCounts())}`; countCards(node); return true; }
-  if (which === 'settings') { tab = ''; node.innerHTML = `<p class="lead">${esc(PAGE_LEADS.settings)}</p>${settingsHTML(ctx())}`; countCards(node); afterSettings(node); return true; }
+  if (which === 'settings') { tab = tabFromAddress(SETTINGS_TAB_IDS); node.innerHTML = `<p class="lead">${esc(PAGE_LEADS.settings)}</p>${settingsHTML(ctx(), tab)}`; countCards(node); if (tab === 'api') renderAdminPage(node.querySelector('#admRoot')); else afterSettings(node); return true; }
   return false;
 }
 const redraw = () => { const n = root(), y = scrollY, open = [...n.querySelectorAll('details[open]')].map(d => d.id); renderInfoPage(page, n); for (const id of open) { const d = n.querySelector(`#${CSS.escape(id)}`); if (d) d.open = true; } scrollTo(0, y); };
@@ -89,9 +90,9 @@ function bind() {
     if (t.dataset.resetSettings !== undefined) { try { localStorage.removeItem(SETTINGS_KEY); localStorage.removeItem(UNITS_KEY); } catch { /* none */ } saveSettings({}); toast('Settings reset.'); redraw(); return; }
   });
   node.addEventListener('keydown', event => {
-    const tabBtn = event.target.closest('[role=tab]'), radio = event.target.closest('[role=radio]'), keys = { ArrowRight: 1, ArrowDown: 1, ArrowLeft: -1, ArrowUp: -1 };
-    if (tabBtn && keys[event.key]) { const all = [...node.querySelectorAll('[role=tab]')], i = all.indexOf(tabBtn), next = all[(i + keys[event.key] + all.length) % all.length]; event.preventDefault(); goTab(next.dataset.pgtab); }
-    else if (tabBtn && (event.key === 'Home' || event.key === 'End')) { const all = [...node.querySelectorAll('[role=tab]')]; event.preventDefault(); goTab(all[event.key === 'Home' ? 0 : all.length - 1].dataset.pgtab); }
+    const tabBtn = event.target.closest('[data-pgtab]'), radio = event.target.closest('[role=radio]'), keys = { ArrowRight: 1, ArrowDown: 1, ArrowLeft: -1, ArrowUp: -1 };
+    if (tabBtn && keys[event.key]) { const all = [...node.querySelectorAll('[data-pgtab]')], i = all.indexOf(tabBtn), next = all[(i + keys[event.key] + all.length) % all.length]; event.preventDefault(); goTab(next.dataset.pgtab); }
+    else if (tabBtn && (event.key === 'Home' || event.key === 'End')) { const all = [...node.querySelectorAll('[data-pgtab]')]; event.preventDefault(); goTab(all[event.key === 'Home' ? 0 : all.length - 1].dataset.pgtab); }
     else if (radio && keys[event.key]) { const all = [...radio.parentElement.querySelectorAll('[role=radio]')], next = all[(all.indexOf(radio) + keys[event.key] + all.length) % all.length]; event.preventDefault(); next.click(); }
   });
   node.addEventListener('change', async event => {

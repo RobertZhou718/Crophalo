@@ -26,7 +26,7 @@ export function dataPageHTML(table = SOURCES) {
   const count = { nasa: nasa.length, other: other.length };
   return `<div class="pg-tabs" role="tablist" aria-label="Kinds of source">${DATA_TABS.map((t, i) => `<button type="button" role="tab" class="tab" id="srctab-${t.id}" aria-selected="${i === 0}" aria-controls="srcpanel-${t.id}" tabindex="${i === 0 ? 0 : -1}">${esc(t.label)}${count[t.id] != null ? ` <span class="count soft">${count[t.id]}</span>` : ''}</button>`).join('')}</div>
     <p class="data-note" id="nasaLine">${esc(NASA_LINE)}</p>
-    <p class="cap data-admin"><a class="link" href="#admin">API connections (service status)</a>: which data services answer right now, and how fast.</p>
+    <p class="cap data-admin"><a class="link" href="#settings/api">API connections (service status)</a>: which data services answer right now, and how fast.</p>
     <details class="data-fold data-nasa" id="nasaUse"><summary>How Crophalo uses NASA data</summary>${NASA_USE.map(([n, what, does]) => `<p><b>${esc(n)}.</b> ${esc(what)}</p><p class="cap">${esc(does)}</p>`).join('')}<p class="cap">${esc(NASA_CREDIT)}</p></details>
     <h2>Where the numbers come from</h2>
     <div class="data-filter"><label class="field"><span>Find a source</span><input type="search" id="srcFilter" autocomplete="off" placeholder="e.g. rain, soil, price"></label><p class="cap" id="srcCount" role="status" aria-live="polite"></p></div>

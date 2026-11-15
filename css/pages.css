@@ -237,3 +237,12 @@
 .pg-tabs .tab { min-height: 44px; padding: 4px var(--space-20); border-radius: 9px; font-size: var(--fs-body); }
 .pg-tabs .tab[aria-selected=true] { background: var(--accent); color: var(--accent-ink); font-weight: var(--fw-semi); box-shadow: none; }
 .pg-tabs .tab[aria-selected=true] .count { background: rgba(255,255,255,.22); color: var(--accent-ink); }
+
+/* Settings in tabs: one panel in sight; the API connections tab holds the whole admin page */
+.st.stx.one { grid-template-columns: 1fr; }
+.adm-id h1, .adm-id .adm-title { margin: 0; font-size: var(--fs-title2, 24px); line-height: 1.2; }
+.adm-in { padding-top: var(--space-4); }
+@media (max-width: 899px) { .st.stx .stx-col + .stx-col { margin-top: 0; } }
+.stx .seg button { min-height: 34px; }
+@media (pointer: coarse) { .stx .seg button { min-height: 44px; } }
+@media (max-width: 760px) { .stx .seg button { min-height: 44px; } }

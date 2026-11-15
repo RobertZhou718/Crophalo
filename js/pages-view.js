@@ -71,7 +71,9 @@ const line = (text, id = '') => `<p class="st-note"${id ? ` id="${id}"` : ''}>${
 export const unitSystem = u => (u.rain === 'mm' && u.temp === 'C' && u.area === 'metric' && u.yield === 't' ? 'metric' : u.rain === 'in' && u.temp === 'F' && u.area === 'imperial' && u.yield === 'bu' ? 'imperial' : 'mixed');
 // "25 mm of rain · 18 °C · 40 ha": what the choices look like, in one line
 export const exampleLine = (u, lines) => { const by = Object.fromEntries(lines); return `${by.Rain} of rain · ${by.Temperature} · ${by['A field'].split(' at ')[0]}`; };
-export function settingsHTML(ctx = {}) {
+export const SETTINGS_TABS = Object.freeze([{ id: 'general', label: 'General' }, { id: 'accessibility', label: 'Accessibility' }, { id: 'reminders', label: 'Reminders' }, { id: 'api', label: 'API connections' }]);
+export const SETTINGS_TAB_IDS = SETTINGS_TABS.map(t => t.id);
+export function settingsHTML(ctx = {}, tab = 'general') {
   const s = ctx.settings ?? {}, u = ctx.units ?? {}, system = unitSystem(u), cur = s.currency ?? 'USD', n = ctx.reminders?.length ?? 0;
   const unitsMoney = section('units', 'Units and money', `${segRow('u:system', 'Measuring system', system === 'mixed' ? 'You chose some units yourself. Pick Metric or US to set them all.' : 'Follows your country until you change it.', [['metric', 'Metric'], ['imperial', 'US']], system, { quick: true, none: system === 'mixed' })}
     <p class="st-example" aria-label="What the units look like">${esc(exampleLine(u, sampleLines(u, ctx.moneySample)))}</p>
@@ -90,8 +92,12 @@ export function settingsHTML(ctx = {}) {
     <div id="remindList">${remindListHTML(ctx.reminders ?? [], ctx.nowLocal ?? '2000-01-01T00:00')}</div><div id="remindWays">${settingsRemindersHTML(ctx.remindState)}</div>
     ${row('delrem', 'Remove every reminder', '', '<button type="button" class="btn danger" data-erase="reminders" data-label="Delete all reminders">Delete all reminders</button>')}`);
   const device = section('device', 'This device', `${installCardHtml()}
-    ${row('api', 'API connections', 'Which data services answer, and how fast (service status).', '<a class="btn" href="#admin">Open</a>')}
     ${row('reset', 'Reset settings', 'Puts units, currency, listening, motion, text size, contrast and link style back to their defaults.', '<button type="button" class="btn ghost danger" data-reset-settings>Reset settings</button>')}`);
-  return `<div class="st stx"><div class="stx-col">${unitsMoney}${reading}${movement}</div><div class="stx-col">${remind}${device}</div></div>`;
+  const tabs = tabsHTML(SETTINGS_TABS, tab, 'Parts of Settings');
+  const body = tab === 'accessibility' ? `<div class="st stx"><div class="stx-col">${reading}</div><div class="stx-col">${movement}</div></div>`
+    : tab === 'reminders' ? `<div class="st stx one"><div class="stx-col">${remind}</div></div>`
+    : tab === 'api' ? '<div class="adm-in"><div id="admRoot"><h2 class="adm-title">API connections</h2></div></div>'
+    : `<div class="st stx"><div class="stx-col">${unitsMoney}</div><div class="stx-col">${device}</div></div>`;
+  return `${tabs}${panel(tab, body)}`;
 }
 export const PRIVACY_TAB_IDS = PRIVACY_TABS.map(t => t.id);

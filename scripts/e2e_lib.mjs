@@ -56,7 +56,7 @@ export function whyNoBrowser(name, { webSocket = typeof WebSocket === 'function'
 export const wanted = (name, only = process.env.E2E_ONLY || '') => { const words = only.split(',').map(w => w.trim().toLowerCase()).filter(Boolean); return !words.length || words.some(w => name.toLowerCase().includes(w)); };
 // What the throwaway copy holds: the page, what it loads, and the server with the scripts it imports (found by reading it, so a new import never needs a change here).
 export function copyList(root = ROOT) {
-  const list = ['index.html', 'design.html', 'manifest.json', 'sw.js', 'robots.txt', 'js', 'css', 'vendor', 'icons', 'img', 'design', 'data/regions.json'], seen = new Set();
+  const list = ['index.html', 'design.html', 'manifest.json', 'sw.js', 'robots.txt', 'js', 'css', 'vendor', 'icons', 'img', 'design', 'media', 'data/regions.json'], seen = new Set();
   const follow = rel => {
     if (seen.has(rel) || !isFile(path.join(root, rel))) return;
     seen.add(rel);

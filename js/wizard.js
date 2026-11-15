@@ -17,6 +17,7 @@ import { enhancePickers, setOffer, pickList } from './croppicker.js';
 import { stepPlan, rotationLine, thenWords, repeatWords, previewWords, moreGroups, inOntario, WORDS as CROP_WORDS } from './cropstep.js';
 import { initListen, stopSpeaking } from './listen.js';
 import { toast } from './toast.js';
+import { whyButton } from './srci.js';
 import { motionOff } from './motion.js';
 import { SAY as MAPSAY } from './mapwords.js';
 import { loadName, SETTLE_MS, FINDING, PLACE_UNKNOWN } from './placename.js';
@@ -159,7 +160,7 @@ function stepCrops() {
   const own = picked === 'custom';
   return `${CROP_WORDS.helper ? `<p class="lead rc-helper">${esc(CROP_WORDS.helper)}</p>` : ''}
     ${fieldYearsCard()}<div class="rc-suggest">${top}</div>
-    <h2 class="sub">${esc(p.suggested || p.phase === 'loading' ? CROP_WORDS.chooseHead : CROP_WORDS.chooseHeadNone)}</h2>
+    <h2 class="sub">${esc(p.suggested || p.phase === 'loading' ? CROP_WORDS.chooseHead : CROP_WORDS.chooseHeadNone)} ${whyButton('rotations')}</h2>
     <div class="rcards" role="radiogroup" aria-label="Ready rotations">${p.cards.map(id => rotCard(id, { big: true })).join('')}</div>
     ${p.restrict ? `<p class="cap">${esc(p.restrict.note)}</p>` : ''}
     <details class="fold-card" id="foldMoreRot"${isOpen ? ' open' : ''}><summary><span class="t">${esc(CROP_WORDS.more)}</span></summary><div class="fold-b">${more}</div></details>

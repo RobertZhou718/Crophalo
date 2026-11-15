@@ -172,7 +172,7 @@ const AUTO_KEY = 'crophalo.admin.auto';
 export async function renderAdminPage(root) {
   if (!root) return;
   pageStyle('css/pages.css', root);
-  const h1 = root.querySelector('h1');
+  const h1 = root.querySelector('h1, .adm-title');   // the page's own title, or the title of the Settings tab it sits in
   if (h1) h1.textContent = 'API connections';
   let bar = root.querySelector('.adm-head');
   if (!bar) {

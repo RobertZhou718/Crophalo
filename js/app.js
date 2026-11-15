@@ -61,7 +61,7 @@ export function show(view, fromPop = false, page = '') {
 function fromAddress() {
   const [, name = ''] = /^#([a-z]+)(?:\/[a-z]+)?$/.exec(location.hash) || [];
   if (own(INFO_PAGES, name)) return { view: 'info', page: name };
-  if (location.hash === '#admin' || location.hash === '#status') return { view: 'admin', page: '' };
+  if (location.hash === '#admin' || location.hash === '#status') { history.replaceState(history.state, '', '#settings/api'); return { view: 'info', page: 'settings' }; }   // the service status lives in Settings, on its own tab
   const kept = history.state?.v ?? 'home';   // an entry with no view of its own (an address typed in, or one we do not know) is the home, so Back never stands still
   return { view: IN_HISTORY.includes(kept) ? kept : 'home', page: '' };
 }

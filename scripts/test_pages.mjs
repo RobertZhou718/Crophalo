@@ -6,7 +6,7 @@ import fs from 'node:fs';
 import { cleanRates, fxNote, money, loadRates, readRates, CURRENCIES } from '../js/currency.js';
 import { makeBackup, checkBackup, restoreBackup, describeBackup, backupName, NOT_KEPT, MAX_BYTES } from '../js/backup.js';
 import { SENT, GROUPS, makeArmer, eraseGroup, eraseEverything, storageCounts, ARM_MS, keptLines } from '../js/privacy.js';
-import { privacyHTML, limitsHTML, settingsHTML, tabsHTML } from '../js/pages-view.js';
+import { privacyHTML, limitsHTML, settingsHTML, tabsHTML, SETTINGS_TAB_IDS } from '../js/pages-view.js';
 import { cleanSources, adminHTML, tilesOf, withEverySource, tilesHTML, loadSources, checkSources, whenWords, msWords, lastLine, ADMIN_DOWN, OLDER_SHAPE, statusOf } from '../js/admin-view.js';
 const YR = 2026;   // the year of the hand-made currency answer's day: the dates below are written from it
 
@@ -131,10 +131,12 @@ check('every group has a label', GROUPS.every(g => g.label && g.id)); check('Eve
   check('the old ten "not covered" items are chips (pests and diseases, seed and fertiliser, what a buyer pays, local rules, machines, greenhouses, two crops a year)', ['Pests and diseases this year', 'Seed and fertiliser supply', 'What a buyer pays', 'Local rules and contracts', 'Your machines', 'Greenhouses', 'More than two crops a year'].every(t => html.includes(t)));
   check('no block on the page says more than four sentences', [...html.matchAll(/<(p|li)[ >][\s\S]*?<\/\1>/g)].every(m => (plain(m[0]).match(/[.!?](\s|$)/g) ?? []).length <= 4)); }
 const SET = { settings: { text: 'default', contrast: 'standard', links: 'standard', motion: 'full', listen: 'normal', currency: 'USD' }, units: METRIC, reminders: [], nowLocal: '2026-11-14T10:00', remindState: { notify: 'default', push: { ok: false, reason: 'No push here.', on: false } } };
-{ const html = settingsHTML(SET);
-  check('Settings is one page: no tab strip and no tabs at all', !html.includes('role="tablist"') && !html.includes('role="tab"') && !/pg-tabs/.test(html));
+const same_ = (a, b) => JSON.stringify(a) === JSON.stringify(b);
+const allTabs = c => SETTINGS_TAB_IDS.map(t => settingsHTML(c, t)).join('');
+{ const html = allTabs(SET);
+  check('Settings has four tabs in this order (General, Accessibility, Reminders, API connections), one panel in sight at a time, the chosen one selected and the others out of the tab order', same_(SETTINGS_TAB_IDS, ['general', 'accessibility', 'reminders', 'api']) && SETTINGS_TAB_IDS.every(t => { const h = settingsHTML(SET, t); return (h.match(/role="tab"/g) ?? []).length === 4 && (h.match(/role="tabpanel"/g) ?? []).length === 1 && new RegExp(`id="pgtab-${t}" aria-controls="pgpanel" aria-selected="true" tabindex="0"`).test(h) && (h.match(/aria-selected="false" tabindex="-1"/g) ?? []).length === 3; }));
   check('Settings is one list of five sections with a small title (Units and money, Reading, Movement and sound, Reminders, This device), each setting one row with its name and help on the left and its control on the right, and no row repeats its section\'s title', ['Units and money', 'Reading', 'Movement and sound', 'Reminders', 'This device'].every(t => new RegExp(`<h2 id="sx-[a-z]+">${t}</h2>`).test(html)) && (html.match(/class="st-card stx-sec"/g) ?? []).length === 5 && (html.match(/class="stx-row/g) ?? []).length >= 12 && !/<span class="stx-n"[^>]*>Units<\/span>/.test(html) && /Measuring system/.test(html) && /id="curSel"/.test(html));
-check('the example line sits under the units row, the currency is a row in Units and money, and the service status is a row at the foot (API connections)', html.indexOf('st-example') > html.indexOf('Measuring system') && html.indexOf('curSel') > html.indexOf('st-example') && html.indexOf('API connections') > html.indexOf('Reset settings') === false && /href="#admin"/.test(html));
+check('the example line sits under the units row, the currency is a row in Units and money, and the service status is a row at the foot (API connections)', html.indexOf('st-example') > html.indexOf('Measuring system') && html.indexOf('curSel') > html.indexOf('st-example') && !/href="#admin"/.test(settingsHTML(SET, 'general')) && settingsHTML(SET, 'api').includes('id="admRoot"') && !settingsHTML(SET, 'general').includes('admRoot'));
   check('Units: one row with Metric and US, a line saying it follows the country, and a closed fold with each unit', html.includes('data-quick="metric"') && html.includes('data-quick="imperial"') && html.includes('Follows your country until you change it.') && /<details class="st-fold" id="stEach">/.test(html) && !/<details[^>]*open/.test(html));
   for (const n of ['u:rain', 'u:temp', 'u:area', 'u:yield']) check(`the fold has a picker for ${n}`, html.includes(`data-set="${n}"`));
   check('"All units at once", "One at a time" and "What it looks like" are gone; one live example line is there', !/All units at once|One at a time|What it looks like/.test(html) && /<p class="st-example"[^>]*>25 mm of rain · 20 °C · 10(\.0)? ha<\/p>/.test(html), html.match(/st-example[^<]*<|st-example[^>]*>[^<]*/)?.[0]);
@@ -146,9 +148,9 @@ check('the example line sits under the units row, the currency is a row in Units
   check('at the foot: the install card and Reset settings as a quiet red text button with one line saying what it does', html.includes('installcard') && /class="btn ghost danger" data-reset-settings/.test(html) && /Puts units, currency, listening/.test(html) && !/btn danger solid/.test(html));
   check('Admin and "Saved on this device" are gone from Settings; backup and restore are not here', !/Admin|Saved on this device|data-backup|data-restore/.test(html)); }
 { const mixed = settingsHTML({ ...SET, units: { ...METRIC, rain: 'in' } }); check('with a mixed choice neither Metric nor US is checked and the page says so', !/aria-checked="true"[^>]*data-quick/.test(mixed) && /You chose some units yourself/.test(mixed)); }
-{ check('a device that asks for less motion says so on the page', settingsHTML({ ...SET, deviceStill: true }).includes('Your device asks for less motion, so Crophalo keeps still.')); }
+{ check('a device that asks for less motion says so on the page', settingsHTML({ ...SET, deviceStill: true }, 'accessibility').includes('Your device asks for less motion, so Crophalo keeps still.')); }
 { const html = settingsHTML({ ...SET, settings: { ...SET.settings, currency: 'EUR' } }); check('with another currency the rate note shows', html.includes('id="fxNote"')); }
-{ const text = settingsHTML(SET).replace(/<select[\s\S]*?<\/select>/g, '').replace(/<[^>]+>/g, '\n').split('\n').map(t => t.trim()).filter(Boolean); const long = text.filter(t => (t.match(/[.!?](\s|$)/g) ?? []).length > 4);
+{ const text = allTabs(SET).replace(/<select[\s\S]*?<\/select>/g, '').replace(/<[^>]+>/g, '\n').split('\n').map(t => t.trim()).filter(Boolean); const long = text.filter(t => (t.match(/[.!?](\s|$)/g) ?? []).length > 4);
   check('no block on the Settings page says more than four sentences', long.length === 0, long); }
 { const html = tabsHTML([{ id: 'a', label: '<b>A</b>' }, { id: 'b', label: 'B' }], 'a', 'x"y'); check('tab labels are escaped', !html.includes('<b>A</b>') && html.includes('x&quot;y')); }
 

@@ -37,6 +37,34 @@ export function cardPlace(anchor, view, card) {
   return { left, top, width };
 }
 
+// ---- the "why and how" cards: the same small pop-over, with words written for one question instead of one source. Only what the code really does is said here.
+export const WHY = Object.freeze({
+  rotations: {
+    label: 'Why and how we suggest these rotations',
+    title: 'Why these rotations',
+    lines: [
+      'These are ready-made rotations, so you do not have to build one from nothing.',
+      'The first one is picked from what the national crop map shows on the farmland around your field.',
+      'You can change it: choose another card, or build your own.',
+    ],
+    more: [
+      'How they are picked: Crophalo looks at which crops cover the most farmland within about 10 km of your field, in the USDA crop map (United States) or the Agriculture and Agri-Food Canada crop map (Canada). It offers the rotations made only of crops that are common there.',
+      'The map shows which crops grow near you, not the order they follow. The order in a rotation is the usual one.',
+      'If the crop map cannot be read, or covers another country, you see a standard short list. Where a country has an official crop list (Statistics Canada for Ontario), only crops from that list are offered.',
+      'Nothing is chosen for you until you tap. After you pick, the report checks your rotation against your field’s own weather since 2001.',
+    ],
+  },
+});
+export function whyButton(id) {
+  const w = WHY[id]; if (!w) return '';
+  return `<button type="button" class="srci" aria-label="${esc(w.label)}" aria-haspopup="dialog" aria-expanded="false" data-why="${esc(id)}"></button>`;
+}
+export function whyHtml(id) {
+  const w = WHY[id]; if (!w) return '';
+  return `<div class="srcp-top"><span class="srcp-tags"></span><button type="button" class="srcp-x" aria-label="Close">${X}</button></div>
+    <section class="srcp-src"><h3>${esc(w.title)}</h3>${w.lines.map(l => `<p>${esc(l)}</p>`).join('')}
+      <details class="disc"><summary>Show more</summary>${w.more.map(l => `<p class="small">${esc(l)}</p>`).join('')}</details></section>`;
+}
 // ---- the one shared card
 let pop = null, openFor = null, hoverTimer = 0, leaveTimer = 0, pinned = false;
 const zoom = () => parseFloat(getComputedStyle(document.documentElement).getPropertyValue('--tz')) || 1;
@@ -60,7 +88,7 @@ function place() {
 }
 function show(button, pin) {
   const card = ensure();
-  card.innerHTML = cardHtml(button.dataset.src.split(','), button.dataset.note || '');
+  card.innerHTML = button.dataset.why ? whyHtml(button.dataset.why) : cardHtml(button.dataset.src.split(','), button.dataset.note || '');
   card.hidden = false; openFor = button; pinned = pin || pinned;
   document.querySelectorAll('.srci[aria-expanded=true]').forEach(b => { if (b !== button) b.setAttribute('aria-expanded', 'false'); });
   button.setAttribute('aria-expanded', 'true');
@@ -79,18 +107,18 @@ export const sourceOpen = () => !!pop && !pop.hidden;
 export function initSources() {
   if (initSources.on) return; initSources.on = true;
   document.addEventListener('click', event => {
-    const b = event.target.closest?.('.srci[data-src]');
+    const b = event.target.closest?.('.srci[data-src], .srci[data-why]');
     if (b) { event.preventDefault(); event.stopPropagation(); if (openFor === b && pinned) close(true); else { show(b, true); pop.focus({ preventScroll: true }); } return; }
     if (sourceOpen() && !pop.contains(event.target)) close(false);   // a click outside
   }, true);
   document.addEventListener('keydown', event => { if (event.key === 'Escape' && sourceOpen()) { event.preventDefault(); event.stopPropagation(); close(true); } }, true);
   document.addEventListener('mouseover', event => {
-    const b = event.target.closest?.('.srci[data-src]');
+    const b = event.target.closest?.('.srci[data-src], .srci[data-why]');
     if (!b || !matchMedia('(hover: hover)').matches || pinned) return;
     clearTimeout(hoverTimer); clearTimeout(leaveTimer); hoverTimer = setTimeout(() => show(b, false), 140);
   });
   document.addEventListener('mouseout', event => {
-    if (!event.target.closest?.('.srci[data-src]')) return;
+    if (!event.target.closest?.('.srci[data-src], .srci[data-why]')) return;
     clearTimeout(hoverTimer); if (!pinned) leaveTimer = setTimeout(() => close(false), 220);
   });
   document.addEventListener('focusin', event => { if (sourceOpen() && pinned && !pop.contains(event.target) && event.target !== openFor) close(false); });

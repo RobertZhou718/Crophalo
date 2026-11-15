@@ -19,7 +19,7 @@ await group('pages', async () => {
   check('privacy: on your device says no account', (await text()).includes('No account'));
   await open('#privacy/sent'); const t = await text(); check('privacy: the sent tab names NASA POWER and Open-Meteo', t.includes('NASA POWER') && t.includes('Open-Meteo'));
   await open('#limits'); const l = await js(`document.querySelector('#infoBody').textContent`); check('limits: all three sureness levels (under Show more)', ['Very sure', 'Fairly sure', 'Somewhat sure'].every(w => l.includes(w)));
-  await open('#settings');
+  await open('#settings/accessibility');
   await tap('[data-set="text"][data-val="large"]'); await sleep(150);
   same('settings: Larger text puts data-text on the page and keeps it', await js(`[document.documentElement.dataset.text, JSON.parse(localStorage.getItem('crophalo.settings.v1')).text]`), ['large', 'large']);
   await tap('[data-set="motion"][data-val="still"]'); await sleep(150);
@@ -29,7 +29,7 @@ await group('pages', async () => {
   await tap('[data-set="motion"][data-val="full"]'); await sleep(150);
   same('settings: Full removes it', await js(`document.documentElement.dataset.motion ?? ''`), '');
   await open('#settings');
-  check('settings: no tab bar, one page', await js(`!document.querySelector('#infoBody [role=tablist], #infoBody [role=tab]')`));
+  check('settings: four tabs, one panel in sight', await js(`document.querySelectorAll('#infoBody > .pg-tabs [role=tab]').length === 4 && document.querySelectorAll('#infoBody > [role=tabpanel]').length === 1`));
   await tap('[data-quick="imperial"]'); await sleep(150);
   check('units: the example line follows the choice (US: inches, °F, acres)', /in of rain · \d+ °F · [\d.]+ ac/.test(await js(`document.querySelector('.st-example').textContent`)), await js(`document.querySelector('.st-example').textContent`));
   await tap('#stEach summary'); await sleep(100); await tap('[data-set="u:temp"][data-val="C"]'); await sleep(150);
@@ -65,7 +65,7 @@ await group('keys', async () => {
   same('keys: Right moves to the next tab and focuses it', await js(`[location.hash, document.activeElement.id]`), ['#privacy/sent', 'pgtab-sent']);
   await press('ArrowRight'); await sleep(250); same('keys: it wraps to the first', await js(`location.hash`), '#privacy/device');
   check('keys: only the selected tab is in the tab order', await js(`document.querySelectorAll('[role=tab][tabindex="0"]').length === 1`));
-  await open('#settings');
+  await open('#settings/accessibility');
   await js(`document.querySelector('[data-set="text"][aria-checked="true"]').focus()`); await press('ArrowRight'); await sleep(250);
   check('keys: an arrow moves a choice and keeps focus on a choice', await js(`document.activeElement.getAttribute('role') === 'radio' && document.activeElement.dataset.set === 'text' && document.activeElement.getAttribute('aria-checked') === 'true'`));
 });
@@ -103,7 +103,7 @@ await group('backup', async () => {
 await group('look', async () => {
   // the owner's rules of 15 November 2026: four sentences at most in any block, every control 44 px on a phone, no tab bar on Settings; the pictures for the owner
   const sentences = `[...document.querySelectorAll('#infoBody p, #infoBody li, #infoBody dd')].filter(e => e.offsetParent && !e.closest('select')).map(e => [(e.innerText.match(/[.!?](\\s|$)/g) || []).length, e.innerText.slice(0, 50)]).filter(([n]) => n > 4)`;
-  for (const [hash, name] of [['#settings', 'settings'], ['#limits', 'limitations'], ['#privacy', 'privacy']]) for (const width of [1440, 390]) {
+  for (const [hash, name] of [['#settings', 'settings'], ['#settings/accessibility', 'settings-accessibility'], ['#limits', 'limitations'], ['#privacy', 'privacy']]) for (const width of [1440, 390]) {
     await open(hash, width); await sleep(500);
     check(`look: ${name} at ${width}: no block shows more than four sentences`, (await js(sentences)).length === 0, await js(sentences));
     const small = await js(`[...document.querySelectorAll('#infoBody button, #infoBody select, #infoBody input:not(.sr), #infoBody a, #infoBody summary')].filter(e => e.offsetParent && !e.closest('.sr') && !e.classList.contains('srci')).map(e => { const a = getComputedStyle(e, '::after'), grow = a.content !== 'none' && a.position === 'absolute' ? Math.max(0, -parseFloat(a.top) || 0) + Math.max(0, -parseFloat(a.bottom) || 0) : 0; return [e.getBoundingClientRect(), e, grow]; }).filter(([b, e, grow]) => b.height + grow < 43.5).map(([b, e, grow]) => e.tagName + ' ' + (e.textContent || '').trim().slice(0, 24) + ' ' + Math.round(b.height + grow))`);
@@ -112,7 +112,7 @@ await group('look', async () => {
     await run.shot?.(`${name}-${width}.png`);
   }
   await open('#settings', 1440);
-  check('look: Settings has no tab bar and its cards are at most 720 px wide, centred', await js(`!document.querySelector('#infoBody [role=tablist]') && [...document.querySelectorAll('.st-card')].every(c => c.getBoundingClientRect().width <= 721)`));
+  check('look: Settings has its four tabs and its cards sit inside the page', await js(`document.querySelectorAll('#infoBody > .pg-tabs [role=tab]').length === 4 && [...document.querySelectorAll('.st-card')].every(c => c.getBoundingClientRect().right <= innerWidth)`));
   const words = await js(`document.querySelector('#view-info').innerText.split(/\\s+/).length`);
   await open('#limits', 1440); const lim = await js(`[...document.querySelectorAll('#infoBody')].map(n => { const c = n.cloneNode(true); c.querySelectorAll('details').forEach(d => d.remove()); return c.innerText.split(/\\s+/).length; })[0]`);
   check('look: Limitations shows about 120 words in sight (423 before)', lim <= 160, lim);
@@ -124,18 +124,18 @@ await group('status', async () => {
   await size(1440); await go('/'); await js(`localStorage.setItem('crophalo.welcome.v1', ${JSON.stringify(WELCOME)})`); await go('/');   // a second load: the welcome of the first visit is not on the page
   await js(`window.__posts = 0; const real = window.fetch.bind(window); window.fetch = (u, o) => String(u).includes('/api/sources/check') ? (window.__posts++, Promise.resolve(new Response(JSON.stringify(${JSON.stringify(rows.map(r => ({ ...r, state: 'answering', last_problem: null })))}), { status: 200 }))) : String(u).includes('/api/sources') ? Promise.resolve(new Response(JSON.stringify(${JSON.stringify(rows)}), { status: 200 })) : real(u, o)`);
   await js(`location.hash = '#admin'`); await until(`document.querySelector('.adm-table tr[data-state]')`);
-  const t = await js(`document.querySelector('#view-admin').innerText`);
+  const t = await js(`document.querySelector('#infoBody').innerText`);
   check('status: the page is called API connections with its Admin chip, one table row for each service with its state as a word, and the tabs', /API connections/.test(t) && /Admin/.test(t) && /NASA POWER weather/.test(t) && /Online/.test(t) && /Not set up/.test(t) && /Not checked here/.test(t) && /Services/.test(t) && /Live data/.test(t) && /Recent requests/.test(t) && !/3D objects/.test(t) && (await js(`document.querySelectorAll('.adm-table tr[data-state]:not([data-state=no_check])').length`)) === 2 && (await js(`document.querySelectorAll('.adm-table tr[data-state=no_check]').length`)) > 15, t.slice(0, 300));
-  check('status: NASA POWER is one row, not two, and the rows the server cannot check sit under their own title, with no Esri, GBIF or drought row', await js(`[...document.querySelectorAll('.adm-svc b')].filter(b => /^NASA POWER/.test(b.textContent)).length === 1 && /Read straight from your browser/.test(document.querySelector('.adm-group')?.textContent || '') && !/Esri|GBIF|Drought Monitor/.test(document.querySelector('#view-admin').innerText)`));
+  check('status: NASA POWER is one row, not two, and the rows the server cannot check sit under their own title, with no Esri, GBIF or drought row', await js(`[...document.querySelectorAll('.adm-svc b')].filter(b => /^NASA POWER/.test(b.textContent)).length === 1 && /Read straight from your browser/.test(document.querySelector('.adm-group')?.textContent || '') && !/Esri|GBIF|Drought Monitor/.test(document.querySelector('#infoBody').innerText)`));
   check('status: no key, no password, no file path anywhere on the page', !/sk-|password|netrc|\/Users\//i.test(t));
   check('status: the page has the same left and right edges as the top bar', await js(`(() => { const b = document.querySelector('.brand, header a')?.getBoundingClientRect(), w = document.querySelector('.adm-head').getBoundingClientRect(), t = document.querySelector('.adm-tablewrap').getBoundingClientRect(), n = document.querySelector('.nav-in').getBoundingClientRect(); return Math.abs(w.left - (n.left + 16)) <= 2 && Math.abs(t.right - (n.right - 16)) <= 2; })()`), await js(`JSON.stringify([document.querySelector('.adm-head').getBoundingClientRect().left, document.querySelector('.nav-in').getBoundingClientRect().left, document.querySelector('.adm-tablewrap').getBoundingClientRect().right, document.querySelector('.nav-in').getBoundingClientRect().right])`));
   check('status: the chosen tab is filled blue with white bold words', await js(`(() => { const c = getComputedStyle(document.querySelector('.pg-tabs [aria-selected=true]')); return c.color === 'rgb(255, 255, 255)' && Number(c.fontWeight) >= 600 && c.backgroundColor !== 'rgba(0, 0, 0, 0)'; })()`));
   check('status: the four tiles are there', (await js(`document.querySelectorAll('.adm-tile').length`)) === 4, t.slice(0, 200));
-  check('status: the table runs the whole width on a wide screen', await js(`(() => { const w = document.querySelector('.adm-tablewrap').getBoundingClientRect(), h = document.querySelector('#view-admin .wrap').getBoundingClientRect(); return h.right - w.right <= 40; })()`));
+  check('status: the table runs the whole width on a wide screen', await js(`(() => { const w = document.querySelector('.adm-tablewrap').getBoundingClientRect(), h = document.querySelector('#infoBody').getBoundingClientRect(); return h.right - w.right <= 40; })()`));
   await tap('#adCheck'); await until(`window.__posts === 1`); await sleep(300);
-  check('status: Check now asks the server once and the new states show', /Checked/.test(await js(`document.querySelector('#view-admin').innerText`)) && await js('window.__posts') === 1);
+  check('status: Check now asks the server once and the new states show', /Checked/.test(await js(`document.querySelector('#infoBody').innerText`)) && await js('window.__posts') === 1);
   await sleep(300); await run.shot?.('admin-1440.png'); await run.shot?.('admin-1440.png'); await js('window.scrollTo(0, 500)'); await sleep(200); await run.shot?.('admin-1440b.png'); await js('window.scrollTo(0, 0)'); await size(390); await sleep(500); await run.shot?.('admin-390.png'); await js('window.scrollTo(0, 700)'); await sleep(200); await run.shot?.('admin-390b.png'); await size(1440);
-  await open('#settings'); check('status: Settings has a quiet link to it at the foot', await js(`!!document.querySelector('a[href="#admin"]')`));
+  await open('#settings'); check('status: Settings has four tabs and API connections is the last one; #admin opens it', await js(`[...document.querySelectorAll('.pg-tabs [role=tab]')].map(t => t.textContent).join('|')`) === 'General|Accessibility|Reminders|API connections' && await js(`(location.hash = '#admin', true)`) && await until(`location.hash === '#settings/api' && document.querySelector('#pgtab-api[aria-selected=true]')`).then(() => true, () => false));
 });
 
 await group('fit', async () => {
@@ -178,7 +178,7 @@ await group('skeleton', async () => {   // the owner's house rule: grey lines in
 
 await group('wide', async () => {
   const four = ['NASA POWER weather', 'USDA NASS crop data', 'Open-Meteo forecast', 'SMAP soil moisture'].map((name, i) => ({ id: 'abcd'[i], name, state: ['answering', 'not_answering', 'answering', 'slow'][i], last_ok_time: '2026-11-15T01:00:00Z', last_ms: 900, last_problem: i === 1 ? 'The service did not answer in time.' : null, kept: 0, ttl_hours: 24, needs_key: false, key_set: false, needs_login: false, login_set: false, checked_at: null, can_check: true }));   // the owner's rule: a page uses the whole width. At 1440 and 1920 the last card of the first row ends within 40 px of the container's right edge, and the cards of a row grow with the screen
-  for (const width of [1440, 1920, 2000]) for (const hash of ['#settings', '#privacy', '#privacy/sent', '#limits', '#data', '#admin']) {
+  for (const width of [1440, 1920, 2000]) for (const hash of ['#settings', '#privacy', '#privacy/sent', '#limits', '#data']) {
     if (hash === '#admin') { await size(width); await go('/'); await js(`localStorage.setItem('crophalo.welcome.v1', ${JSON.stringify(WELCOME)})`); await go('/'); await js(`window.fetch = ((real) => (u, o) => String(u).includes('/api/sources') ? Promise.resolve(new Response(JSON.stringify(${JSON.stringify(four)}), { status: 200 })) : real(u, o))(window.fetch.bind(window))`); await js(`location.hash = '#admin'`); await until(`document.querySelector('.adm-table tr[data-state]')`); await sleep(300); }
     else await open(hash, width);
     const m = await js(`(() => { const box = [...document.querySelectorAll('#view-admin .sec, #infoBody')].find(e => e.getBoundingClientRect().width > 0), grid = document.querySelector('#view-admin:not([hidden]) .adm-tablewrap, .st, .lim-grid, .pgpanel.cards, [role=tabpanel]:not([hidden]) .data-sources'), cards = grid ? [...grid.children].filter(c => c.getBoundingClientRect().width > 0) : [...document.querySelectorAll('.pgpanel > .tbl')];
@@ -197,8 +197,8 @@ await group('wide', async () => {
   const priv = await js(`(() => { const cards = [...document.querySelectorAll('.pgpanel.cards > .st-card')].map(c => { const b = c.getBoundingClientRect(); return { l: Math.round(b.left), w: Math.round(b.width), h: Math.round(b.height), t: Math.round(b.top) }; }), box = document.querySelector('#infoBody').getBoundingClientRect(); const row = cards.filter(c => c.t === cards[0].t); return { row, boxRight: Math.round(box.right), last: row.length ? row.at(-1).l + row.at(-1).w : 0 }; })()`);
   console.log(`wide-measure #privacy at 2000: ${JSON.stringify(priv)}`);
   check('wide: Privacy at 2000 px: its cards are equal columns across the full row, equal in height', priv.row.length >= 3 && priv.row.every(c => Math.abs(c.w - priv.row[0].w) <= 2 && c.h === priv.row[0].h) && priv.boxRight - priv.last <= 2, priv);
-  await size(1440); await go('/'); await js(`localStorage.setItem('crophalo.welcome.v1', ${JSON.stringify(WELCOME)})`); await js(`location.hash = '#admin'`); await until(`document.title === 'API connections · Crophalo'`, 6000).catch(() => {});
-  check('wide: the status page is called API connections in the tab too', await js('document.title') === 'API connections · Crophalo', await js('document.title'));
+  await size(1440); await go('/'); await js(`localStorage.setItem('crophalo.welcome.v1', ${JSON.stringify(WELCOME)})`); await js(`location.hash = '#admin'`); await until(`document.title === 'Settings · Crophalo'`, 6000).catch(() => {});
+  check('wide: the status page is called Settings in the tab when opened as #admin', await js('document.title') === 'Settings · Crophalo', await js('document.title'));
 });
 
 await group('touch', async () => {   // the main suite's two measures, on the pages only: no two visible controls closer than 2 px, and on a phone every control 44 px (a link inside a sentence is as tall as its line)

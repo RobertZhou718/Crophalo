@@ -101,5 +101,10 @@ check('a card taller than the screen still starts inside it', I.cardPlace({ left
   check('a note with a link that is not https gets no Visit link', !/Visit/.test(dataPageHTML({ x: { org: 'A', name: 'n', nasa: false, who: 'w', what: 'w', talk: 't', url: 'javascript:alert(1)' } })));
   check('every key the code names in a source button exists in the table', (() => { const code = fsx.readdirSync(path.join(ROOT, 'js')).filter(f => f.endsWith('.js')).map(f => fsx.readFileSync(path.join(ROOT, 'js', f), 'utf8')).join('\n'); const used = new Set([...code.matchAll(/(?:infoButton|srcButton)\(\[([^\]]+)\]/g)].flatMap(m => [...m[1].matchAll(/'([a-z0-9]+)'/g)].map(x => x[1]))); return [...used].every(k => keys.includes(k)); })());
 }
+// the "why and how" card of step 2
+{ const { WHY, whyButton, whyHtml } = await import('../js/srci.js'), w = WHY.rotations, btn = whyButton('rotations'), card = whyHtml('rotations'), text = card.replace(/<details[\s\S]*<\/details>/, '').replace(/<[^>]+>/g, ' ');
+  check('the why button is the house "i" (class srci, a name for a screen reader, opens a dialog) and says why and how', /class="srci"/.test(btn) && /aria-haspopup="dialog"/.test(btn) && /Why and how we suggest these rotations/.test(btn) && !/<span/.test(btn), btn);
+  check('the card has at most three plain sentences in sight, the rest under "Show more", and says only what the code does (the crop map, about 10 km, the country list, nothing chosen until a tap)', w.lines.length <= 3 && /Show more/.test(card) && /within about 10 km/.test(w.more.join(' ')) && /Statistics Canada/.test(w.more.join(' ')) && /Nothing is chosen for you until you tap/.test(w.more.join(' ')) && !/\b(guarantee|best yield|profit)/i.test(card), text.trim().slice(0, 200));
+  check('an unknown card says nothing', whyButton('nope') === '' && whyHtml('nope') === ''); }
 console.log(`${passed} passed, ${failed} failed`);
 process.exit(failed ? 1 : 0);
