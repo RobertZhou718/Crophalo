@@ -43,7 +43,7 @@ export function marketLineHTML(market, plan, where = 'card', result = null, near
 // '' for everything else (no answer yet, still loading, a real answer, a field outside the United States).
 export function bidsStateHTML(market) {
   if (!market || market.loading || market.ok !== false) return '';
-  return `<div class="lf-bids"><p class="cap mk-state" role="status">${esc(market.notSet === true ? WORDS.notSet : WORDS.failLayer)}</p></div>`;
+  return `<div class="lf-bids"><p class="cap mk-state" role="status">${esc(market.soon === true ? WORDS.soon : market.notSet === true ? WORDS.notSet : WORDS.failLayer)}</p></div>`;
 }
 // The lines the strategy detail adds to "What evidence supports it" ({ text, sources }), "Where information is missing" and "Risks to check locally" (plain text: the detail escapes them).
 export function marketListsFor(market, plan, result = null, near = null) {

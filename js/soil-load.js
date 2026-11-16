@@ -31,7 +31,7 @@ export async function loadSoilSurvey(loc, get = globalThis.fetch?.bind(globalThi
   const lat = Number(loc?.lat), lon = Number(loc?.lon);
   if (String(loc?.cc ?? '').toUpperCase() !== 'US') return { ok: false, reason: 'The US soil survey covers only the United States.' };
   if (!Number.isFinite(lat) || !Number.isFinite(lon) || typeof get !== 'function') return { ok: false, reason: 'No place to look at.' };
-  if (routeGone) return { ok: false, reason: 'The soil survey is not available here, so an average loam is assumed.' };
+  if (routeGone) return { ok: false, reason: 'The US soil survey is coming soon here, so an average loam is assumed.' };
   try { return surveyToSoil(await Promise.race([get(apiUrl(`/api/soilfield?lat=${lat.toFixed(4)}&lon=${lon.toFixed(4)}`)).then(r => { if (r.status === 404) { routeGone = true; throw new Error('no route'); } return r.json(); }), new Promise((_, no) => setTimeout(() => no(new Error('slow')), ms))])); }
   catch { return { ok: false, reason: 'The soil survey did not answer, so an average loam is assumed.' }; }
 }

@@ -29,5 +29,5 @@ check('the farmer\'s own soil test replaces what the survey gave, for the proper
 { let asked = 0; forgetSoilRoute();
   const gone = async () => { asked++; return { status: 404, json: async () => ({}) }; };
   const a1 = await loadSoilSurvey({ lat: 41, lon: -96, cc: 'US' }, gone), a2 = await loadSoilSurvey({ lat: 41, lon: -96, cc: 'US' }, gone);
-  check('a server without the soil route is asked once, then never again this visit, and the soil stays as it was', asked === 1 && a1.ok === false && a2.ok === false && /not available/.test(a2.reason), `${asked}`); forgetSoilRoute(); }
+  check('a server without the soil route is asked once, then never again this visit, and the soil stays as it was', asked === 1 && a1.ok === false && a2.ok === false && /coming soon/.test(a2.reason), `${asked}`); forgetSoilRoute(); }
 console.log(`soilload: ${passed} passed, ${failed} failed`); process.exit(failed ? 1 : 0);

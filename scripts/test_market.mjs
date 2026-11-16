@@ -3,7 +3,7 @@
 // Everything runs on hand-made stand-in answers in scripts/fixtures/market-page/ (made-up prices, marked STAND-IN, NOT REAL DATA) and on small hand-made engine results (plan names and crop ids only).
 // RULE: never loosen a check to make it pass; a failure means a farmer could read a bid as income, a stopped report as today, or another state's price as local. No internet is needed. Run: node scripts/test_market.mjs
 import fs from 'node:fs';
-import { money, cents, dayUS, marketWanted, cropsToAsk, loadMarket, startMarket, marketFor, layerFor, planCashCrops, WORDS, STATE_NAMES } from '../js/market-data.js';
+import { money, cents, dayUS, marketWanted, cropsToAsk, loadMarket, COMING_SOON, startMarket, marketFor, layerFor, planCashCrops, WORDS, STATE_NAMES } from '../js/market-data.js';
 import { marketLineHTML, marketListsFor, bidsStateHTML, regionsFoldHTML, layerCardHTML, creditLine, AMS_SOURCE_WORDS, LAYER_CARD_WORDS } from '../js/market-view.js';
 
 let passed = 0, failed = 0;
@@ -321,7 +321,7 @@ function DIMS() { return ['water', 'organic', 'erosion', 'pest', 'nitrogen', 'fo
   same('…the two requests, in order', calls.map(c => c.url), ['/api/keys', '/api/mnfield?lat=41.179469&lon=-96.439756&mode=now&crops=corn']);
   check('the public server with the key: the bids come back', (await loadMarket(MEADLOC, cropsToAsk(MEAD_R), shut(MEAD)))?.place?.state === 'NE');
   same('the public server, Market News down: not read', await loadMarket(MEADLOC, ['corn'], shut(FAILED)), { ok: false });
-  same('a server that has neither route (an older copy): nothing', await loadMarket(MEADLOC, ['corn'], shut({ ok: false, reason: 'Unknown endpoint' }, 404)), null);
+  same('a server that has neither route (an older copy): one plain line says coming soon', await loadMarket(MEADLOC, ['corn'], shut({ ok: false, reason: 'Unknown endpoint' }, 404)), COMING_SOON);
   same('the server says outside the United States: nothing', await loadMarket(MEADLOC, ['corn'], fake({ ok: true, ams: true }, { ok: false, final: true, reason: 'USDA Market News covers only the United States' })), null);
   same('the service down: not read', await loadMarket(MEADLOC, ['corn'], fake({ ok: true, ams: true }, null, { throws: true })), { ok: false });
   same('a server error: not read', await loadMarket(MEADLOC, ['corn'], fake({ ok: true, ams: true }, { ok: false, reason: 'boom' }, { status: 500 })), { ok: false });

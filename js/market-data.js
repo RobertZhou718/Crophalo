@@ -41,6 +41,7 @@ export const WORDS = Object.freeze({
   oneDay: 'These are bids on one day at elevators in a region, not what you will be paid. Your price, yield and costs differ.',
   takes: 'A bid shows a buyer. It does not say how much they will take.',
   notSet: 'Local cash bids from USDA Market News are not set up on this server, so none are shown.',
+  soon: 'Local cash bids from USDA Market News: coming soon.',
 });
 // The server's own refusals that mean "this piece is absent here", not "it failed": no key on the server, and a place outside the United States.
 const NOT_SET_REASONS = [/\bnot set up on this server\b/, /needs the owner[’']s free key on this server, and none is set/];
@@ -49,6 +50,7 @@ const absentReason = reason => typeof reason === 'string' && ABSENT_REASONS.some
 // The server said the Market News key is not set: by its flag, or by its sentence. The page then says so in one plain line (WORDS.notSet) and shows no bid.
 const notSetAnswer = a => !!a && a.ok === false && (a.not_set === true || (typeof a.reason === 'string' && NOT_SET_REASONS.some(x => x.test(a.reason))));
 export const NOT_SET = Object.freeze({ ok: false, notSet: true });
+export const COMING_SOON = Object.freeze({ ok: false, notSet: true, soon: true });   // a server that does not have the lookup yet
 
 // ---- rounding and dates
 // Round half up on the decimal value: 3.945 gives 3.95 (plain Math.round(x * 100) gives 3.94, because 3.945 × 100 is 394.49999999999994 in binary).
@@ -110,7 +112,7 @@ export async function loadMarket(place, crops, fetcher = globalThis.fetch?.bind(
     let a = null; try { a = await r.json(); } catch { a = null; }
     if (notSetAnswer(a)) return NOT_SET;
     if (a && a.ok === false && absentReason(a.reason)) return null;
-    if (r?.status === 404) return null;   // a server without this lookup: the piece is absent
+    if (r?.status === 404) return COMING_SOON;   // a server without this lookup yet: one plain line says it is coming soon
     if (!r?.ok || !a || a.ok !== true || a.mode !== 'now') return { ok: false };
     return a;
   } catch { return { ok: false }; }
