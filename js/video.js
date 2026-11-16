@@ -70,6 +70,18 @@ export function wirePlayer(root) {
     });
   };
   video.addEventListener('ended', () => { video.load(); rest(); });
+  // A browser that cannot play the picture here (or a slow line that does not deliver it) is never left with a dead player: the file opens in its own tab.
+  let wait = 0;
+  const lost = () => {
+    if (root.querySelector('.vid-lost')) return;
+    const p = document.createElement('p'); p.className = 'cap vid-lost'; p.setAttribute('role', 'status');
+    p.append('The video did not start here. ');
+    const a = document.createElement('a'); a.href = VIDEO.file; a.target = '_blank'; a.rel = 'noopener'; a.textContent = 'Open it in its own tab'; p.append(a, '.');
+    video.parentElement.after(p);
+  };
+  video.addEventListener('error', lost);
+  video.addEventListener('playing', () => { clearTimeout(wait); root.querySelector('.vid-lost')?.remove(); });
+  video.addEventListener('play', () => { clearTimeout(wait); wait = setTimeout(() => { if (video.readyState < 3 && !video.paused) lost(); }, 12000); });
   return { video, start, stop, auto };
 }
 
