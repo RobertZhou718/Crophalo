@@ -153,7 +153,7 @@ same('dates in words', [dayWords('2028-10-05'), dayWords('x')], ['5 Oct 2028', '
 
 // ---- the Data page
 const dp = dataPageHTML();
-check('the Data page opens with the NASA line and a closed fold that says how NASA data is used; no link to a file', dp.includes(NASA_LINE) && dp.includes('How Crophalo uses NASA data') && NASA_USE.every(([n]) => dp.includes(n)) && !/href="docs\//.test(dp) && !/<details[^>]*id="nasaUse"[^>]*open/.test(dp) && dp.indexOf(NASA_LINE) < dp.indexOf('Where the numbers come from'));
+check('the first tab of the Data page holds the NASA line and a closed fold that says how NASA data is used; no link to a file', dp.includes(NASA_LINE) && dp.includes('How Crophalo uses NASA data') && NASA_USE.every(([n]) => dp.includes(n)) && !/href="docs\//.test(dp) && !/<details[^>]*id="nasaUse"[^>]*open/.test(dp) && dp.indexOf('id="srcpanel-nasa"') < dp.indexOf(NASA_LINE) && dp.indexOf(NASA_LINE) < dp.indexOf('id="srcpanel-other"'));
 check('one entry for every source in the table, built from the table', (dp.match(/<li class="row">/g) ?? []).length === Object.keys(ALL_SOURCES).length);
 check('NASA sources come first, each with a "Show more"', dp.indexOf('NASA</span>') < dp.indexOf('class="src">') && (dp.match(/<summary>Show more<\/summary>/g) ?? []).length === Object.keys(ALL_SOURCES).length);
 check('the NASA line says NASA does not endorse it', /not made, reviewed or endorsed by NASA/.test(dp));

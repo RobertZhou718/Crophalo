@@ -27,7 +27,7 @@ check('the score line says it is not a chance of success', card.includes('Score 
 check('the sources are numbered notes with their address', /<ol class="fc-sources"><li>NASA POWER\. NASA\. https:\/\/power\.larc\.nasa\.gov<\/li>/.test(card) && card.includes('<sup>1,2</sup>'));
 check('notes and the soil test are NEVER on the card', !/low corner|came up late|pH 6\.4|My notes|soil test/i.test(card.replace('Soil test', '').replace('<li><span class="fc-boxmark" aria-hidden="true"></span>Soil test</li>', '')));
 check('the footer has the guide line and the date', card.includes('A guide, not advice. You decide.') && card.includes(`Made 14 November ${YR} from NASA and other public data.`));
-check('a card with no outline says where the pin is', fieldCardHTML({ ...REPORT, area: null }).includes('No outline drawn. The answer is for the pin at 44.4,-79.78.'));
+check('a card with no outline says where the place is', fieldCardHTML({ ...REPORT, area: null }).includes('No outline drawn. The answer is for the place at 44.4,-79.78.'));
 check('a garden gets a card of its own words and no plan or years', (() => { const g = fieldCardHTML({ ...REPORT, garden: true }); return g.includes('A tree or bush crop') && !g.includes('Year by year') && !g.includes('Our suggestion'); })());
 check('words from outside are plain text on the card', !/<img src=x/.test(fieldCardHTML({ ...REPORT, name: '<img src=x onerror=1>', checkFirst: ['<b>x</b>'] })) && !/<b>x<\/b>/.test(fieldCardHTML({ ...REPORT, checkFirst: ['<b>x</b>'] })));
 const svg = outlineSVG({ pts: SQUARE });

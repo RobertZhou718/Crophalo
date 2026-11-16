@@ -246,3 +246,7 @@
 .stx .seg button { min-height: 34px; }
 @media (pointer: coarse) { .stx .seg button { min-height: 44px; } }
 @media (max-width: 760px) { .stx .seg button { min-height: 44px; } }
+.pg-tabs [role=tab][aria-selected=true] .count, .pg-tabs [role=tab][aria-selected=true] .count.soft { color: inherit; background: transparent; box-shadow: inset 0 0 0 1px currentColor; }
+.pg-tabs .tab[aria-selected=false] .count.soft { background: transparent; color: var(--ink2); }
+.pg-tabs .tab[aria-selected=false] { color: var(--ink); } .pg-tabs .tab[aria-selected=false] .count.soft { color: var(--ink); background: transparent; }
+.pg-tabs .tab .count, .pg-tabs .tab .count.soft { opacity: 1; font-size: inherit; font-weight: inherit; }

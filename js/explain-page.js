@@ -6,16 +6,27 @@ import { WORD_SPOTS } from './words.explain.js';
 import { cardPlace } from './srci.js';
 
 const ensureStyle = href => { if (!document.querySelector(`link[href="${href}"]`)) { const l = document.createElement('link'); l.rel = 'stylesheet'; l.href = href; document.head.append(l); } };
-let frostFixed = false, wantTerm = '', pop = null, openFor = null;
+let frostFixed = false, wantTerm = '', termAsked = null, pop = null, openFor = null;
 
-// ---- the folds, after the NASA line of the Data page
+// A word card link needs the "How it fits together" tab in sight: select it (by hand, so it works whether or not the tabs are wired yet)
+function showFitTab() {
+  for (const t of document.querySelectorAll('#infoBody [role=tab][id^="srctab-"]')) { const on = t.id === 'srctab-fit'; t.setAttribute('aria-selected', on); t.tabIndex = on ? 0 : -1; const p = document.getElementById(t.getAttribute('aria-controls')); if (p) p.hidden = !on; }
+  const f = document.querySelector('#infoBody .data-filter'); if (f) f.hidden = true;
+}
+
+// ---- the folds, at the top of the "How it fits together" tab of the Data page
 function mount() {
-  const line = document.querySelector('#infoBody #nasaLine');
+  const line = document.querySelector('#infoBody #srcpanel-fit');
   if (!line || document.getElementById('explain')) return;
   ensureStyle('css/explain.css');
-  line.insertAdjacentHTML('afterend', explainHTML({ frostFixed }));
+  line.insertAdjacentHTML('afterbegin', explainHTML({ frostFixed }));
   const root = document.getElementById('explain');
-  if (wantTerm) { const t = document.getElementById(`ex-term-${wantTerm}`); wantTerm = ''; if (t) { root.querySelector('#ex-words').open = true; t.setAttribute('tabindex', '-1'); t.scrollIntoView({ block: 'start' }); t.focus({ preventScroll: true }); } }
+  if (wantTerm) { termAsked = { id: wantTerm, until: Date.now() + 2500 }; wantTerm = ''; }
+  if (termAsked && Date.now() < termAsked.until) {   // a word card link: the fit tab in sight, the word's fold open and the word focused; asked again if the folds are drawn once more as the page settles
+    showFitTab(); const t = document.getElementById(`ex-term-${termAsked.id}`);
+    if (t) { root.querySelector('#ex-words').open = true; t.setAttribute('tabindex', '-1'); t.scrollIntoView({ block: 'start' }); t.focus({ preventScroll: true }); }
+    for (const ms of [120, 400, 900]) setTimeout(() => { const w = document.getElementById(`ex-term-${termAsked?.id}`); if (w && (!document.activeElement || document.activeElement === document.body)) { w.setAttribute('tabindex', '-1'); w.focus({ preventScroll: true }); } }, ms);
+  }
 }
 
 // ---- the word "i" beside the headings that use a word; a heading drawn again gets it again

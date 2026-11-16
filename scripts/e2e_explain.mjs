@@ -9,7 +9,7 @@ const run = await openRun('e2e_explain');
 const { ROOT, js, until, tap, click, press, size, go, flat, check, same, group, finish, sleep } = run;
 const WELCOME = JSON.stringify({ v: '2026-11-14', at: 'test' });
 const FOLDS = ['words', 'ground', 'grid', 'decide', 'crops'];
-const openData = async (width = 1280) => { await size(width); await go('/'); await js(`localStorage.setItem('crophalo.welcome.v1', ${JSON.stringify(WELCOME)})`); await go('/#data'); await until(`!!document.querySelector('#explain .ex-folds')`, 8000); };
+const openData = async (width = 1280) => { await size(width); await go('/'); await js(`localStorage.setItem('crophalo.welcome.v1', ${JSON.stringify(WELCOME)})`); await go('/#data'); await until(`!!document.querySelector('#explain .ex-folds')`, 8000); await js(`document.querySelector('#srctab-fit')?.click(), true`); await sleep(400); };   // the folds live on the "How it fits together" tab
 const openAll = () => js(`document.querySelectorAll('#explain details').forEach(d => { d.open = true; }), true`);
 // the real Weather and Satellites markup, drawn by the screens' own modules from the recorded NASA POWER answer for Barrie (no network), shown in the open view
 const POWER = fs.readFileSync(path.join(ROOT, 'scripts', 'fixtures', 'power_barrie.json'), 'utf8');
@@ -24,7 +24,7 @@ const bigText = big => js(`import('/js/settings.js').then(m => m.saveSettings({ 
 await group('folds', async () => {
   await openData();
   same('five folds, all closed at first', await js(`[...document.querySelectorAll('#explain > .ex-folds > details')].map(d => d.id + ':' + d.open)`), FOLDS.map(f => `ex-${f}:false`));
-  check('the folds come right after the NASA line, before the source list', await js(`document.querySelector('#nasaLine').nextElementSibling?.id === 'explain'`));
+  check('the folds are the first thing on the "How it fits together" tab, and the NASA line is not on that tab', await js(`document.querySelector('#srcpanel-fit').firstElementChild?.id === 'explain' && !document.querySelector('#srcpanel-fit').contains(document.querySelector('#nasaLine'))`));
   check('the reminder is visible without opening anything', await js(`(() => { const r = document.querySelector('#exRemind'); const b = r.getBoundingClientRect(); return b.height > 20 && getComputedStyle(r).visibility === 'visible'; })()`));
   for (const f of FOLDS) {
     await tap(`#ex-${f} > summary`); await sleep(100);
@@ -60,7 +60,8 @@ await group('words', async () => {
   await tap('[data-card="hls"] .wordi'); await sleep(150);
   check('another word opens its own card', await js(`/NDVI/.test(document.querySelector('#wordPopTitle').textContent)`));
   await click('#wordPop [data-word-go]'); await until(`document.querySelector('#ex-words')?.open === true`, 4000);
-  check('"All the words" opens the Data page at that word', await js(`location.hash === '#data' && document.activeElement?.id === 'ex-term-ndvi'`));
+  await sleep(350);   // the focus is set again 200 ms after the folds open (the page settles first)
+  check('"All the words" opens the Data page at that word', await js(`location.hash === '#data' && document.activeElement?.id === 'ex-term-ndvi'`), await js(`JSON.stringify({ h: location.hash, a: document.activeElement?.id || document.activeElement?.tagName, termExists: !!document.getElementById('ex-term-ndvi'), n: document.querySelectorAll('#explain').length, fitHidden: document.querySelector('#srcpanel-fit')?.hidden })`));
   await size(320); await openData(320);
   await js(`document.querySelector('#infoBody').insertAdjacentHTML('afterbegin', '<article data-fact="frost"><h3>Frost</h3></article>')`); await until(`!!document.querySelector('[data-fact=frost] .wordi')`, 2000);
   await tap('[data-fact="frost"] .wordi'); await sleep(150);

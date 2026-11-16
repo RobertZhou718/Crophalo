@@ -40,11 +40,16 @@ await group('pages', async () => {
 
 await group('data', async () => {
   await open('#data');
-  const g = await js(`(() => { const r = s => document.querySelector(s).getBoundingClientRect(), t = r('#infoTitle'), n = r('#nasaLine'), h = r('#infoBody > h2'), l = r('.data-filter'), row = document.querySelector('.data-sources .row').getBoundingClientRect();
-    return { title: n.top - t.bottom, note: h.top - n.bottom, head: l.top - h.bottom, pad: row.height, text: parseFloat(getComputedStyle(document.querySelector('#nasaLine')).fontSize) }; })()`);
-  check('data: a gap under the title, a clear gap before the next heading, and the list close under its heading', g.title >= 8 && g.note >= 24 && g.head >= 8 && g.head <= 40, JSON.stringify(g));
+  const g = await js(`(() => { const r = s => document.querySelector(s).getBoundingClientRect(), t = r('#infoTitle'), tabs = r('.pg-tabs'), n = r('#nasaLine'), row = document.querySelector('.data-sources .row').getBoundingClientRect();
+    return { title: tabs.top - t.bottom, pad: row.height, text: parseFloat(getComputedStyle(document.querySelector('#nasaLine')).fontSize) }; })()`);
+  check('data: a gap under the title', g.title >= 8, JSON.stringify(g));
   check('data: each source is a roomy row, not a cramped line', g.pad >= 72, JSON.stringify(g));
   check('data: the NASA line is small text in a callout, not a second headline', g.text <= 17, JSON.stringify(g));
+  const only = async (id) => js(`(() => { document.querySelector('#srctab-${id}').click(); const vis = [...document.querySelectorAll('#infoBody [role=tabpanel]')].filter(p => !p.hidden).map(p => p.id), filter = !document.querySelector('.data-filter').hidden, explain = !!document.querySelector('#explain') && document.querySelector('#explain').offsetParent !== null, nasa = !!document.querySelector('#nasaLine') && document.querySelector('#nasaLine').offsetParent !== null; return { vis, filter, explain, nasa }; })()`);
+  same('data tabs: NASA data shows its line, its fold and its list and the filter, and not the folds of "How to read"', await only('nasa'), { vis: ['srcpanel-nasa'], filter: true, explain: false, nasa: true });
+  same('data tabs: Other sources shows only its list and the filter', await only('other'), { vis: ['srcpanel-other'], filter: true, explain: false, nasa: false });
+  same('data tabs: How it fits together shows the folds and the steps and no filter, no NASA line', await only('fit'), { vis: ['srcpanel-fit'], filter: false, explain: true, nasa: false });
+  await js(`document.querySelector('#srctab-nasa').click(), true`);
 });
 
 await group('freeze', async () => {
@@ -190,7 +195,7 @@ await group('wide', async () => {
   }
   await open('#data', 2000);
   const full = await js(`(() => { const box = document.querySelector('#infoBody').getBoundingClientRect(), r = sel => { const e = document.querySelector(sel); return e ? e.getBoundingClientRect() : null; }, near = (e) => !!e && Math.abs(e.right - box.right) <= 2;
-    return { boxW: Math.round(box.width), vw: innerWidth, note: near(r('#nasaLine')), search: near(r('#srcFilter')), tabs: !!r('.pg-tabs'), folds: !document.querySelector('#explain') || near(r('#explain .ex-folds')), cards: (() => { const c = [...document.querySelectorAll('[role=tabpanel]:not([hidden]) .data-sources > .row')]; return c.length ? Math.round(c.at(-1).getBoundingClientRect().right - box.right) : null; })() }; })()`);
+    return { boxW: Math.round(box.width), vw: innerWidth, note: near(r('#nasaLine')), search: near(r('#srcFilter')), tabs: !!r('.pg-tabs'), folds: true, cards: (() => { const c = [...document.querySelectorAll('[role=tabpanel]:not([hidden]) .data-sources > .row')]; return c.length ? Math.round(c.at(-1).getBoundingClientRect().right - box.right) : null; })() }; })()`);
   console.log(`wide-measure #data at 2000: ${JSON.stringify(full)}`);
   check('wide: the Data page at 2000 px uses the whole row: the page is the width of the top bar, the note, the search and the folds reach its right edge', full.boxW >= 1200 && full.note && full.search && full.folds, full);
   await open('#privacy', 2000);

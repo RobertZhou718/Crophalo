@@ -43,7 +43,7 @@ check('the open top end says "or more" (53 mm/h or more is not a number)', top &
 const dry = valueAt(S, 255, 162, 0);
 check('soil moisture reads in m³/m³', dry && /^Soil moisture here: 0\.0\d m³\/m³ · 1 Nov$/.test(hereWords(layerOf('smap'), dry, D('20261101'))), dry && hereWords(layerOf('smap'), dry, D('20261101')));
 same('a colour that is not in the colormap is not read, never guessed', valueAt(N, 1, 2, 3), null);
-same('and says so plainly, with the reason', hereWords(layerOf('ndvi'), null, D('20261109'), HERE_WHY.nodata), 'No value for your pin: no image at the pin on this day.');
+same('and says so plainly, with the reason', hereWords(layerOf('ndvi'), null, D('20261109'), HERE_WHY.nodata), 'No value for your field: no image at your field on this day.');
 check('the marker place of an entry is its place along the bar', ndviHit.at > 0 && ndviHit.at < 1 && valueAt(N, 0, 24, 1).at === 1, [ndviHit.at, valueAt(N, 0, 24, 1)?.at]);
 same('rain is the average rate of the whole day, with about how much fell that day', hereWords(layerOf('rain'), rHit, D('20261109')), 'Rain here: 2.7 mm/h on average that day (about 66 mm) · 9 Nov');
 
@@ -51,7 +51,7 @@ same('rain is the average rate of the whole day, with about how much fell that d
 const dryHit = valueAt(R, 191, 191, 191, 0), noHit = valueAt(R, 128, 128, 128, 0);
 check('rain under 0.1 mm/h is a clear entry of its own, not "no data"', dryHit && dryHit.clear && !dryHit.nodata && dryHit.at === null && noHit && noHit.nodata, [dryHit, noHit]);
 same('a dry day reads as dry, with its day', hereWords(layerOf('rain'), dryHit, D('20261113')), 'Rain here: under 0.1 mm/h on average that day (dry, or nearly) · 13 Nov');
-same('a pixel with no data has no value, and why', hereWords(layerOf('rain'), noHit, D('20261113')), 'No value for your pin: no image at the pin on this day.');
+same('a pixel with no data has no value, and why', hereWords(layerOf('rain'), noHit, D('20261113')), 'No value for your field: no image at your field on this day.');
 same('greenness under 0 is water, snow or ice', hereWords(layerOf('ndvi'), valueAt(N, 225, 225, 225, 0), D('20261113')), 'Greenness here: under 0 (water, snow or ice, not plants) · 13 Nov');
 same('a clear pixel of a colour NASA does not list is not read, never guessed; an opaque pixel never matches a clear entry', [valueAt(R, 1, 2, 3, 0), valueAt(R, 191, 191, 191, 255)], [null, null]);
 check('the soil moisture "no data" entry is kept apart from its colours', valueAt(S, 0, 0, 0, 0)?.nodata === true && valueAt(T, 64, 64, 64, 0)?.nodata === true);

@@ -110,7 +110,7 @@ same('a value inside its own uncertainty says so: about usual', at(-4.12, 7.54),
 same('more water is said as more', at(15.6, 3), `Stored water in this region: 16 cm more than the 2004–2009 average (± 3 cm) · ${words('Sep', '2026')}`);
 same('a value that rounds to nothing is the same as the average', at(0.3, 2), `Stored water in this region: the same as the 2004–2009 average (± 2 cm), within the measurement’s uncertainty, so about usual · ${words('Sep', '2026')}`);
 same('a month with no measurement says so and is never a number', at(null, null, mo(2018, 1)), `Stored water in this region: no measurement for ${words('January', '2018')} (the satellites did not measure it; it is left empty, never filled in)`);
-same('a month not in the record has no value, said plainly (never "not read")', G.hereWords(g, mo(1999, 1)), 'No value for your pin: no measurement that month.');
+same('a month not in the record has no value, said plainly (never "not read")', G.hereWords(g, mo(1999, 1)), 'No value for your field: no measurement that month.');
 same('the newest month says it is the newest, and that it comes late', G.monthLine(g, mo(2026, 9)), `${words('September', '2026')}, the newest month NASA has (it comes about two months after the month ends)`);
 same('the trend is a straight line through every month measured, with its span', G.trendWords(g), `Trend from ${words('April', '2002')} to ${words('September', '2026')}: +0.2 cm a year, a straight line through every month NASA measured.`);
 same('no trend when the lookup gave none', G.trendWords({ ...g, trend: null }), 'No trend is given: fewer than five years of months were read.');
